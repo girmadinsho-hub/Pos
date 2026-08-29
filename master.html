@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SmartShop Pro – Master Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <style>
+        body{font-family:Arial;background:#1a1a2e;color:#fff;padding:20px}
+        .card{background:#2a2a3e;border-radius:12px;padding:20px;margin-bottom:15px}
+        h2{color:#4caf50;cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin:0 0 10px 0}
+        h2 .arrow{font-size:14px;transition:0.3s;display:inline-block}
+        h2 .arrow.open{transform:rotate(90deg)}
+        .card-body.collapsed{max-height:0!important;overflow:hidden;padding:0!important;margin:0!important}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        th{background:#333;padding:10px;text-align:left}
+        td{padding:10px;border-bottom:1px solid #444}
+        .btn{padding:8px 15px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin:2px;font-size:12px}
+        .btn-green{background:#4caf50;color:#fff}
+        .btn-red{background:#f44336;color:#fff}
+        .btn-blue{background:#1a73e8;color:#fff}
+        .btn-yellow{background:#f59e0b;color:#000}
+        .btn-purple{background:#8b5cf6;color:#fff}
+        .status-active{color:#4caf50}
+        .status-warning{color:#ff9800}
+        .status-expired{color:#f44336}
+        input,select,textarea{padding:10px;border:1px solid #555;border-radius:5px;background:#333;color:#fff;width:100%;margin:5px 0;font-size:14px}
+        #loginSection{text-align:center}
+        #loginSection input{text-align:center;font-size:18px}
+        .shop-inactive{opacity:0.5}
+        .filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+        .filter-bar input,.filter-bar select{width:auto;flex:1;min-width:120px}
+        .checkbox-col{width:30px;text-align:center}
+        .bulk-actions{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+        .bulk-actions button{flex:1}
+        .actions-row{display:flex;gap:4px;flex-wrap:nowrap;white-space:nowrap}
+        .actions-row .btn{flex:0 0 auto}
+        .loading{text-align:center;padding:20px;color:#94a3b8}
+
+        * { box-sizing: border-box !important; }
+        body { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; width: 100% !important; }
+        .header { width: 100% !important; padding: 12px !important; position: sticky !important; top: 0 !important; z-index: 1000 !important; display: flex !important; justify-content: space-between !important; align-items: center !important; box-sizing: border-box !important; }
+        .sidebar { width: 280px !important; max-width: 85vw !important; }
+        .container, .main-content-wrapper { padding: 10px !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; box-sizing: border-box !important; }
+        .card { width: 100% !important; padding: 15px !important; margin-bottom: 15px !important; box-sizing: border-box !important; }
+        input, select, textarea { width: 100% !important; padding: 12px !important; box-sizing: border-box !important; margin-bottom: 8px !important; }
+        button { box-sizing: border-box !important; }
+        .table-wrapper, .excel-table-container { width: 100% !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+        table { min-width: 600px !important; width: 100% !important; }
+        .flex-row { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; }
+        .flex-row > * { flex: 1 1 45% !important; }
+        #sidebar { position: fixed !important; top: 0 !important; left: -280px !important; width: 280px !important; height: 100% !important; background: #fff !important; z-index: 2000 !important; overflow-y: auto !important; transition: left 0.3s ease !important; box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important; }
+        #sidebar.open { left: 0 !important; }
+        #sidebarOverlay { display: none !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; background: rgba(0,0,0,0.5) !important; z-index: 1999 !important; }
+        #sidebarOverlay.show { display: block !important; }
+        .master-tab-content { width: 100% !important; }
+
+        .standard-dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .standard-dialog-box { background: #fff; border-radius: 16px; padding: 24px; width: 90%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; animation: slideUp 0.25s ease; }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .standard-dialog-icon { font-size: 48px; margin-bottom: 12px; }
+        .standard-dialog-title { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+        .standard-dialog-message { font-size: 14px; color: #64748b; margin-bottom: 20px; line-height: 1.5; white-space: pre-wrap; }
+        .standard-dialog-input { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 15px; margin-bottom: 16px; text-align: center; outline: none; }
+        .standard-dialog-input:focus { border-color: #2563eb; }
+        .standard-dialog-buttons { display: flex; gap: 10px; justify-content: center; }
+        .standard-dialog-btn { padding: 10px 24px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; flex: 1; }
+        .standard-dialog-btn:active { transform: scale(0.97); }
+        .standard-dialog-btn-primary { background: #2563eb !important; color: #fff !important; }
+        .standard-dialog-btn-secondary { background: #e2e8f0 !important; color: #334155 !important; border: 1px solid #cbd5e1 !important; }
+        .standard-dialog-btn-danger { background: #ef4444 !important; color: #fff !important; }
+        .standard-dialog-btn-success { background: #10b981 !important; color: #fff !important; }
+    </style>
+</head>
+<body>
+
+<!-- 1. Splash Screen -->
+<div id="splashScreen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#0f172a,#1e3a8a); display:flex; align-items:center; justify-content:center; z-index:99999; transition:opacity 0.8s;">
+    <div style="text-align:center; color:white;">
+        <div style="font-size:40px; margin-bottom:10px;">👑</div>
+        <h1 style="font-size:32px; font-weight:800; letter-spacing:1px;">SmartShop Pro</h1>
+        <p style="font-size:14px; opacity:0.8; margin-top:5px;">Master Administration</p>
+    </div>
+</div>
+
+<!-- 2. Loading Progress Screen -->
+<div id="loadingScreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#0f172a,#1e3a8a); z-index:10000; flex-direction:column; align-items:center; justify-content:center;">
+    <div style="text-align:center; color:white;">
+        <div style="font-size:24px; font-weight:bold; margin-bottom:20px;">Verifying Master Access...</div>
+        <div style="width:80%; max-width:300px; height:10px; background:rgba(255,255,255,0.2); border-radius:10px; overflow:hidden;">
+            <div id="loadingBar" style="width:0%; height:100%; background:white; border-radius:10px; transition: width 0.3s;"></div>
+        </div>
+        <div id="loadingPercent" style="margin-top:5px; font-size:14px;">0%</div>
+    </div>
+</div>
+
+<!-- 3. Master Login Screen -->
+<div id="loginSection" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#0f172a,#1e3a8a); align-items:center; justify-content:center; z-index:9999;">
+    <div class="card" style="max-width: 400px; margin: 20px; text-align: center; background:#fff;">
+        <div style="font-size:40px; margin-bottom:10px;">👑</div>
+        <h2 style="color:#1e3a8a; margin-bottom:5px;">Master Access</h2>
+        <p style="color:#64748b; font-size:12px; margin-bottom:15px;">Authorized personnel only.</p>
+        <input type="email" id="masterEmail" placeholder="Master Email" style="margin-bottom:10px; width:100%; padding:14px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
+        <input type="password" id="masterPass" placeholder="Password" style="width:100%; padding:14px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
+        <button class="btn btn-green" onclick="masterLogin()" style="width:100%;padding:15px;font-size:16px; margin-top:10px;">Access Panel</button>
+    </div>
+</div>
+
+<!-- 4. Master App PIN Screen -->
+<div id="appPinScreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#0f172a,#1e3a8a); z-index:10001; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; box-sizing:border-box;">
+    <div style="background:#fff; border-radius:20px; padding:30px; max-width:350px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+        <div style="font-size:40px; margin-bottom:10px;">🔐</div>
+        <h2 style="color:#1e293b; margin-bottom:10px;">Enter App PIN</h2>
+        <p style="color:#64748b; font-size:13px; margin-bottom:20px;">Please enter your 4-digit security PIN to unlock the Master Panel.</p>
+        <input type="password" id="masterPinInput" placeholder="• • • •" maxlength="4" style="text-align:center; font-size:24px; letter-spacing:10px; margin-bottom:15px; width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
+        <button class="btn btn-green" style="width:100%; margin-bottom:10px;" onclick="verifyMasterPin()">🔓 Unlock</button>
+        <button class="btn btn-outline" style="width:100%; color:#ef4444; border-color:#ef4444;" onclick="masterLogout()">Logout</button>
+    </div>
+</div>
+
+<!-- 5. Main Panel -->
+<div id="mainPanel" style="display:none">
+    <div class="header" style="background:linear-gradient(135deg, #0f172a, #1e3a8a); color:white; padding:15px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:1000;">
+        <button onclick="toggleSidebar()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">☰</button>
+        <span style="font-weight:bold;">👑 Master Panel</span>
+        <button onclick="masterLogout()" style="background:rgba(255,255,255,0.2); border:none; color:white; padding:8px 15px; border-radius:8px; cursor:pointer;">🚪</button>
+    </div>
+
+    <div id="sidebarOverlay" onclick="closeSidebar()" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1999;"></div>
+
+    <div id="sidebar" style="position:fixed; top:0; left:-280px; width:280px; height:100%; background:#fff; z-index:2000; overflow-y:auto; transition:0.3s; box-shadow:2px 0 10px rgba(0,0,0,0.1);">
+        <div style="padding:20px; font-weight:bold; border-bottom:1px solid #f1f5f9; color:#1e293b;">📋 Master Menu</div>
+        <div style="padding:15px 20px; cursor:pointer; font-weight:600; color:#2563eb; border-left:4px solid #2563eb;" onclick="showMasterTab('tabLicenses')">🔑 Licenses</div>
+        <div style="padding:15px 20px; cursor:pointer; font-weight:600; color:#64748b;" onclick="showMasterTab('tabShops')">🏪 Shops</div>
+        <div style="padding:15px 20px; cursor:pointer; font-weight:600; color:#64748b;" onclick="showMasterTab('tabReports')">📊 Reports & Tools</div>
+        <div style="padding:15px 20px; cursor:pointer; font-weight:600; color:#64748b;" onclick="showMasterTab('tabSettings')">⚙️ Settings</div>
+    </div>
+
+    <div style="padding:15px; max-width:1000px; margin:0 auto;">
+        <!-- TAB 1: LICENSES -->
+        <div id="tabLicenses" class="master-tab-content">
+            <div class="card">
+                <div class="card-title" onclick="toggleCard(this)">🔑 Generate Licence Key <span class="arrow open">▶</span></div>
+                <div class="card-body">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <input type="text" id="shopName" placeholder="Shop Name" style="flex:2">
+                        <input type="text" id="keyPrefix" placeholder="Key Prefix (default: SMART)" style="flex:1">
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <select id="planType" onchange="onPlanChange()" style="flex:1">
+                            <option value="basic">Basic – 500 Br/month</option>
+                            <option value="standard">Standard – 1,000 Br/month</option>
+                            <option value="premium">Premium – 2,000 Br/month</option>
+                            <option value="enterprise">Enterprise – configurable</option>
+                        </select>
+                        <input type="date" id="startDate" style="flex:1" title="Leave empty for today">
+                    </div>
+                    <div id="enterpriseConfig" style="display:none">
+                        <label>Number of Shops</label>
+                        <select id="entShops" onchange="calculateEnterprisePrice()">
+                            <option value="1">1 shop</option><option value="2">2 shops</option><option value="3">3 shops</option>
+                            <option value="5">5 shops</option><option value="10">10 shops</option><option value="0">Unlimited</option>
+                        </select>
+                        <label>Cashiers per Shop</label>
+                        <select id="entCashiers" onchange="calculateEnterprisePrice()">
+                            <option value="1">1</option><option value="2" selected>2</option><option value="3">3</option>
+                            <option value="5">5</option><option value="10">10</option><option value="0">Unlimited</option>
+                        </select>
+                        <div id="enterprisePriceDisplay" style="margin:10px 0;font-size:16px;color:#4caf50"></div>
+                    </div>
+                    <select id="duration">
+                        <option value="30">30 Days</option><option value="90">90 Days (10% off)</option>
+                        <option value="180">180 Days (15% off)</option><option value="365">365 Days (20% off)</option>
+                    </select>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-blue" onclick="generateLicense()" style="flex:2">Generate Single Key</button>
+                        <button class="btn btn-blue" onclick="showBulkGenerate()" style="flex:1">📋 Bulk Generate</button>
+                    </div>
+                    <div id="bulkGenerateSection" style="display:none;margin-top:10px">
+                        <textarea id="bulkShopNames" rows="4" placeholder="Enter shop names, one per line..."></textarea>
+                        <button class="btn btn-green" onclick="bulkGenerate()">🚀 Generate All</button>
+                    </div>
+                    <div id="generatedKey" style="margin-top:10px;padding:10px;background:#333;border-radius:5px;display:none"></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title" onclick="toggleCard(this)">📋 Active Licences <span class="arrow open">▶</span></div>
+                <div class="card-body">
+                    <div class="filter-bar" style="margin-bottom:10px;">
+                        <input type="text" id="filterSearch" placeholder="🔍 Search shop or key..." oninput="filterLicenses()">
+                        <select id="filterPlan" onchange="filterLicenses()">
+                            <option value="">All Plans</option><option value="basic">Basic</option><option value="standard">Standard</option>
+                            <option value="premium">Premium</option><option value="enterprise">Enterprise</option><option value="trial">Trial</option>
+                        </select>
+                        <select id="filterStatus" onchange="filterLicenses()">
+                            <option value="">All Status</option><option value="active">Active</option>
+                            <option value="expiring">Expiring (≤5 days)</option><option value="expired">Expired</option>
+                        </select>
+                    </div>
+                    <div class="bulk-actions" style="display:flex;gap:8px;margin-bottom:10px;">
+                        <button class="btn btn-green" onclick="bulkExtend()">✅ Bulk +30 Days</button>
+                        <button class="btn btn-red" onclick="bulkRevoke()">⛔ Bulk Revoke</button>
+                        <button class="btn btn-blue" onclick="exportCSV()">📥 Export CSV</button>
+                    </div>
+                    <div class="table-wrapper">
+                        <table id="licenseTable" style="width:100%;border-collapse:collapse;font-size:13px;min-width:800px;">
+                            <tr style="background:#333;color:#fff;">
+                                <th class="checkbox-col" style="padding:10px;text-align:center;width:30px;"><input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes()"></th>
+                                <th style="padding:10px;text-align:left;">Shop</th><th style="padding:10px;text-align:left;">Shop ID</th><th style="padding:10px;text-align:left;">Plan</th>
+                                <th style="padding:10px;text-align:left;">Key</th><th style="padding:10px;text-align:left;">Expires</th><th style="padding:10px;text-align:left;">Status</th><th style="padding:10px;text-align:left;">Actions</th>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: SHOPS -->
+        <div id="tabShops" class="master-tab-content" style="display:none;">
+            <div class="card">
+                <div class="card-title" onclick="toggleCard(this)">🏪 Manage Shops <span class="arrow open">▶</span></div>
+                <div class="card-body">
+                    <button class="btn btn-blue" onclick="loadShops()" style="margin-bottom:10px">🔄 Refresh</button>
+                    <div class="table-wrapper">
+                        <table id="shopsTable" style="width:100%;border-collapse:collapse;font-size:13px;min-width:600px;">
+                            <tr style="background:#333;color:#fff;"><th style="padding:10px;">Shop Name</th><th style="padding:10px;">Shop ID</th><th style="padding:10px;">Plan</th><th style="padding:10px;">Active</th><th style="padding:10px;">Actions</th></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: REPORTS & TOOLS -->
+        <div id="tabReports" class="master-tab-content" style="display:none;">
+            <div class="card">
+                <div class="card-title" onclick="toggleCard(this)">📊 CEO Dashboard <span class="arrow open">▶</span></div>
+                <div class="card-body"><div id="revenueSummary"></div></div>
+            </div>
+            <div class="card">
+                <div class="card-title" onclick="toggleCard(this)">🔍 Shop Data Snapshot <span class="arrow open">▶</span></div>
+                <div class="card-body">
+                    <div style="display:flex;gap:8px;margin-bottom:10px">
+                        <select id="snapshotShop" style="flex:2"><option value="">Select Shop</option></select>
+                        <button class="btn btn-blue" onclick="loadShopSnapshot()" style="flex:1">📊 Load</button>
+                    </div>
+                    <div id="snapshotResult"></div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title" onclick="toggleCard(this)">📜 Audit Log <span class="arrow open">▶</span></div>
+                <div class="card-body">
+                    <button class="btn btn-blue" onclick="loadAuditLog()" style="margin-bottom:10px">🔄 Refresh</button>
+                    <div class="table-wrapper">
+                        <table id="auditLogTable" style="width:100%;border-collapse:collapse;font-size:13px;min-width:600px;">
+                            <tr style="background:#333;color:#fff;"><th style="padding:10px;">Time</th><th style="padding:10px;">Action</th><th style="padding:10px;">Details</th><th style="padding:10px;width:60px;">Delete</th></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title" onclick="toggleCard(this)">🛠️ System Tools <span class="arrow open">▶</span></div>
+                <div class="card-body">
+                    <div style="display:flex;gap:8px;margin-bottom:10px">
+                        <button class="btn btn-purple" onclick="backupData()">💾 Backup Data</button>
+                        <button class="btn btn-purple" onclick="document.getElementById('restoreFileInput').click()">📂 Restore Data</button>
+                        <input type="file" id="restoreFileInput" style="display:none" onchange="restoreData(this)">
+                    </div>
+                    <h3 style="color:#ef4444;margin-top:10px;">⚠️ Danger Zone</h3>
+                    <button class="btn btn-red" onclick="cleanupShopData()" style="width:100%;margin-bottom:10px;">🗑️ DELETE ALL SHOP DATA</button>
+                    <button class="btn btn-purple" onclick="findAndCleanGhostShops()" style="width:100%;margin-bottom:10px;">👻 Find & Wipe Ghost Shops</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: SETTINGS -->
+        <div id="tabSettings" class="master-tab-content" style="display:none;">
+            <div class="card">
+                <div class="card-title">🏢 SaaS Tier & Business Type Control</div>
+                <p style="font-size:13px; color:#94a3b8; margin-bottom:15px;">Define the global limits for different business tiers.</p>
+                <div style="background:#1e293b; padding:15px; border-radius:8px; margin-bottom:15px;">
+                    <h3 style="color:#4caf50; font-size:15px; margin-bottom:10px;">Small Kiosk / Retail</h3>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                        <div><label style="font-size:11px; color:#94a3b8;">Max Products</label><input type="number" id="tier_kiosk_products" value="100" style="width:100%; padding:8px; border-radius:4px; border:1px solid #444; background:#333; color:#fff;"></div>
+                        <div><label style="font-size:11px; color:#94a3b8;">Max Cashiers</label><input type="number" id="tier_kiosk_cashiers" value="1" style="width:100%; padding:8px; border-radius:4px; border:1px solid #444; background:#333; color:#fff;"></div>
+                        <div><label style="font-size:11px; color:#94a3b8;">Max Branches</label><input type="number" id="tier_kiosk_branches" value="1" style="width:100%; padding:8px; border-radius:4px; border:1px solid #444; background:#333; color:#fff;"></div>
+                    </div>
+                </div>
+                <div style="background:#1e293b; padding:15px; border-radius:8px; margin-bottom:15px;">
+                    <h3 style="color:#3b82f6; font-size:15px; margin-bottom:10px;">Supermarket / Mid-Size</h3>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
+                        <div><label style="font-size:11px; color:#94a3b8;">Max Products</label><input type="number" id="tier_market_products" value="5000" style="width:100%; padding:8px; border-radius:4px; border:1px solid #444; background:#333; color:#fff;"></div>
+                        <div><label style="font-size:11px; color:#94a3b8;">Max Cashiers</label><input type="number" id="tier_market_cashiers" value="5" style="width:100%; padding:8px; border-radius:4px; border:1px solid #444; background:#333; color:#fff;"></div>
+                        <div><label style="font-size:11px; color:#94a3b8;">Max Branches</label><input type="number" id="tier_market_branches" value="3" style="width:100%; padding:8px; border-radius:4px; border:1px solid #444; background:#333; color:#fff;"></div>
+                    </div>
+                </div>
+                <button class="btn btn-green" onclick="saveTierSettings()">💾 Save Tier Limits</button>
+            </div>
+            <div class="card">
+                <div class="card-title">⚙️ SaaS Configuration</div>
+                <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Change the default Trial Days for new shop registrations.</p>
+                <label style="font-weight:600;">Default Trial Days</label>
+                <input type="number" id="globalTrialDaysInput" placeholder="e.g., 30" style="margin-bottom:10px;">
+                <button class="btn btn-green" onclick="saveGlobalTrialDays()">💾 Save Configuration</button>
+            </div>
+            <div class="card">
+                <div class="card-title">🔐 Master Security</div>
+                <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Change your Master App login credentials.</p>
+                <button class="btn btn-primary" onclick="changeMasterPassword()" style="margin-bottom:10px; background:#2563eb; color:#fff;">🔑 Change Master Password</button>
+                <button class="btn btn-outline" onclick="changeMasterPin()">🔢 Change App PIN</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+<script>
+// ===== SUPABASE INITIALIZATION =====
+const SUPABASE_URL = "https://mtwcdvmdoxzcejzgypdw.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8";
+let supabaseClient = null;
+if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    console.log("✅ Supabase Connected in Master!");
+}
+
+var allLicenses = [];
+
+// ===== GHOST DATA SCANNER =====
+async function findAndCleanGhostShops() {
+    if (!confirm("Scan database for ghost shops and wipe them?")) return;
+    alert("Scanning... please wait.");
+    
+    var foundIds = new Set();
+    var tablesToScan = ['products', 'sales', 'expenses', 'employees', 'losses', 'orders'];
+    
+    try {
+        for (var i=0; i<tablesToScan.length; i++) {
+            const { data } = await supabaseClient.from(tablesToScan[i]).select('shop_id').limit(500);
+            if (data) data.forEach(function(row) {
+                if (row.shop_id) foundIds.add(row.shop_id);
+            });
+        }
+        
+        var idsArray = Array.from(foundIds);
+        if (idsArray.length === 0) {
+            alert("✅ Good news! No ghost data found.");
+            return;
+        }
+        
+        for (var k=0; k<idsArray.length; k++) {
+            var exactMatch = idsArray[k];
+            if (confirm("FOUND GHOST DATA!\n\nShop ID: " + exactMatch + "\n\nWipe ALL data for this shop?")) {
+                alert("Wiping " + exactMatch + "...");
+                var cols = ['products', 'sales', 'losses', 'expenses', 'employees', 'suppliers', 'purchase_orders', 'loyalty', 'loans', 'bank_accounts', 'bank_transactions', 'notes', 'settings', 'recipes', 'orders'];
+                for (var j=0; j<cols.length; j++) {
+                    await supabaseClient.from(cols[j]).delete().eq('shop_id', exactMatch);
+                }
+                await supabaseClient.from('shops').delete().eq('shop_id', exactMatch);
+                await supabaseClient.from('licenses').delete().eq('shop_id', exactMatch);
+                alert('✅ Ghost shop ' + exactMatch + ' wiped!');
+            }
+        }
+        loadShops();
+    } catch(e) {
+        alert("❌ Scan error: " + e.message);
+    }
+}
+
+function toggleCard(el) {
+    const arrow = el.querySelector('.arrow');
+    const body = el.nextElementSibling;
+    if (body) { body.classList.toggle('collapsed'); if (arrow) arrow.classList.toggle('open'); }
+}
+
+async function logAction(action, details) {
+    if (!supabaseClient) return;
+    try {
+        await supabaseClient.from('audit_logs').insert([{
+            action: action, details: details, cashier_name: 'Master Admin', timestamp: new Date().toISOString()
+        }]);
+    } catch(e) { console.error("Audit log error:", e.message); }
+}
+
+async function loadAuditLog() {
+    if (!supabaseClient) return;
+    const t = document.getElementById('auditLogTable');
+    t.innerHTML = '<tr style="background:#333;color:#fff;"><th>Time</th><th>Action</th><th>Details</th><th>Delete</th></tr>';
+    
+    try {
+        const { data, error } = await supabaseClient.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(50);
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            t.innerHTML += '<tr><td colspan="4" style="padding:20px; text-align:center; color:#94a3b8;">No logs yet.</td></tr>';
+            return;
+        }
+        
+        data.forEach(log => {
+            t.innerHTML += `<tr style="border-bottom:1px solid #333;">
+                <td style="padding:10px;">${new Date(log.timestamp).toLocaleString()}</td>
+                <td style="padding:10px;">${log.action}</td>
+                <td style="padding:10px;">${log.details}</td>
+                <td style="padding:10px; text-align:center;">
+                    <button class="btn btn-red" style="padding:4px 8px; font-size:10px;" onclick="deleteAuditLog('${log.id}')">✖</button>
+                </td>
+            </tr>`;
+        });
+    } catch(e) {
+        console.error("Load audit logs error:", e.message);
+    }
+}
+
+async function deleteAuditLog(id) {
+    if (!confirm('Delete this log entry?')) return;
+    try {
+        await supabaseClient.from('audit_logs').delete().eq('id', id);
+        loadAuditLog(); 
+    } catch(e) { alert('❌ Error: ' + e.message); }
+}
+
+function loadRevenueSummary() {
+    var activeCount = 0, trialCount = 0, expiredCount = 0;
+    var expiringSoon = [];
+
+    allLicenses.forEach(l => {
+        var days = Math.ceil((new Date(l.expiry_date) - new Date()) / 86400000);
+        if (days < 0) {
+            expiredCount++;
+        } else {
+            if (l.plan === 'trial') trialCount++; else activeCount++;
+            if (days <= 5) expiringSoon.push({ name: l.shop_name, days: days });
+        }
+    });
+
+    var html = `
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;margin-bottom:15px;">
+            <div style="background:#e6f4ea;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#10b981;">${activeCount + trialCount}</b><small>Active / Trial</small></div>
+            <div style="background:#fef3c7;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#f59e0b;">${expiringSoon.length}</b><small>Expiring ≤5d</small></div>
+            <div style="background:#fee2e2;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#ef4444;">${expiredCount}</b><small>Expired</small></div>
+        </div>
+    `;
+
+    if (expiringSoon.length > 0) {
+        html += '<h4 style="color:#1e293b;">⚠️ Action Required</h4>';
+        expiringSoon.forEach(s => {
+            html += `<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;"><b>${s.name}</b> - Expires in <b style="color:#ef4444;">${s.days}d</b></div>`;
+        });
+    }
+
+    document.getElementById('revenueSummary').innerHTML = html;
+}
+
+async function loadShopSnapshot() {
+    const sid = document.getElementById('snapshotShop').value;
+    if (!sid) return alert('Select a shop!');
+    
+    const res = document.getElementById('snapshotResult');
+    res.innerHTML = '<div class="loading">Loading snapshot...</div>';
+    
+    try {
+        // Fetch Shop
+        const { data: shopData } = await supabaseClient.from('shops').select('*').eq('shop_id', sid).single();
+        if (!shopData) { res.innerHTML = '<span style="color:#ef4444">Shop not found.</span>'; return; }
+
+        // Fetch Counts (Supabase allows counting)
+        const { count: prodCount } = await supabaseClient.from('products').select('*', { count: 'exact', head: true }).eq('shop_id', sid);
+        const { count: empCount } = await supabaseClient.from('employees').select('*', { count: 'exact', head: true }).eq('shop_id', sid);
+        const { count: salesCount } = await supabaseClient.from('sales').select('*', { count: 'exact', head: true }).eq('shop_id', sid);
+        
+        // Fetch Sales Total & Expenses
+        const { data: salesData } = await supabaseClient.from('sales').select('total, time').eq('shop_id', sid);
+        const { data: expData } = await supabaseClient.from('expenses').select('amount').eq('shop_id', sid);
+        
+        let rev = 0;
+        let lastSaleDate = 'No sales yet';
+        if (salesData) salesData.forEach(s => {
+            rev += s.total || 0;
+            if (s.time) lastSaleDate = new Date(s.time).toLocaleDateString();
+        });
+
+        let exp = 0;
+        if (expData) expData.forEach(e => exp += e.amount || 0);
+        let netProfit = rev - exp;
+
+        const { data: licData } = await supabaseClient.from('licenses').select('*').eq('shop_id', sid).limit(1).single();
+        let licStatus = 'No License', licColor = '#64748b';
+        if (licData) {
+            const days = Math.ceil((new Date(licData.expiry_date) - new Date()) / 86400000);
+            if (days < 0) { licStatus = 'EXPIRED'; licColor = '#ef4444'; }
+            else if (days <= 5) { licStatus = 'Expiring in ' + days + 'd'; licColor = '#f59e0b'; }
+            else { licStatus = 'Active'; licColor = '#10b981'; }
+        }
+
+        res.innerHTML = `
+            <div style="text-align:center; margin-bottom:15px;">
+                <h3 style="margin:0;">${shopData.name || 'Unknown Shop'}</h3>
+                <p style="margin:5px 0; font-size:13px; opacity:0.8;">🔑 License: <b style="color:${licColor}">${licStatus}</b></p>
+            </div>
+            <table style="width:100%; min-width:unset !important; max-width:400px; margin:0 auto; border-collapse:collapse; font-size:14px;">
+                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Total Products</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold;">${prodCount || 0}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Staff Members</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold;">${empCount || 0}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Total Sales Count</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold;">${salesCount || 0}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Last Sale Date</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold;">${lastSaleDate}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Total Revenue</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold; color:#10b981;">Br ${rev.toFixed(2)}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Total Expenses</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold; color:#ef4444;">Br ${exp.toFixed(2)}</td></tr>
+                <tr><td style="padding:8px; border:1px solid #333; font-weight:700; background:rgba(16,185,129,0.1);">Net Profit</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:800; background:rgba(16,185,129,0.1);">Br ${netProfit.toFixed(2)}</td></tr>
+            </table>
+        `;
+    } catch(e) {
+        res.innerHTML = '<span style="color:#ef4444">Error: ' + e.message + '</span>';
+    }
+}
+
+async function backupData() {
+    try {
+        const { data: lics } = await supabaseClient.from('licenses').select('*');
+        const { data: shops } = await supabaseClient.from('shops').select('*');
+        const data = { licenses: lics || [], shops: shops || [] };
+        const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = 'smartshop_backup_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+        URL.revokeObjectURL(a.href);
+        logAction('backup','Full backup downloaded');
+        alert('✅ Backup downloaded.');
+    } catch(e) { alert('❌ Backup failed: ' + e.message); }
+}
+
+function restoreData(input) {
+    const file = input.files[0]; if (!file) return;
+    if (!confirm('⚠️ Restore will overwrite existing licences and shops. Continue?')) return;
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data.licenses) for (const l of data.licenses) { const {id, ...rest}=l; await supabaseClient.from('licenses').upsert(rest); }
+            if (data.shops) for (const s of data.shops) { const {id, ...rest}=s; await supabaseClient.from('shops').upsert(rest); }
+            alert('✅ Restore complete!'); loadLicenses(); loadShops();
+            logAction('restore','Data restored from file');
+        } catch(err) { alert('❌ Restore failed: '+err.message); }
+    };
+    reader.readAsText(file);
+}
+
+async function cleanupShopData() {
+    var sid = prompt("Enter the EXACT Shop ID you want to wipe completely:");
+    if (!sid) return;
+    if (!confirm('⚠️ DELETE ALL DATA for shop ID: "' + sid + '"?')) return;
+    var finalConfirm = prompt('⚠️ FINAL WARNING: Type the Shop ID again to confirm deletion:');
+    if (finalConfirm !== sid) return alert('Deletion cancelled. IDs did not match.');
+
+    try {
+        alert("Starting deep clean... Please wait.");
+        var cols = ['products', 'sales', 'losses', 'expenses', 'employees', 'suppliers', 'purchase_orders', 'loyalty', 'loans', 'bank_accounts', 'bank_transactions', 'notes', 'settings', 'recipes', 'orders'];
+        for (const col of cols) {
+            await supabaseClient.from(col).delete().eq('shop_id', sid);
+        }
+        await supabaseClient.from('shops').delete().eq('shop_id', sid);
+        await supabaseClient.from('licenses').delete().eq('shop_id', sid);
+        
+        alert('✅ ALL DATA for shop ' + sid + ' has been permanently deleted.');
+        loadShops();
+        logAction('cleanup','Deep cleaned all data for shop ' + sid);
+    } catch(e) { alert('❌ Error during cleanup: ' + e.message); }
+}
+
+// ===== ENTERPRISE PRICING =====
+const ENTERPRISE_PRICES = {
+    "1":{"1":5000,"2":5000,"3":5000,"5":5000,"10":5000,"0":5000},
+    "2":{"1":6000,"2":8000,"3":10000,"5":14000,"10":20000,"0":25000},
+    "3":{"1":8000,"2":11000,"3":14000,"5":20000,"10":28000,"0":35000},
+    "5":{"1":12000,"2":18000,"3":24000,"5":30000,"10":40000,"0":50000},
+    "10":{"1":20000,"2":35000,"3":45000,"5":60000,"10":80000,"0":100000},
+    "0":{"1":30000,"2":50000,"3":70000,"5":100000,"10":150000,"0":200000}
+};
+
+function calculateEnterprisePrice() {
+    const s = document.getElementById('entShops').value;
+    const c = document.getElementById('entCashiers').value;
+    const m = ENTERPRISE_PRICES[s]?.[c] || 5000;
+    document.getElementById('enterprisePriceDisplay').innerHTML = 'Monthly price: <b>'+m.toLocaleString()+' Br</b> (Yearly: '+(m*10).toLocaleString()+' Br)';
+}
+function onPlanChange() {
+    document.getElementById('enterpriseConfig').style.display = document.getElementById('planType').value==='enterprise'?'block':'none';
+    if (document.getElementById('planType').value==='enterprise') calculateEnterprisePrice();
+}
+function showBulkGenerate() { document.getElementById('bulkGenerateSection').style.display='block'; }
+
+// ===== KEY GENERATION =====
+async function isShopIdUnique(shopId) {
+    const { data } = await supabaseClient.from('licenses').select('shop_id').eq('shop_id', shopId);
+    return !data || data.length === 0;
+}
+async function generateUniqueShopId(name) {
+    let base = name.toLowerCase().replace(/[^a-z0-9]/g,'').substring(0,20)||'shop'+Date.now().toString(36);
+    let sid = base, counter = 1;
+    while (!(await isShopIdUnique(sid))) { sid = base+counter; counter++; if (counter>100) throw new Error('Cannot generate unique ID'); }
+    return sid;
+}
+async function generateLicense() {
+    const shop = document.getElementById('shopName').value.trim();
+    const plan = document.getElementById('planType').value;
+    const duration = parseInt(document.getElementById('duration').value);
+    const startVal = document.getElementById('startDate').value;
+    const prefix = (document.getElementById('keyPrefix').value.trim()||'SMART').toUpperCase();
+    if (!shop) return alert('Enter shop name!');
+
+    const shopId = await generateUniqueShopId(shop);
+    const key = (prefix+'-'+plan.toUpperCase()+'-'+shopId+'-'+Math.random().toString(36).substr(2,4)).toUpperCase();
+    const now = startVal ? new Date(startVal) : new Date();
+    const expiry = new Date(now.getTime() + duration*86400000);
+    const data = { 
+        shop_name: shop, shop_id: shopId, plan, key, 
+        start_date: now.toISOString(), expiry_date: expiry.toISOString(), status:'active', created_at: new Date().toISOString() 
+    };
+    if (plan==='enterprise') {
+        const s = document.getElementById('entShops').value, c = document.getElementById('entCashiers').value;
+        data.max_shops = s==='0'?999:parseInt(s); data.max_cashiers_per_shop = c==='0'?999:parseInt(c);
+        data.max_products = 999999; data.price_monthly = ENTERPRISE_PRICES[s]?.[c]||5000; data.price_yearly = data.price_monthly*10;
+    } else {
+        data.max_shops = 1; data.max_cashiers_per_shop = plan==='basic'?2:(plan==='standard'?5:10);
+        data.max_products = plan==='basic'?200:(plan==='standard'?1000:10000);
+    }
+    await supabaseClient.from('licenses').insert([data]);
+        await supabaseClient.from('shops').upsert({ name: shop, shop_id: shopId, plan, active: true, created_at: now.toISOString() }, { onConflict: 'shop_id' });	logAction('generate',`Generated key for ${shop} (${key})`);
+    
+    let html = '<b>Licence Key:</b> <span style="color:#4caf50;font-size:18px;">'+key+'</span><br>';
+    html += '<b>Shop:</b> '+shop+'<br><b>Shop ID:</b> '+shopId+'<br><b>Plan:</b> '+plan;
+    html += '<br><b>Start:</b> '+now.toLocaleDateString()+'<br><b>Expires:</b> '+expiry.toLocaleDateString();
+    document.getElementById('generatedKey').style.display='block';
+    document.getElementById('generatedKey').innerHTML = html;
+    document.getElementById('shopName').value = '';
+    loadLicenses(); loadShops(); populateSnapshotDropdown(); loadRevenueSummary();
+}
+
+async function bulkGenerate() {
+    const names = document.getElementById('bulkShopNames').value.split('\n').filter(n=>n.trim());
+    if (!names.length) return alert('Enter at least one shop name!');
+    const plan = document.getElementById('planType').value, duration = parseInt(document.getElementById('duration').value);
+    const startVal = document.getElementById('startDate').value, prefix = (document.getElementById('keyPrefix').value.trim()||'SMART').toUpperCase();
+    
+    for (const shop of names) {
+        const shopId = await generateUniqueShopId(shop);
+        const key = (prefix+'-'+plan.toUpperCase()+'-'+shopId+'-'+Math.random().toString(36).substr(2,4)).toUpperCase();
+        const now = startVal ? new Date(startVal) : new Date();
+        const expiry = new Date(now.getTime() + duration*86400000);
+        const data = { 
+            shop_name: shop, shop_id: shopId, plan, key, 
+            start_date: now.toISOString(), expiry_date: expiry.toISOString(), status:'active', created_at: new Date().toISOString() 
+        };
+        if (plan==='enterprise') {
+            const s = document.getElementById('entShops').value, c = document.getElementById('entCashiers').value;
+            data.max_shops = s==='0'?999:parseInt(s); data.max_cashiers_per_shop = c==='0'?999:parseInt(c);
+            data.max_products = 999999; data.price_monthly = ENTERPRISE_PRICES[s]?.[c]||5000; data.price_yearly = data.price_monthly*10;
+        } else {
+            data.max_shops = 1; data.max_cashiers_per_shop = plan==='basic'?2:(plan==='standard'?5:10);
+            data.max_products = plan==='basic'?200:(plan==='standard'?1000:10000);
+        }
+        await supabaseClient.from('licenses').insert([data]);
+        await supabaseClient.from('shops').upsert({ name: shop, shop_id: shopId, plan, active: true, created_at: now.toISOString() }, { onConflict: 'shop_id' });    }
+    alert('✅ Generated '+names.length+' licence(s)!');
+    document.getElementById('bulkShopNames').value = ''; document.getElementById('bulkGenerateSection').style.display='none';
+    loadLicenses(); loadShops(); populateSnapshotDropdown(); loadRevenueSummary();
+    logAction('bulk_generate',`Generated ${names.length} licences`);
+}
+
+// ===== LICENCE TABLE =====
+function filterLicenses() { renderLicenseTable(); }
+function getFilteredLicenses() {
+    const s = document.getElementById('filterSearch').value.toLowerCase();
+    const p = document.getElementById('filterPlan').value, st = document.getElementById('filterStatus').value;
+    return allLicenses.filter(l=>{
+        const match = !s || (l.shop_name.toLowerCase().includes(s) || l.key.toLowerCase().includes(s) || l.shop_id.toLowerCase().includes(s));
+        const mp = !p || l.plan === p;
+        const days = Math.ceil((new Date(l.expiry_date)-new Date())/86400000);
+        let ms = true;
+        if (st==='active') ms = days>5; else if (st==='expiring') ms = days>=0&&days<=5; else if (st==='expired') ms = days<0;
+        return match&&mp&&ms;
+    });
+}
+
+async function customExtendLicense(licenseId) {
+    var selectEl = document.getElementById('extDays_' + licenseId);
+    if (!selectEl) return;
+    var days = parseInt(selectEl.value);
+    if (!confirm('Extend this license by ' + days + ' days?')) return;
+
+    var payMethod = prompt("How did the shop pay for this extension? (e.g., Telebirr, CBE, Cash)");
+    if (payMethod === null) return; 
+    payMethod = payMethod.trim() || 'Unspecified';
+
+    try {
+        var lic = allLicenses.find(l => l.id === licenseId);
+        if (!lic) return;
+        var exp = new Date(lic.expiry_date);
+        if (exp < new Date()) exp = new Date();
+        exp.setDate(exp.getDate() + days);
+        
+        await supabaseClient.from('licenses').update({ 
+            expiry_date: exp.toISOString(),
+            plan: lic.plan === 'trial' ? 'basic' : lic.plan 
+        }).eq('id', licenseId);
+
+        await supabaseClient.from('payments').insert([{
+            shop_id: lic.shop_id, shop_name: lic.shop_name, days_extended: days, payment_method: payMethod, timestamp: new Date().toISOString()
+        }]);
+
+        alert('✅ Extended by ' + days + ' days! Payment recorded via ' + payMethod + '.');
+        loadLicenses();
+        logAction('extend', 'Extended ' + lic.shop_name + ' by ' + days + ' days via ' + payMethod);
+    } catch (e) { alert('❌ Error: ' + e.message); }
+}
+
+async function revokeLicense(licenseId) {
+    if (!confirm('⚠️ Revoke this license? The shop will be locked out immediately.')) return;
+    try {
+        await supabaseClient.from('licenses').update({ expiry_date: new Date().toISOString() }).eq('id', licenseId);
+        alert('⛔ License revoked. Shop is now locked out.');
+        loadLicenses();
+        logAction('revoke', 'Revoked license ' + licenseId);
+    } catch (e) { alert('❌ Error: ' + e.message); }
+}
+
+function renderLicenseTable() {
+    const filtered = getFilteredLicenses();
+    const table = document.getElementById('licenseTable');
+    table.innerHTML = `<tr><th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes()"></th>
+        <th>Shop</th><th>Shop ID</th><th>Plan</th><th>Key</th><th>Expires</th><th>Status</th><th>Activated</th><th>Actions</th></tr>`;
+
+    if (filtered.length === 0) {
+        table.innerHTML += '<tr><td colspan="9" style="text-align:center;padding:20px;color:#94a3b8;">No licenses found.</td></tr>';
+        return;
+    }
+
+    filtered.forEach(l => {
+        const days = Math.ceil((new Date(l.expiry_date) - new Date()) / 86400000);
+        const sc = days > 5 ? 'status-active' : days > 0 ? 'status-warning' : 'status-expired';
+        const st = days > 5 ? 'Active' : days > 0 ? 'Expiring in ' + days + 'd' : 'EXPIRED';
+        
+        let planHtml = l.plan;
+        if (l.plan === 'enterprise') planHtml += '<br><small style="font-size:10px; color:#94a3b8;">Shops:' + (l.max_shops || '?') + '</small>';
+        
+        let actHtml = '<span style="color:#94a3b8;">Not yet</span>';
+        if (l.activated_at) actHtml = '✅ ' + new Date(l.activated_at).toLocaleDateString();
+
+        table.innerHTML += `<tr>
+            <td class="checkbox-col"><input type="checkbox" class="licence-check" data-id="${l.id}"></td>
+            <td>${l.shop_name}</td><td>${l.shop_id || 'N/A'}</td><td>${planHtml}</td>
+            <td style="font-family:monospace;font-size:11px;">${l.key}</td>
+            <td>${new Date(l.expiry_date).toLocaleDateString()}</td><td class="${sc}">${st}</td>
+            <td>${actHtml}</td>
+            <td>
+                <div class="actions-row">
+                    <select id="extDays_${l.id}" style="padding:4px;border-radius:4px;">
+                        <option value="7">+7d</option><option value="15">+15d</option><option value="30" selected>+30d</option><option value="60">+60d</option><option value="90">+90d</option>
+                    </select>
+                    <button class="btn btn-green" onclick="customExtendLicense('${l.id}')">✅</button>
+                    <button class="btn btn-red" onclick="revokeLicense('${l.id}')">⛔</button>
+                    <button class="btn btn-red" onclick="deleteLicense('${l.id}')" style="background:#b71c1c;">🗑️</button>
+                </div>
+            </td>
+        </tr>`;
+    });
+}
+
+function toggleAllCheckboxes() {
+    const master = document.getElementById('selectAll');
+    document.querySelectorAll('.licence-check').forEach(cb=>cb.checked=master.checked);
+}
+function getSelectedLicenseIds() { return [...document.querySelectorAll('.licence-check:checked')].map(cb=>cb.dataset.id); }
+
+async function bulkExtend() {
+    const ids = getSelectedLicenseIds(); if (!ids.length) return alert('Select at least one licence.');
+    if (!confirm(`Extend ${ids.length} licence(s) by 30 days?`)) return;
+    for (const id of ids) {
+        var lic = allLicenses.find(l => l.id === id);
+        var exp = new Date(lic.expiry_date); exp.setDate(exp.getDate()+30);
+        await supabaseClient.from('licenses').update({expiry_date:exp.toISOString()}).eq('id', id);
+    }
+    alert('✅ Extended '+ids.length+' licence(s).'); loadLicenses(); logAction('bulk_extend',`Extended ${ids.length} licences`);
+}
+
+async function bulkRevoke() {
+    const ids = getSelectedLicenseIds(); if (!ids.length) return alert('Select at least one licence.');
+    if (!confirm(`⚠️ Revoke ${ids.length} licence(s)?`)) return;
+    for (const id of ids) await supabaseClient.from('licenses').update({expiry_date:new Date().toISOString()}).eq('id', id);
+    alert('🔒 Revoked '+ids.length+' licence(s).'); loadLicenses(); logAction('bulk_revoke',`Revoked ${ids.length} licences`);
+}
+
+function exportCSV() {
+    const filtered = getFilteredLicenses();
+    let csv = '\uFEFFShop Name,Shop ID,Plan,Key,Expiry Date,Status\n';
+    filtered.forEach(l=>{
+        const days = Math.ceil((new Date(l.expiry_date)-new Date())/86400000);
+        const status = days>5?'Active':days>0?'Expiring':'Expired';
+        csv += `"${l.shop_name}","${l.shop_id||''}","${l.plan}","${l.key}","${l.expiry_date}","${status}"\n`;
+    });
+    const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='licences.csv'; a.click();
+    URL.revokeObjectURL(url); logAction('export_csv','Exported licence list');
+}
+
+async function deleteLicense(id) {
+    const licence = allLicenses.find(l => l.id === id);
+    if (!licence) return alert('Licence not found.');
+    if (!confirm(`⚠️ PERMANENTLY DELETE licence for ${licence.shop_name}?`)) return;
+    try {
+        await supabaseClient.from('licenses').delete().eq('id', id);
+        await supabaseClient.from('shops').delete().eq('shop_id', licence.shop_id);
+        alert('✅ License and Shop permanently deleted.');
+        logAction('delete_license', `Deleted licence for ${licence.shop_name}`);
+        loadLicenses(); loadShops();
+    } catch (e) { alert('❌ Deletion failed: ' + e.message); }
+}
+
+async function loadLicenses() {
+    const { data, error } = await supabaseClient.from('licenses').select('*').order('created_at', { ascending: false });
+    if (error) return console.error("Load licenses error:", error.message);
+    allLicenses = data || [];
+    filterLicenses(); loadRevenueSummary();
+}
+
+async function loadShops() {
+    const { data, error } = await supabaseClient.from('shops').select('*').order('created_at', { ascending: true });
+    const table = document.getElementById('shopsTable');
+    table.innerHTML = '<tr><th>Shop Name</th><th>Shop ID</th><th>Plan</th><th>Active</th><th>Actions</th></tr>';
+    if (!data || data.length === 0) { table.innerHTML += '<tr><td colspan="5">No shops found.</td></tr>'; return; }
+    data.forEach(s => {
+        table.innerHTML += `<tr class="${s.active?'':'shop-inactive'}">
+            <td>${s.name}</td><td>${s.shop_id}</td><td>${s.plan||'N/A'}</td><td>${s.active?'✅ Yes':'❌ No'}</td>
+            <td>
+                <button class="btn btn-yellow" onclick="toggleShopActive('${s.id}',${!s.active})">${s.active?'Deactivate':'Activate'}</button> 
+                <button class="btn btn-red" onclick="deleteShop('${s.id}','${s.name}')">🗑️ Delete</button>
+            </td>
+        </tr>`;
+    });
+}
+
+async function toggleShopActive(docId, makeActive) {
+    if (!confirm(`Are you sure you want to ${makeActive?'activate':'deactivate'} this shop?`)) return;
+    await supabaseClient.from('shops').update({ active: makeActive }).eq('id', docId);
+    alert(`Shop ${makeActive?'activated':'deactivated'}.`); 
+    loadShops();
+    logAction(makeActive?'activate':'deactivate',`Shop ${docId}`);
+}
+
+async function deleteShop(docId, name) {
+    if (!confirm(`⚠️ DELETE shop "${name}" permanently?`)) return;
+    await supabaseClient.from('shops').delete().eq('id', docId);
+    alert('✅ Shop deleted.'); 
+    loadShops();
+    logAction('delete_shop',`Deleted shop ${name}`);
+}
+
+async function populateSnapshotDropdown() {
+    const { data } = await supabaseClient.from('shops').select('shop_id, name').order('name');
+    const sel = document.getElementById('snapshotShop');
+    sel.innerHTML = '<option value="">Select Shop</option>';
+    if (data) data.forEach(d => {
+        sel.innerHTML += `<option value="${d.shop_id}">${d.name || 'Unknown'} (${d.shop_id})</option>`;
+    });
+}
+
+
+
+
+
+
+
+
+	
+// ===== AUTH & PIN LOGIC =====
+function verifyMasterPin() {
+    var input = document.getElementById('masterPinInput').value.trim();
+    var storedPinHash = localStorage.getItem('masterPinHash');
+    if (sha256(input) === storedPinHash) {
+        document.getElementById('appPinScreen').style.display = 'none';
+        document.getElementById('mainPanel').style.display = 'block';
+        initMasterPanel();
+    } else {
+        alert("❌ Incorrect App PIN.");
+        document.getElementById('masterPinInput').value = '';
+    }
+}
+
+setTimeout(function() {
+    var splash = document.getElementById('splashScreen');
+    if (splash) { splash.style.opacity = '0'; setTimeout(function() { splash.style.display = 'none'; }, 800); }
+}, 1500);
+setTimeout(function() {
+    var splash = document.getElementById('splashScreen');
+    if (splash && splash.style.display !== 'none') splash.style.display = 'none';
+}, 3000);
+
+async function masterLogin() {
+    const email = document.getElementById('masterEmail').value;
+    const pass = document.getElementById('masterPass').value;
+    if (!email || !pass) return alert('Enter email and password!');
+
+    var loadingScreen = document.getElementById('loadingScreen');
+    var bar = document.getElementById('loadingBar');
+    var percent = document.getElementById('loadingPercent');
+    var progress = 0, interval = null;
+    
+    if (loadingScreen) loadingScreen.style.display = 'flex';
+    if (bar && percent) {
+        interval = setInterval(function() {
+            progress += Math.random() * 10 + 3;
+            if (progress > 90) progress = 90;
+            bar.style.width = progress + '%';
+            percent.textContent = Math.floor(progress) + '%';
+        }, 150);
+    }
+
+    try {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
+        if (error) throw new Error(error.message);
+        if (interval) clearInterval(interval);
+        if (bar) bar.style.width = '100%';
+        if (percent) percent.textContent = '100%';
+    } catch (e) {
+        if (interval) clearInterval(interval);
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        alert('❌ Login Failed: ' + e.message);
+    }
+}
+
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    var loadingScreen = document.getElementById('loadingScreen');
+    var loginSection = document.getElementById('loginSection');
+    var mainPanel = document.getElementById('mainPanel');
+    var appPinScreen = document.getElementById('appPinScreen');
+
+    if (loadingScreen) loadingScreen.style.display = 'none';
+
+    if (session && session.user) {
+        const { data: masterDoc } = await supabaseClient.from('master_users').select('*').eq('email', session.user.email).single();
+        if (masterDoc && masterDoc.role === 'master') {
+            if (loginSection) loginSection.style.display = 'none';
+            if (mainPanel) mainPanel.style.display = 'none';
+            checkMasterPinStatus();
+        } else {
+            await supabaseClient.auth.signOut();
+            alert('Access Denied. You are not authorized as a Master Admin.');
+        }
+    } else {
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        if (mainPanel) mainPanel.style.display = 'none';
+        if (loginSection) loginSection.style.display = 'flex';
+        if (appPinScreen) appPinScreen.style.display = 'none';
+        var emailInput = document.getElementById('masterEmail');
+        var passInput = document.getElementById('masterPass');
+        if (emailInput) emailInput.value = '';
+        if (passInput) passInput.value = '';
+    }
+});
+
+async function checkMasterPinStatus() {
+    var appPinScreen = document.getElementById('appPinScreen');
+    var mainPanel = document.getElementById('mainPanel');
+    var storedPinHash = localStorage.getItem('masterPinHash');
+
+    if (!storedPinHash) {
+        var newPin = prompt("🔐 Create a 4-digit Master App PIN:");
+        if (newPin && newPin.length === 4) {
+            localStorage.setItem('masterPinHash', sha256(newPin));
+            if (appPinScreen) appPinScreen.style.display = 'none';
+            if (mainPanel) mainPanel.style.display = 'block';
+            initMasterPanel();
+        } else {
+            alert("❌ PIN must be exactly 4 digits.");
+            masterLogout();
+        }
+    } else {
+        if (mainPanel) mainPanel.style.display = 'none';
+        if (appPinScreen) appPinScreen.style.display = 'flex';
+        var pinInput = document.getElementById('masterPinInput');
+        if (pinInput) { pinInput.value = ''; pinInput.focus(); }
+    }
+}
+
+async function changeMasterPin() {
+    var oldPin = prompt("Enter your CURRENT 4-digit App PIN:");
+    if (sha256(oldPin) !== localStorage.getItem('masterPinHash')) { alert("❌ Incorrect current PIN."); return; }
+    var newPin = prompt("Enter your NEW 4-digit App PIN:");
+    if (newPin && newPin.length === 4) {
+        localStorage.setItem('masterPinHash', sha256(newPin));
+        alert("✅ Master PIN changed successfully!");
+    } else {
+        alert("❌ PIN must be exactly 4 digits.");
+    }
+}
+
+async function changeMasterPassword() {
+    var newPass = prompt("Enter your NEW password (min 6 characters):");
+    if (!newPass || newPass.length < 6) { alert("Password too short."); return; }
+    try {
+        const { data, error } = await supabaseClient.auth.updateUser({ password: newPass });
+        if (error) throw error;
+        alert("✅ Master Password changed successfully!");
+    } catch (error) {
+        alert("❌ Error: " + error.message);
+    }
+}
+
+function initMasterPanel() {
+    loadLicenses(); 
+    loadShops(); 
+    loadAuditLog();
+    populateSnapshotDropdown(); 
+    loadGlobalTrialDays();
+    loadTierSettings();
+}
+
+function masterLogout() { supabaseClient.auth.signOut(); }
+
+// ===== SAAS SETTINGS LOGIC =====
+async function loadGlobalTrialDays() {
+    try {
+        const { data, error } = await supabaseClient.from('global_settings').select('default_trial_days').eq('id', 'globalConfig').single();
+        if (data) document.getElementById('globalTrialDaysInput').value = data.default_trial_days || 30;
+        else document.getElementById('globalTrialDaysInput').value = 30;
+    } catch(e) { console.error("Error loading trial days:", e); document.getElementById('globalTrialDaysInput').value = 30; }
+}
+
+async function saveGlobalTrialDays() {
+    var days = parseInt(document.getElementById('globalTrialDaysInput').value);
+    if (isNaN(days) || days < 1) { alert('Please enter a valid number of days.'); return; }
+    try {
+        const { error } = await supabaseClient.from('global_settings').upsert({ id: 'globalConfig', default_trial_days: days });
+        if (error) throw error;
+        alert('✅ Trial days updated to ' + days + ' days!');
+        logAction('config_update', 'Changed default trial days to ' + days);
+    } catch(e) { alert('❌ Error: ' + e.message); }
+}
+
+// ===== SaaS TIER CONTROL LOGIC =====
+async function saveTierSettings() {
+    var tierData = {
+        id: 'globalTiers',
+        kiosk_max_products: parseInt(document.getElementById('tier_kiosk_products').value) || 100,
+        kiosk_max_cashiers: parseInt(document.getElementById('tier_kiosk_cashiers').value) || 1,
+        kiosk_max_branches: parseInt(document.getElementById('tier_kiosk_branches').value) || 1,
+        market_max_products: parseInt(document.getElementById('tier_market_products').value) || 5000,
+        market_max_cashiers: parseInt(document.getElementById('tier_market_cashiers').value) || 5,
+        market_max_branches: parseInt(document.getElementById('tier_market_branches').value) || 3,
+        updated_at: new Date().toISOString()
+    };
+    try {
+        const { error } = await supabaseClient.from('global_settings').upsert(tierData);
+        if (error) throw error;
+        alert('✅ Tier limits saved globally!');
+        logAction('tier_update', 'Updated SaaS Tier limits');
+    } catch(e) { alert('❌ Error saving tiers: ' + e.message); }
+}
+
+async function loadTierSettings() {
+    try {
+        const { data, error } = await supabaseClient.from('global_settings').select('*').eq('id', 'globalTiers').single();
+        if (data) {
+            document.getElementById('tier_kiosk_products').value = data.kiosk_max_products || 100;
+            document.getElementById('tier_kiosk_cashiers').value = data.kiosk_max_cashiers || 1;
+            document.getElementById('tier_kiosk_branches').value = data.kiosk_max_branches || 1;
+            document.getElementById('tier_market_products').value = data.market_max_products || 5000;
+            document.getElementById('tier_market_cashiers').value = data.market_max_cashiers || 5;
+            document.getElementById('tier_market_branches').value = data.market_max_branches || 3;
+        }
+    } catch(e) { console.error("Error loading tiers:", e); }
+}
+
+// ===== SIDEBAR LOGIC =====
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+}
+function showMasterTab(tabId) {
+    closeSidebar();
+    var tabs = document.querySelectorAll('.master-tab-content');
+    for (var i = 0; i < tabs.length; i++) tabs[i].style.display = 'none';
+    document.getElementById(tabId).style.display = 'block';
+}
+</script>
+</body>
+</html>

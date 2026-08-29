@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<title>SmartShop Pro — Business Suite</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; font-family:'Segoe UI',system-ui,-apple-system,sans-serif; }
+html,body { height:100%; }
+body {
+  background:#0f172a; color:#e2e8f0; overflow-x:hidden;
+  min-height:100vh; display:flex; flex-direction:column;
+  padding:env(safe-area-inset-top) 20px env(safe-area-inset-bottom);
+}
+
+/* ===== ANIMATED BACKGROUND ===== */
+.aurora { position:fixed; inset:-50%; z-index:0; pointer-events:none; filter:blur(80px); opacity:.55; }
+.aurora span { position:absolute; border-radius:50%; animation:float 14s ease-in-out infinite; }
+.aurora span:nth-child(1){ width:45vmax; height:45vmax; background:#1d4ed8; top:5%; left:-10%; }
+.aurora span:nth-child(2){ width:38vmax; height:38vmax; background:#7c3aed; bottom:-5%; right:-12%; animation-delay:-5s; }
+.aurora span:nth-child(3){ width:30vmax; height:30vmax; background:#0d9488; top:45%; left:35%; animation-delay:-9s; opacity:.5; }
+@keyframes float { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(4vmax,-3vmax) scale(1.12)} 66%{transform:translate(-3vmax,4vmax) scale(.92)} }
+
+.page { position:relative; z-index:1; max-width:430px; width:100%; margin:0 auto; flex:1; display:flex; flex-direction:column; padding-top:34px; }
+
+/* ===== HEADER ===== */
+.header { text-align:center; animation:dropIn .8s cubic-bezier(.2,.9,.3,1.2) both; }
+.logo-btn { background:none; border:none; cursor:pointer; }
+.logo-mark {
+  width:84px; height:84px; margin:0 auto 16px; border-radius:26px;
+  background:linear-gradient(135deg,#2563eb,#7c3aed);
+  display:flex; align-items:center; justify-content:center; font-size:42px;
+  box-shadow:0 18px 45px rgba(37,99,235,.45), inset 0 1px 0 rgba(255,255,255,.25);
+  position:relative; overflow:hidden;
+}
+.logo-mark::after {
+  content:''; position:absolute; inset:0;
+  background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.35) 50%,transparent 60%);
+  transform:translateX(-150%); animation:shine 3.5s ease-in-out infinite;
+}
+@keyframes shine { 0%,60%{transform:translateX(-150%)} 100%{transform:translateX(150%)} }
+.brand { font-size:30px; font-weight:800; letter-spacing:.5px;
+  background:linear-gradient(90deg,#fff 30%,#93c5fd 70%,#c4b5fd);
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.brand small { display:block; -webkit-text-fill-color:#94a3b8; font-size:11px; font-weight:600; letter-spacing:4px; text-transform:uppercase; margin-top:4px; }
+
+.status-row { display:flex; justify-content:center; gap:8px; margin-top:16px; flex-wrap:wrap; }
+.pill { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700;
+  padding:6px 14px; border-radius:999px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12); color:#cbd5e1; }
+.dot { width:7px; height:7px; border-radius:50%; background:#10b981; box-shadow:0 0 0 0 rgba(16,185,129,.7); animation:pulse 2s infinite; }
+@keyframes pulse { 70%{box-shadow:0 0 0 8px rgba(16,185,129,0)} 100%{box-shadow:0 0 0 0 rgba(16,185,129,0)} }
+.pill time { color:#fbbf24; font-variant-numeric:tabular-nums; }
+
+.greeting { text-align:center; color:#94a3b8; font-size:14px; margin-top:14px; }
+.greeting b { color:#e2e8f0; }
+
+/* ===== CARDS ===== */
+.menu { display:flex; flex-direction:column; gap:14px; margin-top:30px; }
+.card {
+  display:flex; align-items:center; gap:16px; text-decoration:none;
+  background:rgba(30,41,59,.62); border:1px solid rgba(255,255,255,.09);
+  border-radius:20px; padding:18px;
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+  transform:translateY(24px); opacity:0;
+  animation:cardIn .7s cubic-bezier(.2,.9,.3,1.15) forwards;
+  transition:transform .18s ease, border-color .18s ease, background .18s ease;
+  position:relative; overflow:hidden;
+}
+.card:active { transform:scale(.975) translateY(0); background:rgba(51,65,85,.7); }
+.card:nth-child(1){animation-delay:.15s} .card:nth-child(2){animation-delay:.28s}
+.card:nth-child(3){animation-delay:.41s} .card:nth-child(4){animation-delay:.54s}
+@keyframes cardIn { to{transform:translateY(0);opacity:1} }
+
+.card .icon {
+  width:54px; height:54px; border-radius:16px; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:26px;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.25), 0 8px 18px rgba(0,0,0,.35);
+}
+.c-admin .icon { background:linear-gradient(135deg,#2563eb,#1d4ed8); }
+.c-pos   .icon { background:linear-gradient(135deg,#059669,#10b981); }
+.c-kitchen .icon { background:linear-gradient(135deg,#ea580c,#f59e0b); }
+.c-menu  .icon { background:linear-gradient(135deg,#7c3aed,#a855f7); }
+
+.card .text { flex:1; min-width:0; }
+.card .text h2 { font-size:16.5px; font-weight:700; color:#f8fafc; display:flex; align-items:center; gap:8px; }
+.card .text p { font-size:12px; color:#94a3b8; margin-top:4px; }
+.tag { font-size:9px; font-weight:800; letter-spacing:.5px; text-transform:uppercase;
+  padding:3px 8px; border-radius:6px; }
+.tag-blue { background:rgba(37,99,235,.2); color:#93c5fd; }
+.tag-green { background:rgba(16,185,129,.18); color:#6ee7b7; }
+.card .arrow { color:#64748b; font-size:20px; transition:transform .18s, color .18s; flex-shrink:0; }
+.card:active .arrow { transform:translateX(4px); color:#e2e8f0; }
+
+/* ===== FOOTER ===== */
+.footer { text-align:center; padding:34px 0 18px; color:#475569; font-size:11px; line-height:1.8; animation:dropIn 1s .7s both; }
+.footer b { color:#64748b; }
+@keyframes dropIn { from{opacity:0; transform:translateY(-14px)} to{opacity:1; transform:translateY(0)} }
+
+/* secret master toast */
+#secretToast { position:fixed; left:50%; bottom:90px; transform:translate(-50%,20px); z-index:99;
+  background:rgba(15,23,42,.95); border:1px solid rgba(148,163,184,.3); color:#e2e8f0;
+  padding:10px 18px; border-radius:12px; font-size:12px; font-weight:600;
+  opacity:0; pointer-events:none; transition:all .3s; }
+#secretToast.show { opacity:1; transform:translate(-50%,0); }
+</style>
+</head>
+<body>
+
+<div class="aurora"><span></span><span></span><span></span></div>
+
+<div class="page">
+  <div class="header">
+    <button class="logo-btn" id="logoBtn" aria-label="SmartShop">
+      <div class="logo-mark">🏪</div>
+    </button>
+    <h1 class="brand">SmartShop Pro<small>Business Suite</small></h1>
+    <div class="status-row">
+      <span class="pill"><span class="dot"></span> System Online</span>
+      <span class="pill">🕐 <time id="clock">--:--</time></span>
+    </div>
+    <p class="greeting" id="greeting">Welcome back</p>
+  </div>
+
+  <div class="menu">
+    <a class="card c-admin" href="./admin.html">
+      <div class="icon">📊</div>
+      <div class="text">
+        <h2>Admin Panel <span class="tag tag-blue">Owner</span></h2>
+        <p>Dashboards, products, reports & settings</p>
+      </div>
+      <div class="arrow">›</div>
+    </a>
+
+    <a class="card c-pos" href="./pos.html">
+      <div class="icon">💰</div>
+      <div class="text">
+        <h2>POS Terminal <span class="tag tag-green">Fast</span></h2>
+        <p>Sales, payments, tables & shift management</p>
+      </div>
+      <div class="arrow">›</div>
+    </a>
+
+    <a class="card c-kitchen" href="./kitchen.html">
+      <div class="icon">👨‍🍳</div>
+      <div class="text">
+        <h2>Kitchen Display</h2>
+        <p>Live order tickets by station</p>
+      </div>
+      <div class="arrow">›</div>
+    </a>
+
+    <a class="card c-menu" href="./menu.html">
+      <div class="icon">📱</div>
+      <div class="text">
+        <h2>Customer Menu</h2>
+        <p>QR ordering & price display</p>
+      </div>
+      <div class="arrow">›</div>
+    </a>
+  </div>
+
+  <div class="footer">
+    <b>SmartShop Pro</b> · v3.0<br>
+    <span id="year"></span> · Secure Business Infrastructure
+  </div>
+</div>
+
+<div id="secretToast"></div>
+
+<script>
+// ===== LIVE CLOCK + SMART GREETING =====
+function tick(){
+  var d = new Date();
+  var h = d.getHours(), m = String(d.getMinutes()).padStart(2,'0');
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  document.getElementById('clock').textContent = h + ':' + m + ' ' + ampm;
+
+  var hr = new Date().getHours(), g;
+  if (hr < 12)      g = 'Good morning ☀️ — ready for a great day?';
+  else if (hr < 17) g = 'Good afternoon 🌤️ — <b>welcome back</b>';
+  else              g = 'Good evening 🌙 — wrapping up the day';
+  document.getElementById('greeting').innerHTML = g;
+}
+tick(); setInterval(tick, 1000);
+document.getElementById('year').textContent = new Date().getFullYear();
+
+// ===== SECRET MASTER ACCESS (tap logo 5 times) =====
+var taps = 0, tapTimer = null;
+document.getElementById('logoBtn').addEventListener('click', function(){
+  taps++;
+  clearTimeout(tapTimer);
+  tapTimer = setTimeout(function(){ taps = 0; }, 1600);
+  var toast = document.getElementById('secretToast');
+  if (taps >= 5) { location.href = './master.html'; return; }
+  if (taps >= 3) {
+    toast.textContent = '🔓 ' + (5 - taps) + ' more...';
+    toast.classList.add('show');
+    setTimeout(function(){ toast.classList.remove('show'); }, 1200);
+  }
+});
+</script>
+</body>
+</html>
