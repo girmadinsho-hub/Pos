@@ -5611,6 +5611,27 @@ document.addEventListener('keydown', function (e) {
         .catch(err => console.log('Service Worker registration failed: ', err));
     });
   }
+
+
+<script>
+/* ===== HEALTH CHECK — tells us where the script broke ===== */
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        var results = [];
+        results.push('openTablesModal: ' + (typeof window.openTablesModal));
+        results.push('openWaiterStatus: ' + (typeof window.openWaiterStatus));
+        results.push('selectTable: ' + (typeof window.selectTable));
+        results.push('loadPOSTables: ' + (typeof window.loadPOSTables));
+        results.push('completePayment: ' + (typeof window.completePayment));
+        results.push('addToCart: ' + (typeof window.addToCart));
+        alert('🔍 HEALTH CHECK\n\n' + results.join('\n') +
+              '\n\n(function = alive ✅\n undefined = DEAD ❌)');
+    });
+});
+</script>
+
+
+    
 </script>
 </body>
 </html>
