@@ -5628,7 +5628,35 @@ document.addEventListener('keydown', function (e) {
 
 
  </script>
-
+<script>
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        var names = [
+            'sendWaiterOrderToKitchen',
+            'openTablesModal',
+            'openWaiterStatus',
+            'selectTable',
+            'loadPOSTables',
+            'completePayment',
+            'addToCart',
+            'updateCart',
+            'checkout',
+            'filterProducts',
+            'login'
+        ];
+        var msg = '🔍 FUNCTION HEALTH CHECK\n\n';
+        var dead = 0;
+        names.forEach(function(n) {
+            var status = (typeof window[n]);
+            if (status !== 'function') dead++;
+            msg += n + ': ' + status + '\n';
+        });
+        msg += '\n' + dead + ' DEAD out of ' + names.length;
+        msg += '\n\n(function = alive ✅\nundefined = DEAD ❌)';
+        alert(msg);
+    }, 2000);
+});
+</script>
 
 </body>
 </html>
