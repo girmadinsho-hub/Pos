@@ -3384,18 +3384,30 @@ async function completePayment() {
         }
     }
 
-    // 6. MARK QR ORDER AS PAID
-    if (currentQROrderId) {
+        // 6. MARK TABLE/QR ORDERS AS PAID (all rounds of this table)
+    var orderIdsToPay = [];
+    if (currentQROrderId) orderIdsToPay.push(currentQROrderId);
+    if (window._pendingTableOrderIds && window._pendingTableOrderIds.length) {
+        orderIdsToPay = orderIdsToPay.concat(window._pendingTableOrderIds);
+    }
+    if (currentTableName && orderIdsToPay.length === 0) {
         try {
-            await supabaseClient.from('orders').update({ 
-                status: 'Paid', paid_at: new Date().toISOString(), invoice_no: invoiceNo 
-            }).eq('id', currentQROrderId);
-            
+            const { data } = await supabaseClient.from('orders')
+                .select('id').eq('shop_id', getShopId()).eq('table_id', currentTableName).neq('status', 'Paid');
+            (data || []).forEach(function(o) { orderIdsToPay.push(o.id); });
+        } catch(e) { console.warn('Order lookup failed:', e); }
+    }
+    if (orderIdsToPay.length > 0) {
+        try {
+            await supabaseClient.from('orders').update({
+                status: 'Paid', paid_at: new Date().toISOString(), invoice_no: invoiceNo
+            }).in('id', orderIdsToPay);
             var held = JSON.parse(localStorage.getItem('heldOrders') || '[]');
             var updatedHeld = held.filter(function(o) { return o.name !== currentTableName; });
             localStorage.setItem('heldOrders', JSON.stringify(updatedHeld));
-        } catch(e) { console.error("Failed to mark QR order as paid:", e); }
+        } catch(e) { console.error('Failed to mark orders paid:', e); }
         currentQROrderId = null;
+        window._pendingTableOrderIds = null;
     }
 
     // 7. Clear Cart and Close Modal
@@ -4564,7 +4576,7 @@ async function openTablesModal() {
         html += '</div>';
         grid.innerHTML = html;
     } catch(e) {
-        alert('Tables error: ' + e.message);
+        showFloatingToast('❌ Tables failed — try again', true);
     }
 }	async function selectTable(tableName, isBusy) {
     if (isBusy) {
@@ -4581,94 +4593,93 @@ async function openTablesModal() {
 }
 		
 // ===== POS TABLE BILLS (QR ORDERS) =====
-async function openTableBillsModal() {
+
+window.openTableBillsModal = async function() {
+    var modal = document.getElementById('tableBillsModal');
     var listDiv = document.getElementById('tableBillsList');
-    listDiv.innerHTML = '<p style="text-align:center; color:#94a3b8;">Loading bills...</p>';
-    document.getElementById('tableBillsModal').classList.add('active');
-
+    if (!modal || !listDiv) { alert('Bills modal missing in HTML'); return; }
+    modal.classList.add('active');
+    listDiv.innerHTML = '<p style="text-align:center;color:#94a3b8;">Loading bills...</p>';
     try {
-        // Get all orders for this shop that are NOT Paid
         const { data, error } = await supabaseClient.from('orders')
-            .select('*')
-            .eq('shop_id', getShopId())
-            .neq('status', 'Paid');
-            
+            .select('*').eq('shop_id', getShopId()).neq('status', 'Paid')
+            .order('time', { ascending: true });
         if (error) throw error;
-        
-        var html = '';
-        var count = 0;
-        
-        if (data && data.length > 0) {
-            data.forEach(function(order) {
-                order.id = order.firebase_id || order.id;
-                // Only show orders that are Pending, Preparing, or Ready (Not Paid)
-                if (order.status !== 'Paid') {
-                    count++;
-                    var timeStr = new Date(order.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    var statusColor = order.status === 'Ready' ? '#10b981' : (order.status === 'Preparing' ? '#3b82f6' : '#f59e0b');
-                    var statusText = order.status === 'Ready' ? '✅ Ready for Payment' : (order.status === 'Preparing' ? '🔵 Preparing' : '🟡 Pending');
-                    
-                    html += '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px;">' +
-                        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
-                            '<b style="font-size:16px;">🪑 ' + (order.table_id || 'Takeaway') + '</b>' +
-                            '<span style="font-size:12px; padding:3px 8px; border-radius:12px; color:white; background:' + statusColor + ';">' + statusText + '</span>' +
-                        '</div>' +
-                        '<div style="font-size:13px; color:#64748b; margin-bottom:8px;">' + (order.items || []).length + ' items | ' + fmtMoney(order.total) + ' | ' + timeStr + '</div>' +
-                        '<button class="btn btn-success btn-sm" style="width:100%;" onclick="loadTableBillToCart(\'' + order.id + '\')">💳 Load Bill & Pay</button>' +
-                    '</div>';
-                }
-            });
+        var orders = data || [];
+        if (!orders.length) {
+            listDiv.innerHTML = '<p style="text-align:center;color:#94a3b8;">✅ No unpaid bills. All tables are settled!</p>';
+            return;
         }
-
-        if (count === 0) html = '<p style="text-align:center; color:#94a3b8;">No unpaid QR orders.</p>';
+        // Group by table
+        var byTable = {};
+        orders.forEach(function(o) {
+            var key = o.table_id || 'Takeaway';
+            if (!byTable[key]) byTable[key] = { rows: [], total: 0 };
+            byTable[key].rows.push(o);
+            byTable[key].total += o.total || 0;
+        });
+        var html = '';
+        Object.keys(byTable).forEach(function(t) {
+            var g = byTable[t];
+            var rounds = g.rows.length;
+            var color = g.rows[0].status === 'Ready' ? '#10b981' : (g.rows[0].status === 'Preparing' ? '#3b82f6' : '#f59e0b');
+            html += '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+                '<b style="font-size:17px;">🪑 ' + t + (rounds > 1 ? ' <span style="background:#f59e0b;color:white;border-radius:8px;padding:2px 8px;font-size:11px;">' + rounds + ' rounds</span>' : '') + '</b>' +
+                '<b style="color:' + color + ';">' + g.total.toFixed(2) + ' Br</b></div>';
+            g.rows.forEach(function(o) {
+                var itemsStr = (o.items || []).map(function(i){ return i.qty + 'x ' + i.name; }).join(', ');
+                var st = o.status === 'Ready' ? '✅' : (o.status === 'Preparing' ? '🔵' : '🟡');
+                html += '<div style="font-size:12px;color:#64748b;margin:4px 0;">' + st + ' Round: ' + itemsStr + ' (' + (o.total || 0).toFixed(2) + ' Br)</div>';
+            });
+            html += '<button class="btn btn-success btn-sm" style="width:100%;margin-top:8px;" onclick="loadTableBillToCart(\'' + t + '\')">💳 Load & Pay All Rounds</button>';
+            html += '</div>';
+        });
         listDiv.innerHTML = html;
-
     } catch(e) {
         listDiv.innerHTML = '<p style="color:red;">Error: ' + e.message + '</p>';
     }
-}
+};
 
-
-async function loadTableBillToCart(orderId) {
-    if (!await confirm('Load this order into the cart? The current cart will be replaced.')) return;
-    
+window.loadTableBillToCart = async function(tableName) {
+    var ok = await confirm('Load ALL unpaid rounds of Table ' + tableName + ' for payment?\nThe current cart will be replaced.');
+    if (!ok) return;
     try {
-        const { data: order, error } = await supabaseClient.from('orders').select('*').eq('firebase_id', orderId).single();
+        const { data, error } = await supabaseClient.from('orders')
+            .select('*').eq('shop_id', getShopId()).eq('table_id', tableName).neq('status', 'Paid');
         if (error) throw error;
-        if (!order) return alert('Order not found!');
-        
+        var orders = data || [];
+        if (!orders.length) { alert('No unpaid orders for this table.'); return; }
+
         cart = [];
-        
-        // Load items into the POS cart
-        (order.items || []).forEach(function(item) {
-            cart.push({
-                id: item.productId || item.id || Date.now().toString(), // Fallback ID
-                name: item.name,
-                price: item.price,
-                qty: item.qty,
-                unit: '',
-                stock: 9999, // Bypass stock check since it's a QR order
-                costPrice: 0,
-                isVirtual: false,
-                modifiers: item.modifiers || [],
-                note: item.note || ''
+        // Merge all rounds into one cart (same products combine)
+        orders.forEach(function(o) {
+            (o.items || []).forEach(function(item) {
+                var existing = cart.find(function(c) {
+                    return c.id === item.productId && JSON.stringify(c.modifiers || []) === JSON.stringify(item.modifiers || []) && !c.note && !item.note;
+                });
+                if (existing) existing.qty += item.qty;
+                else cart.push({
+                    id: item.productId || item.id || Date.now().toString(),
+                    name: item.name, price: item.price, qty: item.qty,
+                    unit: item.unit || '', stock: 9999, costPrice: item.costPrice || 0,
+                    isVirtual: false, modifiers: item.modifiers || [], note: item.note || ''
+                });
             });
         });
-        
-        // Save the REAL database UUID so payment can mark it as Paid
-        currentTableName = order.table_id || 'QR Order';
-        currentQROrderId = order.id || orderId;
-        
-        isCartLocked = true; // <--- THIS LOCKS THE CART SO CASHIER CANNOT EDIT THE BILL
-        
+
+        currentTableName = tableName;
+        // Remember ALL order ids → they will be marked Paid after payment
+        window._pendingTableOrderIds = orders.map(function(o) { return o.id; });
+        isCartLocked = true;
+
         updateCart();
         document.getElementById('tableBillsModal').classList.remove('active');
-        alert('✅ Bill loaded! Please process the exact payment.');
+        alert('✅ Bill loaded (' + orders.length + ' round' + (orders.length > 1 ? 's' : '') + ')! Process the exact payment.');
     } catch(e) {
         alert('❌ Error: ' + e.message);
     }
-}
-		
+};
 		
 async function sendWaiterOrderToKitchen() {
     if (!cart.length) { alert('Cart is empty.'); return; }
@@ -4874,7 +4885,7 @@ async function openWaiterStatus() {
         }
         listDiv.innerHTML = html;
     } catch(e) {
-        alert('Order Status error: ' + e.message);
+        showFloatingToast('❌ Status failed', true);
     }
 }
 function closeWaiterStatus() {
@@ -5698,7 +5709,7 @@ window.openTablesModal = async function() {
                     '<span class="table-status-txt">' + txt + (o ? ' (' + mins + 'm)' : '') + '</span></button>';
         });
         grid.innerHTML = html + '</div>';
-    } catch(e) { alert('Tables error: ' + e.message); }
+    } catch(e) { showFloatingToast('❌ Tables failed — try again', true); }
 };
 
 // ---------- Select a table ----------
@@ -5750,13 +5761,13 @@ window.openWaiterStatus = async function() {
             });
         }
         listDiv.innerHTML = html;
-    } catch(e) { alert('Order Status error: ' + e.message); }
+    } catch(e) { showFloatingToast('❌ Status failed', true); }
 };
 
 // ---------- SEND TO KITCHEN ----------
 window.sendWaiterOrderToKitchen = async function() {
     try {
-        if (!cart || !cart.length) { alert('Cart is empty. Add items first.'); return; }
+        if (!cart || !cart.length) { showFloatingToast('🛒 Cart is empty!', true); return; }
 
         // Table check (with PROPER await — the old copy missed this!)
         if (!currentTableName) {
@@ -5837,53 +5848,9 @@ window.sendWaiterOrderToKitchen = async function() {
 
 
 
-<script>
-/* ===== X-RAY: shows EXACTLY where each function dies ===== */
-window.__xray = function(name, fn) {
-    window[name] = async function() {
-        alert('▶ STARTING ' + name);
-        try {
-            var result = await fn();
-            alert('✅ FINISHED ' + name);
-            return result;
-        } catch(e) {
-            alert('💥 ' + name + ' CRASHED at this point:\n\n' +
-                  (e.message || e) +
-                  '\n\n📸 Screenshot this message!');
-        }
-    };
-};
 
-setTimeout(function() {
-    // Wrap ALL three problem functions with the X-ray
-    if (typeof window.sendWaiterOrderToKitchen === 'function') {
-        var orig1 = window.sendWaiterOrderToKitchen;
-        window.__xray('Send to Kitchen', orig1);
-    } else {
-        alert('❌ sendWaiterOrderToKitchen does not exist!');
-    }
 
-    if (typeof window.openTablesModal === 'function') {
-        var orig2 = window.openTablesModal;
-        window.__xray('Tables', orig2);
-    } else {
-        alert('❌ openTablesModal does not exist!');
-    }
 
-    if (typeof window.openWaiterStatus === 'function') {
-        var orig3 = window.openWaiterStatus;
-        window.__xray('Order Status', orig3);
-    } else {
-        alert('❌ openWaiterStatus does not exist!');
-    }
-
-    alert('🔬 X-RAY is ACTIVE!\n\nNow tap each button:\n- 🪑 Tables\n- 🚦 Order Status\n- 🔔 Send to Kitchen\n\nEach will show its journey step by step.');
-}, 3000);
-</script>
-
-	<script>
-alert('☢️ RESCUE ACTIVE — INLINE VERSION');
-</script>
 
 
 
@@ -5904,7 +5871,7 @@ setTimeout(function() {
     window.openTablesModal = async function() {
         var modal = document.getElementById('tablesModal');
         var grid = document.getElementById('tablesGrid');
-        if (!modal || !grid) { alert('⚠️ tablesModal HTML missing!'); return; }
+        if (!modal || !grid) { console.error('tablesModal missing'); return; }
         modal.classList.add('active');
         grid.innerHTML = '<p style="color:#94a3b8;text-align:center;">Loading...</p>';
         try {
@@ -5959,7 +5926,7 @@ setTimeout(function() {
     // 🔔 SEND TO KITCHEN (no invisible dialogs — auto walk-in)
     window.sendWaiterOrderToKitchen = async function() {
         var c = (typeof cart !== 'undefined') ? cart : [];
-        if (!c.length) { alert('Cart is empty. Add items first.'); return; }
+        if (!c.length) { showFloatingToast('✅ Sent to Kitchen: ' + table, false); return; }
         var table = (typeof currentTableName !== 'undefined' && currentTableName) ? currentTableName : 'Walk-in';
         var btn = document.getElementById('btnSendKitchen');
         if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
@@ -5975,13 +5942,13 @@ setTimeout(function() {
                 time: new Date().toISOString()
             }]);
             if (r.error) throw new Error(r.error.message);
-            alert('✅ Order sent to Kitchen for ' + table + '!');
+            showFloatingToast('✅ Sent to Kitchen: ' + table, false);
             try { cart = []; currentTableName = '';
                 var t = document.getElementById('cartTitle'); if (t) t.innerText = 'CART';
                 if (typeof updateCart === 'function') updateCart();
             } catch(e) {}
         } catch(e) {
-            alert('💥 SEND FAILED — real reason:\n' + e.message);
+            showFloatingToast('❌ Send failed — check connection', true) + console.error(e.message);
         } finally {
             if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; }
         }
