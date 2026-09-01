@@ -611,17 +611,13 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
       splash.classList.add('hidden');
       setTimeout(function() { splash.style.display = 'none'; }, 800);
     }
-  }, 2000);
+  }, 1500);
 })();
 </script>
 
-
-
-
-	
 	
 <!-- LOGIN SCREEN -->
-<div class="login-screen" id="loginScreen">
+  <div class="login-screen" id="loginScreen">
     <div class="login-box">
         <h1>🏪 SmartShop POS</h1>
         <p style="color:#64748b; margin-bottom:10px;" id="loginSubtitle">Cashier Login</p>
@@ -673,9 +669,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <button onclick="toggleDarkMode()" class="header-icon" title="Dark Mode">🌓</button>
         <button onclick="logout()" class="header-icon" title="Logout">🚪</button>
     </div>
-</div>
-	
-	
+  </div>
 </div>
 
 	
@@ -685,7 +679,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     <div class="sidebar-tab" onclick="openSellReportFromMenu()">📊 Sell Report</div>
     <div class="sidebar-tab" onclick="openSellHistoryFromMenu()">📋 Sell History</div>
     <div class="sidebar-tab" onclick="openNotebookFromMenu()">📓 Notebook</div>
-	<div class="sidebar-tab" onclick="toggleChat()">💬 Staff Chat</div>
+  	<div class="sidebar-tab" onclick="toggleChat()">💬 Staff Chat</div>
     <div class="sidebar-tab" onclick="openCustomerLookupFromMenu()">🔍 Customer Lookup</div>
     <div class="sidebar-tab" onclick="openPriceCheckFromMenu()">🏷️ Price Check</div>
     <div class="sidebar-tab" onclick="syncNow()">🔄 Sync Now</div>
@@ -722,13 +716,10 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <button class="btn btn-sm" id="orderTypeTakeaway" onclick="setOrderType('Takeaway', this)" style="flex:1; background:#fff; color:#64748b; border:1px solid #e2e8f0; font-weight:600;">🛍️ Takeaway</button>
         <button class="btn btn-sm" id="orderTypeDelivery" onclick="setOrderType('Delivery', this)" style="flex:1; background:#fff; color:#64748b; border:1px solid #e2e8f0; font-weight:600;">🛵 Delivery</button>
     </div>
-
-
 	
-    <div class="sync-info" id="syncInfo"></div>
-
-	
-    <div class="customer-screen" id="customerDisplay">
+  <div class="sync-info" id="syncInfo"></div>
+ 
+  <div class="customer-screen" id="customerDisplay">
         <button class="cs-close-btn" onclick="toggleDisplay()">✖</button>
         <div class="cs-store" id="csStoreName">🏪 SmartShop Pro</div>
         <div class="cs-items" id="csItems"><div style="color:#9ca3af;text-align:center;padding:20px;">Waiting for items...</div></div>
@@ -748,9 +739,6 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         </div>
     </div>
 
-
-
-	
 
 	<div class="card cart-highlight">
 		
@@ -786,9 +774,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 
 	
 	
-<!-- Product Card -->
-
-	
+      <!-- Product Card -->
 	<!-- 1. ADD id="posProductCard" to the outer card -->
 <div class="card" id="posProductCard">
 	
@@ -814,8 +800,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 	
   <!-- View buttons (always on top) -->
   <div class="toolbar" style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
-		
-    <button id="btnViewList" class="active" onclick="setView('list')">☰ List</button>
+		<button id="btnViewList" class="active" onclick="setView('list')">☰ List</button>
     <button id="btnViewGrid" onclick="setView('grid')">⊞ Grid</button>
     <button id="btnViewExcel" onclick="setView('excel')">📊 Excel</button>
       <!-- 2. CHANGE onclick to target 'posProductCard' -->
@@ -846,13 +831,27 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 
 
 
-	
-</div>
-
-	
-
 <!-- Modals -->
-<div class="modal" id="keypadModal"><div class="modal-content"><div class="key-display" id="keyDisplay">0</div><div class="keypad"><button class="key-btn-num" onclick="keyPress('1')">1</button><button class="key-btn-num" onclick="keyPress('2')">2</button><button class="key-btn-num" onclick="keyPress('3')">3</button><button class="key-btn-num" onclick="keyPress('4')">4</button><button class="key-btn-num" onclick="keyPress('5')">5</button><button class="key-btn-num" onclick="keyPress('6')">6</button><button class="key-btn-num" onclick="keyPress('7')">7</button><button class="key-btn-num" onclick="keyPress('8')">8</button><button class="key-btn-num" onclick="keyPress('9')">9</button><button class="key-btn-num" onclick="keyPress('.')">.</button><button class="key-btn-num" onclick="keyPress('0')">0</button><button class="key-btn-enter" onclick="confirmKeypad()">✅</button></div><button class="key-btn-clear" style="width:100%;margin-top:8px;" onclick="clearKeypad()">🗑️ Clear</button></div></div>
+<div class="modal" id="keypadModal">
+  <div class="modal-content">
+    <div class="key-display" id="keyDisplay">0</div>
+    <div class="keypad">
+      <button class="key-btn-num" onclick="keyPress('1')">1</button>
+      <button class="key-btn-num" onclick="keyPress('2')">2</button>
+      <button class="key-btn-num" onclick="keyPress('3')">3</button>
+      <button class="key-btn-num" onclick="keyPress('4')">4</button>
+      <button class="key-btn-num" onclick="keyPress('5')">5</button>
+      <button class="key-btn-num" onclick="keyPress('6')">6</button>
+      <button class="key-btn-num" onclick="keyPress('7')">7</button>
+      <button class="key-btn-num" onclick="keyPress('8')">8</button>
+      <button class="key-btn-num" onclick="keyPress('9')">9</button>
+      <button class="key-btn-num" onclick="keyPress('.')">.</button>
+      <button class="key-btn-num" onclick="keyPress('0')">0</button>
+      <button class="key-btn-enter" onclick="confirmKeypad()">✅</button>
+    </div>
+    <button class="key-btn-clear" style="width:100%;margin-top:8px;" onclick="clearKeypad()">🗑️ Clear</button>
+  </div>
+</div>
 
 <div class="modal" id="paymentModal">
     <div class="modal-content" style="max-width:450px;">
@@ -861,9 +860,9 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <div id="normalPaymentMode">
             <div class="payment-options">
                 <button class="payment-btn selected" onclick="selectPayment('cash', this)">💵 Cash</button>
-<button class="payment-btn" onclick="selectPayment('card', this)">💳 Card</button>
-<button class="payment-btn" onclick="selectPayment('mobile', this)">📱 Mobile</button>
-<button class="payment-btn" onclick="selectPayment('credit', this)">📝 Credit</button>
+             <button class="payment-btn" onclick="selectPayment('card', this)">💳 Card</button>
+             <button class="payment-btn" onclick="selectPayment('mobile', this)">📱 Mobile</button>
+             <button class="payment-btn" onclick="selectPayment('credit', this)">📝 Credit</button>
             </div>
             <div id="creditFields" style="display:none;">
                 <input type="text" id="customerName" class="form-input" placeholder="Customer Name">
@@ -913,8 +912,6 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 </div>
 
 
-
-
 	
 <div class="modal" id="receiptModal">
     <div class="modal-content" id="receiptModalContent">
@@ -930,7 +927,17 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     </div>
 </div>
 
-<div class="modal" id="sellReportModal"><div class="modal-content"><h3>📊 <span data-lang-key="sellReport">Sell Report</span></h3><div style="display:flex;gap:6px;margin-bottom:10px;"><button class="btn btn-sm period-btn active" onclick="setReportPeriod('today',this)">Today</button><button class="btn btn-sm period-btn" onclick="setReportPeriod('week',this)">Week</button><button class="btn btn-sm period-btn" onclick="setReportPeriod('month',this)">Month</button></div><div id="sellReportContent"></div><button class="btn btn-outline" onclick="document.getElementById('sellReportModal').classList.remove('active')">Close</button></div></div>
+<div class="modal" id="sellReportModal">
+  <div class="modal-content"><h3>📊 <span data-lang-key="sellReport">Sell Report</span></h3>
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <button class="btn btn-sm period-btn active" onclick="setReportPeriod('today',this)">Today</button>
+      <button class="btn btn-sm period-btn" onclick="setReportPeriod('week',this)">Week</button>
+      <button class="btn btn-sm period-btn" onclick="setReportPeriod('month',this)">Month</button>
+    </div>
+    <div id="sellReportContent"></div>
+    <button class="btn btn-outline" onclick="document.getElementById('sellReportModal').classList.remove('active')">Close</button>
+  </div>
+</div>
 
 
 	
@@ -992,14 +999,22 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
                 <button class="btn btn-primary btn-sm" onclick="loadMoreDetailedHistory()">⬇ Load More</button>
             </div>
         </div>
-			
-        <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="document.getElementById('sellHistoryModal').classList.remove('active')">Close</button>
+         <button class="btn btn-outline btn-sm" style="margin-top:10px;" onclick="document.getElementById('sellHistoryModal').classList.remove('active')">Close</button>
     </div>
 </div>
 
 	
 
-<div class="modal" id="customAlertModal"><div class="modal-content"><div class="card-title" id="customAlertTitle"></div><div id="customAlertMsg" style="white-space:pre-wrap;"></div><div class="flex-row"><button class="btn btn-primary" id="customAlertOkBtn" onclick="closeCustomAlert(true)">OK</button><button class="btn btn-outline" id="customAlertCancelBtn" style="display:none;" onclick="closeCustomAlert(false)">Cancel</button></div></div></div>
+<div class="modal" id="customAlertModal">
+  <div class="modal-content">
+    <div class="card-title" id="customAlertTitle"> </div>
+    <div id="customAlertMsg" style="white-space:pre-wrap;"></div>
+    <div class="flex-row">
+      <button class="btn btn-primary" id="customAlertOkBtn" onclick="closeCustomAlert(true)">OK</button>
+      <button class="btn btn-outline" id="customAlertCancelBtn" style="display:none;" onclick="closeCustomAlert(false)">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <div id="barcodeScannerContainer">
     <button class="scanner-close" onclick="stopBarcodeScanner()">✖</button>
@@ -1035,10 +1050,10 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="document.getElementById('voidRefundModal').classList.remove('active')">Close</button>
     </div>
 </div>
-	
+
+  
 <div class="modal" id="notebookModal"><div class="modal-content" style="max-width:600px; max-height:85vh; overflow-y:auto;">
-    
-	<h3 data-lang-key="notebook">📓 Notebook</h3>
+    <h3 data-lang-key="notebook">📓 Notebook</h3>
     <div style="margin-bottom:8px;"><textarea id="noteTextArea" class="form-input" style="height:80px;resize:vertical;" placeholder="Write a note... (Enter to save)"></textarea></div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <select id="noteCategory" class="form-select" style="flex:1;">
@@ -1063,7 +1078,8 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     <div id="notesLoadMore" style="text-align:center;padding:10px;display:none;">
         <button class="btn btn-primary btn-sm" onclick="loadMoreNotes()">⬇ Load More</button>
     </div>
-</div></div>
+ </div>
+</div>
 
 <div class="modal" id="customerLookupModal"><div class="modal-content" style="max-width:600px; max-height:80vh; overflow-y:auto;">
     <h3 data-lang-key="customerLookup">🔍 Customer Lookup</h3>
@@ -1084,18 +1100,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     <div id="priceCheckResult"></div>
     <button class="btn btn-outline btn-sm" onclick="document.getElementById('priceCheckModal').classList.remove('active')">Close</button>
 </div>
-
-
-
-
-
-
-
-
-
-
-
-	
+</div>
 
 <div class="modal" id="settingsModal">
     <div class="modal-content" style="max-width:400px;">
@@ -1243,11 +1248,9 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 <script src="sheet.js"></script>			 
 <script src="shared.js"></script>
 
-
-	
-	<script>
-		
-
+  
+<script>
+  
 		// ===== GLOBAL UNIT CONVERSION ENGINE =====
 var currentQROrderId = null; // Tracks if the current cart is from a QR Order
 function getConversionFactor(fromUnit, toUnit) {
@@ -1329,13 +1332,6 @@ function changeLanguage(lc) {
     langSelects[k].value = lc;
   }
 
-
-
-
-
-
-
-	
 
   // 4. Direct ID updates (safe helper)
   var setText = function(id, text) { var el = document.getElementById(id); if (el) el.textContent = text; };
@@ -1968,17 +1964,6 @@ function renderListDirect(container, data) {
     container.innerHTML += html;
 }
 
-
-
-
-
-
-
-
-
-
-		
-		
 function renderGridDirect(container, data) {
     var html = '';
     for (var i=0; i<data.length; i++) {
@@ -1995,11 +1980,9 @@ function renderGridDirect(container, data) {
 
     
  // ===== HELD ORDERS – COMPLETE (SAFE DELETE & RECALL) =====
-let holdNameResolve = null;
 
-
-		
-		// Open the hold-name modal and wait for input
+  let holdNameResolve = null;
+   // Open the hold-name modal and wait for input
 function holdOrder() {
   if (!cart.length) { alert('Cart is empty.'); return; }
 
@@ -2069,7 +2052,8 @@ function cancelHoldName() {
 }
 
 // Open the held orders modal (called from the 📋 Held button)
-function openHeldOrdersFromMenu() {
+
+  function openHeldOrdersFromMenu() {
   closeSidebar();
   listHeldOrders();
   document.getElementById('heldOrdersModal').classList.add('active');
@@ -2114,6 +2098,7 @@ async function recallOrder(id) {
   cart = JSON.parse(JSON.stringify(order.cart));
   
   // FIX 2: Set the currentTableName so the waiter can add more items and send to kitchen!
+ 
   currentTableName = order.name; 
   
   updateCart();
@@ -2131,7 +2116,6 @@ async function recallOrder(id) {
 		
 
 		
-
 // Delete a held order (with reliable confirmation)
 async function deleteHeldOrder(id) {
   // 1. Close the held orders modal so the confirmation is visible
@@ -2165,7 +2149,9 @@ async function deleteHeldOrder(id) {
   document.getElementById('heldOrdersModal').classList.add('active');
 }   
 
-		
+
+
+  
 var notesData = [];
 var notesPage = 1;
 var notesPerPage = 15;
@@ -2276,8 +2262,10 @@ async function lookupCustomer() {
     }
 }
 		
-// ===== PRICE CHECK =====
-function checkPrice() {
+
+  // ===== PRICE CHECK =====
+
+  function checkPrice() {
     var barcode = document.getElementById('priceCheckBarcode').value.trim();
     if (!barcode) { alert('Scan or type a barcode.'); return; }
     var product = products.find(p => p.barcode && p.barcode.toLowerCase() === barcode.toLowerCase());
@@ -2293,8 +2281,10 @@ function checkPrice() {
     }
 }
 
-// ===== SETTINGS =====
-function saveSettings() {
+
+  // ===== SETTINGS =====
+
+  function saveSettings() {
     var sound = document.getElementById('soundToggle').checked;
     var vibrate = document.getElementById('vibrateToggle').checked;
     var guidesEl = document.getElementById('recipeGuideToggle');
@@ -2458,7 +2448,8 @@ function logout(){
 }
 		
 // ===== POS SETTINGS =====
-	async function loadPosSettings(){
+	
+  async function loadPosSettings(){
     if (!supabaseClient) return;
     
     const { data, error } = await supabaseClient.from('settings').select('*').eq('shop_id', getShopId()).maybeSingle();
@@ -2536,6 +2527,7 @@ function logout(){
 }
 		
 // ===== SHIFT =====
+
 function checkActiveShift(){
     if (!currentCashier) return; // Safety: nobody logged in yet
     const shift = JSON.parse(localStorage.getItem('shift_' + getShopId() + '_' + currentCashier.id) || 'null');
@@ -3420,86 +3412,106 @@ async function completePayment() {
     btn.textContent = '✅ Complete';
 }
 		
-// ===== BULLETPROOF RECEIPT PRINTER =====
 
 				// ===== WORLD-CLASS RECEIPT PRINTER =====
 function printReceiptPOS() {
-    var receiptText = document.getElementById('receiptContent').textContent;
+    // ===== 1. GET RECEIPT TEXT =====
+    var receiptText = '';
+    var el = document.getElementById('receiptContent');
+    if (el) {
+        receiptText = el.textContent || el.innerText || '';
+    }
+    // Backup: rebuild from cart if modal is empty
+    if (!receiptText || receiptText.trim() === '') {
+        receiptText = 'Date: ' + new Date().toLocaleString() + '\n' +
+            'Cashier: ' + (currentCashier ? currentCashier.name : '') + '\n' +
+            '------------------------------\n' +
+            cart.map(function(i) { return i.name + ' ×' + i.qty + '  ' + fmtMoney(i.price * i.qty); }).join('\n') +
+            '\n------------------------------\n' +
+            'TOTAL: ' + document.getElementById('total').textContent;
+    }
     if (!receiptText || receiptText.trim() === '') { alert('No receipt data found!'); return; }
 
+    // ===== 2. OPEN PRINT WINDOW =====
     var printWindow = window.open('', '_blank', 'width=400,height=600');
-    if (!printWindow) { alert('Popup blocked! Please allow popups for this site to print receipts.'); return; }
+    if (!printWindow) { alert('Popup blocked! Allow popups for this site to print.'); return; }
 
-    var brand = window.shopBranding || { name: 'SmartShop Pro', phone: '', address: '', tinNumber: '', vatNumber: '', receiptFooter: 'Thank you for coming!' };
-    
-    var html = '<!DOCTYPE html><html><head><title>Print Receipt</title>';
+    var brand = window.shopBranding || { name: 'SmartShop Pro', phone: '', address: '', tinNumber: '', vatNumber: '', receiptFooter: 'Thank you!' };
+
+    // ===== 3. BUILD HTML =====
+    var html = '<!DOCTYPE html><html><head><title>Receipt</title>';
     html += '<style>';
-    html += '@page { margin: 0; size: 80mm auto; }'; // Standard 80mm thermal paper
+    html += '@page { margin: 0; size: 80mm auto; }';
     html += 'body { font-family: "Courier New", monospace; width: 72mm; margin: 4mm auto; font-size: 12px; color: #000; }';
-    html += 'h1 { font-size: 18px; text-align: center; margin: 0; font-family: Arial, sans-serif; }';
+    html += 'h1 { font-size: 16px; text-align: center; margin: 0; }';
     html += '.center { text-align: center; }';
-    html += '.line { border-top: 1px dashed #000; margin: 8px 0; }';
+    html += '.line { border-top: 1px dashed #000; margin: 6px 0; }';
     html += '.item { display: flex; justify-content: space-between; margin: 2px 0; }';
     html += '.total-row { display: flex; justify-content: space-between; margin: 3px 0; }';
-    html += '.total-final { font-weight: bold; font-size: 14px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 5px 0; margin: 5px 0; }';
+    html += '.total-final { font-weight: bold; font-size: 14px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 4px 0; margin: 4px 0; }';
+    html += '.brandline { font-size: 11px; text-align: center; margin: 1px 0; }';
     html += '</style></head><body>';
-    
+
+    // ===== HEADER: SHOP BRANDING (TIN/VAT at top, next to phone) =====
     html += '<h1>' + (brand.name || 'SmartShop Pro') + '</h1>';
-    if (brand.address) html += '<p class="center">' + brand.address + '</p>';
-    if (brand.phone) html += '<p class="center">Tel: ' + brand.phone + '</p>';
-    if (brand.tinNumber) html += '<p class="center">TIN: ' + brand.tinNumber + '</p>';
-    if (brand.vatNumber) html += '<p class="center">VAT: ' + brand.vatNumber + '</p>';
-    
+    if (brand.address) html += '<p class="brandline">' + brand.address + '</p>';
+    if (brand.phone) html += '<p class="brandline">Tel: ' + brand.phone + '</p>';
+    if (brand.tinNumber) html += '<p class="brandline">TIN: ' + brand.tinNumber + '</p>';
+    if (brand.vatNumber) html += '<p class="brandline">VAT: ' + brand.vatNumber + '</p>';
     html += '<div class="line"></div>';
-    html += '<p class="center" style="font-weight:bold; font-size:14px;">FISCAL RECEIPT</p>';
-    html += '<div class="line"></div>';
-  
+
+    // ===== BODY: RECEIPT ITEMS =====
     var lines = receiptText.trim().split('\n');
     lines.forEach(function(line) {
-        if (line.includes('──────────────────────')) {
+        if (line.indexOf('──────') !== -1) {
             html += '<div class="line"></div>';
-        } else if (line.startsWith('TOTAL:')) {
+        } else if (line.indexOf('TOTAL:') === 0) {
             html += '<div class="total-row total-final"><span>TOTAL</span><span>' + line.replace('TOTAL:', '').trim() + '</span></div>';
-        } else if (line.startsWith('Subtotal:') || line.startsWith('Discount:') || line.startsWith('Tax') || line.startsWith('Payment:') || line.startsWith('Invoice:') || line.startsWith('Date:') || line.startsWith('Time:') || line.startsWith('Cashier:') || line.startsWith('Order Type:')) {
+        } else if (line.indexOf('Subtotal:') === 0 || line.indexOf('Discount:') === 0 || line.indexOf('Tax') === 0 ||
+                   line.indexOf('Payment:') === 0 || line.indexOf('Invoice:') === 0 || line.indexOf('Date:') === 0 ||
+                   line.indexOf('Cashier:') === 0 || line.indexOf('Order Type:') === 0) {
             var parts = line.split(':');
             html += '<div class="total-row"><span>' + parts[0] + ':</span><span>' + parts.slice(1).join(':').trim() + '</span></div>';
-        } else if (line.startsWith('  ➕') || line.startsWith('  📝')) {
-             html += '<div style="margin-left: 10px; font-size: 11px;">' + line + '</div>';
-        } else if (line.match(/.+\s×\d+\s\s\S+/)) {
-             var match = line.match(/(.+)\s×(\d+)\s\s(\S+)/);
-             if(match) {
-                 html += '<div class="item"><span>' + match[1] + ' ×' + match[2] + '</span><span>' + match[3] + '</span></div>';
-             } else {
-                 html += '<div class="item"><span>' + line + '</span></div>';
-             }
-        } else if (line.trim() !== '' && !line.startsWith('🏪') && !line.startsWith('📍') && !line.startsWith('📱') && !line.startsWith('🧾') && !line.startsWith('📊')) {
-             html += '<div>' + line + '</div>';
+        } else if (line.indexOf('×') !== -1) {
+            var match = line.match(/(.+?)\s*×(\d+)\s+(.+)/);
+            if (match) {
+                html += '<div class="item"><span>' + match[1].trim() + ' ×' + match[2] + '</span><span>' + match[3] + '</span></div>';
+            } else {
+                html += '<div class="item"><span>' + line + '</span></div>';
+            }
+        } else if (line.trim() !== '' && line.indexOf('🏪') === -1 && line.indexOf('📍') === -1 &&
+                   line.indexOf('📱') === -1 && line.indexOf('🧾') === -1 && line.indexOf('📊') === -1) {
+            html += '<div>' + line + '</div>';
         }
     });
-    
+
     html += '<div class="line"></div>';
+
+    // ===== FOOTER: THANK YOU MESSAGE =====
     html += '<p class="center" style="font-weight:bold; margin-top:5px;">' + (brand.receiptFooter || 'Thank you for coming!') + '</p>';
-    
-    // Cloud Printing QR Code for feedback
+
+    // ===== FOOTER: FEEDBACK QR (only if shop phone exists) =====
     if (brand.phone) {
-        var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent('https://wa.me/' + brand.phone);
-        html += '<div class="center" style="margin-top:10px;"><img src="' + qrUrl + '" style="width:80px; height:80px;" alt="QR"></div>';
+        var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent('https://wa.me/' + brand.phone.replace(/[^0-9]/g, ''));
+        html += '<div class="center" style="margin-top:8px;"><img src="' + qrUrl + '" style="width:70px; height:70px;" alt="QR"></div>';
         html += '<p class="center" style="font-size: 10px;">Scan to give feedback</p>';
     }
-    
+
     html += '</body></html>';
 
+    // ===== 4. PRINT =====
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
-    
+
     printWindow.focus();
     setTimeout(function() {
         printWindow.print();
         setTimeout(function() { printWindow.close(); }, 500);
     }, 500);
 }
-function closeReceiptModal() {
+    
+    function closeReceiptModal() {
     document.getElementById('receiptModal').classList.remove('active');
     const printBtns = document.querySelectorAll('#receiptModal .print-receipt-btn');
     printBtns.forEach(b=>b.remove());
@@ -5600,9 +5612,10 @@ document.addEventListener('keydown', function (e) {
     var b = document.getElementById('completePaymentBtn');
     if (b && !b.disabled) { e.preventDefault(); completePayment(); }
 });
-		
-</script>
-	<script>
+
+
+
+    
   // Register the Service Worker for Offline PWA capabilities
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -5613,25 +5626,9 @@ document.addEventListener('keydown', function (e) {
   }
 
 
-<script>
-/* ===== HEALTH CHECK — tells us where the script broke ===== */
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        var results = [];
-        results.push('openTablesModal: ' + (typeof window.openTablesModal));
-        results.push('openWaiterStatus: ' + (typeof window.openWaiterStatus));
-        results.push('selectTable: ' + (typeof window.selectTable));
-        results.push('loadPOSTables: ' + (typeof window.loadPOSTables));
-        results.push('completePayment: ' + (typeof window.completePayment));
-        results.push('addToCart: ' + (typeof window.addToCart));
-        alert('🔍 HEALTH CHECK\n\n' + results.join('\n') +
-              '\n\n(function = alive ✅\n undefined = DEAD ❌)');
-    });
-});
-</script>
+
+ </script>
 
 
-    
-</script>
 </body>
 </html>
