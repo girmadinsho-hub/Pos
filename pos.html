@@ -5629,33 +5629,205 @@ document.addEventListener('keydown', function (e) {
 
  </script>
 <script>
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        var names = [
-            'sendWaiterOrderToKitchen',
-            'openTablesModal',
-            'openWaiterStatus',
-            'selectTable',
-            'loadPOSTables',
-            'completePayment',
-            'addToCart',
-            'updateCart',
-            'checkout',
-            'filterProducts',
-            'login'
-        ];
-        var msg = '🔍 FUNCTION HEALTH CHECK\n\n';
-        var dead = 0;
-        names.forEach(function(n) {
-            var status = (typeof window[n]);
-            if (status !== 'function') dead++;
-            msg += n + ': ' + status + '\n';
+/* ================================================================
+   WAITER TOOLKIT RESCUE — Tables + Order Status + Send to Kitchen
+   Self-contained. Overrides any broken copies.
+   ================================================================ */
+
+// ---------- Load tables ----------
+window.loadPOSTables = async function() {
+    window.posTables = [];
+    if (!supabaseClient) return;
+    try {
+        var res = await supabaseClient.from('settings')
+            .select('table_names').eq('shop_id', getShopId()).maybeSingle();
+        if (res.data && res.data.table_names) {
+            window.posTables = res.data.table_names.split(',')
+                .map(function(t) { return t.trim(); })
+                .filter(function(t) { return t !== ''; });
+        }
+    } catch(e) { console.error('loadPOSTables error:', e.message); }
+};
+
+// ---------- Tables (floor map) ----------
+window.openTablesModal = async function() {
+    try {
+        var modal = document.getElementById('tablesModal');
+        var grid = document.getElementById('tablesGrid');
+        if (!modal || !grid) { alert('⚠️ tablesModal/tablesGrid missing from HTML!'); return; }
+
+        modal.classList.add('active');
+        grid.innerHTML = '<p style="text-align:center; color:#94a3b8; grid-column:1/-1;">Loading...</p>';
+
+        await window.loadPOSTables();
+
+        if (!posTables.length) {
+            grid.innerHTML = '<p style="text-align:center; color:#94a3b8; grid-column:1/-1;">No tables found.<br>Save tables in Admin → Settings → Table Setup.</p>';
+            return;
+        }
+
+        var activeOrders = {};
+        try {
+            var res = await supabaseClient.from('orders')
+                .select('*').eq('shop_id', getShopId()).neq('status', 'Paid');
+            (res.data || []).forEach(function(o) {
+                if (o.table_id && (!activeOrders[o.table_id] || new Date(o.time) > new Date(activeOrders[o.table_id].time))) {
+                    activeOrders[o.table_id] = o;
+                }
+            });
+        } catch(e) { console.error('Orders fetch failed:', e.message); }
+
+        var html = '<div class="floor-map-container">';
+        posTables.forEach(function(name) {
+            var o = activeOrders[name];
+            var cls = 'table-free', txt = 'Free', mins = 0;
+            if (o) {
+                mins = Math.floor((Date.now() - new Date(o.time).getTime()) / 60000);
+                if (o.status === 'Ready') {
+                    cls = (mins > 5) ? 'table-urgent' : 'table-ready';
+                    txt = 'Ready to Pay';
+                } else {
+                    cls = 'table-preparing'; txt = 'Busy';
+                }
+            }
+            html += '<button onclick="window.selectTable(\'' + name + '\',' + (o ? 1 : 0) + ')" class="floor-table-btn ' + cls + '">' +
+                    '<span style="font-size:24px;">🪑</span><span>' + name + '</span>' +
+                    '<span class="table-status-txt">' + txt + (o ? ' (' + mins + 'm)' : '') + '</span></button>';
         });
-        msg += '\n' + dead + ' DEAD out of ' + names.length;
-        msg += '\n\n(function = alive ✅\nundefined = DEAD ❌)';
-        alert(msg);
-    }, 2000);
-});
+        grid.innerHTML = html + '</div>';
+    } catch(e) { alert('Tables error: ' + e.message); }
+};
+
+// ---------- Select a table ----------
+window.selectTable = async function(tableName, isBusy) {
+    if (isBusy) {
+        var ok = await confirm('Table ' + tableName + ' has an UNPAID bill.\nStart a NEW order for this table?');
+        if (!ok) return;
+    }
+    cart = [];
+    currentTableName = tableName;
+    var t = document.getElementById('cartTitle');
+    if (t) t.innerText = 'CART - ' + tableName;
+    updateCart();
+    var m = document.getElementById('tablesModal');
+    if (m) m.classList.remove('active');
+};
+
+// ---------- Order Status (waiter live view) ----------
+window.openWaiterStatus = async function() {
+    try {
+        var modal = document.getElementById('waiterStatusModal');
+        var listDiv = document.getElementById('waiterStatusList');
+        if (!modal || !listDiv) { alert('⚠️ waiterStatusModal/waiterStatusList missing from HTML!'); return; }
+
+        modal.classList.add('active');
+        listDiv.innerHTML = '<p style="text-align:center; color:#94a3b8;">Loading...</p>';
+
+        var res = await supabaseClient.from('orders')
+            .select('*').eq('shop_id', getShopId()).neq('status', 'Paid');
+        if (res.error) throw res.error;
+
+        var orders = (res.data || []).sort(function(a, b) { return new Date(a.time) - new Date(b.time); });
+        var html = '';
+        if (!orders.length) {
+            html = '<p style="text-align:center; color:#94a3b8;">No active orders right now.</p>';
+        } else {
+            orders.forEach(function(o) {
+                var color = o.status === 'Ready' ? '#10b981' : (o.status === 'Preparing' ? '#3b82f6' : '#f59e0b');
+                var txt = o.status === 'Ready' ? '✅ Ready to Serve' : (o.status === 'Preparing' ? '🔵 Preparing' : '🟡 Pending');
+                html += '<div style="background:#f8fafc; border-left:5px solid ' + color + '; padding:12px; margin-bottom:10px; border-radius:8px;">' +
+                    '<div style="display:flex; justify-content:space-between; margin-bottom:5px;">' +
+                    '<b style="font-size:16px;">🪑 ' + (o.table_id || 'Takeaway') + '</b>' +
+                    '<span style="color:' + color + '; font-weight:bold;">' + txt + '</span></div>' +
+                    '<div style="font-size:13px; color:#64748b; margin-bottom:8px;">';
+                (o.items || []).forEach(function(it) { html += it.qty + 'x ' + it.name + '<br>'; });
+                html += '</div><div style="display:flex; justify-content:space-between; border-top:1px solid #e2e8f0; padding-top:8px; font-weight:bold;">' +
+                    '<span>Payment: <span style="color:#ef4444;">UNPAID</span></span>' +
+                    '<span>Total: ' + fmtMoney(o.total || 0) + '</span></div></div>';
+            });
+        }
+        listDiv.innerHTML = html;
+    } catch(e) { alert('Order Status error: ' + e.message); }
+};
+
+// ---------- SEND TO KITCHEN ----------
+window.sendWaiterOrderToKitchen = async function() {
+    try {
+        if (!cart || !cart.length) { alert('Cart is empty. Add items first.'); return; }
+
+        // Table check (with PROPER await — the old copy missed this!)
+        if (!currentTableName) {
+            var isWalkIn = await confirm('No table selected. Send as Walk-in / Takeaway order?');
+            if (!isWalkIn) {
+                alert('Please select a table first (tap 🪑 Tables).');
+                return;
+            }
+            currentTableName = 'Walk-in';
+        }
+
+        var btn = document.getElementById('btnSendKitchen');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+
+        // Station status (each station starts not-done)
+        var stationStatus = {};
+        cart.forEach(function(item) {
+            var st = item.station || 'Kitchen';
+            stationStatus[st] = false;
+        });
+
+        var now = new Date().toISOString();
+        var waiterName = (typeof currentCashier !== 'undefined' && currentCashier) ? currentCashier.name : 'Waiter';
+        var cartItems = cart.map(function(i) {
+            return {
+                productId: i.id,
+                name: i.name,
+                qty: i.qty,
+                price: i.price,
+                modifiers: i.modifiers || [],
+                note: i.note || '',
+                station: i.station || 'Kitchen'
+            };
+        });
+        var total = cart.reduce(function(s, i) { return s + (i.price * i.qty); }, 0);
+
+        // 1. Save to Supabase (snake_case)
+        const { error } = await supabaseClient.from('orders').insert([{
+            firebase_id: 'order_' + Date.now(),
+            shop_id: getShopId(),
+            table_id: currentTableName,
+            items: cartItems,
+            station_status: stationStatus,
+            total: total,
+            status: 'Pending',
+            order_type: 'Waiter Dine-In',
+            waiter_name: waiterName,
+            time: now
+        }]);
+        if (error) throw error;
+
+        alert('✅ Order sent to Kitchen for ' + currentTableName + '!');
+
+        // 2. Print kitchen tickets (if printer function is alive)
+        if (typeof printKOT === 'function') {
+            try {
+                printKOT({ tableId: currentTableName, items: cartItems, time: now, waiterName: waiterName });
+            } catch(e) { console.warn('KOT print failed:', e.message); }
+        }
+
+        // 3. Clear cart
+        cart = [];
+        currentTableName = '';
+        var cartTitle = document.getElementById('cartTitle');
+        if (cartTitle) cartTitle.innerText = 'CART';
+        updateCart();
+
+    } catch(e) {
+        alert('❌ Error sending order: ' + e.message);
+    } finally {
+        var btn = document.getElementById('btnSendKitchen');
+        if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; }
+    }
+};
 </script>
 
 </body>
