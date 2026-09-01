@@ -3,7 +3,7 @@
    Standalone file. Native dialogs. Zero dependencies.
    Loaded FIRST — before any broken code exists.
    ================================================================ */
-
+alert('☢️ RESCUE.JS IS LOADED AND ACTIVE');
 // Wait for page, then take over the three functions FOREVER
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
