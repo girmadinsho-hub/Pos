@@ -5830,5 +5830,54 @@ window.sendWaiterOrderToKitchen = async function() {
 };
 </script>
 
+
+
+
+
+<script>
+/* ===== X-RAY: shows EXACTLY where each function dies ===== */
+window.__xray = function(name, fn) {
+    window[name] = async function() {
+        alert('▶ STARTING ' + name);
+        try {
+            var result = await fn();
+            alert('✅ FINISHED ' + name);
+            return result;
+        } catch(e) {
+            alert('💥 ' + name + ' CRASHED at this point:\n\n' +
+                  (e.message || e) +
+                  '\n\n📸 Screenshot this message!');
+        }
+    };
+};
+
+setTimeout(function() {
+    // Wrap ALL three problem functions with the X-ray
+    if (typeof window.sendWaiterOrderToKitchen === 'function') {
+        var orig1 = window.sendWaiterOrderToKitchen;
+        window.__xray('Send to Kitchen', orig1);
+    } else {
+        alert('❌ sendWaiterOrderToKitchen does not exist!');
+    }
+
+    if (typeof window.openTablesModal === 'function') {
+        var orig2 = window.openTablesModal;
+        window.__xray('Tables', orig2);
+    } else {
+        alert('❌ openTablesModal does not exist!');
+    }
+
+    if (typeof window.openWaiterStatus === 'function') {
+        var orig3 = window.openWaiterStatus;
+        window.__xray('Order Status', orig3);
+    } else {
+        alert('❌ openWaiterStatus does not exist!');
+    }
+
+    alert('🔬 X-RAY is ACTIVE!\n\nNow tap each button:\n- 🪑 Tables\n- 🚦 Order Status\n- 🔔 Send to Kitchen\n\nEach will show its journey step by step.');
+}, 3000);
+</script>
+
+	
 </body>
 </html>
