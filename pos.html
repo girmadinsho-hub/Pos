@@ -4666,79 +4666,70 @@ async function loadTableBillToCart(orderId) {
     }
 }
 		
-		window.sendWaiterOrderToKitchen = async function() {
+		
+async function sendWaiterOrderToKitchen() {
+    if (!cart.length) { alert('Cart is empty.'); return; }
+    
+    if (!currentTableName) {
+        var isWalkIn = awaitconfirm('No table selected. Send as Walk-in / Takeaway order?');
+        if (!isWalkIn) {
+            alert('Please select a Table first (Click the 🪑 Tables button).');
+            return;
+        }
+        currentTableName = 'Walk-in'; 
+    }
+
+    var btn = document.getElementById('btnSendKitchen');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+
+    var stationStatus = {};
+    cart.forEach(function(item) {
+        var st = item.station || 'Kitchen';
+        stationStatus[st] = false; 
+    });
+
+    var orderData = {
+        shopId: getShopId(),
+        tableId: currentTableName,
+        items: cart.map(i => ({ 
+            productId: i.id, name: i.name, qty: i.qty, price: i.price, 
+            modifiers: i.modifiers || [], note: i.note || '',
+            station: i.station || 'Kitchen'
+        })),
+        stationStatus: stationStatus,
+        total: cart.reduce((s,i) => s+(i.price*i.qty), 0),
+        status: 'Pending', 
+        orderType: 'Waiter Dine-In',
+        waiterName: currentCashier.name,
+        time: new Date().toISOString()
+    };
+
     try {
-        if (!cart || !cart.length) { alert('Cart is empty. Add items first.'); return; }
-
-        // Table check — NO invisible confirm, we ask by showing it in the toast style
-        if (!currentTableName) {
-            // Simple approach: default to Walk-in automatically (no dialog!)
-            currentTableName = 'Walk-in';
+        // SAVE ORDER TO SUPABASE ONLY
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('orders').insert([{
+                firebase_id: 'order_' + Date.now(), 
+                shop_id: orderData.shopId, table_id: orderData.tableId,
+                items: orderData.items, station_status: orderData.stationStatus, total: orderData.total,
+                status: orderData.status, order_type: orderData.orderType, waiter_name: orderData.waiterName, time: orderData.time
+            }]);
+            if (error) throw error;
         }
-
-        var btn = document.getElementById('btnSendKitchen');
-        if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
-
-        // Station status (each station starts not-done)
-        var stationStatus = {};
-        cart.forEach(function(item) {
-            var st = item.station || 'Kitchen';
-            stationStatus[st] = false;
-        });
-
-        var now = new Date().toISOString();
-        var waiterName = (typeof currentCashier !== 'undefined' && currentCashier) ? currentCashier.name : 'Waiter';
-        var cartItems = cart.map(function(i) {
-            return {
-                productId: i.id,
-                name: i.name,
-                qty: i.qty,
-                price: i.price,
-                modifiers: i.modifiers || [],
-                note: i.note || '',
-                station: i.station || 'Kitchen'
-            };
-        });
-        var total = cart.reduce(function(s, i) { return s + (i.price * i.qty); }, 0);
-
-        // 1. Save to Supabase (snake_case) — errors now VISIBLE
-        const { error } = await supabaseClient.from('orders').insert([{
-            firebase_id: 'order_' + Date.now(),
-            shop_id: getShopId(),
-            table_id: currentTableName,
-            items: cartItems,
-            station_status: stationStatus,
-            total: total,
-            status: 'Pending',
-            order_type: 'Waiter Dine-In',
-            waiter_name: waiterName,
-            time: now
-        }]);
-        if (error) throw new Error(error.message);
-
+        
         alert('✅ Order sent to Kitchen for ' + currentTableName + '!');
-
-        // 2. Print kitchen tickets (if available)
-        if (typeof printKOT === 'function') {
-            try { printKOT({ tableId: currentTableName, items: cartItems, time: now, waiterName: waiterName }); }
-            catch(e) { console.warn('KOT print failed:', e.message); }
-        }
-
-        // 3. Clear cart
+        if (typeof printKOT === 'function') printKOT(orderData); 
+        
         cart = [];
         currentTableName = '';
         var cartTitle = document.getElementById('cartTitle');
         if (cartTitle) cartTitle.innerText = 'CART';
         updateCart();
-
     } catch(e) {
-        alert('❌ Error sending order: ' + (e.message || e));
+        alert('❌ Error sending order: ' + e.message);
     } finally {
-        var btn = document.getElementById('btnSendKitchen');
         if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; }
     }
-};
-
+}
 
 
 	
