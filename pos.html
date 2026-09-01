@@ -5884,5 +5884,113 @@ setTimeout(function() {
 	<script>
 alert('☢️ RESCUE ACTIVE — INLINE VERSION');
 </script>
+
+
+
+
+
+	<script>
+/* ☢️ FINAL WEAPON — top of body, nothing can break this */
+alert('☢️ FINAL WEAPON ACTIVE! Buttons are now armed.');
+
+function __shop() {
+    try { if (typeof getShopId === 'function') return getShopId(); } catch(e) {}
+    return localStorage.getItem('shopId') || 'default';
+}
+
+setTimeout(function() {
+
+    // 🪑 TABLES
+    window.openTablesModal = async function() {
+        var modal = document.getElementById('tablesModal');
+        var grid = document.getElementById('tablesGrid');
+        if (!modal || !grid) { alert('⚠️ tablesModal HTML missing!'); return; }
+        modal.classList.add('active');
+        grid.innerHTML = '<p style="color:#94a3b8;text-align:center;">Loading...</p>';
+        try {
+            var r = await supabaseClient.from('settings').select('table_names').eq('shop_id', __shop()).maybeSingle();
+            var tables = (r.data && r.data.table_names) ? r.data.table_names.split(',').map(function(t){return t.trim();}).filter(function(t){return t;}) : [];
+            if (!tables.length) { grid.innerHTML = '<p style="color:#94a3b8;text-align:center;">No tables found.<br>Add them in Admin → Settings.</p>'; return; }
+            var r2 = await supabaseClient.from('orders').select('table_id,status').eq('shop_id', __shop()).neq('status', 'Paid');
+            var busy = {};
+            (r2.data || []).forEach(function(o) { if (o.table_id) busy[o.table_id] = o; });
+            var html = '';
+            tables.forEach(function(name) {
+                var o = busy[name];
+                var bg = o ? (o.status === 'Ready' ? '#f59e0b' : '#3b82f6') : '#10b981';
+                var txt = o ? (o.status === 'Ready' ? 'Ready to Pay' : 'Busy') : 'Free';
+                html += '<button onclick="window.selectTable(\'' + name + '\')" style="aspect-ratio:1;border:none;border-radius:12px;color:white;font-weight:bold;font-size:14px;background:' + bg + ';padding:8px;cursor:pointer;">🪑<br>' + name + '<br><small>' + txt + '</small></button>';
+            });
+            grid.innerHTML = html;
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = 'repeat(3,1fr)';
+            grid.style.gap = '10px';
+        } catch(e) { grid.innerHTML = '<p style="color:red;">Error: ' + e.message + '</p>'; }
+    };
+
+    window.selectTable = function(name) {
+        try { cart = []; currentTableName = name;
+            var t = document.getElementById('cartTitle'); if (t) t.innerText = 'CART - ' + name;
+            if (typeof updateCart === 'function') updateCart();
+        } catch(e) {}
+        var m = document.getElementById('tablesModal'); if (m) m.classList.remove('active');
+    };
+
+    // 🚦 ORDER STATUS
+    window.openWaiterStatus = async function() {
+        var modal = document.getElementById('waiterStatusModal');
+        var list = document.getElementById('waiterStatusList');
+        if (!modal || !list) { alert('⚠️ waiterStatusModal HTML missing!'); return; }
+        modal.classList.add('active');
+        list.innerHTML = '<p style="color:#94a3b8;text-align:center;">Loading...</p>';
+        try {
+            var r = await supabaseClient.from('orders').select('*').eq('shop_id', __shop()).neq('status', 'Paid');
+            var os = (r.data || []);
+            if (!os.length) { list.innerHTML = '<p style="color:#94a3b8;text-align:center;">No active orders. ✅</p>'; return; }
+            var html = '';
+            os.forEach(function(o) {
+                var c = o.status === 'Ready' ? '#10b981' : (o.status === 'Preparing' ? '#3b82f6' : '#f59e0b');
+                html += '<div style="background:#f1f5f9;border-left:5px solid ' + c + ';padding:10px;margin-bottom:8px;border-radius:8px;"><b>🪑 ' + (o.table_id || 'Takeaway') + '</b> — <span style="color:' + c + ';font-weight:bold;">' + o.status + '</span><br><small style="color:#475569;">' + (o.items || []).map(function(i){return i.qty + 'x ' + i.name;}).join(', ') + '</small><br><b>Total: ' + (o.total || 0) + '</b></div>';
+            });
+            list.innerHTML = html;
+        } catch(e) { list.innerHTML = '<p style="color:red;">Error: ' + e.message + '</p>'; }
+    };
+
+    // 🔔 SEND TO KITCHEN (no invisible dialogs — auto walk-in)
+    window.sendWaiterOrderToKitchen = async function() {
+        var c = (typeof cart !== 'undefined') ? cart : [];
+        if (!c.length) { alert('Cart is empty. Add items first.'); return; }
+        var table = (typeof currentTableName !== 'undefined' && currentTableName) ? currentTableName : 'Walk-in';
+        var btn = document.getElementById('btnSendKitchen');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+        try {
+            var items = c.map(function(i) { return { productId: i.id, name: i.name, qty: i.qty, price: i.price, modifiers: i.modifiers || [], note: i.note || '', station: i.station || 'Kitchen' }; });
+            var st = {}; items.forEach(function(i) { st[i.station] = false; });
+            var total = 0; items.forEach(function(i) { total += i.price * i.qty; });
+            var r = await supabaseClient.from('orders').insert([{
+                firebase_id: 'order_' + Date.now(), shop_id: __shop(), table_id: table,
+                items: items, station_status: st, total: total, status: 'Pending',
+                order_type: 'Waiter Dine-In',
+                waiter_name: (typeof currentCashier !== 'undefined' && currentCashier) ? currentCashier.name : 'Waiter',
+                time: new Date().toISOString()
+            }]);
+            if (r.error) throw new Error(r.error.message);
+            alert('✅ Order sent to Kitchen for ' + table + '!');
+            try { cart = []; currentTableName = '';
+                var t = document.getElementById('cartTitle'); if (t) t.innerText = 'CART';
+                if (typeof updateCart === 'function') updateCart();
+            } catch(e) {}
+        } catch(e) {
+            alert('💥 SEND FAILED — real reason:\n' + e.message);
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; }
+        }
+    };
+
+}, 4000);
+</script>
+
+
+	
 </body>
 </html>
