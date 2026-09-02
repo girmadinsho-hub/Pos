@@ -578,21 +578,55 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
 }
 
 // UNDO READY — properly resets this station's flag
-async function undoReady(orderId) {
-    try {
-        const { data: currentOrder } = await supabaseClient.from('orders')
-            .select('station_status').eq('firebase_id', orderId).maybeSingle();
-        var stStatus = (currentOrder && currentOrder.station_status) ? currentOrder.station_status : {};
-        if (activeStation !== 'All') stStatus[activeStation] = false;
-        else { for (var st in stStatus) stStatus[st] = false; }
-        var updateData = { status: 'Preparing', station_status: stStatus };
-        const { error } = await supabaseClient.from('orders').update(updateData).eq('firebase_id', orderId);
-        if (error) throw error;
-        var localOrder = latestOrders.find(o => o.id === orderId);
-        if (localOrder) { localOrder.status = 'Preparing'; localOrder.stationStatus = stStatus; renderUI(); }
-    } catch(e) { alert("Error: " + e.message); }
-}
 
+    async function undoReady(orderId) {
+        // 🔐 SECURITY GATE — requires Manager/Admin verification
+        var allowed = await verifyKitchenManager();
+        if (!allowed) return;
+
+        try {
+            const { data: currentOrder } = await supabaseClient.from('orders')
+                .select('station_status').eq('firebase_id', orderId).maybeSingle();
+            var stStatus = (currentOrder && currentOrder.station_status) ? currentOrder.station_status : {};
+            if (activeStation !== 'All') stStatus[activeStation] = false;
+            else { for (var st in stStatus) stStatus[st] = false; }
+            var updateData = { status: 'Preparing', station_status: stStatus };
+            const { error } = await supabaseClient.from('orders').update(updateData).eq('firebase_id', orderId);
+            if (error) throw error;
+            var localOrder = latestOrders.find(o => o.id === orderId);
+            if (localOrder) { localOrder.status = 'Preparing'; localOrder.stationStatus = stStatus; renderUI(); }
+        } catch(e) { alert("Error: " + e.message); }
+    }
+
+    // ===== 🔐 MANAGER VERIFICATION (password dialog) =====
+    async function verifyKitchenManager() {
+        var pass = prompt('🔐 UNDO REQUIRES AUTHORIZATION\n\nEnter Manager/Owner PIN or Admin password:');
+        if (!pass) return false;
+
+        // Method 1: check Manager/Owner PIN in employees table
+        try {
+            const { data: staff } = await supabaseClient.from('employees')
+                .select('hashed_password, position').eq('shop_id', shopId)
+                .in('position', ['Manager', 'Owner']);
+            for (var i = 0; i < (staff || []).length; i++) {
+                if (staff[i].hashed_password && sha256(pass) === staff[i].hashed_password) {
+                    return true; // ✅ Manager verified
+                }
+            }
+        } catch(e) { console.warn('Staff check failed:', e.message); }
+
+        // Method 2: check the Admin (Supabase Auth) password
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user && user.email) {
+                const { error } = await supabaseClient.auth.signInWithPassword({ email: user.email, password: pass });
+                if (!error) return true; // ✅ Admin verified
+            }
+        } catch(e) { console.warn('Admin check failed:', e.message); }
+
+        alert('❌ Wrong password. Undo cancelled.');
+        return false;
+    }
     // ===== OFFLINE INDICATOR =====
     window.addEventListener('online', () => { 
         var b = document.getElementById('offlineBadge'); 
@@ -732,6 +766,7 @@ async function sendChatMessage() {
         .catch(err => console.log('SW registration failed: ', err));
     });
   }
+	
 </script>
 </body>
 </html>
