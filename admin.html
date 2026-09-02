@@ -3735,23 +3735,114 @@ function switchStockView(view) {
     }
 }
 
-function initStockExcelTable() {
+// ===== 🚨 STOCK ALERT CENTER (runs after every cache load) =====
+function renderStockAlertCenter() {
+    var alertBox = document.getElementById('stockAlertCenter');
+    if (!alertBox) {
+        // Create the alert center at the top of the Stock tab
+        var stockTab = document.getElementById('tab3');
+        if (!stockTab) return;
+        alertBox = document.createElement('div');
+        alertBox.id = 'stockAlertCenter';
+        alertBox.style.cssText = 'margin-bottom:12px;';
+        stockTab.insertBefore(alertBox, stockTab.firstChild);
+    }
+
+    var critical = [];
+    var low = [];
+    var out = [];
+    var totalValue = 0;
+    var totalUnits = 0;
+
+    products.forEach(function(p) {
+        if (p.isVirtual) return;
+        var stock = p.stock || 0;
+        var limit = (p.reorderLevel !== undefined ? p.reorderLevel : 5) || 5;
+        var value = stock * (p.costPrice || 0);
+        totalValue += value;
+        totalUnits += stock;
+
+        if (stock === 0) out.push(p);
+        else if (stock <= limit) critical.push(p);
+    });
+
+    var html = '';
+
+    // Summary cards
+    html += '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">' +
+        '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;text-align:center;">' +
+        '<div style="font-size:20px;font-weight:800;color:#1d4ed8;">' + products.filter(function(p){return !p.isVirtual;}).length + '</div>' +
+        '<div style="font-size:10px;color:#64748b;font-weight:700;">📦 TOTAL ITEMS</div></div>' +
+        '<div style="background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:12px;text-align:center;">' +
+        '<div style="font-size:20px;font-weight:800;color:#ea580c;">' + critical.length + '</div>' +
+        '<div style="font-size:10px;color:#64748b;font-weight:700;">⚠️ LOW STOCK</div></div>' +
+        '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:12px;text-align:center;">' +
+        '<div style="font-size:20px;font-weight:800;color:#dc2626;">' + out.length + '</div>' +
+        '<div style="font-size:10px;color:#64748b;font-weight:700;">⛔ OUT OF STOCK</div></div>' +
+        '<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;padding:12px;text-align:center;">' +
+        '<div style="font-size:20px;font-weight:800;color:#059669;">' + fmtMoney(totalValue) + '</div>' +
+        '<div style="font-size:10px;color:#64748b;font-weight:700;">💰 STOCK VALUE</div></div>' +
+        '</div>';
+
+    // Critical alerts list
+    if (out.length > 0 || critical.length > 0) {
+        html += '<div style="background:#fef2f2;border:2px solid #fca5a5;border-radius:12px;padding:14px;margin-bottom:10px;">' +
+            '<div style="font-weight:800;color:#991b1b;margin-bottom:8px;">🚨 REORDER ALERTS (' + (out.length + critical.length) + ' items need attention)</div>';
+
+        out.forEach(function(p) {
+            html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fee2e2;">' +
+                '<span>⛔ <b>' + p.name + '</b> — OUT OF STOCK completely!</span>' +
+                '<span style="color:#dc2626;font-weight:700;">0 ' + (p.unit || '') + '</span></div>';
+        });
+        critical.forEach(function(p) {
+            var limit = (p.reorderLevel !== undefined ? p.reorderLevel : 5) || 5;
+            var suggested = limit * 2;
+            html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #fee2e2;">' +
+                '<span>⚠️ <b>' + p.name + '</b> — at limit (' + limit + '), order ~' + suggested + ' ' + (p.unit || '') + '</span>' +
+                '<span style="color:#ea580c;font-weight:700;">' + p.stock + ' ' + (p.unit || '') + ' left</span></div>';
+        });
+        html += '</div>';
+    } else {
+        html += '<div style="background:#ecfdf5;border:2px solid #6ee7b7;border-radius:12px;padding:14px;text-align:center;font-weight:700;color:#065f46;">✅ ALL STOCK LEVELS HEALTHY — nothing to reorder!</div>';
+    }
+
+    alertBox.innerHTML = html;
+}
+	function initStockExcelTable() {
     if (window.stockTable) return;
     window.stockTable = new ModernSheet('stockExcelContainer', {
         data: products,
         columns: [
             { title: '#', width: '40px', render: function(item, html, idx) { return idx + 1; } },
             { title: 'Product', field: 'name', width: '150px', render: function(item, html) { return html ? sanitize(item.name) : item.name; } },
+            { title: 'Stock', field: 'stock', width: '70px', align: 'center', render: function(item, html) {
+                var limit = (item.reorderLevel !== undefined ? item.reorderLevel : 5) || 5;
+                var color = (item.isVirtual) ? '#94a3b8' : (item.stock === 0 ? '#dc2626' : (item.stock <= limit ? '#ea580c' : '#059669'));
+                return html ? '<b style="color:' + color + ';">' + (item.stock || 0) + '</b>' : (item.stock || 0);
+            }, total: true, totalValue: function(i) { return i.isVirtual ? 0 : (i.stock || 0); }, totalFormat: function(s) { return s + ' units'; } },
             { title: 'Unit', field: 'unit', width: '80px' },
-            { title: 'Stock', field: 'stock', width: '70px', align: 'center' },
-            { title: 'Cost Price', field: 'costPrice', width: '100px', align: 'right', render: function(item, html) { return html ? appCurrencySymbol +(item.costPrice || 0).toFixed(2) : item.costPrice; } },
-            { title: 'Selling Price', field: 'price', width: '110px', align: 'right', render: function(item, html) { return html ? appCurrencySymbol + item.price.toFixed(2) : item.price; } },
-            { title: 'Category', field: 'category', width: '100px' },
-            { title: 'Barcode', field: 'barcode', width: '120px' }
+            { title: 'Limit', field: 'reorderLevel', width: '60px', align: 'center', render: function(item) { return (item.reorderLevel !== undefined ? item.reorderLevel : 5) || 5; } },
+            { title: 'Status', width: '100px', render: function(item, html) {
+                if (item.isVirtual) return html ? '🧪 Virtual' : 'Virtual';
+                var limit = (item.reorderLevel !== undefined ? item.reorderLevel : 5) || 5;
+                if ((item.stock || 0) === 0) return html ? '<span style="color:#dc2626;font-weight:700;">⛔ OUT</span>' : 'OUT';
+                if ((item.stock || 0) <= limit) return html ? '<span style="color:#ea580c;font-weight:700;">⚠️ LOW</span>' : 'LOW';
+                return html ? '<span style="color:#059669;font-weight:700;">✅ OK</span>' : 'OK';
+            }, filterable: true },
+            { title: 'Cost', field: 'costPrice', width: '90px', align: 'right', render: function(item, html) { return html ? fmtMoney(item.costPrice || 0) : (item.costPrice || 0); } },
+            { title: 'Stock Value', width: '100px', align: 'right', render: function(item, html) {
+                var v = (item.isVirtual ? 0 : (item.stock || 0) * (item.costPrice || 0));
+                return html ? fmtMoney(v) : v;
+            }, total: true, totalValue: function(i) { return i.isVirtual ? 0 : (i.stock || 0) * (i.costPrice || 0); }, totalFormat: function(s) { return fmtMoney(s); } },
+            { title: 'Sold', field: 'soldCount', width: '60px', align: 'center', render: function(item) { return item.soldCount || 0; } },
+            { title: 'Expiry', width: '90px', render: function(item, html) {
+                if (!item.expiryDate || item.isVirtual) return html ? '—' : '';
+                return html ? (item.expiryDate || '') : (item.expiryDate || '');
+            }, filterable: true }
         ],
         emptyMessage: 'No products',
-        showSearch: false,
-        showFontSlider: false
+        showSearch: true,
+        showFontSlider: true
     });
 }
 
@@ -4850,8 +4941,8 @@ async function recordLoss() {
           time: lossTime
       });
 
-      alert(t('saved'));
-      document.getElementById('lossQty').value = ''; 
+        alert(t('saved'));
+        if (typeof renderStockAlertCenter === 'function') renderStockAlertCenter();  // 🆕 add this line      document.getElementById('lossQty').value = ''; 
       filterLossProducts(); 
       if (typeof switchLossView === 'function') switchLossView(currentLossView); // Refresh table
       
@@ -8157,6 +8248,7 @@ async function loadAllCaches() {
           if (stockTable) stockTable.setData(products); 
           populateFilters();
           if (typeof filterProductView === 'function') filterProductView(); 
+	  if (typeof renderStockAlertCenter === 'function') renderStockAlertCenter();
       }
 
       // 2. LOAD SALES
@@ -11530,7 +11622,7 @@ function init() {
         var shopSwitcher = document.getElementById('shopSwitcher');
         if (shopSwitcher) shopSwitcher.style.display = 'inline-block';
 
-			    // ⚡ INSTANT Active Tables — realtime, no waiting
+			       // ⚡ INSTANT Active Tables — realtime, no waiting
     if (window.adminTablesChannel) { try { supabaseClient.removeChannel(window.adminTablesChannel); } catch(e) {} }
     window.adminTablesChannel = supabaseClient.channel('admin-tables-' + getShopId())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `shop_id=eq.${getShopId()}` },
@@ -11541,11 +11633,18 @@ function init() {
         .on('postgres_changes', { event: '*', schema: 'public', table: 'sales', filter: `shop_id=eq.${getShopId()}` },
             function() {
                 try { if (typeof loadDashboard === 'function' && currentPeriod) loadDashboard(currentPeriod); } catch(e) {}
+                // 📦 STOCK REFRESH — reload stock data + alerts after every sale
+                // (only when Stock tab is open — keeps other tabs fast)
+                try {
+                    var stockTab = document.getElementById('tab3');
+                    if (stockTab && stockTab.style.display !== 'none' && typeof loadAllCaches === 'function') {
+                        loadAllCaches();
+                    }
+                } catch(e) {}
             })
         .subscribe();
     }
 }
-
 	
 // ===== OFFLINE INDICATOR =====
 window.addEventListener('online', () => { 
