@@ -11529,6 +11529,20 @@ function init() {
         if (shopTab) shopTab.style.display = 'flex';
         var shopSwitcher = document.getElementById('shopSwitcher');
         if (shopSwitcher) shopSwitcher.style.display = 'inline-block';
+
+			    // ⚡ INSTANT Active Tables — realtime, no waiting
+    if (window.adminTablesChannel) { try { supabaseClient.removeChannel(window.adminTablesChannel); } catch(e) {} }
+    window.adminTablesChannel = supabaseClient.channel('admin-tables-' + getShopId())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `shop_id=eq.${getShopId()}` },
+            function() {
+                try { if (typeof loadActiveTables === 'function') loadActiveTables(); } catch(e) {}
+                try { if (typeof loadKitchenAnalytics === 'function') loadKitchenAnalytics(); } catch(e) {}
+            })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sales', filter: `shop_id=eq.${getShopId()}` },
+            function() {
+                try { if (typeof loadDashboard === 'function' && currentPeriod) loadDashboard(currentPeriod); } catch(e) {}
+            })
+        .subscribe();
     }
 }
 
