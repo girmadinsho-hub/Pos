@@ -584,10 +584,8 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
                         productId: i.id, name: i.name, qty: i.qty, price: i.price,
                         modifiers: i.modifiers || [], note: i.note || '',
                         station: i.station || defaultStation
-                    })),                        name: i.name, qty: i.qty, price: i.price,
-                        modifiers: i.modifiers || [], note: i.note || '',
-                        station: i.station || defaultStation
-                    })),
+                    })),                        
+                        
                     station_status: stationStatus,
                     total: cart.reduce((s,i) => s+(i.price*i.qty), 0),
                     status: 'Pending',
@@ -620,10 +618,8 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
                         productId: i.id, name: i.name, qty: i.qty, price: i.price,
                         modifiers: i.modifiers || [], note: i.note || '',
                         station: i.station || defaultStation
-                    })),                        name: i.name, qty: i.qty, price: i.price,
-                        modifiers: i.modifiers || [], note: i.note || '',
-                        station: i.station || defaultStation
-                    })),
+                    })),                        
+                        
                     station_status: stationStatus,
                     total: cart.reduce((s,i) => s+(i.price*i.qty), 0),
                     status: 'Pending Payment',
