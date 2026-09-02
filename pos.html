@@ -3599,10 +3599,43 @@ function toggleDarkMode(){document.body.classList.toggle('dark');localStorage.se
 if(localStorage.getItem('darkMode')==='1')document.body.classList.add('dark');
 
 // ===== VOID / REFUND =====
-async function openVoidRefundFromMenu() {
+window.openVoidRefundFromMenu = async function() {
     closeSidebar();
+    // 🔐 SECURITY GATE — cashiers cannot open void without password
+    var allowed = await verifyPosManager();
+    if (!allowed) return;
     await loadRecentSalesForVoid();
     document.getElementById('voidRefundModal').classList.add('active');
+};
+
+// ===== 🔐 MANAGER VERIFICATION for POS =====
+async function verifyPosManager() {
+    var pass = prompt('🔐 VOID/REFUND REQUIRES AUTHORIZATION\n\nEnter Manager/Owner PIN or Admin password:');
+    if (!pass) return false;
+
+    // Method 1: Manager/Owner PIN
+    try {
+        const { data: staff } = await supabaseClient.from('employees')
+            .select('hashed_password, position').eq('shop_id', getShopId())
+            .in('position', ['Manager', 'Owner']);
+        for (var i = 0; i < (staff || []).length; i++) {
+            if (staff[i].hashed_password && sha256(pass) === staff[i].hashed_password) {
+                return true;
+            }
+        }
+    } catch(e) { console.warn('Staff check failed:', e.message); }
+
+    // Method 2: Admin password
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        if (user && user.email) {
+            const { error } = await supabaseClient.auth.signInWithPassword({ email: user.email, password: pass });
+            if (!error) return true;
+        }
+    } catch(e) { console.warn('Admin check failed:', e.message); }
+
+    alert('❌ Wrong password. Void cancelled.');
+    return false;
 }
 
 async function loadRecentSalesForVoid() {
@@ -4008,7 +4041,9 @@ function exitMaximize() {
 // ===== MANAGER DUTY: VOID SALE WITH PIN PROTECTION (FIXED) =====
 
 async function voidSale(saleId) {
-    if (!await confirm('Void this sale? Stock will be restored.')) return;
+    var allowed = await verifyPosManager();      // ← ADD THIS
+    if (!allowed) return;
+	if (!await confirm('Void this sale? Stock will be restored.')) return;
     try {
         if (supabaseClient) {
             // 1. Fetch the sale to know what items to restore
@@ -5890,7 +5925,6 @@ window.sendWaiterOrderToKitchen = async function() {
 
 	<script>
 /* ☢️ FINAL WEAPON — top of body, nothing can break this */
-alert('☢️ FINAL WEAPON ACTIVE! Buttons are now armed.');
 
 function __shop() {
     try { if (typeof getShopId === 'function') return getShopId(); } catch(e) {}
