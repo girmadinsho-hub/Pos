@@ -579,8 +579,8 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
                 var orderData = {
                     firebase_id: orderId, 
                     shop_id: shopId, 
-                    table_id: tableId,
-                    items: cart.map(i => ({ 
+                    table_id: tableId || ('QR-' + Date.now().toString().slice(-4)),
+									items: cart.map(i => ({ 
                         productId: i.id, name: i.name, qty: i.qty, price: i.price,
                         modifiers: i.modifiers || [], note: i.note || '',
                         station: i.station || defaultStation
@@ -613,8 +613,8 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
                 var retailOrderData = {
                     firebase_id: orderId, 
                     shop_id: shopId, 
-                    table_id: tableId,
-                    items: cart.map(i => ({ 
+                    table_id: tableId || ('QR-' + Date.now().toString().slice(-4)),
+									items: cart.map(i => ({ 
                         productId: i.id, name: i.name, qty: i.qty, price: i.price,
                         modifiers: i.modifiers || [], note: i.note || '',
                         station: i.station || defaultStation
