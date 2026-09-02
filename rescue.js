@@ -3,7 +3,6 @@
    Standalone file. Native dialogs. Zero dependencies.
    Loaded FIRST — before any broken code exists.
    ================================================================ */
-alert('☢️ RESCUE.JS IS LOADED AND ACTIVE');
 // Wait for page, then take over the three functions FOREVER
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(function() {
@@ -150,7 +149,7 @@ function nuclearRescue() {
     window.sendWaiterOrderToKitchen = async function() {
         // 1. Cart check
         var c = (typeof cart !== 'undefined') ? cart : [];
-        if (!c || !c.length) { alert('Cart is empty. Add items first.'); return; }
+        if (!c || !c.length) { showFloatingToast('✅ Sent to Kitchen: ' + table, false); return; }
 
         // 2. Table check (native dialog — ALWAYS visible)
         var tableName = (typeof currentTableName !== 'undefined' && currentTableName) ? currentTableName : '';
@@ -214,4 +213,4 @@ function nuclearRescue() {
     };
 
     console.log('☢️ NUCLEAR RESCUE ACTIVE — all three functions taken over');
-}
+} 
