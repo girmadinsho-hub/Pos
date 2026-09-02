@@ -2962,29 +2962,31 @@ function addToCart(prodId, qty) {
     qty = qty || 1;
     var p = products.find(function(x) { return x.id === prodId; });
     if (!p) return;
-    
+
     var isVirtual = p.isVirtual || false;
-    
-    // 1. SELF-GUIDE: OUT OF STOCK CHECK
-    if (!isVirtual && p.stock <= 0) { 
-        if (navigator.vibrate) navigator.vibrate([100, 50, 100]); // Error vibration
-        showFloatingToast('❌ ' + p.name + ' is Out of Stock!', true);
-        return; 
+
+    // 🛡️ RULE 3: ZERO STOCK = ABSOLUTE BLOCK (non-virtual only)
+    if (!isVirtual && (p.stock === 0 || p.stock === null)) {
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        showFloatingToast('⛔ ' + p.name + ' is OUT OF STOCK! Sale blocked.', true);
+        return;
     }
-    
+
     var existing = cart.find(function(x) { return x.id === prodId; });
     var totalQty = (existing ? existing.qty : 0) + qty;
-    
-    if (!isVirtual && totalQty > p.stock) { 
+
+    // 🛡️ Can't sell more than exists
+    if (!isVirtual && totalQty > p.stock) {
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-        showFloatingToast('❌ Not enough stock for ' + p.name + '!', true);
-        return; 
+        if (p.stock === 1) showFloatingToast('⚠️ Only 1 ' + (p.unit || 'piece') + ' of ' + p.name + ' left!', true);
+        else showFloatingToast('⚠️ Not enough stock! Only ' + p.stock + ' ' + (p.unit || '') + ' of ' + p.name + ' available.', true);
+        return;
     }
-    
+
     var price = posSettings.negotiatePrice && document.getElementById('enableNegotiate').checked
         ? (existing ? existing.price : p.price)
         : getBulkPrice(p, totalQty);
-        
+
     if (existing) {
         existing.qty = totalQty;
         existing.price = price;
@@ -2995,10 +2997,16 @@ function addToCart(prodId, qty) {
             isVirtual: isVirtual, station: p.station || 'Kitchen'
         });
     }
-    
-    // 2. SELF-GUIDE: SUCCESS VIBRATION AND FLOATING TOAST
-    if (navigator.vibrate) navigator.vibrate(50); // Short success vibration
-        var remaining = (!isVirtual && typeof p.stock === 'number') ? ' • ' + (p.stock - totalQty) + ' ' + (p.unit || '') + ' left' : '';
+
+    // 🔔 LOW-STOCK ALARM — sounds when stock crosses the reorder limit
+    var reorder = p.reorderLevel !== undefined ? p.reorderLevel : 5;
+    if (!isVirtual && p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= reorder) {
+        var remaining = p.stock - totalQty;
+        showFloatingToast('⚠️ LOW STOCK: ' + p.name + ' — only ' + p.stock + ' ' + (p.unit || '') + ' left (limit: ' + reorder + ')!', true);
+    }
+
+    if (navigator.vibrate) navigator.vibrate(50);
+    var remaining = (!isVirtual && typeof p.stock === 'number') ? ' • ' + (p.stock - totalQty) + ' ' + (p.unit || '') + ' left' : '';
     showFloatingToast('🛒 ' + p.name + ' ×' + totalQty + ' in cart' + remaining, false);
     updateCart();
 }
@@ -3016,41 +3024,30 @@ function showFloatingToast(message, isError) {
         setTimeout(function() { if(toast.parentNode) toast.parentNode.removeChild(toast); }, 500);
     }, 1500);
 }
-		function updateCartQty(idx, qty) {
+
+function updateCartQty(idx, qty) {
     qty = parseInt(qty) || 0;
-    
-    // 1. If quantity drops to 0 or less, remove the item from the cart
     if (qty <= 0) {
         cart.splice(idx, 1);
     } else {
         var item = cart[idx];
-        
-        // SAFETY NET: If the item doesn't exist in the cart anymore, stop.
-        if (!item) return; 
-        
+        if (!item) return;
         var p = products.find(x => x.id === item.id);
-        
-        // 2. Check if the product is Virtual (On-Demand)
         var isVirtual = p ? (p.isVirtual || false) : false;
-        
-        // 3. Only enforce stock limits if it is NOT Virtual
+
+        // 🛡️ block exceeding stock on the + button too
         if (!isVirtual && p && qty > p.stock) {
-            alert('Not enough stock! Only ' + p.stock + ' available.');
-            return; // Stop the function, don't update the qty
+            showFloatingToast('⚠️ Only ' + p.stock + ' ' + (p.unit || '') + ' of ' + p.name + ' available!', true);
+            return;
         }
-        
-        // 4. Update the quantity
         cart[idx].qty = qty;
-        
-        // 5. Recalculate bulk price if applicable
         if (posSettings.bulkPricing && p) {
             cart[idx].price = getBulkPrice(p, qty);
         }
     }
-    
-    // 6. Re-render the cart
     updateCart();
 }
+	
 		async function editCartPrice(idx){
     var input = await prompt('New unit price:', cart[idx].price);
     if (input === null) return;
@@ -5847,6 +5844,14 @@ window.openWaiterStatus = async function() {
 window.sendWaiterOrderToKitchen = async function() {
     try {
         if (!cart || !cart.length) { showFloatingToast('🛒 Cart is empty!', true); return; }
+			        // 🛡️ Block sending out-of-stock items
+        for (var q = 0; q < c.length; q++) {
+            var pr = products.find(function(x) { return x.id === c[q].id; });
+            if (pr && !pr.isVirtual && (pr.stock || 0) < c[q].qty) {
+                showFloatingToast('⛔ ' + c[q].name + ' — not enough stock (' + (pr.stock || 0) + ' left)!', true);
+                return;
+            }
+        }
 
         // Table check (with PROPER await — the old copy missed this!)
         if (!currentTableName) {
