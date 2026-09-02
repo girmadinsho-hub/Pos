@@ -3423,10 +3423,42 @@ async function completePayment() {
 
     if (typeof filterProducts === 'function') filterProducts();
     isCartLocked = false; 
+	    // ===== PAYMENT SWEEPER: clear paid items from EVERY view =====
+    try {
+        // 1. Clear this table's held order
+        if (currentTableName) {
+            var heldNow = JSON.parse(localStorage.getItem('heldOrders') || '[]');
+            localStorage.setItem('heldOrders', JSON.stringify(heldNow.filter(function(o) { return o.name !== currentTableName; })));
+        }
+        // 2. Reset table assignment
+        currentTableName = '';
+        window._pendingTableOrderIds = null;
+        var ct = document.getElementById('cartTitle');
+        if (ct) ct.innerText = 'CART';
+
+        // 3. Refresh every open list ON THIS DEVICE
+        if (typeof openTablesModal === 'function' && document.getElementById('tablesModal') && document.getElementById('tablesModal').classList.contains('active')) openTablesModal();
+        if (typeof openTableBillsModal === 'function' && document.getElementById('tableBillsModal') && document.getElementById('tableBillsModal').classList.contains('active')) openTableBillsModal();
+        if (typeof openWaiterStatus === 'function' && document.getElementById('waiterStatusModal') && document.getElementById('waiterStatusModal').classList.contains('active')) openWaiterStatus();
+
+        // 4. Broadcast to OTHER devices (Kitchen, Admin) via Supabase realtime channel
+        if (window.sweepChannel) { try { supabaseClient.removeChannel(window.sweepChannel); } catch(e) {} }
+        window.sweepChannel = supabaseClient.channel('payment-sweep-' + getShopId())
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: 'shop_id=eq.' + getShopId() }, function() {
+                // An order changed (e.g. paid) → refresh any open views
+                if (document.getElementById('tablesModal') && document.getElementById('tablesModal').classList.contains('active')) openTablesModal();
+                if (document.getElementById('tableBillsModal') && document.getElementById('tableBillsModal').classList.contains('active')) openTableBillsModal();
+                if (document.getElementById('waiterStatusModal') && document.getElementById('waiterStatusModal').classList.contains('active')) openWaiterStatus();
+            }).subscribe();
+    } catch(e) { console.warn('Sweeper cleanup warning:', e.message); }
     btn.disabled = false;
     btn.textContent = '✅ Complete';
 }
-		
+		// ===== (later in the file, before printReceiptPOS) =====
+window.openTableBillSModalSafe = function() {
+    clearTimeout(window.__tbRefresh);
+    window.__tbRefresh = setTimeout(function() { openTableBillsModal(); }, 150);
+};
 
 				// ===== WORLD-CLASS RECEIPT PRINTER =====
 function printReceiptPOS() {
