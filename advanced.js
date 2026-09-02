@@ -1302,19 +1302,20 @@ async function processStockTake() {
             if (window.lossTable) window.lossTable.setData(lossesCache);
         }
         
+        
         alert('✅ Stock adjusted successfully! ' + adjustments.length + ' items updated.');
         document.getElementById('stockTakeModal').classList.remove('active');
         
         // 3. Refresh UI
         if (typeof filterProductView === 'function') filterProductView();
         if (window.productTable) window.productTable.setData(products);
+        if (window.stockTable) window.stockTable.setData(products);                    // 🆕 stock table too
+        if (typeof renderStockAlertCenter === 'function') renderStockAlertCenter();    // 🆕 refresh alerts
         
     } catch(e) {
         alert('❌ Error adjusting stock: ' + e.message);
     }
 }
-
-
 
 
 
