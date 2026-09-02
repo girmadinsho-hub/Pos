@@ -347,6 +347,9 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
         listenForOrders();
+			        // Safety net: refresh every 30 seconds (catches anything realtime missed)
+        if (window.kitchenAutoRefresh) clearInterval(window.kitchenAutoRefresh);
+        window.kitchenAutoRefresh = setInterval(function() { fetchAndRenderOrders(); }, 30000);
         listenForWaiterCallsKitchen(); 
         
         // ===== SYSTEM LOCK LISTENER (SUPABASE) =====
@@ -425,30 +428,36 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     }
 
     // ===== SUPABASE REALTIME LISTENER (0.01 SECOND UPDATES) =====
-    function listenForOrders() {
+       function listenForOrders() {
         if (!supabaseClient) return;
 
-        // 1. Fetch initial orders on load
+        // 1. Fetch immediately
         fetchAndRenderOrders();
 
-        // 2. Subscribe to real-time changes for the 'orders' table
-        const channel = supabaseClient
-            .channel('public:orders')
+        // 2. Clean any old channel
+        if (window.ordersChannel) { try { supabaseClient.removeChannel(window.ordersChannel); } catch(e) {} }
+
+        // 3. INSTANT realtime — every insert/update/delete re-fetches
+        window.ordersChannel = supabaseClient.channel('kitchen-orders-' + shopId)
             .on('postgres_changes', 
                 { event: '*', schema: 'public', table: 'orders', filter: `shop_id=eq.${shopId}` }, 
-                (payload) => {
-                    // When a new order is added or updated, just re-fetch all active orders
+                function(payload) {
+                    // A new order or a status change or a PAID update → refresh NOW
                     fetchAndRenderOrders();
+                })
+            .subscribe(function(status) {
+                if (status === 'SUBSCRIBED') console.log('⚡ Kitchen realtime CONNECTED');
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.warn('Realtime hiccup — reconnecting...');
+                    setTimeout(function() { listenForOrders(); }, 3000);
                 }
-            )
-            .subscribe();
-        
-        // Keep the timer running every 10 seconds just to update the minute counter on the tickets
-        if (window.kitchenTimerInterval) clearInterval(window.kitchenTimerInterval);
-        window.kitchenTimerInterval = setInterval(renderUI, 10000); 
-    }
+            });
 
-	
+        // 4. Auto-reconnect when internet returns
+        window.addEventListener('online', function() {
+            setTimeout(function() { listenForOrders(); }, 1000);
+        });
+    }
 
     function renderUI() {
         var pending = [], preparing = [], ready = [];
