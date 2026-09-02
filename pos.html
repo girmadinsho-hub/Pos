@@ -4699,8 +4699,9 @@ window.openTableBillsModal = async function() {
                 var st = o.status === 'Ready' ? '✅' : (o.status === 'Preparing' ? '🔵' : '🟡');
                 html += '<div style="font-size:12px;color:#64748b;margin:4px 0;">' + st + ' Round: ' + itemsStr + ' (' + (o.total || 0).toFixed(2) + ' Br)</div>';
             });
-            html += '<button class="btn btn-success btn-sm" style="width:100%;margin-top:8px;" onclick="loadTableBillToCart(\'' + t + '\')">💳 Load & Pay All Rounds</button>';
-            html += '</div>';
+            var loadKey = (t.indexOf('QR-') === 0 || t === 'Takeaway' || t === 'Walk-in QR') ? g.rows[0].id : t;
+            html += '<button class="btn btn-success btn-sm" style="width:100%;margin-top:8px;" onclick="loadTableBillToCart(\'' + loadKey + '\')">💳 Load & Pay</button>';
+      	html += '</div>';
         });
         listDiv.innerHTML = html;
     } catch(e) {
@@ -4709,45 +4710,56 @@ window.openTableBillsModal = async function() {
 };
 
 window.loadTableBillToCart = async function(tableName) {
-    var ok = await confirm('Load ALL unpaid rounds of Table ' + tableName + ' for payment?\nThe current cart will be replaced.');
+    var ok = await confirm('Load ALL unpaid rounds for "' + tableName + '"?\nThe current cart will be replaced.');
     if (!ok) return;
     try {
-        const { data, error } = await supabaseClient.from('orders')
+        var orders = [];
+
+        // Method 1: search by table name
+        var res = await supabaseClient.from('orders')
             .select('*').eq('shop_id', getShopId()).eq('table_id', tableName).neq('status', 'Paid');
-        if (error) throw error;
-        var orders = data || [];
-        if (!orders.length) { alert('No unpaid orders for this table.'); return; }
+        if (res.data) orders = res.data;
+
+        // Method 2: nothing found? — maybe it's a single QR order — search by id
+        if (!orders.length) {
+            var res2 = await supabaseClient.from('orders')
+                .select('*').eq('shop_id', getShopId()).eq('id', tableName).neq('status', 'Paid');
+            if (res2.data) orders = res2.data;
+        }
+
+        if (!orders.length) { alert('No unpaid orders found for "' + tableName + '".'); return; }
 
         cart = [];
-        // Merge all rounds into one cart (same products combine)
         orders.forEach(function(o) {
             (o.items || []).forEach(function(item) {
                 var existing = cart.find(function(c) {
-                    return c.id === item.productId && JSON.stringify(c.modifiers || []) === JSON.stringify(item.modifiers || []) && !c.note && !item.note;
+                    return c.id === item.productId &&
+                           JSON.stringify(c.modifiers || []) === JSON.stringify(item.modifiers || []) &&
+                           !c.note && !item.note;
                 });
                 if (existing) existing.qty += item.qty;
                 else cart.push({
                     id: item.productId || item.id || Date.now().toString(),
                     name: item.name, price: item.price, qty: item.qty,
-                    unit: item.unit || '', stock: 9999, costPrice: item.costPrice || 0,
+                    unit: item.unit || '', stock: 9999, costPrice: 0,
                     isVirtual: false, modifiers: item.modifiers || [], note: item.note || ''
                 });
             });
         });
 
-        currentTableName = tableName;
-        // Remember ALL order ids → they will be marked Paid after payment
+        currentTableName = (orders[0].table_id && orders[0].table_id.indexOf('QR-') !== 0) ? orders[0].table_id : '';
         window._pendingTableOrderIds = orders.map(function(o) { return o.id; });
         isCartLocked = true;
 
         updateCart();
         document.getElementById('tableBillsModal').classList.remove('active');
-        alert('✅ Bill loaded (' + orders.length + ' round' + (orders.length > 1 ? 's' : '') + ')! Process the exact payment.');
+        alert('✅ Bill loaded — ' + orders.length + ' round(s), ' + cart.reduce(function(s,i){return s+i.qty;},0) + ' items! Process the exact payment.');
     } catch(e) {
         alert('❌ Error: ' + e.message);
     }
 };
-		
+
+	
 async function sendWaiterOrderToKitchen() {
     if (!cart.length) { alert('Cart is empty.'); return; }
     
