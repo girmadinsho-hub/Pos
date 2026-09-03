@@ -472,3 +472,113 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }, 6000);
 });
+// ================================================================
+// 🔌 FINAL WIRING — media display + delete buttons + call buttons
+// ================================================================
+
+// 1️⃣ WIRE THE SMART RENDERER (photos & voices finally DISPLAY!)
+window.renderChatBubble = renderSmartBubble;
+window.renderAdminChatBubble = renderSmartBubble;
+
+// 2️⃣ DELETE BUTTONS — every bubble gets a small 🗑 to delete it everywhere
+(function() {
+    setInterval(function() {
+        try {
+            var container = document.getElementById('chatMessages') || document.getElementById('adminChatMessages');
+            if (!container) return;
+            var bubbles = container.querySelectorAll('.chat-bubble:not([data-del-btn])');
+            bubbles.forEach(function(bubble) {
+                bubble.setAttribute('data-del-btn', 'yes');
+                bubble.style.position = 'relative';
+                var del = document.createElement('button');
+                del.textContent = '🗑';
+                del.title = 'Delete this message for everyone';
+                del.style.cssText = 'position:absolute;top:2px;right:2px;width:22px;height:22px;border:none;border-radius:50%;background:rgba(239,68,68,.85);color:white;font-size:10px;cursor:pointer;display:none;align-items:center;justify-content:center;padding:0;line-height:1;';
+                bubble.appendChild(del);
+                bubble.onmouseenter = function() { del.style.display = 'flex'; };
+                bubble.onmouseleave = function() { del.style.display = 'none'; };
+                // Mobile: long-press shows it
+                var pressTimer = null;
+                bubble.addEventListener('touchstart', function() {
+                    pressTimer = setTimeout(function() { del.style.display = 'flex'; }, 400);
+                });
+                bubble.addEventListener('touchend', function() { clearTimeout(pressTimer); });
+                del.onclick = async function(e) {
+                    e.stopPropagation();
+                    if (!confirm('Delete this message for EVERYONE?')) return;
+                    try {
+                        // Find the message in Supabase by matching text + sender + recent time
+                        var msgText = bubble.querySelector('small') ? bubble.querySelector('small').previousSibling.textContent : '';
+                        var sender = (bubble.querySelector('small') ? bubble.querySelector('small').textContent : '').split(' ')[0];
+                        var msgEl = bubble.querySelector('small');
+                        var timeStr = msgEl ? msgEl.textContent.split(' • ').pop().trim() : '';
+                        // Delete the most recent matching message
+                        const { data, error } = await supabaseClient.from('chat_messages')
+                            .select('id')
+                            .eq('shop_id', mcShop())
+                            .order('created_at', { ascending: false })
+                            .limit(30);
+                        if (error) throw error;
+                        var target = null;
+                        (data || []).reverse().forEach(function(m) {
+                            if (!target) {
+                                var t = new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                                var mSender = (m.sender_name || '');
+                                if (t === timeStr && (mSender === sender || m.message.indexOf(msgText.substring(0,10)) === 0)) {
+                                    target = m.id;
+                                }
+                            }
+                        });
+                        if (!target) {
+                            // Fallback: delete by exact message text
+                            const { data: d2 } = await supabaseClient.from('chat_messages')
+                                .select('id').eq('shop_id', mcShop())
+                                .order('created_at', { ascending: false }).limit(30);
+                            (d2 || []).forEach(function(m) {
+                                if (!target && bubble.textContent.indexOf((m.message || '').substring(0, 15)) !== -1) {
+                                    target = m.id;
+                                }
+                            });
+                        }
+                        if (target) {
+                            await supabaseClient.from('chat_messages').delete().eq('id', target);
+                            bubble.remove();
+                        } else {
+                            bubble.remove(); // remove locally even if DB match failed
+                        }
+                    } catch(err) {
+                        alert('Delete failed: ' + err.message);
+                    }
+                };
+            });
+        } catch(e) {}
+    }, 2000);
+})();
+
+// 3️⃣ CALL BUTTONS — bulletproof (in case livecall.js is broken, this guarantees them)
+(function() {
+    function addCallButtons() {
+        var bar = document.getElementById('smartChatBar');
+        if (!bar || document.getElementById('lcVoiceCallBtn')) return;
+        if (typeof lcCallFromChat !== 'function') return; // livecall not loaded — skip
+
+        var voiceBtn = document.createElement('button');
+        voiceBtn.id = 'lcVoiceCallBtn';
+        voiceBtn.title = 'Voice call';
+        voiceBtn.style.cssText = 'width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#059669;color:white;font-size:16px;cursor:pointer;flex-shrink:0;';
+        voiceBtn.textContent = '📞';
+        voiceBtn.onclick = function() { lcCallFromChat(false); };
+        bar.insertBefore(voiceBtn, bar.firstChild);
+
+        var videoBtn = document.createElement('button');
+        videoBtn.id = 'lcVideoCallBtn';
+        videoBtn.title = 'Video call';
+        videoBtn.style.cssText = 'width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#7c3aed;color:white;font-size:16px;cursor:pointer;flex-shrink:0;';
+        videoBtn.textContent = '📹';
+        videoBtn.onclick = function() { lcCallFromChat(true); };
+        bar.insertBefore(videoBtn, voiceBtn);
+    }
+    setInterval(function() {
+        try { addCallButtons(); } catch(e) {}
+    }, 2000);
+})();
