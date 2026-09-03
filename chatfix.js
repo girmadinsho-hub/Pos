@@ -33,9 +33,9 @@ function cfShop() {
 // ================================================================
 function cfRenderAll() {
     var container = document.getElementById('chatMessages') || document.getElementById('adminChatMessages');
-    if (!container || container.getAttribute('data-cf-rendered')) return;
+    if (!container) return;
     container.setAttribute('data-cf-rendered', 'yes');
-
+    setTimeout(function() { container.removeAttribute('data-cf-rendered'); }, 5000);
     var oldBubbles = container.querySelectorAll('.chat-bubble');
     var msgs = [];
     oldBubbles.forEach(function(b) { if (b.parentNode) msgs.push(b); });
@@ -340,3 +340,6 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
 } else {
     document.addEventListener('DOMContentLoaded', function() { setTimeout(cfBoot, 1500); });
 }
+// 🔌 THE MISSING WIRE — all messages now render with media (voice players, photos)
+window.renderChatBubble = cfBubble;
+window.renderAdminChatBubble = cfBubble;
