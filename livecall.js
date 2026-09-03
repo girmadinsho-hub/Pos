@@ -1,330 +1,773 @@
-/* ================================================================
-   📞 LIVE CALLS — WebRTC voice & video, device-to-device
-   Works on normal networks AND VPN/restricted networks (TURN relay).
-   Rides your existing staff identity system.
-   ================================================================ */
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#0f172a">
+    <title>Kitchen Display</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background:#0f172a; color:#e2e8f0; overflow:hidden; }
+        
+        .login-screen { position:fixed; inset:0; background:#0f172a; display:flex; align-items:center; justify-content:center; z-index:9999; }
+        .login-box { background:#1e293b; padding:30px; border-radius:12px; width:90%; max-width:400px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
+        .login-box h1 { color:#fbbf24; margin-bottom:5px; }
+        .login-box p { color:#94a3b8; margin-bottom:20px; font-size:13px; }
+        .login-input { width:100%; padding:14px; margin-bottom:10px; border-radius:8px; border:1px solid #334155; background:#0f172a; color:#fff; font-size:16px; outline:none; box-sizing:border-box; }
+        .login-btn { width:100%; padding:14px; border-radius:8px; border:none; background:#2563eb; color:#fff; font-size:16px; font-weight:bold; cursor:pointer; }
 
-var LC = {
-    pc: null, localStream: null, remoteId: null, remoteName: '',
-    isVideo: false, calling: false, incoming: false,
-    myRole: null, myId: null, myName: null
-};
+        .header { background:#1e293b; padding:15px 20px; display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #334155; position:fixed; top:0; left:0; right:0; z-index:100; }
+        .header h1 { font-size:20px; color:#fbbf24; }
+        .header h2 { font-size:14px; color:#94a3b8; }
+        .logout-btn { background:#ef4444; color:white; border:none; padding:8px 15px; border-radius:8px; font-weight:bold; cursor:pointer; }
+        
+        .station-tabs { display:flex; gap:5px; padding:10px; background:#1e293b; position:sticky; top:60px; z-index:99; border-bottom:1px solid #334155; }
+        .station-tab { flex:1; padding:10px; border:none; background:#334155; color:white; border-radius:6px; cursor:pointer; font-weight:bold; }
+        .station-tab.active { background:#3b82f6; }
 
-function lcIdentity() {
-    if (typeof currentCashier !== 'undefined' && currentCashier) {
-        LC.myId = currentCashier.id; LC.myName = currentCashier.name; LC.myRole = currentCashier.position || 'Cashier';
-    } else if (localStorage.getItem('kitchenChefId')) {
-        LC.myId = localStorage.getItem('kitchenChefId'); LC.myName = localStorage.getItem('kitchenChefName'); LC.myRole = 'Kitchen';
+        .kanban-board { display:flex; gap:15px; padding:80px 15px 15px; overflow-x:auto; height:100vh; }
+        .column { background:#1e293b; border-radius:12px; width:100%; min-width:300px; display:flex; flex-direction:column; }
+        .column-header { padding:15px; border-bottom:1px solid #334155; font-weight:bold; font-size:16px; display:flex; justify-content:space-between; align-items:center; }
+        .pending-color { color:#f59e0b; }
+        .preparing-color { color:#3b82f6; }
+        .ready-color { color:#10b981; }
+        
+        .ticket-list { padding:10px; overflow-y:auto; flex:1; }
+        .ticket { background:#334155; border-radius:10px; padding:15px; margin-bottom:15px; border-left:5px solid #f59e0b; }
+        .ticket.preparing { border-left-color: #3b82f6; }
+        .ticket.ready { border-left-color: #10b981; opacity: 0.7; }
+        
+        .ticket-header { display:flex; justify-content:space-between; margin-bottom:10px; }
+        .ticket-table { font-size:18px; font-weight:bold; color:#fff; }
+        .ticket-time { font-size:12px; color:#94a3b8; }
+        
+        .ticket-items { background:#0f172a; border-radius:8px; padding:10px; margin-bottom:10px; }
+        .item-row { padding:8px 0; border-bottom:1px solid #1e293b; }
+        .item-name { font-size:16px; font-weight:bold; color:#fff; }
+        .item-mod { font-size:13px; color:#fbbf24; margin-top:3px; padding-left:10px; }
+        .item-note { font-size:13px; color:#ef4444; margin-top:3px; padding-left:10px; font-weight:bold; }
+        
+        .ticket-actions { display:flex; gap:8px; }
+        .btn { padding:10px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; flex:1; font-size:14px; text-align:center; }
+        .btn-start { background:#3b82f6; color:white; }
+        .btn-done { background:#10b981; color:white; }
+        .btn-waiting { background:#0f172a; color:#10b981; border:1px solid #10b981; }
+        .empty-text { text-align:center; color:#64748b; margin-top:50px; font-size:14px; }
+
+        /* Time Alarm Colors */
+        .ticket.warning { border-left-color: #f59e0b; background: #422006; }
+        .ticket.danger { border-left-color: #ef4444; background: #450a0a; animation: pulse-red 1s infinite; }
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .ticket-timer { font-size: 14px; font-weight: bold; color: #94a3b8; }
+        .ticket.warning .ticket-timer { color: #f59e0b; }
+        .ticket.danger .ticket-timer { color: #ef4444; }
+
+        .offline-badge { background: #f97316; color: white; padding: 4px 8px; border-radius: 8px; font-size: 10px; font-weight: 600; display: none; }
+   
+
+.intercom-fab { position: fixed; bottom: 80px; right: 20px; background: #2563eb; color: white; border: none; width: 50px; height: 50px; border-radius: 50%; font-size: 24px; cursor: pointer; z-index: 250; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; }
+.intercom-fab:active { transform: scale(0.9); }
+.chat-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300; align-items: flex-end; justify-content: center; }
+.chat-modal.active { display: flex; }
+.chat-content { background: #f8fafc; width: 100%; max-width: 500px; height: 80vh; border-radius: 20px 20px 0 0; display: flex; flex-direction: column; }
+.chat-header { background: #1e293b; color: white; padding: 15px 20px; border-radius: 20px 20px 0 0; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+.chat-bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+.chat-bubble.sent { background: #2563eb; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+.chat-bubble.received { background: #fff; color: #1e293b; align-self: flex-start; border-bottom-left-radius: 2px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.chat-bubble small { display: block; font-size: 10px; opacity: 0.8; margin-top: 4px; font-weight: bold; }
+.chat-input-area { padding: 10px; border-top: 1px solid #e2e8f0; display: flex; gap: 8px; background: #fff; }
+.chat-input { flex: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 14px; outline: none; }
+.chat-send-btn { background: #2563eb; color: white; border: none; padding: 0 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+			
+		
+		</style>
+</head>
+	
+<body>
+
+<!-- Login Screen -->
+<div class="login-screen" id="loginScreen">
+    <div class="login-box">
+        <h1>👨‍🍳 Kitchen Display</h1>
+        <p>Enter Shop ID and Chef PIN to login</p>
+        
+        <div id="manualShopEntry" style="display:none; margin-top:15px;">
+            <input type="text" class="login-input" id="loginShopId" placeholder="Enter Shop ID">
+            <button class="login-btn" onclick="manualLinkKitchen()" style="margin-bottom:10px;">Connect Device</button>
+        </div>
+        <p onclick="document.getElementById('manualShopEntry').style.display='block'; this.style.display='none';" style="font-size:12px; color:#94a3b8; margin-top:15px; cursor:pointer; text-decoration:underline;">Having trouble scanning? Enter ID manually.</p>
+
+        <select class="login-input" id="loginChefName" style="display:none;" onchange="document.getElementById('loginPin').style.display='block'"></select>
+        <input type="password" class="login-input" id="loginPin" placeholder="4-digit PIN" maxlength="4" style="display:none;">
+        <button class="login-btn" onclick="kitchenLogin()">🔓 Login</button>
+    </div>
+</div>
+
+<!-- Main App -->
+<div id="mainApp" style="display:none;">
+    <div class="header">
+        <div>
+            <h1>👨‍🍳 Kitchen Display</h1>
+            <h2 id="shopHeader">Loading...</h2>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+            <span id="offlineBadge" class="offline-badge">OFFLINE</span>
+            <button class="logout-btn" onclick="kitchenLogout()">🚪 Logout</button>
+        </div>
+
+			
+<!-- Live Intercom Button -->
+<button class="intercom-fab" onclick="toggleChat()">💬</button>
+
+<!-- Chat Modal -->
+<div class="chat-modal" id="chatModal">
+    <div class="chat-content">
+        <div class="chat-header">
+            <span>💬 Kitchen Intercom</span>
+            <button onclick="toggleChat()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">✖</button>
+        </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        
+        <div class="chat-input-area" style="flex-direction: column; gap: 8px; align-items: stretch;">
+            <select id="chatRecipient" class="form-select" style="padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; width: 100%;">
+                <option value="All">📢 Everyone</option>
+                <option value="Cashier">💻 Cashier Only</option>
+                <option value="Admin">👔 Admin Only</option>
+            </select>
+            <div style="display: flex; gap: 8px;">
+                <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." onkeypress="if(event.key==='Enter') sendChatMessage()">
+                <button class="chat-send-btn" onclick="sendChatMessage()">➤</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+			
+			
+    </div>
+
+    <div class="station-tabs">
+        <button class="station-tab active" onclick="filterStation('All', this)">All Stations</button>
+        <button class="station-tab" onclick="filterStation('Kitchen', this)">🍳 Kitchen</button>
+        <button class="station-tab" onclick="filterStation('Bar', this)">🍹 Bar</button>
+        <button class="station-tab" onclick="filterStation('Coffee', this)">☕ Coffee</button>
+    </div>
+
+    <div class="kanban-board">
+        <div class="column">
+            <div class="column-header pending-color">🔴 New Orders <span id="pendingCount">0</span></div>
+            <div class="ticket-list" id="pendingList"></div>
+        </div>
+        <div class="column">
+            <div class="column-header preparing-color">🔵 Preparing <span id="preparingCount">0</span></div>
+            <div class="ticket-list" id="preparingList"></div>
+        </div>
+        <div class="column"> 
+            <div class="column-header ready-color">🟢 Ready <span id="readyCount">0</span></div>
+            <div class="ticket-list" id="readyList"></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+	<script src="livecall.js"></script>
+<script src="modernchat.js"></script>
+<!-- ADD THIS LINE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+	
+<script>
+   
+
+    // ===== SUPABASE INITIALIZATION =====
+    const SUPABASE_URL = "https://mtwcdvmdoxzcejzgypdw.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8";
+    let supabaseClient = null;
+    if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log("✅ Supabase Connected in Kitchen!");
+    }
+	
+
+    let shopId = localStorage.getItem('kitchenShopId') || localStorage.getItem('shopId') || '';
+    let chefList = [];
+    let activeStation = 'All';
+
+    var urlShop = new URLSearchParams(window.location.search).get('shop');
+    if (urlShop) {
+        localStorage.setItem('kitchenShopId', urlShop);
+        shopId = urlShop;
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+  // ===== SUPABASE ANONYMOUS AUTH =====
+supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session) {
+        if (localStorage.getItem('kitchenChefId')) {
+            showMainApp();
+        } else {
+            if (shopId && shopId !== 'default') {
+                loadChefList();
+            }
+        }
     } else {
-        LC.myId = 'admin'; LC.myName = 'Admin'; LC.myRole = 'Admin';
+        // No session, sign in anonymously
+        supabaseClient.auth.signInAnonymously().catch(e => console.error(e));
     }
-    return LC.myId;
-}
+});
 
-function lcShop() {
-    try { if (typeof getShopId === 'function') return getShopId(); } catch(e) {}
-    if (typeof shopId !== 'undefined' && shopId) return shopId;
-    return localStorage.getItem('shopId') || 'default';
-}
+	
+    function manualLinkKitchen() {
+        var id = document.getElementById('loginShopId').value.trim();
+        if (!id) { alert('Please enter Shop ID'); return; }
+        localStorage.setItem('kitchenShopId', id);
+        shopId = id;
+        loadChefList();
+    }
 
-// ===== 1. START A CALL =====
-async function lcCall(toId, toName, video) {
-    if (LC.calling || LC.incoming) { alert('Already in a call!'); return; }
-    lcIdentity();
-    LC.remoteId = toId; LC.remoteName = toName || 'Staff'; LC.isVideo = video; LC.calling = true;
+        async function loadChefList() {
+        shopId = localStorage.getItem('kitchenShopId') || localStorage.getItem('shopId') || '';
+        if (!shopId) { alert("Device not linked."); return; }
+        try {
+            // FETCH CHEFS FROM SUPABASE
+            const { data, error } = await supabaseClient.from('employees').select('*').eq('shop_id', shopId);
+            if (error) throw error;
+            
+            chefList = [];
+            data.forEach(function(emp) {
+                if (emp.status === 'active' && (emp.position === 'Chef' || emp.position === 'Manager' || emp.position === 'Owner')) {
+                    chefList.push({
+                        id: emp.firebase_id || emp.id, 
+                        name: emp.name,
+                        position: emp.position,
+                        status: emp.status,
+                        hashedPassword: emp.hashed_password, // FIX: Map snake_case to camelCase
+                        password: emp.password
+                    });
+								
+								}
+            });
+            
+            var sel = document.getElementById('loginChefName');
+            if (chefList.length === 0) {
+                sel.innerHTML = '<option value="">No Chefs found</option>';
+            } else {
+                sel.innerHTML = '<option value="">-- Select Chef --</option>';
+                chefList.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+            }
+            sel.style.display = 'block'; 
+            document.getElementById('loginPin').style.display = 'block';
+        } catch(e) { 
+            console.error("Error:", e); 
+            alert("Error loading chefs: " + e.message);
+        }
+    }
 
-    try {
-        LC.localStream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-            video: video ? { facingMode: 'user', width: 320 } : false
+    async function kitchenLogin() {
+        var chefId = document.getElementById('loginChefName').value;
+        var pin = document.getElementById('loginPin').value.trim();
+        if (!chefId || !pin) { alert('Please select name and enter PIN'); return; }
+
+        var chef = chefList.find(c => c.id === chefId);
+        if (!chef) { alert('Chef not found!'); return; }
+
+        var valid = false;
+        if (chef.hashedPassword) {
+            if (typeof sha256 !== 'undefined' && sha256(pin) === chef.hashedPassword) valid = true;
+        } else if (chef.password && pin === chef.password) {
+            valid = true;
+        }
+        if (!valid) { alert('❌ Wrong PIN!'); return; }
+
+               localStorage.setItem('kitchenShopId', shopId);
+        localStorage.setItem('kitchenChefId', chefId);
+        localStorage.setItem('kitchenChefName', chef.name);
+        showMainApp();
+    }
+
+        function kitchenLogout() {
+        // 1. Sign out of Supabase Auth
+        if (supabaseClient) {
+            supabaseClient.auth.signOut().then(() => {
+                // 2. Clear local storage and reload after signout completes
+                localStorage.removeItem('kitchenChefId');
+                location.reload();
+            });
+        } else {
+            localStorage.removeItem('kitchenChefId');
+            location.reload();
+        }
+    }
+
+      var kitchenCallListener = null;
+    async function fetchPendingWaiterCalls() {
+        if (!supabaseClient) return;
+        const { data, error } = await supabaseClient
+            .from('service_calls')
+            .select('*')
+            .eq('shop_id', shopId)
+            .eq('status', 'pending');
+            
+        if (data && data.length > 0) {
+            data.forEach(call => {
+                alert('🔔 TABLE ' + (call.table_id || 'Unknown') + ' IS CALLING FOR A WAITER!');
+                supabaseClient.from('service_calls').delete().eq('id', call.id).then(()=>{});
+            });
+        }
+    }
+
+    function listenForWaiterCallsKitchen() {
+        if (!supabaseClient) return;
+        if (kitchenCallListener) supabaseClient.removeChannel(kitchenCallListener); 
+        
+        // 1. Check for any calls that happened while offline
+        fetchPendingWaiterCalls();
+
+        // 2. Listen for new calls in realtime
+        kitchenCallListener = supabaseClient.channel('public:service_calls')
+            .on('postgres_changes', 
+                { event: 'INSERT', schema: 'public', table: 'service_calls', filter: `shop_id=eq.${shopId}` }, 
+                (payload) => {
+                    var call = payload.new;
+                    if (call.status === 'pending') {
+                        alert('🔔 TABLE ' + (call.table_id || 'Unknown') + ' IS CALLING FOR A WAITER!');
+                        // Delete the call so it doesn't pop up again
+                        supabaseClient.from('service_calls').delete().eq('id', call.id).then(()=>{});
+                    }
+                }
+            ).subscribe();
+    }
+
+    function showMainApp() {
+        shopId = localStorage.getItem('kitchenShopId');
+        document.getElementById('shopHeader').innerText = "Shop: " + shopId;
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        listenForOrders();
+			        // Safety net: refresh every 30 seconds (catches anything realtime missed)
+        if (window.kitchenAutoRefresh) clearInterval(window.kitchenAutoRefresh);
+        window.kitchenAutoRefresh = setInterval(function() { fetchAndRenderOrders(); }, 30000);
+        listenForWaiterCallsKitchen(); 
+        
+        // ===== SYSTEM LOCK LISTENER (SUPABASE) =====
+        if (window.kitchenLockInterval) clearInterval(window.kitchenLockInterval);
+        window.kitchenLockInterval = setInterval(async function() {
+            if (!supabaseClient) return;
+            try {
+                const { data, error } = await supabaseClient.from('settings').select('system_locked').eq('shop_id', shopId).single();
+                if (error) {
+                    console.error("Lock check error:", error.message);
+                    return;
+                }
+                if (data && data.system_locked === true) {
+                    var lockScreen = document.getElementById('masterLockScreen');
+                    if (!lockScreen) {
+                        lockScreen = document.createElement('div');
+                        lockScreen.id = 'masterLockScreen';
+                        lockScreen.style.cssText = 'position:fixed; inset:0; background:rgba(220, 38, 38, 0.95); color:white; z-index:99999; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;';
+                        lockScreen.innerHTML = '<h1 style="font-size:40px; margin-bottom:10px;">🔒 SYSTEM LOCKED</h1><p style="font-size:16px; max-width:300px;">The Admin has locked the system.</p>';
+                        document.body.appendChild(lockScreen);
+                    }
+                    lockScreen.style.display = 'flex';
+                } else {
+                    var lockScreen = document.getElementById('masterLockScreen');
+                    if (lockScreen) lockScreen.style.display = 'none';
+                }
+            } catch(e) { console.error("Lock check failed:", e); }
+        }, 15000); // Check every 15 seconds
+    }
+
+    var latestOrders = [];
+
+	
+    var latestOrders = [];
+
+    function filterStation(station, el) {
+        activeStation = station;
+        var btns = document.querySelectorAll('.station-tab');
+        btns.forEach(function(b) { b.classList.remove('active'); });
+        el.classList.add('active');
+        renderUI();
+    }
+
+       // ===== FETCH ORDERS (HELPER FUNCTION) =====
+    async function fetchAndRenderOrders() {
+        if (!supabaseClient) return;
+        try {
+            const { data, error } = await supabaseClient
+                .from('orders')
+                .select('*')
+                .eq('shop_id', shopId)
+                .neq('status', 'Paid');
+                
+            if (error) throw error;
+            
+            latestOrders = data.map(function(order) {
+                return {
+                    id: order.firebase_id || order.id,
+                    shopId: order.shop_id,
+                    tableId: order.table_id,
+                    items: order.items,
+                    stationStatus: order.station_status,
+                    total: order.total,
+                    status: order.status,
+                    orderType: order.order_type,
+                    waiterName: order.waiter_name,
+                    time: order.time
+                };
+            });
+					            // Hide supermarket Scan & Go orders — they don't belong in the kitchen
+            latestOrders = latestOrders.filter(function(o) { return o.orderType !== 'Scan & Go'; });
+            renderUI();
+        } catch(e) {
+            console.error("Error fetching orders:", e);
+        }
+    }
+
+    // ===== SUPABASE REALTIME LISTENER (0.01 SECOND UPDATES) =====
+       function listenForOrders() {
+        if (!supabaseClient) return;
+
+        // 1. Fetch immediately
+        fetchAndRenderOrders();
+
+        // 2. Clean any old channel
+        if (window.ordersChannel) { try { supabaseClient.removeChannel(window.ordersChannel); } catch(e) {} }
+
+        // 3. INSTANT realtime — every insert/update/delete re-fetches
+        window.ordersChannel = supabaseClient.channel('kitchen-orders-' + shopId)
+            .on('postgres_changes', 
+                { event: '*', schema: 'public', table: 'orders', filter: `shop_id=eq.${shopId}` }, 
+                function(payload) {
+                    // A new order or a status change or a PAID update → refresh NOW
+                    fetchAndRenderOrders();
+                })
+            .subscribe(function(status) {
+                if (status === 'SUBSCRIBED') console.log('⚡ Kitchen realtime CONNECTED');
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                    console.warn('Realtime hiccup — reconnecting...');
+                    setTimeout(function() { listenForOrders(); }, 3000);
+                }
+            });
+
+        // 4. Auto-reconnect when internet returns
+        window.addEventListener('online', function() {
+            setTimeout(function() { listenForOrders(); }, 1000);
         });
-    } catch(e) {
-        LC.calling = false;
-        alert('🎤 Microphone' + (video ? '/camera' : '') + ' blocked! Allow access in browser settings.');
-        return;
     }
 
-    lcShowCallUI('calling', '📞 Calling ' + LC.remoteName + '...', video);
-    await lcSignal(toId, 'ring', { video: video, fromName: LC.myName, fromRole: LC.myRole });
-    await lcStartPeer(toId, true);
+    function renderUI() {
+        var pending = [], preparing = [], ready = [];
+        
+        latestOrders.forEach(order => {
+            var hasItemsForStation = (order.items || []).some(function(item) {
+                return (item.station || 'Kitchen') === activeStation;
+            });
+            
+            if (activeStation !== 'All' && !hasItemsForStation) return;
+
+            var isStationReady = order.stationStatus && order.stationStatus[activeStation];
+            var allReady = true;
+            if (order.stationStatus) {
+                for (var st in order.stationStatus) {
+                    if (order.stationStatus[st] === false) allReady = false;
+                }
+            } else {
+                allReady = order.status === 'Ready';
+            }
+            
+            if (activeStation === 'All') {
+                if (allReady) ready.push(order);
+                else if (order.status === 'Preparing') preparing.push(order);
+                else pending.push(order);
+            } else {
+                if (isStationReady) ready.push(order); 
+                else if (order.status === 'Preparing') preparing.push(order);
+                else pending.push(order);
+            }
+        });
+
+        renderColumn('pendingList', pending, 'Pending');
+        renderColumn('preparingList', preparing, 'Preparing');
+        renderColumn('readyList', ready, 'Ready');
+        document.getElementById('pendingCount').innerText = pending.length;
+        document.getElementById('preparingCount').innerText = preparing.length;
+        document.getElementById('readyCount').innerText = ready.length;
+    }
+
+    function renderColumn(elementId, orders, status) {
+        var html = '';
+        if (orders.length === 0) {
+            html = '<div class="empty-text">No orders</div>';
+        } else {
+            orders.forEach(order => {
+                var timeStr = new Date(order.time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                var itemsHtml = '';
+                
+                (order.items || []).forEach(item => {
+                    if (activeStation !== 'All' && (item.station || 'Kitchen') !== activeStation) return;
+                    
+                    var modsHtml = (item.modifiers && item.modifiers.length > 0) ? '<div class="item-mod">➕ ' + item.modifiers.join(', ') + '</div>' : '';
+                    var noteHtml = item.note ? '<div class="item-note">📝 ' + item.note + '</div>' : '';
+                    itemsHtml += '<div class="item-row"><div class="item-name">' + item.qty + 'x ' + item.name + '</div>' + modsHtml + noteHtml + '</div>';
+                });
+                
+                if (itemsHtml === '') return;
+
+                var minutesElapsed = Math.floor((Date.now() - new Date(order.time).getTime()) / 60000);
+                var timerStr = minutesElapsed + 'm';
+                var alarmClass = '';
+                if (status === 'Pending' || status === 'Preparing') {
+                    if (minutesElapsed >= 15) alarmClass = 'danger';
+                    else if (minutesElapsed >= 10) alarmClass = 'warning';
+                }
+
+                var actionsHtml = '';
+                if (status === 'Pending') {
+                    actionsHtml = '<button class="btn btn-start" onclick="updateStatus(\'' + order.id + '\', \'Preparing\')">▶ Start</button>';
+                } else if (status === 'Preparing') {
+                    actionsHtml = '<button class="btn btn-done" onclick="updateStatus(\'' + order.id + '\', \'Ready\')">✅ Mark Ready</button>';
+                } else if (status === 'Ready') {
+                  actionsHtml = '<button class="btn" style="background:#0f172a; color:#10b981; border:1px solid #10b981;" onclick="undoReady(\'' + order.id + '\')">↩️ Undo Ready</button>';
+								}
+                
+                html += '<div class="ticket ' + status.toLowerCase() + ' ' + alarmClass + '"><div class="ticket-header"><div class="ticket-table">🪑 ' + (order.tableId || 'Takeaway') + '</div><div class="ticket-time">' + timeStr + ' <span class="ticket-timer">(' + timerStr + ')</span></div></div><div class="ticket-items">' + itemsHtml + '</div><div class="ticket-actions">' + actionsHtml + '</div></div>';
+            });
+            if (html === '') html = '<div class="empty-text">No orders for this station</div>';
+        }
+        document.getElementById(elementId).innerHTML = html;
+    }
+
+	async function updateStatus(orderId, newStatus) {
+    try { 
+        var updateData = {};
+        if (newStatus === 'Preparing') {
+            updateData.status = 'Preparing';
+        } else if (newStatus === 'Ready') {
+            const { data: currentOrder } = await supabaseClient.from('orders')
+                .select('station_status').eq('firebase_id', orderId).maybeSingle();
+            var stStatus = (currentOrder && currentOrder.station_status) ? currentOrder.station_status : {};
+            if (!currentOrder) {
+                var local = latestOrders.find(o => o.id === orderId);
+                if (local && local.stationStatus) stStatus = JSON.parse(JSON.stringify(local.stationStatus));
+            }
+            stStatus[activeStation === 'All' ? 'Kitchen' : activeStation] = true;
+            updateData.station_status = stStatus;
+            
+            // If EVERY station is done → whole order is Ready (fixes floor map & waiter screen)
+            var allDone = true;
+            for (var st in stStatus) { if (stStatus[st] === false) allDone = false; }
+            if (allDone && Object.keys(stStatus).length > 0) updateData.status = 'Ready';
+        }
+        
+        const { error } = await supabaseClient.from('orders').update(updateData).eq('firebase_id', orderId);
+        if (error) throw error;
+        
+        var localOrder = latestOrders.find(o => o.id === orderId);
+        if (localOrder) {
+            if (updateData.status) localOrder.status = updateData.status;
+            if (updateData.station_status) localOrder.stationStatus = updateData.station_status;
+            renderUI();
+        }
+    } catch(e) { 
+        alert("Error: " + e.message); 
+    }
 }
 
-// ===== 2. WebRTC connection (global-ready) =====
-async function lcStartPeer(peerId, makeOffer) {
-    lcCleanup(false);
-    LC.pc = new RTCPeerConnection({
-        iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
-        ],
-        iceCandidatePoolSize: 4
+// UNDO READY — properly resets this station's flag
+
+    async function undoReady(orderId) {
+        // 🔐 SECURITY GATE — requires Manager/Admin verification
+        var allowed = await verifyKitchenManager();
+        if (!allowed) return;
+
+        try {
+            const { data: currentOrder } = await supabaseClient.from('orders')
+                .select('station_status').eq('firebase_id', orderId).maybeSingle();
+            var stStatus = (currentOrder && currentOrder.station_status) ? currentOrder.station_status : {};
+            if (activeStation !== 'All') stStatus[activeStation] = false;
+            else { for (var st in stStatus) stStatus[st] = false; }
+            var updateData = { status: 'Preparing', station_status: stStatus };
+            const { error } = await supabaseClient.from('orders').update(updateData).eq('firebase_id', orderId);
+            if (error) throw error;
+            var localOrder = latestOrders.find(o => o.id === orderId);
+            if (localOrder) { localOrder.status = 'Preparing'; localOrder.stationStatus = stStatus; renderUI(); }
+        } catch(e) { alert("Error: " + e.message); }
+    }
+
+    // ===== 🔐 MANAGER VERIFICATION (password dialog) =====
+    async function verifyKitchenManager() {
+        var pass = prompt('🔐 UNDO REQUIRES AUTHORIZATION\n\nEnter Manager/Owner PIN or Admin password:');
+        if (!pass) return false;
+
+        // Method 1: check Manager/Owner PIN in employees table
+        try {
+            const { data: staff } = await supabaseClient.from('employees')
+                .select('hashed_password, position').eq('shop_id', shopId)
+                .in('position', ['Manager', 'Owner']);
+            for (var i = 0; i < (staff || []).length; i++) {
+                if (staff[i].hashed_password && sha256(pass) === staff[i].hashed_password) {
+                    return true; // ✅ Manager verified
+                }
+            }
+        } catch(e) { console.warn('Staff check failed:', e.message); }
+
+        // Method 2: check the Admin (Supabase Auth) password
+        try {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            if (user && user.email) {
+                const { error } = await supabaseClient.auth.signInWithPassword({ email: user.email, password: pass });
+                if (!error) return true; // ✅ Admin verified
+            }
+        } catch(e) { console.warn('Admin check failed:', e.message); }
+
+        alert('❌ Wrong password. Undo cancelled.');
+        return false;
+    }
+    // ===== OFFLINE INDICATOR =====
+    window.addEventListener('online', () => { 
+        var b = document.getElementById('offlineBadge'); 
+        if(b) b.style.display = 'none'; 
+    });
+    window.addEventListener('offline', () => { 
+        var b = document.getElementById('offlineBadge'); 
+        if(b) b.style.display = 'inline-block'; 
     });
 
-    if (LC.localStream) {
-        LC.localStream.getTracks().forEach(function(t) { LC.pc.addTrack(t, LC.localStream); });
-    }
 
-    LC.pc.ontrack = function(event) {
-        var stream = event.streams[0];
-        var remoteEl = document.getElementById('lcRemoteAudio');
-        var remoteVid = document.getElementById('lcRemoteVideo');
-        if (remoteEl) { remoteEl.srcObject = stream; remoteEl.play().catch(function(){}); }
-        if (LC.isVideo && remoteVid) { remoteVid.srcObject = stream; remoteVid.play().catch(function(){}); }
-        if (LC.calling) { LC.calling = false; lcShowCallUI('active', '🟢 ' + LC.remoteName, LC.isVideo); }
-    };
+// ===== LIVE INTERCOM LOGIC (KITCHEN) =====
+let chatSubscription = null;
 
-    LC.pc.onconnectionstatechange = function() {
-        if (LC.pc.connectionState === 'connected') {
-            LC.calling = false;
-            lcShowCallUI('active', '🟢 ' + LC.remoteName, LC.isVideo);
-        }
-        if (LC.pc.connectionState === 'failed' || LC.pc.connectionState === 'disconnected') {
-            lcEndCall(false);
-        }
-    };
-
-    LC.pc.onicecandidate = function(event) {
-        if (event.candidate) lcSignal(peerId, 'ice', { candidate: event.candidate });
-    };
-
-    if (makeOffer) {
-        var offer = await LC.pc.createOffer();
-        await LC.pc.setLocalDescription(offer);
-        await lcSignal(peerId, 'offer', { sdp: LC.pc.localDescription });
-    }
+function toggleChat() {
+    var modal = document.getElementById('chatModal');
+    if (modal.classList.contains('active')) { modal.classList.remove('active'); }
+    else { modal.classList.add('active'); initChat(); }
 }
 
-// ===== 3. Signaling through Supabase =====
-async function lcSignal(toId, type, payload) {
-    try {
-        await supabaseClient.from('call_signals').insert([{
-            shop_id: lcShop(),
-            from_id: LC.myId, from_name: LC.myName, from_role: LC.myRole,
-            to_id: toId, type: type, data: payload,
-            created_at: new Date().toISOString()
-        }]);
-    } catch(e) { console.warn('lcSignal failed:', e.message); }
-}
-
-// ===== 4. LISTEN for incoming calls =====
-function lcListen() {
-    lcIdentity();
-    if (window.lcChannel) return;
-    window.lcChannel = supabaseClient.channel('calls-' + lcShop())
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_signals', filter: `shop_id=eq.${lcShop()}` },
-            function(payload) {
-                var sig = payload.new;
-                var forMe = (sig.to_id === LC.myId) ||
-                            (sig.to_id === LC.myRole) ||
-                            (sig.to_id === 'All' && sig.from_id !== LC.myId);
-                if (!forMe) return;
-
-                switch (sig.type) {
-                    case 'ring':    lcIncomingRing(sig); break;
-                    case 'offer':   lcHandleOffer(sig); break;
-                    case 'answer':  lcHandleAnswer(sig); break;
-                    case 'ice':     lcHandleIce(sig); break;
-                    case 'decline': lcCallDeclined(); break;
-                    case 'hangup':  lcEndCall(false); break;
-                }
-            }).subscribe();
-}
-
-// ===== 5. INCOMING CALL UI =====
-async function lcIncomingRing(sig) {
-    if (LC.calling || LC.incoming) return;
-    LC.incoming = true;
-    LC.remoteId = sig.from_id;
-    LC.remoteName = sig.from_name;
-    LC.isVideo = (sig.data && sig.data.video) || false;
-
-    try { if (typeof playAlert === 'function') playAlert(); } catch(e) {}
-    try { if (navigator.vibrate) navigator.vibrate([300,150,300,150,300]); } catch(e) {}
-
-    var ui = document.createElement('div');
-    ui.id = 'lcIncomingUI';
-    ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.95);z-index:99998;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
-    ui.innerHTML =
-        '<div style="font-size:60px;margin-bottom:10px;animation:lcPulse 1s infinite;">' + (LC.isVideo ? '📹' : '📞') + '</div>' +
-        '<h2 style="margin-bottom:5px;">' + LC.remoteName + ' is calling...</h2>' +
-        '<p style="color:#94a3b8;margin-bottom:30px;">' + (LC.isVideo ? 'Video call' : 'Voice call') + '</p>' +
-        '<div style="display:flex;gap:20px;">' +
-        '<button id="lcAcceptBtn" style="width:70px;height:70px;border-radius:50%;border:none;background:#10b981;color:white;font-size:30px;cursor:pointer;">✅</button>' +
-        '<button id="lcDeclineBtn" style="width:70px;height:70px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:30px;cursor:pointer;">❌</button>' +
-        '</div>' +
-        '<style>@keyframes lcPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}</style>';
-    document.body.appendChild(ui);
-
-    document.getElementById('lcAcceptBtn').onclick = async function() {
-        ui.remove();
-        await lcAcceptCall();
-    };
-    document.getElementById('lcDeclineBtn').onclick = function() {
-        ui.remove();
-        LC.incoming = false;
-        lcSignal(LC.remoteId, 'decline', {});
-        if (typeof showFloatingToast === 'function') showFloatingToast('📵 Call declined', true);
-    };
-
-    setTimeout(function() {
-        if (LC.incoming && document.getElementById('lcIncomingUI')) {
-            document.getElementById('lcIncomingUI').remove();
-            LC.incoming = false;
-        }
-    }, 30000);
-}
-
-async function lcAcceptCall() {
-    try {
-        LC.localStream = await navigator.mediaDevices.getUserMedia({
-            audio: true, video: LC.isVideo
-        });
-    } catch(e) {
-        alert('🎤 Mic blocked — cannot answer!');
-        lcSignal(LC.remoteId, 'decline', {});
-        LC.incoming = false; return;
-    }
-    LC.incoming = false;
-    lcShowCallUI('active', '🟢 ' + LC.remoteName, LC.isVideo);
-    await lcStartPeer(LC.remoteId, false);
-}
-
-// ===== 6. WebRTC handshake handlers =====
-async function lcHandleOffer(sig) {
-    if (!LC.pc) await lcStartPeer(sig.from_id, false);
-    try {
-        await LC.pc.setRemoteDescription(new RTCSessionDescription(sig.data.sdp));
-        var answer = await LC.pc.createAnswer();
-        await LC.pc.setLocalDescription(answer);
-        await lcSignal(sig.from_id, 'answer', { sdp: LC.pc.localDescription });
-    } catch(e) { console.warn('Offer handling failed:', e.message); }
-}
-
-async function lcHandleAnswer(sig) {
-    try {
-        if (LC.pc && LC.pc.signalingState !== 'stable') {
-            await LC.pc.setRemoteDescription(new RTCSessionDescription(sig.data.sdp));
-        }
-    } catch(e) { console.warn('Answer handling failed:', e.message); }
-}
-
-async function lcHandleIce(sig) {
-    try { if (LC.pc) await LC.pc.addIceCandidate(sig.data.candidate); } catch(e) {}
-}
-
-function lcCallDeclined() {
-    lcCleanup(true);
-    if (typeof showFloatingToast === 'function') showFloatingToast('📵 ' + (LC.remoteName || 'They') + ' declined the call', true);
-    else alert('📵 Call declined');
-    LC.calling = false;
-}
-
-// ===== 7. ACTIVE CALL UI =====
-function lcShowCallUI(state, title, video) {
-    var existing = document.getElementById('lcCallUI');
-    if (existing) existing.remove();
-
-    var ui = document.createElement('div');
-    ui.id = 'lcCallUI';
-    ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.97);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
-
-    ui.innerHTML =
-        '<video id="lcRemoteVideo" autoplay playsinline style="' + (video ? 'width:90%;max-width:400px;border-radius:16px;background:#000;' : 'display:none;') + '"></video>' +
-        '<audio id="lcRemoteAudio" autoplay style="display:none;"></audio>' +
-        '<h2 style="margin:15px 0 5px;">' + title + '</h2>' +
-        (state === 'calling' ? '<p style="color:#94a3b8;">Ring... ring...</p>' : '') +
-        '<div style="display:flex;gap:16px;margin-top:25px;">' +
-        (state === 'active' ?
-            '<button id="lcMuteBtn" style="width:60px;height:60px;border-radius:50%;border:none;background:#64748b;color:white;font-size:24px;cursor:pointer;">🎙️</button>' +
-            (video ? '<button id="lcCamBtn" style="width:60px;height:60px;border-radius:50%;border:none;background:#64748b;color:white;font-size:24px;cursor:pointer;">📷</button>' : '') : '') +
-        '<button id="lcEndBtn" style="width:70px;height:70px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:28px;cursor:pointer;">📵</button>' +
-        '</div>' +
-        '<video id="lcLocalVideo" autoplay playsinline muted style="' + (video ? 'position:absolute;top:15px;right:15px;width:100px;border-radius:10px;border:2px solid rgba(255,255,255,.3);' : 'display:none;') + '"></video>';
-
-    document.body.appendChild(ui);
-
-    if (video && LC.localStream) {
-        var lv = document.getElementById('lcLocalVideo');
-        if (lv) lv.srcObject = LC.localStream;
-    }
-
-    document.getElementById('lcEndBtn').onclick = function() { lcEndCall(true); };
-    var muteBtn = document.getElementById('lcMuteBtn');
-    if (muteBtn) muteBtn.onclick = function() {
-        var track = LC.localStream.getAudioTracks()[0];
-        if (track) { track.enabled = !track.enabled; muteBtn.textContent = track.enabled ? '🎙️' : '🔇'; }
-    };
-    var camBtn = document.getElementById('lcCamBtn');
-    if (camBtn) camBtn.onclick = function() {
-        var track = LC.localStream.getVideoTracks()[0];
-        if (track) track.enabled = !track.enabled;
-    };
-}
-
-// ===== 8. END & CLEANUP =====
-function lcEndCall(notify) {
-    if (notify && LC.remoteId) lcSignal(LC.remoteId, 'hangup', {});
-    lcCleanup(true);
-    LC.calling = false; LC.incoming = false; LC.remoteId = null;
-}
-
-function lcCleanup(removeUI) {
-    if (LC.pc) { try { LC.pc.close(); } catch(e) {} LC.pc = null; }
-    if (LC.localStream) { LC.localStream.getTracks().forEach(function(t) { t.stop(); }); LC.localStream = null; }
-    if (removeUI) {
-        var ui = document.getElementById('lcCallUI');
-        if (ui) ui.remove();
-        var inc = document.getElementById('lcIncomingUI');
-        if (inc) inc.remove();
-    }
-}
-
-// ===== 9. CALL BUTTONS in chat =====
-function lcAddCallButtons() {
-    var bar = document.getElementById('smartChatBar');
-    if (!bar || document.getElementById('lcVoiceCallBtn')) return;
-
-    var voiceBtn = document.createElement('button');
-    voiceBtn.id = 'lcVoiceCallBtn';
-    voiceBtn.title = 'Voice call';
-    voiceBtn.style.cssText = 'width:44px;height:44px;border:none;border-radius:50%;background:#059669;color:white;font-size:18px;cursor:pointer;flex-shrink:0;';
-    voiceBtn.textContent = '📞';
-    voiceBtn.onclick = function() { lcCallFromChat(false); };
-    bar.insertBefore(voiceBtn, bar.firstChild);
-
-    var videoBtn = document.createElement('button');
-    videoBtn.id = 'lcVideoCallBtn';
-    videoBtn.title = 'Video call';
-    videoBtn.style.cssText = 'width:44px;height:44px;border:none;border-radius:50%;background:#7c3aed;color:white;font-size:18px;cursor:pointer;flex-shrink:0;';
-    videoBtn.textContent = '📹';
-    videoBtn.onclick = function() { lcCallFromChat(true); };
-    bar.insertBefore(videoBtn, voiceBtn);
-}
-
-function lcCallFromChat(video) {
-    var sel = document.getElementById('chatRecipient') || document.getElementById('adminChatRecipient');
-    if (!sel) { alert('Open a chat with a person first.'); return; }
-    var val = sel.value;
-    var name = sel.options[sel.selectedIndex].text.replace('👤 ', '').replace('🟢 ', '');
-
-    if (val === 'All') { alert('⚠️ Calls need a specific person.\nPick someone from the Direct Message list.'); return; }
-    if (val === 'Kitchen' || val === 'Cashier' || val === 'Admin') { alert('⚠️ Pick a specific person for calls.'); return; }
-
-    lcCall(val, name, video);
-}
-
-// ===== 10. AUTO-START =====
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() {
-        try { lcListen(); } catch(e) { console.warn('Call listener failed:', e); }
-        var iv = setInterval(function() {
-            if (document.getElementById('smartChatBar')) {
-                lcAddCallButtons();
-                clearInterval(iv);
+async function initChat() {
+    if (!supabaseClient) return;
+    var currentChefId = localStorage.getItem('kitchenChefId');
+    
+    // 1. Build Dropdown
+    var sel = document.getElementById('chatRecipient');
+    sel.innerHTML = '<option value="All">📢 Everyone</option><option value="Cashier">💻 Cashier Only</option><option value="Admin">👔 Admin Only</option>';
+    
+    const { data: staff } = await supabaseClient.from('employees').select('*').eq('shop_id', shopId).eq('status', 'active');
+    if (staff && staff.length > 0) {
+        var optGroup = document.createElement('optgroup');
+        optGroup.label = "── Direct Message ──";
+        staff.forEach(emp => {
+            if (emp.firebase_id !== currentChefId) { 
+                var opt = document.createElement('option');
+                opt.value = emp.firebase_id;
+                opt.textContent = '👤 ' + emp.name + ' (' + emp.position + ')';
+                optGroup.appendChild(opt);
             }
-        }, 1500);
-    }, 2000);
-});
+        });
+        sel.appendChild(optGroup);
+    }
+
+    // 2. Fetch Messages
+    const { data, error } = await supabaseClient.from('chat_messages')
+        .select('*').eq('shop_id', shopId)
+        .order('created_at', { ascending: true }).limit(50);
+        
+    if (error) return;
+    var container = document.getElementById('chatMessages');
+    container.innerHTML = '';
+    if (data) data.forEach(msg => renderChatBubble(msg));
+    container.scrollTop = container.scrollHeight;
+    
+    // 3. Realtime Listener
+    if (chatSubscription) supabaseClient.removeChannel(chatSubscription);
+    chatSubscription = supabaseClient.channel('public:chat_messages')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `shop_id=eq.${shopId}` }, 
+            (payload) => {
+                renderChatBubble(payload.new);
+                document.getElementById('chatMessages').scrollTop = container.scrollHeight;
+                playAlert();
+            }
+        ).subscribe();
+}
+
+function renderChatBubble(msg) {
+    var container = document.getElementById('chatMessages');
+    var currentChefId = localStorage.getItem('kitchenChefId');
+    var isMe = (msg.sender_id === currentChefId);
+    
+    var isForMe = isMe || msg.recipient === 'All' || msg.recipient === 'Kitchen' || msg.recipient_id === currentChefId;
+    if (!isForMe) return; 
+
+    var bubble = document.createElement('div');
+    bubble.className = 'chat-bubble ' + (isMe ? 'sent' : 'received');
+    var timeStr = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
+    var recipientTag = '';
+    if (!isMe) {
+        if (msg.recipient === 'Direct' && msg.recipient_name) recipientTag = ' ➡️ You';
+        else if (msg.recipient !== 'All') recipientTag = ' ➡️ ' + msg.recipient;
+    } else if (msg.recipient === 'Direct') {
+        recipientTag = ' ➡️ ' + msg.recipient_name;
+    }
+    
+    bubble.innerHTML = msg.message + '<small>' + msg.sender_name + recipientTag + ' • ' + timeStr + '</small>';
+    container.appendChild(bubble);
+}
+
+async function sendChatMessage() {
+    var input = document.getElementById('chatInput');
+    var sel = document.getElementById('chatRecipient');
+    if (!input) return;
+    
+    var text = input.value.trim();
+    if (!text) return;
+    
+    var recipientVal = sel ? sel.value : 'All';
+    var recipientName = sel ? sel.options[sel.selectedIndex].text : 'Everyone';
+    input.value = '';
+    
+    var currentChefId = localStorage.getItem('kitchenChefId');
+    var currentChefName = localStorage.getItem('kitchenChefName') || 'Chef';
+    
+    var payload = {
+        shop_id: shopId, 
+        sender_name: currentChefName, 
+        sender_id: currentChefId,
+        sender_role: 'Chef', 
+        message: text,
+        recipient: 'All'
+    };
+    
+    if (recipientVal === 'All' || recipientVal === 'Cashier' || recipientVal === 'Admin' || recipientVal === 'Kitchen') {
+        payload.recipient = recipientVal;
+    } else {
+        payload.recipient = 'Direct';
+        payload.recipient_id = recipientVal;
+        payload.recipient_name = recipientName.replace('👤 ', '');
+    }
+    
+    try {
+        const { error } = await supabaseClient.from('chat_messages').insert([payload]);
+        if (error) throw error;
+    } catch(e) { alert('❌ Failed to send: ' + e.message); input.value = text; }
+}
+
+	
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registered.'))
+        .catch(err => console.log('SW registration failed: ', err));
+    });
+  }
+	
+</script>
+</body>
+</html>
