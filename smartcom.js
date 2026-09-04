@@ -283,7 +283,7 @@ function scCallFromChat(video) {
     scCall(val, nm, video);
 }
 
-aasync function scCall(toId, toName, video) {
+async function scCall(toId, toName, video) {
     // Real busy check
     if (SC.inCall && (SC.pc || SC.stream)) { alert('Already in a call!'); return; }
     scInit();
