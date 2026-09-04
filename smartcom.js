@@ -656,12 +656,6 @@ async function scIncoming(s) {
     }, 30000);
 }
 async function scHandleOffer(s) {
-    // If incoming call screen is up, wait for user to answer
-    if (document.getElementById('scIncomingUI')) {
-        SC.pendingOffer = s;
-        // The yes button handler will process it after answering
-        return;
-    }
 
     // If we have the call UI up (user answered), process the offer
     if (!SC.stream) {
@@ -852,10 +846,13 @@ function scBoot() {
                     else if (s.type === 'typing') {
                         scShowTyping(s.from_name || 'Someone');
                     }
-                    else if (s.type === 'offer') {
-                        // Store offer and process
-                        SC.pendingOffer = s;
-                        scHandleOffer(s);
+                                       else if (s.type === 'offer') {
+                        // Store offer if incoming screen is up; process if already answered
+                        if (document.getElementById('scIncomingUI')) {
+                            SC.pendingOffer = s;
+                        } else if (document.getElementById('scCallUI')) {
+                            scHandleOffer(s);
+                        }
                     }
                     else if (s.type === 'answer') {
                         if (SC.pc && SC.pc.signalingState !== 'stable') {
