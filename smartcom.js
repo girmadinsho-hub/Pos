@@ -42,6 +42,7 @@ function scBuildBar() {
         '<button id="scCallBtn" title="Voice call" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#059669;color:white;font-size:16px;cursor:pointer;flex-shrink:0;">📞</button>' +
         '<button id="scVideoBtn" title="Video call" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#7c3aed;color:white;font-size:16px;cursor:pointer;flex-shrink:0;">📹</button>' +
         '<button id="scPhotoBtn" title="Send photo" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#7c3aed;color:white;font-size:15px;cursor:pointer;flex-shrink:0;">📷</button>' +
+			  '<button id="scFileBtn" title="Send file" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#0891b2;color:white;font-size:15px;cursor:pointer;flex-shrink:0;">📎</button>' +
         '<button id="scMicBtn" title="Hold to record" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#ef4444;color:white;font-size:15px;cursor:pointer;flex-shrink:0;">🎤</button>' +
         '<div style="flex:1;min-width:0;position:relative;">' +
         '<textarea id="scText" rows="1" placeholder="Message..." style="width:100%;box-sizing:border-box;padding:9px 46px 9px 12px;border:1px solid #cbd5e1;border-radius:18px;font-size:14px;outline:none;resize:none;line-height:1.4;max-height:100px;background:#fff;color:#1e293b;font-family:inherit;display:block;"></textarea>' +
@@ -78,6 +79,13 @@ function scBuildBar() {
         fi.click();
     };
 
+	    document.getElementById('scFileBtn').onclick = function() {
+        var fi = document.createElement('input');
+        fi.type = 'file';
+        fi.onchange = function() { scFile(this.files[0]); };
+        fi.click();
+    };
+	
     // Voice: hold to record
     var mic = document.getElementById('scMicBtn');
     mic.addEventListener('touchstart', function(e) { e.preventDefault(); scRecStart(); });
@@ -159,6 +167,24 @@ function scPhoto(file) {
 }
 
 // ================================================================
+// 📎 FILE ATTACHMENTS (PDF, docs, any file — up to 1MB)
+// ================================================================
+function scFile(file) {
+    if (!file) return;
+    if (file.size > 1000000) { alert('File too large! Max 1 MB (documents, not videos).'); return; }
+    var rd = new FileReader();
+    rd.onloadend = function() {
+        if (rd.result.length > 1400000) { alert('File too large after encoding.'); return; }
+        scSend({
+            message: '📎 ' + file.name,
+            media_type: 'file',
+            media_data: rd.result,
+            media_duration: Math.round(file.size / 1024) + 'KB'
+        });
+    };
+    rd.readAsDataURL(file);
+}
+// ================================================================
 // 📤 PART 4 — SEND (all types)
 // ================================================================
 function scSend(p) {
@@ -205,44 +231,73 @@ function scBubble(msg) {
     var ts = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
     var tag = '';
     if (!isMe) {
-        if (msg.recipient === 'Direct') tag = ' ➡️ You';
+        if (msg.recipient === 'Direct' && msg.recipient_name) tag = ' ➡️ You';
         else if (msg.recipient !== 'All') tag = ' ➡️ ' + msg.recipient;
     }
 
     var in_ = '';
+
+    // 1️⃣ 🎤 VOICE MESSAGE — audio player
     if (msg.media_type === 'voice' && msg.media_data) {
         in_ = '<div style="display:flex;align-items:center;gap:8px;min-width:170px;">' +
             '<span style="font-size:22px;">🎤</span>' +
-            '<audio controls preload="metadata" src="' + msg.media_data + '" style="height:36px;width:158px;max-width:158px;"></audio></div>' +
+            '<audio controls preload="metadata" src="' + msg.media_data + '" style="height:36px;width:158px;max-width:158px;"></audio>' +
+            '</div>' +
             '<small style="display:block;margin-top:3px;">' + msg.sender_name + ' • ' + (msg.media_duration || '') + ' • ' + ts + '</small>';
-    } else if (msg.media_type === 'photo' && msg.media_data) {
+    }
+
+    // 2️⃣ 🖼️ PHOTO — image with fullscreen tap
+    else if (msg.media_type === 'photo' && msg.media_data) {
         in_ = '<img src="' + msg.media_data + '" style="max-width:220px;max-height:220px;border-radius:10px;cursor:pointer;display:block;" onclick="window.open(this.src, \'_blank\')">' +
             '<small style="display:block;margin-top:4px;">' + msg.sender_name + tag + ' • ' + ts + '</small>';
-    } else {
-        in_ = (msg.message || '') + '<small style="display:block;margin-top:3px;">' + msg.sender_name + tag + ' • ' + ts + '</small>';
     }
+
+    // 3️⃣ 📎 FILE — downloadable attachment
+    else if (msg.media_type === 'file' && msg.media_data) {
+        var fname = (msg.message || 'file').replace('📎 ', '');
+        var fsize = msg.media_duration || '';
+        in_ = '<a href="' + msg.media_data + '" download="' + fname + '" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;padding:8px 12px;border:1px solid rgba(255,255,255,.3);border-radius:10px;min-width:170px;">' +
+            '<span style="font-size:28px;">📎</span>' +
+            '<span style="flex:1;min-width:0;"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;">' + fname + '</b>' +
+            '<small style="opacity:.7;">' + fsize + ' • Tap to download</small></span>' +
+            '<span style="font-size:18px;">⬇️</span></a>' +
+            '<small style="display:block;margin-top:3px;">' + msg.sender_name + tag + ' • ' + ts + '</small>';
+    }
+
+    // 4️⃣ 📝 TEXT — normal message
+    else {
+        in_ = (msg.message || '') +
+            '<small style="display:block;margin-top:3px;">' + msg.sender_name + tag + ' • ' + ts + '</small>';
+    }
+
     b.innerHTML = in_;
     container.appendChild(b);
     container.scrollTop = container.scrollHeight;
 
-    // 🗑 Delete for everyone
+    // 🗑 DELETE — for everyone (hover or long-press to reveal)
     var del = document.createElement('button');
     del.textContent = '🗑';
-    del.style.cssText = 'position:absolute;top:1px;right:1px;width:24px;height:24px;border:none;border-radius:50%;background:rgba(239,68,68,.9);color:white;font-size:11px;cursor:pointer;display:none;align-items:center;justify-content:center;padding:0;';
+    del.style.cssText = 'position:absolute;top:1px;right:1px;width:24px;height:24px;border:none;border-radius:50%;background:rgba(239,68,68,.9);color:white;font-size:11px;cursor:pointer;display:none;align-items:center;justify-content:center;padding:0;line-height:1;';
     b.appendChild(del);
     b.onmouseenter = function() { del.style.display = 'flex'; };
     b.onmouseleave = function() { del.style.display = 'none'; };
     var pt = null;
-    b.addEventListener('touchstart', function() { pt = setTimeout(function() { del.style.display = 'flex'; }, 400); });
+    b.addEventListener('touchstart', function() {
+        pt = setTimeout(function() { del.style.display = 'flex'; }, 400);
+    });
     b.addEventListener('touchend', function() { clearTimeout(pt); });
     del.onclick = async function(e) {
         e.stopPropagation();
-        if (!confirm('Delete for EVERYONE?')) return;
-        try { await supabaseClient.from('chat_messages').delete().eq('id', msg.id); b.remove(); }
-        catch(err) { alert('Failed: ' + err.message); }
+        e.preventDefault();
+        if (!confirm('Delete this message for EVERYONE?')) return;
+        try {
+            await supabaseClient.from('chat_messages').delete().eq('id', msg.id);
+            b.remove();
+        } catch(err) {
+            alert('Delete failed: ' + err.message);
+        }
     };
 }
-
 // TAKE OVER the app renderers — re-applied forever so nothing overwrites us
 function scWire() {
     try {
@@ -335,7 +390,7 @@ async function scCall(toId, toName, video) {
         }
     }, 40000);
 }
-function scPeer(peerId, offer) {
+	function scPeer(peerId, offer) {
     if (SC.pc) { try { SC.pc.close(); } catch(e) {} }
     SC.pc = new RTCPeerConnection({
         iceServers: [
@@ -345,14 +400,32 @@ function scPeer(peerId, offer) {
         ]
     });
     SC.stream.getTracks().forEach(function(t) { SC.pc.addTrack(t, SC.stream); });
+
     SC.pc.ontrack = function(ev) {
+        // 🔧 FIX: save the stream FIRST
+        SC.remoteStream = ev.streams[0];
+        window.__scRingStop = true;
+        clearInterval(window.__scCallTimer);
+        clearInterval(window.__scRingbackInterval);
+        // Rebuild UI FIRST...
+        scCallUI('active', '🟢 ' + SC.peerName);
+        // ...THEN attach the stream to the FRESH elements
         var a = document.getElementById('scRemoteAudio');
         var v = document.getElementById('scRemoteVideo');
-        if (a) { a.srcObject = ev.streams[0]; a.play().catch(function(){}); }
-        if (SC.video && v) { v.srcObject = ev.streams[0]; v.play().catch(function(){}); }
-       window.__scRingStop = true;
-			 scCallUI('active', '🟢 ' + SC.peerName);
+        if (a) {
+            a.srcObject = SC.remoteStream;
+            a.volume = 1.0;
+            a.play().catch(function() {
+                // Autoplay blocked → tap-to-hear fallback
+                a.insertAdjacentHTML('afterend', '<button onclick="this.previousElementSibling.play(); this.remove()" style="margin-top:8px;padding:8px 16px;border:none;border-radius:8px;background:#2563eb;color:white;font-weight:bold;cursor:pointer;">🔊 Tap to hear</button>');
+            });
+        }
+        if (v) {
+            v.srcObject = SC.remoteStream;
+            v.play().catch(function(){});
+        }
     };
+
     SC.pc.onicecandidate = function(ev) {
         if (ev.candidate) scSig(peerId, 'ice', { candidate: ev.candidate });
     };
@@ -380,7 +453,7 @@ function scCallUI(state, title) {
     ui.id = 'scCallUI';
     ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.97);z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
     ui.innerHTML =
-        (SC.video ? '<video id="scRemoteVideo" autoplay playsinline style="width:90%;max-width:400px;border-radius:16px;background:#000;"></video>' : '') +
+        (SC.video ? '<video id="scRemoteVideo" autoplay playsinline style="width:95%;height:55vh;object-fit:cover;border-radius:16px;background:#000;"></video>' : '') +
         '<audio id="scRemoteAudio" autoplay style="display:none;"></audio>' +
         (SC.video ? '<video id="scLocalVideo" autoplay playsinline muted style="position:absolute;top:15px;right:15px;width:100px;border-radius:10px;border:2px solid rgba(255,255,255,.4);"></video>' : '') +
         '<h2 style="margin:15px 0 5px;">' + title + '</h2>' +
