@@ -72,11 +72,15 @@ function scBuildBar() {
     });
 
     // Photo
-       document.getElementById('scFileBtn').onclick = function() {
+           document.getElementById('scPhotoBtn').onclick = function() {
         var fi = document.createElement('input');
         fi.type = 'file';
-        fi.onchange = function() { scFile(this.files[0]); };
+        fi.accept = 'image/*';
+        fi.onchange = function() {
+            if (this.files && this.files[0]) scPhoto(this.files[0]);
+        };
         fi.click();
+    };
     };
 	    document.getElementById('scFileBtn').onclick = function() {
         var fi = document.createElement('input');
@@ -245,9 +249,9 @@ function scBubble(msg) {
             '<small style="display:block;margin-top:3px;">' + msg.sender_name + ' • ' + (msg.media_duration || '') + ' • ' + ts + '</small>';
     }
 
-    // 2️⃣ 🖼️ PHOTO — image with fullscreen tap
+        // 2️⃣ 🖼️ PHOTO — with in-page lightbox (NO window.open!)
     else if (msg.media_type === 'photo' && msg.media_data) {
-        in_ = '<img src="' + msg.media_data + '" style="max-width:220px;max-height:220px;border-radius:10px;cursor:pointer;display:block;" onclick="window.open(this.src, \'_blank\')">' +
+        in_ = '<img src="' + msg.media_data + '" style="max-width:220px;max-height:220px;border-radius:10px;cursor:pointer;display:block;" onclick="scLightbox(\'' + 'media_' + ts.replace(/[^0-9]/g, '') + '\')" data-media="' + msg.media_data + '" id="media_' + ts.replace(/[^0-9]/g, '') + '">' +
             '<small style="display:block;margin-top:4px;">' + msg.sender_name + tag + ' • ' + ts + '</small>';
     }
 
@@ -477,36 +481,44 @@ async function scSig(toId, type, payload) {
         }]);
     } catch(e) { console.warn('sig fail', e.message); }
 }
-
 function scCallUI(state, title) {
     var old = document.getElementById('scCallUI');
     if (old) old.remove();
     var ui = document.createElement('div');
     ui.id = 'scCallUI';
     ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.97);z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
+
+    var videoHtml = SC.video ?
+        '<video id="scRemoteVideo" autoplay playsinline style="width:95%;height:55vh;object-fit:cover;border-radius:16px;background:#000;"></video>' : '';
+    var audioHtml = SC.video ?
+        '<audio id="scRemoteAudio" autoplay style="position:absolute;width:1px;height:1px;opacity:0.01;"></audio>' :
+        '<audio id="scRemoteAudio" autoplay controls style="width:90%;max-width:300px;height:40px;margin:8px 0;"></audio>';
+    var localVideoHtml = (SC.video && SC.stream) ?
+        '<video id="scLocalVideo" autoplay playsinline muted style="position:absolute;top:15px;right:15px;width:100px;border-radius:10px;border:2px solid rgba(255,255,255,.4);z-index:1;"></video>' : '';
+
     ui.innerHTML =
-        (SC.video ? '<video id="scRemoteVideo" autoplay playsinline style="width:95%;height:55vh;object-fit:cover;border-radius:16px;background:#000;"></video>' : '') +
-        '<audio id="scRemoteAudio" autoplay style="width:100%;height:40px;controls;"></audio>' +        (SC.video ? '<video id="scLocalVideo" autoplay playsinline muted style="position:absolute;top:15px;right:15px;width:100px;border-radius:10px;border:2px solid rgba(255,255,255,.4);"></video>' : '') +
-        '<h2 style="margin:15px 0 5px;">' + title + '</h2>' +
+        videoHtml +
+        audioHtml +
+        localVideoHtml +
+        '<h2 style="margin:10px 0 5px;">' + title + '</h2>' +
         (state === 'calling' ? '<p id="scCallTimer" style="color:#94a3b8;">Ringing... 0s</p>' : '') +
-        '<button id="scEndBtn" style="width:70px;height:70px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:28px;cursor:pointer;margin-top:20px;">📵</button>';
+        '<button id="scEndBtn" style="width:70px;height:70px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:28px;cursor:pointer;margin-top:15px;">📵</button>';
     document.body.appendChild(ui);
 
-    // Caller-side ring timer
+    if (SC.video && SC.stream) {
+        var lv = document.getElementById('scLocalVideo');
+        if (lv) lv.srcObject = SC.stream;
+    }
+
     if (state === 'calling') {
         var t = 0;
         window.__scCallTimer = setInterval(function() {
             t++;
             var el = document.getElementById('scCallTimer');
             if (el) el.textContent = 'Ringing... ' + t + 's';
-            if (t >= 40) { clearInterval(window.__scCallTimer); scEnd(true); } // auto-give-up
+            if (t >= 40) { clearInterval(window.__scCallTimer); scEnd(true); }
             else if (!document.getElementById('scCallUI')) clearInterval(window.__scCallTimer);
         }, 1000);
-    }
-
-    if (SC.video && SC.stream) {
-        var lv = document.getElementById('scLocalVideo');
-        if (lv) lv.srcObject = SC.stream;
     }
 
     var endBtn = document.getElementById('scEndBtn');
@@ -601,21 +613,30 @@ async function scIncoming(s) {
     var yesBtn = document.getElementById('scYes');
     var noBtn = document.getElementById('scNo');
 
-    yesBtn.addEventListener('click', async function(ev) {
-        ev.stopPropagation(); ev.preventDefault();
-        SC.inCall = false;              // 🔧 reset stuck state FIRST
-			  window.__scRingStop = true;   // 🔔 stop ringing
+       yesBtn.addEventListener('click', async function(ev) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        SC.inCall = false;
+        window.__scRingStop = true;
         ui.remove();
+
         try {
             SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video });
         } catch(e) {
-            alert('🎤 Mic blocked — cannot answer! Check browser permissions.');
-            scEnd(false);
+            alert('🎤 Mic blocked — cannot answer!');
             scSig(SC.peer, 'hangup', {});
+            scEnd(false);
             return;
         }
+
         scCallUI('active', '🟢 ' + SC.peerName);
-        scPeer(SC.peer, false);
+
+        // Process the stored offer NOW (creates PC + answers)
+        if (SC.pendingOffer) {
+            var offer = SC.pendingOffer;
+            SC.pendingOffer = null;
+            await scHandleOffer(offer);
+        }
     });
 
     noBtn.addEventListener('click', function(ev) {
@@ -636,30 +657,89 @@ async function scIncoming(s) {
     }, 30000);
 }
 async function scHandleOffer(s) {
-    // 🔧 Wait until the user actually ANSWERED (ring screen gone, call UI up)
+    // If incoming call screen is up, wait for user to answer
     if (document.getElementById('scIncomingUI')) {
-        // Store the offer — process it after answering
         SC.pendingOffer = s;
-        setTimeout(function() {
-            if (SC.pendingOffer && !document.getElementById('scIncomingUI')) {
-                var offer = SC.pendingOffer; SC.pendingOffer = null;
-                scHandleOffer(offer);
-            }
-        }, 1000);
+        // The yes button handler will process it after answering
         return;
     }
-    if (!SC.stream) {
-        try { SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video }); }
-        catch(e) { scSig(s.from_id, 'hangup', {}); return; }
-    }
-    if (!SC.pc) scPeer(s.from_id, false);
 
+    // If we have the call UI up (user answered), process the offer
+    if (!SC.stream) {
+        try {
+            SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video });
+        } catch(e) {
+            scSig(s.from_id, 'hangup', {});
+            return;
+        }
+    }
+
+    if (!SC.pc) {
+        // Create PC but don't make an offer (we're answering)
+        SC.pc = new RTCPeerConnection({
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+                { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+            ]
+        });
+
+        SC.stream.getTracks().forEach(function(t) {
+            SC.pc.addTrack(t, SC.stream);
+        });
+
+        SC.pc.ontrack = function(ev) {
+            SC.remoteStream = ev.streams[0];
+            window.__scRingStop = true;
+            clearInterval(window.__scCallTimer);
+            scCallUI('active', '🟢 ' + SC.peerName);
+
+            setTimeout(function() {
+                var a = document.getElementById('scRemoteAudio');
+                var v = document.getElementById('scRemoteVideo');
+                if (a) {
+                    a.srcObject = SC.remoteStream;
+                    a.volume = 1.0;
+                    a.play().then(function(){}).catch(function() {
+                        var btn = document.createElement('button');
+                        btn.textContent = '🔊 TAP TO HEAR';
+                        btn.style.cssText = 'margin-top:10px;padding:12px 24px;border:none;border-radius:10px;background:#2563eb;color:white;font-weight:bold;cursor:pointer;font-size:16px;';
+                        btn.onclick = function() { a.play(); btn.remove(); };
+                        a.parentNode.appendChild(btn);
+                    });
+                }
+                if (v) {
+                    v.srcObject = SC.remoteStream;
+                    v.play().catch(function(){});
+                }
+            }, 200);
+        };
+
+        SC.pc.onicecandidate = function(ev) {
+            if (ev.candidate) {
+                scSig(SC.peer || s.from_id, 'ice', { candidate: ev.candidate });
+            }
+        };
+    }
+
+    // Set remote description (the offer) and send answer
     try {
         await SC.pc.setRemoteDescription(new RTCSessionDescription(s.data.sdp));
         var ans = await SC.pc.createAnswer();
         await SC.pc.setLocalDescription(ans);
         await scSig(s.from_id, 'answer', { sdp: SC.pc.localDescription });
-    } catch(e) {}
+
+        // Apply any buffered ICE candidates
+        if (window.__scIceBuffer && window.__scIceBuffer.length > 0) {
+            var buf = window.__scIceBuffer;
+            window.__scIceBuffer = [];
+            buf.forEach(function(c) {
+                try { SC.pc.addIceCandidate(c).catch(function(){}); } catch(e) {}
+            });
+        }
+    } catch(e) {
+        console.warn('Offer processing failed:', e.message);
+    }
 }
 
 // ================================================================
@@ -746,23 +826,57 @@ function scBoot() {
 
     // Realtime: calls + typing signals
     try {
+                // 🔧 ICE BUFFER — stores candidates until peer connection is ready
+        if (!window.__scIceBuffer) window.__scIceBuffer = [];
+
+        function applyBufferedIce() {
+            if (SC.pc && SC.pc.remoteDescription) {
+                var buf = window.__scIceBuffer;
+                window.__scIceBuffer = [];
+                buf.forEach(function(c) {
+                    try { SC.pc.addIceCandidate(c).catch(function(){}); } catch(e) {}
+                });
+            }
+        }
+
         supabaseClient.channel('sc-all-' + SC.shop)
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'call_signals', filter: 'shop_id=eq.' + SC.shop },
                 function(p) {
                     var s = p.new;
-                    if (s.from_id === SC.id) return; // mine
+                    if (s.from_id === SC.id) return;
                     var forMe = (s.to_id === SC.id) || (s.to_id === SC.role) || (s.to_id === 'All');
                     if (!forMe) return;
-                    if (s.type === 'ring') scIncoming(s);
-                    else if (s.type === 'typing') scShowTyping(s.from_name || 'Someone');
-                    else if (s.type === 'offer') scHandleOffer(s);
-                    else if (s.type === 'answer' && SC.pc) {
-                        SC.pc.setRemoteDescription(new RTCSessionDescription(s.data.sdp)).catch(function(){});
+
+                    if (s.type === 'ring') {
+                        scIncoming(s);
                     }
-                    else if (s.type === 'ice' && SC.pc) {
-                        SC.pc.addIceCandidate(s.data.candidate).catch(function(){});
+                    else if (s.type === 'typing') {
+                        scShowTyping(s.from_name || 'Someone');
                     }
-                    else if (s.type === 'hangup') scEnd(false);
+                    else if (s.type === 'offer') {
+                        // Store offer and process
+                        SC.pendingOffer = s;
+                        scHandleOffer(s);
+                    }
+                    else if (s.type === 'answer') {
+                        if (SC.pc && SC.pc.signalingState !== 'stable') {
+                            SC.pc.setRemoteDescription(new RTCSessionDescription(s.data.sdp))
+                                .then(function() { applyBufferedIce(); })
+                                .catch(function(e) { console.warn('answer failed', e); });
+                        }
+                    }
+                    else if (s.type === 'ice') {
+                        if (SC.pc && SC.pc.remoteDescription) {
+                            // PC ready → apply immediately
+                            try { SC.pc.addIceCandidate(s.data.candidate).catch(function(){}); } catch(e) {}
+                        } else {
+                            // 🔧 PC NOT READY → BUFFER it! (this was the bug!)
+                            window.__scIceBuffer.push(s.data.candidate);
+                        }
+                    }
+                    else if (s.type === 'hangup') {
+                        scEnd(false);
+                    }
                 })
             .subscribe();
     } catch(e) { console.warn('sc listener failed', e); }
@@ -772,4 +886,22 @@ if (document.readyState === 'complete' || document.readyState === 'interactive')
     setTimeout(scBoot, 2000);
 } else {
     document.addEventListener('DOMContentLoaded', function() { setTimeout(scBoot, 2000); });
+}
+
+// 🖼️ LIGHTBOX — in-page fullscreen image viewer (NO blank page!)
+function scLightbox(imgId) {
+    var img = document.getElementById(imgId);
+    if (!img) return;
+    var src = img.getAttribute('data-media');
+
+    var lb = document.createElement('div');
+    lb.id = 'scLightbox';
+    lb.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:2147483000;display:flex;align-items:center;justify-content:center;flex-direction:column;';
+    lb.innerHTML =
+        '<img src="' + src + '" style="max-width:95%;max-height:80vh;border-radius:8px;">' +
+        '<button style="margin-top:20px;padding:12px 30px;border:none;border-radius:10px;background:#ef4444;color:white;font-weight:bold;font-size:16px;cursor:pointer;">✖ Close</button>';
+    document.body.appendChild(lb);
+
+    lb.querySelector('button').onclick = function() { lb.remove(); };
+    lb.onclick = function(e) { if (e.target === lb) lb.remove(); };
 }
