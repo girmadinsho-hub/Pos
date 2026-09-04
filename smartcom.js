@@ -284,8 +284,9 @@ function scCallFromChat(video) {
 }
 
 async function scCall(toId, toName, video) {
-    if (SC.inCall) { alert('Already in a call!'); return; }
-    scInit();
+    // 🔧 Real busy check: only block if there's an ACTUAL live connection
+    if (SC.inCall && (SC.pc || SC.stream)) { alert('Already in a call!'); return; }
+    SC.inCall = false; // clear any phantom state    scInit();
     SC.peer = toId; SC.peerName = toName; SC.video = video; SC.inCall = true;
     try {
         SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
@@ -294,8 +295,21 @@ async function scCall(toId, toName, video) {
         alert('🎤/📷 Blocked! Allow access in browser settings.');
         return;
     }
-    scCallUI('calling', '📞 Calling ' + toName + '...');
-    scSig(toId, 'ring', { video: video, fromName: SC.name });
+    // 🔔 Ringback sound for the CALLER (hear it ringing on the other side)
+    try {
+        window.__scRingStop = false;
+        window.__scRingCtx = window.__scRingCtx || new (window.AudioContext || window.webkitAudioContext)();
+        var ctx2 = window.__scRingCtx;
+        window.__scRingbackInterval = setInterval(function() {
+            if (window.__scRingStop) { clearInterval(window.__scRingbackInterval); return; }
+            var o = ctx2.createOscillator(); var g = ctx2.createGain();
+            o.type = 'sine'; o.frequency.value = 440;
+            g.gain.setValueAtTime(0.15, ctx2.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + 0.8);
+            o.connect(g); g.connect(ctx2.destination);
+            o.start(); o.stop(ctx2.currentTime + 0.85);
+        }, 2000);
+    } catch(e) {}    scSig(toId, 'ring', { video: video, fromName: SC.name });
     scPeer(toId, true);
 }
 
@@ -314,7 +328,8 @@ function scPeer(peerId, offer) {
         var v = document.getElementById('scRemoteVideo');
         if (a) { a.srcObject = ev.streams[0]; a.play().catch(function(){}); }
         if (SC.video && v) { v.srcObject = ev.streams[0]; v.play().catch(function(){}); }
-        scCallUI('active', '🟢 ' + SC.peerName);
+       window.__scRingStop = true;
+			 scCallUI('active', '🟢 ' + SC.peerName);
     };
     SC.pc.onicecandidate = function(ev) {
         if (ev.candidate) scSig(peerId, 'ice', { candidate: ev.candidate });
@@ -352,9 +367,11 @@ function scCallUI(state, title) {
     if (SC.video && SC.stream) { var lv = document.getElementById('scLocalVideo'); if (lv) lv.srcObject = SC.stream; }
     document.getElementById('scEndBtn').onclick = function() { scEnd(true); };
 }
-
 function scEnd(notify) {
     if (notify && SC.peer) scSig(SC.peer, 'hangup', {});
+    window.__scRingStop = true;   // 🔔 always silence the ring on any call end
+	  SC.inCall = false;   // 🔧 ALWAYS reset — no phantom busy state
+    SC.peer = null;
     if (SC.pc) { try { SC.pc.close(); } catch(e) {} SC.pc = null; }
     if (SC.stream) { SC.stream.getTracks().forEach(function(t) { t.stop(); }); SC.stream = null; }
     var u = document.getElementById('scCallUI'); if (u) u.remove();
@@ -367,9 +384,53 @@ async function scIncoming(s) {
     if (SC.inCall) return;
     scInit();
     SC.peer = s.from_id; SC.peerName = s.from_name; SC.video = (s.data && s.data.video) || false;
-    try { if (typeof playAlert === 'function') playAlert(); } catch(e) {}
-    try { if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]); } catch(e) {}
+    // 📳 Strong vibration pattern (phone-style)
+    try { if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400, 200, 400]); } catch(e) {}
 
+    // 🔔 RINGING SOUND — real telephone ring, synthesized (no audio file needed!)
+    try {
+        window.__scRingStop = false;
+        window.__scRingCtx = window.__scRingCtx || new (window.AudioContext || window.webkitAudioContext)();
+        function ringOnce() {
+            if (window.__scRingStop) return;
+            var ctx = window.__scRingCtx;
+            // Two quick bell tones (classic ring-ring)
+            [0, 0.35].forEach(function(offset) {
+                var o = ctx.createOscillator();
+                var g = ctx.createGain();
+                o.type = 'sine';
+                o.frequency.value = 880;      // ring tone
+                var o2 = ctx.createOscillator();
+                var g2 = ctx.createGain();
+                o2.type = 'sine';
+                o2.frequency.value = 1245;    // harmonic
+                var t = ctx.currentTime + offset;
+                g.gain.setValueAtTime(0.4, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+                g2.gain.setValueAtTime(0.25, t);
+                g2.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+                o.connect(g); g.connect(ctx.destination);
+                o2.connect(g2); g2.connect(ctx.destination);
+                o.start(t); o.stop(t + 0.3);
+                o2.start(t); o2.stop(t + 0.3);
+            });
+        }
+        // Ring every 2 seconds until answered/declined/missed
+        window.__scRingInterval = setInterval(function() {
+            if (window.__scRingStop) { clearInterval(window.__scRingInterval); return; }
+            ringOnce();
+        }, 2000);
+        ringOnce();
+    } catch(e) {}
+
+    // 🌅 Try to wake the screen (works on some Androids when tab is recent)
+    try {
+        if ('wakeLock' in navigator && !window.__scWakeLock) {
+            navigator.wakeLock.request('screen').then(function(wl) { window.__scWakeLock = wl; }).catch(function(){});
+        }
+        if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400, 200, 400]);
+    } catch(e) {}
+	
     var ui = document.createElement('div');
     ui.id = 'scIncomingUI';
     ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.95);z-index:99998;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
@@ -382,23 +443,64 @@ async function scIncoming(s) {
         '<style>@keyframes scP{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}</style>';
     document.body.appendChild(ui);
 
-    document.getElementById('scYes').onclick = async function() {
+        // 🔧 Bulletproof answer/decline — direct listeners, top z-index, state reset
+    ui.style.zIndex = '2147483000'; // ABOVE everything, even chat modals
+    var yesBtn = document.getElementById('scYes');
+    var noBtn = document.getElementById('scNo');
+
+    yesBtn.addEventListener('click', async function(ev) {
+        ev.stopPropagation(); ev.preventDefault();
+        SC.inCall = false;              // 🔧 reset stuck state FIRST
+			  window.__scRingStop = true;   // 🔔 stop ringing
         ui.remove();
-        try { SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video }); }
-        catch(e) { alert('Mic blocked!'); scSig(SC.peer, 'hangup', {}); return; }
+        try {
+            SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video });
+        } catch(e) {
+            alert('🎤 Mic blocked — cannot answer! Check browser permissions.');
+            scEnd(false);
+            scSig(SC.peer, 'hangup', {});
+            return;
+        }
         scCallUI('active', '🟢 ' + SC.peerName);
         scPeer(SC.peer, false);
-    };
-    document.getElementById('scNo').onclick = function() { ui.remove(); scSig(SC.peer, 'hangup', {}); };
-    setTimeout(function() { if (document.getElementById('scIncomingUI')) { ui.remove(); SC.peer = null; } }, 30000);
-}
+    });
 
+    noBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation(); ev.preventDefault();
+        SC.inCall = false;              // 🔧 reset here too
+			   window.__scRingStop = true;   // 🔔 stop ringing
+        ui.remove();
+        scSig(SC.peer, 'hangup', {});
+        SC.peer = null;
+    });
+    setTimeout(function() {
+        if (document.getElementById('scIncomingUI')) {
+            window.__scRingStop = true;   // 🔔 stop ringing
+            ui.remove();
+            SC.peer = null;
+            SC.inCall = false;
+        }
+    }, 30000);
+}
 async function scHandleOffer(s) {
+    // 🔧 Wait until the user actually ANSWERED (ring screen gone, call UI up)
+    if (document.getElementById('scIncomingUI')) {
+        // Store the offer — process it after answering
+        SC.pendingOffer = s;
+        setTimeout(function() {
+            if (SC.pendingOffer && !document.getElementById('scIncomingUI')) {
+                var offer = SC.pendingOffer; SC.pendingOffer = null;
+                scHandleOffer(offer);
+            }
+        }, 1000);
+        return;
+    }
     if (!SC.stream) {
         try { SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video }); }
         catch(e) { scSig(s.from_id, 'hangup', {}); return; }
     }
     if (!SC.pc) scPeer(s.from_id, false);
+
     try {
         await SC.pc.setRemoteDescription(new RTCSessionDescription(s.data.sdp));
         var ans = await SC.pc.createAnswer();
@@ -450,6 +552,14 @@ function scPresence() {
 // ================================================================
 function scBoot() {
     scInit();
+	    // 🔊 Audio unlock — one touch anywhere enables all sounds
+    document.addEventListener('touchstart', function unlock() {
+        try {
+            window.__scRingCtx = window.__scRingCtx || new (window.AudioContext || window.webkitAudioContext)();
+            window.__scRingCtx.resume();
+            document.removeEventListener('touchstart', unlock);
+        } catch(e) {}
+    }, { once: true });
     scWire();
     scPresence();
 
