@@ -283,11 +283,16 @@ function scCallFromChat(video) {
     scCall(val, nm, video);
 }
 
-async function scCall(toId, toName, video) {
-    // 🔧 Real busy check: only block if there's an ACTUAL live connection
+aasync function scCall(toId, toName, video) {
+    // Real busy check
     if (SC.inCall && (SC.pc || SC.stream)) { alert('Already in a call!'); return; }
-    SC.inCall = false; // clear any phantom state    scInit();
-    SC.peer = toId; SC.peerName = toName; SC.video = video; SC.inCall = true;
+    scInit();
+
+    SC.inCall = true;
+    SC.peer = toId;
+    SC.peerName = toName;
+    SC.video = video;
+
     try {
         SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
     } catch(e) {
@@ -295,24 +300,41 @@ async function scCall(toId, toName, video) {
         alert('🎤/📷 Blocked! Allow access in browser settings.');
         return;
     }
-    // 🔔 Ringback sound for the CALLER (hear it ringing on the other side)
+
+    scCallUI('calling', '📞 Calling ' + toName + '...');
+
+    // Ringback sound for the caller
     try {
         window.__scRingStop = false;
         window.__scRingCtx = window.__scRingCtx || new (window.AudioContext || window.webkitAudioContext)();
         var ctx2 = window.__scRingCtx;
         window.__scRingbackInterval = setInterval(function() {
             if (window.__scRingStop) { clearInterval(window.__scRingbackInterval); return; }
-            var o = ctx2.createOscillator(); var g = ctx2.createGain();
-            o.type = 'sine'; o.frequency.value = 440;
+            var o = ctx2.createOscillator();
+            var g = ctx2.createGain();
+            o.type = 'sine';
+            o.frequency.value = 440;
             g.gain.setValueAtTime(0.15, ctx2.currentTime);
             g.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + 0.8);
-            o.connect(g); g.connect(ctx2.destination);
-            o.start(); o.stop(ctx2.currentTime + 0.85);
+            o.connect(g);
+            g.connect(ctx2.destination);
+            o.start();
+            o.stop(ctx2.currentTime + 0.85);
         }, 2000);
-    } catch(e) {}    scSig(toId, 'ring', { video: video, fromName: SC.name });
-    scPeer(toId, true);
-}
+    } catch(e) {}
 
+    // 📤 THE RING — separate line, on its own line, never commented!
+    await scSig(toId, 'ring', { video: video, fromName: SC.name });
+    scPeer(toId, true);
+
+    // ⏱️ Auto-cancel after 40 seconds if nobody answers
+    setTimeout(function() {
+        if (SC.inCall && document.getElementById('scCallUI') && !SC.pc.connectionState) {
+            // still calling, nobody answered
+            scEnd(true);
+        }
+    }, 40000);
+}
 function scPeer(peerId, offer) {
     if (SC.pc) { try { SC.pc.close(); } catch(e) {} }
     SC.pc = new RTCPeerConnection({
@@ -352,31 +374,58 @@ async function scSig(toId, type, payload) {
 }
 
 function scCallUI(state, title) {
-    var old = document.getElementById('scCallUI'); if (old) old.remove();
+    var old = document.getElementById('scCallUI');
+    if (old) old.remove();
     var ui = document.createElement('div');
     ui.id = 'scCallUI';
-    ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.97);z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
+    ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.97);z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
     ui.innerHTML =
         (SC.video ? '<video id="scRemoteVideo" autoplay playsinline style="width:90%;max-width:400px;border-radius:16px;background:#000;"></video>' : '') +
         '<audio id="scRemoteAudio" autoplay style="display:none;"></audio>' +
         (SC.video ? '<video id="scLocalVideo" autoplay playsinline muted style="position:absolute;top:15px;right:15px;width:100px;border-radius:10px;border:2px solid rgba(255,255,255,.4);"></video>' : '') +
         '<h2 style="margin:15px 0 5px;">' + title + '</h2>' +
-        (state === 'calling' ? '<p style="color:#94a3b8;">Ring... ring...</p>' : '') +
-        '<button id="scEndBtn" style="width:65px;height:65px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:26px;cursor:pointer;margin-top:20px;">📵</button>';
+        (state === 'calling' ? '<p id="scCallTimer" style="color:#94a3b8;">Ringing... 0s</p>' : '') +
+        '<button id="scEndBtn" style="width:70px;height:70px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:28px;cursor:pointer;margin-top:20px;">📵</button>';
     document.body.appendChild(ui);
-    if (SC.video && SC.stream) { var lv = document.getElementById('scLocalVideo'); if (lv) lv.srcObject = SC.stream; }
-    document.getElementById('scEndBtn').onclick = function() { scEnd(true); };
+
+    // Caller-side ring timer
+    if (state === 'calling') {
+        var t = 0;
+        window.__scCallTimer = setInterval(function() {
+            t++;
+            var el = document.getElementById('scCallTimer');
+            if (el) el.textContent = 'Ringing... ' + t + 's';
+            if (t >= 40) { clearInterval(window.__scCallTimer); scEnd(true); } // auto-give-up
+            else if (!document.getElementById('scCallUI')) clearInterval(window.__scCallTimer);
+        }, 1000);
+    }
+
+    if (SC.video && SC.stream) {
+        var lv = document.getElementById('scLocalVideo');
+        if (lv) lv.srcObject = SC.stream;
+    }
+
+    var endBtn = document.getElementById('scEndBtn');
+    endBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        ev.preventDefault();
+        clearInterval(window.__scCallTimer);
+        scEnd(true);
+    });
 }
 function scEnd(notify) {
     if (notify && SC.peer) scSig(SC.peer, 'hangup', {});
-    window.__scRingStop = true;   // 🔔 always silence the ring on any call end
-	  SC.inCall = false;   // 🔧 ALWAYS reset — no phantom busy state
+    window.__scRingStop = true;
+    clearInterval(window.__scCallTimer);
+    clearInterval(window.__scRingbackInterval);
+    SC.inCall = false;
     SC.peer = null;
     if (SC.pc) { try { SC.pc.close(); } catch(e) {} SC.pc = null; }
     if (SC.stream) { SC.stream.getTracks().forEach(function(t) { t.stop(); }); SC.stream = null; }
-    var u = document.getElementById('scCallUI'); if (u) u.remove();
-    var i = document.getElementById('scIncomingUI'); if (i) i.remove();
-    SC.inCall = false; SC.peer = null;
+    var u = document.getElementById('scCallUI');
+    if (u) u.remove();
+    var i = document.getElementById('scIncomingUI');
+    if (i) i.remove();
 }
 
 // ===== Incoming call =====
