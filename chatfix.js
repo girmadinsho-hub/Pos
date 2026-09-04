@@ -1,4 +1,4 @@
-/* ================================================================
+===============================================
    🛠️ CHATFIX — one file, complete communication fixes:
    1. Voice players + photo display (guaranteed)
    2. 📞 📹 call buttons (guaranteed, with built-in calling)
@@ -318,21 +318,39 @@ function cfCallFromChat(video) {
 }
 
 // ================================================================
-// 🚀 BOOT — run when ready, re-render when chat opens
+// 🚀 BOOT v2 — wire applied AFTER all scripts, re-applied forever
 // ================================================================
 function cfBoot() {
     try { cfListen(); } catch(e) {}
 
-    // Re-render with media whenever chat becomes visible
+    // 🔌 THE WIRE — runs after every app script loaded, so WE win
+    function applyWire() {
+        try {
+            window.renderChatBubble = cfBubble;
+            window.renderAdminChatBubble = cfBubble;
+        } catch(e) {}
+    }
+    applyWire();
+
+    // 🐕 Watchdog: keep wire alive + re-render chat with media on open
     var seen = false;
     setInterval(function() {
-        var c = document.getElementById('chatMessages') || document.getElementById('adminChatMessages');
-        if (c && c.offsetParent !== null) {
-            if (!seen) { seen = true; cfRenderAll(); }
-        } else {
-            seen = false;
-        }
+        try {
+            applyWire();
+            var c = document.getElementById('chatMessages') || document.getElementById('adminChatMessages');
+            if (c && c.offsetParent !== null) {
+                if (!seen) { seen = true; cfRenderAll(); }
+            } else {
+                seen = false;
+            }
+        } catch(e) {}
     }, 1500);
+}
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(cfBoot, 2000);
+} else {
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(cfBoot, 2000); });
 }
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
