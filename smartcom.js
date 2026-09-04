@@ -1,4 +1,4 @@
-/* ================================================================
+* ================================================================
    💬 SMARTCOM — the complete communication system. ONE file.
    Text + Voice messages + Photos + Delete + Live Voice/Video Calls
    + Presence + Typing indicator. Zero dependencies on other files.
@@ -42,8 +42,8 @@ function scBuildBar() {
         '<button id="scCallBtn" title="Voice call" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#059669;color:white;font-size:16px;cursor:pointer;flex-shrink:0;">📞</button>' +
         '<button id="scVideoBtn" title="Video call" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#7c3aed;color:white;font-size:16px;cursor:pointer;flex-shrink:0;">📹</button>' +
         '<button id="scPhotoBtn" title="Send photo" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#7c3aed;color:white;font-size:15px;cursor:pointer;flex-shrink:0;">📷</button>' +
-			  '<button id="scFileBtn" title="Send file" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#0891b2;color:white;font-size:15px;cursor:pointer;flex-shrink:0;">📎</button>' +
-        '<button id="scMicBtn" title="Hold to record" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#ef4444;color:white;font-size:15px;cursor:pointer;flex-shrink:0;">🎤</button>' +
+        '<button id="scFileBtn" title="Send file" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#0891b2;color:white;font-size:15px;cursor:pointer;flex-shrink:0;">📎</button>' +
+		  	'<button id="scMicBtn" title="Hold to record" style="width:38px;height:38px;min-width:38px;border:none;border-radius:50%;background:#ef4444;color:white;font-size:15px;cursor:pointer;flex-shrink:0;">🎤</button>' +
         '<div style="flex:1;min-width:0;position:relative;">' +
         '<textarea id="scText" rows="1" placeholder="Message..." style="width:100%;box-sizing:border-box;padding:9px 46px 9px 12px;border:1px solid #cbd5e1;border-radius:18px;font-size:14px;outline:none;resize:none;line-height:1.4;max-height:100px;background:#fff;color:#1e293b;font-family:inherit;display:block;"></textarea>' +
         '<button id="scSendBtn" style="position:absolute;right:3px;bottom:3px;width:32px;height:32px;border:none;border-radius:50%;background:#2563eb;color:white;font-size:13px;font-weight:bold;cursor:pointer;">➤</button>' +
@@ -72,13 +72,12 @@ function scBuildBar() {
     });
 
     // Photo
-    document.getElementById('scPhotoBtn').onclick = function() {
+       document.getElementById('scFileBtn').onclick = function() {
         var fi = document.createElement('input');
-        fi.type = 'file'; fi.accept = 'image/*'; fi.capture = 'environment';
-        fi.onchange = function() { scPhoto(this.files[0]); };
+        fi.type = 'file';
+        fi.onchange = function() { scFile(this.files[0]); };
         fi.click();
     };
-
 	    document.getElementById('scFileBtn').onclick = function() {
         var fi = document.createElement('input');
         fi.type = 'file';
@@ -167,11 +166,11 @@ function scPhoto(file) {
 }
 
 // ================================================================
-// 📎 FILE ATTACHMENTS (PDF, docs, any file — up to 1MB)
+// 📎 FILE ATTACHMENT SENDER (PDF, docs, any file — max 1MB)
 // ================================================================
 function scFile(file) {
     if (!file) return;
-    if (file.size > 1000000) { alert('File too large! Max 1 MB (documents, not videos).'); return; }
+    if (file.size > 1000000) { alert('File too large! Max 1 MB.'); return; }
     var rd = new FileReader();
     rd.onloadend = function() {
         if (rd.result.length > 1400000) { alert('File too large after encoding.'); return; }
@@ -399,36 +398,70 @@ async function scCall(toId, toName, video) {
             { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
         ]
     });
-    SC.stream.getTracks().forEach(function(t) { SC.pc.addTrack(t, SC.stream); });
+
+    SC.stream.getTracks().forEach(function(t) {
+        SC.pc.addTrack(t, SC.stream);
+    });
 
     SC.pc.ontrack = function(ev) {
-        // 🔧 FIX: save the stream FIRST
         SC.remoteStream = ev.streams[0];
         window.__scRingStop = true;
         clearInterval(window.__scCallTimer);
         clearInterval(window.__scRingbackInterval);
-        // Rebuild UI FIRST...
+
         scCallUI('active', '🟢 ' + SC.peerName);
-        // ...THEN attach the stream to the FRESH elements
-        var a = document.getElementById('scRemoteAudio');
-        var v = document.getElementById('scRemoteVideo');
-        if (a) {
-            a.srcObject = SC.remoteStream;
-            a.volume = 1.0;
-            a.play().catch(function() {
-                // Autoplay blocked → tap-to-hear fallback
-                a.insertAdjacentHTML('afterend', '<button onclick="this.previousElementSibling.play(); this.remove()" style="margin-top:8px;padding:8px 16px;border:none;border-radius:8px;background:#2563eb;color:white;font-weight:bold;cursor:pointer;">🔊 Tap to hear</button>');
-            });
-        }
-        if (v) {
-            v.srcObject = SC.remoteStream;
-            v.play().catch(function(){});
-        }
+
+        // Attach AFTER UI exists
+        setTimeout(function() {
+            var a = document.getElementById('scRemoteAudio');
+            var v = document.getElementById('scRemoteVideo');
+
+            if (a) {
+                a.srcObject = SC.remoteStream;
+                a.volume = 1.0;
+                a.style.display = 'block';
+                a.style.width = '100%';
+                a.style.height = '40px';
+
+                a.play().then(function() {
+                    // 🟢 WORKING! Remove this alert later
+                    console.log('✅ AUDIO PLAYING');
+                }).catch(function(err) {
+                    // 🔴 AUTOPLAY BLOCKED — show tap button
+                    console.log('❌ Autoplay blocked:', err.message);
+                    var btn = document.createElement('button');
+                    btn.textContent = '🔊 TAP TO HEAR';
+                    btn.style.cssText = 'margin-top:10px;padding:12px 24px;border:none;border-radius:10px;background:#2563eb;color:white;font-weight:bold;cursor:pointer;font-size:16px;';
+                    btn.onclick = function() {
+                        a.play();
+                        btn.remove();
+                    };
+                    a.parentNode.appendChild(btn);
+                });
+            }
+
+            if (v) {
+                v.srcObject = SC.remoteStream;
+                v.play().catch(function(){});
+            }
+        }, 200);
     };
 
     SC.pc.onicecandidate = function(ev) {
         if (ev.candidate) scSig(peerId, 'ice', { candidate: ev.candidate });
     };
+
+    SC.pc.onconnectionstatechange = function() {
+        console.log('📡 Connection state:', SC.pc.connectionState);
+        if (SC.pc.connectionState === 'connected') {
+            window.__scRingStop = true;
+            clearInterval(window.__scCallTimer);
+        }
+        if (SC.pc.connectionState === 'failed' || SC.pc.connectionState === 'disconnected') {
+            scEnd(false);
+        }
+    };
+
     if (offer) {
         SC.pc.createOffer().then(function(o) {
             SC.pc.setLocalDescription(o);
@@ -436,7 +469,6 @@ async function scCall(toId, toName, video) {
         });
     }
 }
-
 async function scSig(toId, type, payload) {
     try {
         await supabaseClient.from('call_signals').insert([{
@@ -454,8 +486,7 @@ function scCallUI(state, title) {
     ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.97);z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
     ui.innerHTML =
         (SC.video ? '<video id="scRemoteVideo" autoplay playsinline style="width:95%;height:55vh;object-fit:cover;border-radius:16px;background:#000;"></video>' : '') +
-        '<audio id="scRemoteAudio" autoplay style="display:none;"></audio>' +
-        (SC.video ? '<video id="scLocalVideo" autoplay playsinline muted style="position:absolute;top:15px;right:15px;width:100px;border-radius:10px;border:2px solid rgba(255,255,255,.4);"></video>' : '') +
+        '<audio id="scRemoteAudio" autoplay style="width:100%;height:40px;controls;"></audio>' +        (SC.video ? '<video id="scLocalVideo" autoplay playsinline muted style="position:absolute;top:15px;right:15px;width:100px;border-radius:10px;border:2px solid rgba(255,255,255,.4);"></video>' : '') +
         '<h2 style="margin:15px 0 5px;">' + title + '</h2>' +
         (state === 'calling' ? '<p id="scCallTimer" style="color:#94a3b8;">Ringing... 0s</p>' : '') +
         '<button id="scEndBtn" style="width:70px;height:70px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:28px;cursor:pointer;margin-top:20px;">📵</button>';
