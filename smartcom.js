@@ -81,7 +81,6 @@ function scBuildBar() {
         };
         fi.click();
     };
-    };
 	    document.getElementById('scFileBtn').onclick = function() {
         var fi = document.createElement('input');
         fi.type = 'file';
