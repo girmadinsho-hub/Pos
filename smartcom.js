@@ -1,4 +1,4 @@
-* ================================================================
+/* ================================================================
    💬 SMARTCOM — the complete communication system. ONE file.
    Text + Voice messages + Photos + Delete + Live Voice/Video Calls
    + Presence + Typing indicator. Zero dependencies on other files.
