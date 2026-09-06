@@ -3704,10 +3704,11 @@ async function loadRecentSalesForVoid() {
     container.innerHTML = '<p style="text-align:center;color:#94a3b8;">Loading…</p>';
     try {
         if (supabaseClient) {
-            const { data, error } = await supabaseClient.from('sales')
+               const { data, error } = await supabaseClient.from('sales')
                 .select('*')
                 .eq('shop_id', getShopId())
                 .eq('cashier_id', currentCashier.id)
+                .eq('voided', false)              // 🆕 only non-voided sales
                 .order('time', { ascending: false })
                 .limit(50);
                 
@@ -4107,6 +4108,10 @@ async function voidSale(saleId) {
             const { data: saleData, error: fetchErr } = await supabaseClient.from('sales').select('*').eq('id', saleId).single();
             if (fetchErr) throw fetchErr;
 
+            // 🛡️ Already voided? Stop.
+            if (saleData.voided) { alert('This sale is already voided!'); return; }
+
+            // 1️⃣ Restore stock
             if (saleData.items) {
                 for (const item of saleData.items) {
                     var product = products.find(x => x.id === item.productId);
@@ -4117,13 +4122,32 @@ async function voidSale(saleId) {
                 }
             }
 
-            const { error: delErr } = await supabaseClient.from('sales').delete().eq('id', saleId);
-            if (delErr) throw delErr;
-        }
+            // 2️⃣ MARK the sale voided — NOT deleted! (stays in records!)
+            const { error: voidErr } = await supabaseClient.from('sales').update({
+                voided: true,
+                voided_at: new Date().toISOString(),
+                voided_by: (currentCashier && currentCashier.name) || 'Unknown',
+                void_reason: (window.__voidReason || 'Not specified'),
+                status: 'voided'
+            }).eq('id', saleId);
+            if (voidErr) throw voidErr;
 
-        alert('✅ Sale voided and stock restored.');
-        await loadRecentSalesForVoid();
-        if (typeof filterProducts === 'function') filterProducts();
+            // 3️⃣ Write the AUDIT LOG (permanent record)
+            await supabaseClient.from('audit_logs').insert([{
+                shop_id: getShopId(),
+                action: 'SALE_VOIDED',
+                details: 'Invoice: ' + (saleData.invoice_no || saleId) +
+                         ' | Amount: ' + (saleData.total || 0) +
+                         ' | Restocked ' + (saleData.items || []).length + ' items' +
+                         ' | Authorized by: ' + ((currentCashier && currentCashier.name) || 'Unknown'),
+                cashier_name: (currentCashier && currentCashier.name) || 'Unknown',
+                timestamp: new Date().toISOString()
+            }]);
+
+            alert('✅ Sale voided, stock restored, audit recorded.');
+            await loadRecentSalesForVoid();
+            if (typeof filterProducts === 'function') filterProducts();
+        }
     } catch (e) {
         alert("❌ Error voiding sale: " + e.message);
     }
