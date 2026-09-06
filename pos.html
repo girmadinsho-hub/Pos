@@ -3275,6 +3275,28 @@ async function completePayment() {
     var invoiceNo = 'INV-' + Date.now().toString().slice(-8);
 
     // YOUR EXACT OBJECT (Preserved camelCase)
+        // 🔗 SHIFT STAMP — find the cashier's CURRENT open shift (BEFORE building the sale!)
+    var saleShiftId = currentShiftId || null;
+    var activeShift = localStorage.getItem('activeShift_' + getShopId() + '_' + ((currentCashier && currentCashier.id) || ''));
+    if (!saleShiftId && activeShift) {
+        try {
+            var sh = JSON.parse(activeShift);
+            if (sh && sh.timecardId) saleShiftId = 'TC-' + sh.timecardId;
+        } catch(e) {}
+    }
+    // Fallback: query the timecards table directly
+    if (!saleShiftId && currentCashier && supabaseClient) {
+        try {
+            const { data: tc } = await supabaseClient.from('timecards')
+                .select('id').eq('shop_id', getShopId())
+                .eq('employee_id', currentCashier.id)
+                .is('clock_out_time', null)
+                .order('clock_in_time', { ascending: false }).limit(1).maybeSingle();
+            if (tc) saleShiftId = 'TC-' + tc.id;
+        } catch(e) {}
+    }
+
+    // YOUR EXACT OBJECT (Preserved camelCase) — now CLEAN, logic outside!
     var sale = {
         items, subtotal, discount, tax, total, profit,
         paymentMethod: splitMode ? 'split' : payments[0].method,
@@ -3283,7 +3305,7 @@ async function completePayment() {
         shopId: getShopId(),
         cashierId: currentCashier?.id || '',
         cashierName: currentCashier?.name || '',
-        shiftId: currentShiftId || 'unknown',
+        shiftId: saleShiftId || 'unknown',
         time: new Date().toISOString(),
         note: saleNote,
         invoiceNo: invoiceNo,
@@ -5050,77 +5072,146 @@ async function clockInStaff() {
         }
         if (!valid) { alert('❌ Wrong PIN!'); return; }
 
-        // 📷 Selfie (OPTIONAL — only if camera elements exist)
+        // 📷 SELFIE REQUIRED — no photo, no clocking!
         let selfieData = null;
-        const video = document.getElementById('clockVideo');
-        const canvas = document.getElementById('clockCanvas');
-        if (video && canvas) {
-            try {
-                clockStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-                video.srcObject = clockStream;
-                video.style.display = 'block';
-                await new Promise(r => setTimeout(r, 2000));
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-                selfieData = canvas.toDataURL('image/jpeg', 0.5);
-                if (clockStream) { clockStream.getTracks().forEach(track => track.stop()); clockStream = null; }
-                video.style.display = 'none';
-            } catch(e) {
-                // Camera failed → continue WITHOUT selfie (not a blocker!)
-                console.warn('Camera skipped:', e.message);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+
+            // Build a live camera preview INSIDE the modal
+            var video = document.getElementById('clockVideo');
+            if (!video) {
+                video = document.createElement('video');
+                video.id = 'clockVideo';
+                video.autoplay = true; video.playsInline = true;
+                video.style.cssText = 'width:100%;max-width:250px;border-radius:12px;margin:10px auto;display:block;';
+                var modal = document.getElementById('clockModal').querySelector('.modal-content');
+                modal.insertBefore(video, document.getElementById('clockPin').nextSibling);
             }
+
+            video.srcObject = stream;
+            video.style.display = 'block';
+
+            // Show a countdown — user's face is captured automatically
+            var countdown = 3;
+            video.insertAdjacentHTML('afterend',
+                '<div id="clockCountdown" style="text-align:center;font-weight:bold;font-size:18px;color:#10b981;">📸 Look at camera... ' + countdown + '</div>');
+
+            await new Promise(function(resolve) {
+                var iv = setInterval(function() {
+                    countdown--;
+                    var cd = document.getElementById('clockCountdown');
+                    if (cd) cd.textContent = '📸 Look at camera... ' + countdown;
+                    if (countdown <= 0) { clearInterval(iv); resolve(); }
+                }, 1000);
+            });
+
+            // Snap the photo
+            var canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            selfieData = canvas.toDataURL('image/jpeg', 0.5);
+
+            // Cleanup
+            stream.getTracks().forEach(function(t) { t.stop(); });
+            video.style.display = 'none';
+            var cd = document.getElementById('clockCountdown');
+            if (cd) cd.remove();
+
+            if (!selfieData || selfieData.length < 500) {
+                throw new Error('Photo capture failed');
+            }
+
+        } catch(e) {
+            // 📷 No camera or denied → BLOCK the clocking!
+            alert('📷 Camera required for attendance!\n\nPlease allow camera access to clock in/out.\nThis photo identifies who is clocking.');
+            return;
         }
 
-        // 📍 GPS (OPTIONAL — not a blocker)
-        let gpsLink = null;
+        // 📍 GPS (optional bonus — never blocks)
+        let gpsLink = 'No GPS';
         if (navigator.geolocation) {
             gpsLink = await new Promise(function(resolve) {
                 navigator.geolocation.getCurrentPosition(
-                    function(position) {
-                        resolve("https://maps.google.com/?q=" + position.coords.latitude + "," + position.coords.longitude);
-                    },
-                    function() { resolve(null); },  // denied → continue without GPS
-                    { timeout: 8000 }
+                    function(p) { resolve("https://maps.google.com/?q=" + p.coords.latitude + "," + p.coords.longitude); },
+                    function() { resolve('No GPS'); },
+                    { timeout: 6000 }
                 );
             });
         }
 
-        // ✅ THE ACTUAL CLOCK IN/OUT — this is the important part!
+        // ✅ CLOCK IN or OUT — with shift detection
         const { data: openShift, error: shiftError } = await supabaseClient.from('timecards')
             .select('*')
             .eq('shop_id', getShopId())
             .eq('employee_id', cashier.id)
             .is('clock_out_time', null)
+            .order('clock_in_time', { ascending: false })
             .limit(1)
             .maybeSingle();
-
         if (shiftError) throw shiftError;
 
         if (!openShift) {
-            // CLOCK IN
-            const { error: insertError } = await supabaseClient.from('timecards').insert([{
+            // 🌅 CLOCK IN — create the shift
+            const { data: newShift, error: insertError } = await supabaseClient.from('timecards').insert([{
                 shop_id: getShopId(),
                 employee_id: cashier.id,
                 employee_name: cashier.name,
                 clock_in_time: new Date().toISOString(),
                 clock_out_time: null,
-                clock_in_gps: gpsLink || 'No GPS',
-                clock_in_selfie: selfieData || null
-            }]);
+                clock_in_gps: gpsLink,
+                clock_in_selfie: selfieData
+            }]).select().single();
             if (insertError) throw insertError;
-            alert('✅ Clocked IN at ' + new Date().toLocaleTimeString() + '\nWelcome, ' + cashier.name + '!');
+
+            // 🔗 SAVE the active shift for THIS device — sales will carry it!
+            localStorage.setItem('activeShift_' + getShopId() + '_' + cashier.id, JSON.stringify({
+                timecardId: newShift.id,
+                clockIn: newShift.clock_in_time
+            }));
+
+            alert('✅ Clocked IN at ' + new Date().toLocaleTimeString() +
+                  '\n📷 Photo saved\n📍 ' + gpsLink +
+                  '\n\n👤 ' + cashier.name + ' — your sales will be tracked to this shift!');
         } else {
-            // CLOCK OUT
+            // 🌙 CLOCK OUT — close the shift
             const { error: updateError } = await supabaseClient.from('timecards')
                 .update({
                     clock_out_time: new Date().toISOString(),
-                    clock_out_gps: gpsLink || 'No GPS',
-                    clock_out_selfie: selfieData || null
+                    clock_out_gps: gpsLink,
+                    clock_out_selfie: selfieData
                 })
                 .eq('id', openShift.id);
             if (updateError) throw updateError;
-            alert('✅ Clocked OUT at ' + new Date().toLocaleTimeString() + '\nGoodbye, ' + cashier.name + '!');
+
+            // 🧹 Clear the device's shift record
+            localStorage.removeItem('activeShift_' + getShopId() + '_' + cashier.id);
+
+            // 📊 SHIFT SUMMARY — what did they sell?
+            const { data: shiftSales } = await supabaseClient.from('sales')
+                .select('total, payment_method, items')
+                .eq('shop_id', getShopId())
+                .eq('cashier_id', cashier.id)
+                .gte('time', openShift.clock_in_time)
+                .lte('time', new Date().toISOString());
+
+            var n = (shiftSales || []).length;
+            var sum = (shiftSales || []).reduce(function(s, x) { return s + (x.total || 0); }, 0);
+            var items = {};
+            (shiftSales || []).forEach(function(sale) {
+                (sale.items || []).forEach(function(i) { items[i.name] = (items[i.name] || 0) + (i.qty || 0); });
+            });
+            var topItems = Object.keys(items).map(function(k) { return items[k] + 'x ' + k; }).slice(0, 5).join(', ');
+
+            alert('✅ Clocked OUT at ' + new Date().toLocaleTimeString() +
+                  '\n📷 Photo saved' +
+                  '\n\n🧾 SHIFT SUMMARY:' +
+                  '\n🕐 Started: ' + new Date(openShift.clock_in_time).toLocaleTimeString() +
+                  '\n💰 Sales: ' + n + ' transactions — ' + fmtMoney(sum) +
+                  (topItems ? '\n📦 Sold: ' + topItems : ''));
+
+            closeClockModal();
+            return;
         }
 
         closeClockModal();
