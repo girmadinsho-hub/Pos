@@ -328,21 +328,100 @@ function scRerender() {
 // ================================================================
 // 📞 PART 6 — LIVE CALLS (WebRTC, direct + TURN fallback)
 // ================================================================
-function scCallFromChat(video) {
-    var sel = document.getElementById('chatRecipient') || document.getElementById('adminChatRecipient');
-    if (!sel) { alert('Open a chat first.'); return; }
-    var val = sel.value;
-    var nm = sel.options[sel.selectedIndex].text.replace('👤 ', '').replace('🟢 ', '');
-    if (val === 'All' || val === 'Cashier' || val === 'Kitchen' || val === 'Admin') {
-        alert('⚠️ Select a SPECIFIC person from the Direct Message list first.');
-        return;
-    }
-    scCall(val, nm, video);
+
+// ================================================================
+// 📞 FIXED CALL SYSTEM – reliable WebRTC with proper state & ICE
+// ================================================================
+
+let __scCallChannel = null;   // single channel
+let __scIceBuffer = [];       // buffer for early ICE candidates
+let __scRingStop = false;
+let __scCallTimer = null;
+let __scRingbackInterval = null;
+
+// ===== CALL CHANNEL SETUP (run once in scBoot) =====
+function scInitCallChannel() {
+    if (__scCallChannel) return;
+    __scCallChannel = supabaseClient.channel('calls-' + SC.shop);
+    __scCallChannel
+        .on('broadcast', { event: 'sc-signal' }, (msg) => scHandleSignal(msg.payload))
+        .subscribe();
 }
 
+// ===== SIGNAL DISPATCHER =====
+async function scHandleSignal(s) {
+    if (!s || String(s.from_id) === String(SC.id)) return;
+
+    const forMe = (String(s.to_id) === String(SC.id)) || (String(s.to_id) === String(SC.role)) || (String(s.to_id) === 'All');
+    if (!forMe) return;
+
+    try {
+        if (s.type === 'ring') {
+            scIncoming(s);
+        }
+        else if (s.type === 'typing') {
+            scShowTyping(s.from_name || 'Someone');
+        }
+        else if (s.type === 'offer') {
+            if (document.getElementById('scIncomingUI')) {
+                SC.pendingOffer = s;
+            } else if (SC.inCall) {
+                await scHandleOffer(s);
+            }
+        }
+        else if (s.type === 'answer') {
+            if (SC.pc && SC.pc.signalingState !== 'stable') {
+                await SC.pc.setRemoteDescription(new RTCSessionDescription(s.data.sdp));
+                // apply any buffered ICE
+                if (__scIceBuffer.length) {
+                    const buf = __scIceBuffer;
+                    __scIceBuffer = [];
+                    for (const c of buf) {
+                        try { await SC.pc.addIceCandidate(c); } catch(e) {}
+                    }
+                }
+            }
+        }
+        else if (s.type === 'ice') {
+            // apply immediately if possible, else buffer
+            if (SC.pc && SC.pc.remoteDescription) {
+                try { await SC.pc.addIceCandidate(s.data.candidate); } catch(e) {}
+            } else {
+                __scIceBuffer.push(s.data.candidate);
+            }
+        }
+        else if (s.type === 'hangup') {
+            scEnd(false);
+        }
+    } catch(e) {
+        console.warn('Signal handling error:', e);
+    }
+}
+
+// ===== SEND SIGNAL =====
+async function scSig(toId, type, payload) {
+    if (!__scCallChannel) return;
+    try {
+        await __scCallChannel.send({
+            type: 'broadcast',
+            event: 'sc-signal',
+            payload: {
+                shop_id: SC.shop,
+                from_id: SC.id,
+                from_name: SC.name,
+                to_id: toId,
+                type: type,
+                data: payload
+            }
+        });
+    } catch(e) {
+        console.warn('Signal send failed:', e.message);
+    }
+}
+
+// ===== OUTGOING CALL =====
 async function scCall(toId, toName, video) {
-    // Real busy check
-    if (SC.inCall && (SC.pc || SC.stream)) { alert('Already in a call!'); return; }
+    if (SC.inCall) { alert('Already in a call!'); return; }
     scInit();
 
     SC.inCall = true;
@@ -360,40 +439,42 @@ async function scCall(toId, toName, video) {
 
     scCallUI('calling', '📞 Calling ' + toName + '...');
 
-    // Ringback sound for the caller
+    // Ringback sound
+    __scRingStop = false;
     try {
-        window.__scRingStop = false;
-        window.__scRingCtx = window.__scRingCtx || new (window.AudioContext || window.webkitAudioContext)();
-        var ctx2 = window.__scRingCtx;
-        window.__scRingbackInterval = setInterval(function() {
-            if (window.__scRingStop) { clearInterval(window.__scRingbackInterval); return; }
-            var o = ctx2.createOscillator();
-            var g = ctx2.createGain();
+        const ctx = window.__scRingCtx || new (window.AudioContext || window.webkitAudioContext)();
+        window.__scRingCtx = ctx;
+        __scRingbackInterval = setInterval(() => {
+            if (__scRingStop) { clearInterval(__scRingbackInterval); return; }
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
             o.type = 'sine';
             o.frequency.value = 440;
-            g.gain.setValueAtTime(0.15, ctx2.currentTime);
-            g.gain.exponentialRampToValueAtTime(0.001, ctx2.currentTime + 0.8);
+            g.gain.setValueAtTime(0.15, ctx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
             o.connect(g);
-            g.connect(ctx2.destination);
+            g.connect(ctx.destination);
             o.start();
-            o.stop(ctx2.currentTime + 0.85);
+            o.stop(ctx.currentTime + 0.85);
         }, 2000);
     } catch(e) {}
 
-    // 📤 THE RING — separate line, on its own line, never commented!
+    // Send ring and create peer connection
     await scSig(toId, 'ring', { video: video, fromName: SC.name });
     scPeer(toId, true);
 
-    // ⏱️ Auto-cancel after 40 seconds if nobody answers
-    setTimeout(function() {
+    // Auto-cancel after 40 seconds
+    setTimeout(() => {
         if (SC.inCall && document.getElementById('scCallUI') && !SC.pc.connectionState) {
-            // still calling, nobody answered
             scEnd(true);
         }
     }, 40000);
 }
-	function scPeer(peerId, offer) {
+
+// ===== CREATE PEER CONNECTION =====
+function scPeer(peerId, isOfferer) {
     if (SC.pc) { try { SC.pc.close(); } catch(e) {} }
+
     SC.pc = new RTCPeerConnection({
         iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -402,155 +483,161 @@ async function scCall(toId, toName, video) {
         ]
     });
 
-    SC.stream.getTracks().forEach(function(t) { SC.pc.addTrack(t, SC.stream); });
+    SC.stream.getTracks().forEach(track => SC.pc.addTrack(track, SC.stream));
 
-    SC.pc.ontrack = function(ev) {
+    SC.pc.ontrack = (ev) => {
         SC.remoteStream = ev.streams[0];
-        window.__scRingStop = true;
-        clearInterval(window.__scCallTimer);
-        clearInterval(window.__scRingbackInterval);
-        var h2 = document.querySelector('#scCallUI h2');
+        __scRingStop = true;
+        clearInterval(__scCallTimer);
+        clearInterval(__scRingbackInterval);
+        const h2 = document.querySelector('#scCallUI h2');
         if (h2) h2.textContent = '🟢 ' + SC.peerName;
 
-        var a = document.getElementById('scRemoteAudio');
-        var v = document.getElementById('scRemoteVideo');
-        if (a) {
-            a.srcObject = SC.remoteStream;
-            a.volume = 1.0;
-            a.play().catch(function() {
-                var btn = document.createElement('button');
+        const audio = document.getElementById('scRemoteAudio');
+        const video = document.getElementById('scRemoteVideo');
+        if (audio) {
+            audio.srcObject = SC.remoteStream;
+            audio.volume = 1.0;
+            audio.play().catch(() => {
+                // Add a tap-to-play button if browser blocks autoplay
+                const btn = document.createElement('button');
                 btn.textContent = '🔊 TAP TO HEAR';
                 btn.style.cssText = 'padding:12px 24px;border:none;border-radius:10px;background:#2563eb;color:white;font-weight:bold;font-size:16px;cursor:pointer;';
-                btn.onclick = function() { a.play(); btn.remove(); };
-                a.parentNode.appendChild(btn);
+                btn.onclick = () => { audio.play(); btn.remove(); };
+                audio.parentNode.appendChild(btn);
             });
         }
-        if (v) { v.srcObject = SC.remoteStream; v.play().catch(function(){}); }
+        if (video) {
+            video.srcObject = SC.remoteStream;
+            video.play().catch(() => {});
+        }
     };
 
-    SC.pc.onicecandidate = function(ev) {
+    SC.pc.onicecandidate = (ev) => {
         if (ev.candidate) scSig(peerId, 'ice', { candidate: ev.candidate });
     };
 
-    SC.pc.onconnectionstatechange = function() {
+    SC.pc.onconnectionstatechange = () => {
         if (SC.pc.connectionState === 'failed' || SC.pc.connectionState === 'disconnected') {
             scEnd(false);
         }
     };
 
-    if (offer) {
-        SC.pc.createOffer().then(function(o) {
-            SC.pc.setLocalDescription(o);
-            scSig(peerId, 'offer', { sdp: SC.pc.localDescription });
-        });
+    if (isOfferer) {
+        SC.pc.createOffer()
+            .then(offer => SC.pc.setLocalDescription(offer))
+            .then(() => scSig(peerId, 'offer', { sdp: SC.pc.localDescription }))
+            .catch(e => console.warn('Offer failed:', e.message));
     }
 }
-async function scSig(toId, type, payload) {
-    try {
-        if (!window.__scCallChannel) return;
-        await window.__scCallChannel.send({
-            type: 'broadcast',
-            event: 'sc-signal',
-            payload: {
-                shop_id: SC.shop,
-                from_id: SC.id,
-                from_name: SC.name,
-                to_id: toId,
-                type: type,
-                data: payload
+
+// ===== HANDLE INCOMING OFFER (callee side, after user answers) =====
+async function scHandleOffer(s) {
+    if (!SC.stream) {
+        try {
+            SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video });
+        } catch(e) {
+            alert('🎤 Mic blocked!');
+            scSig(SC.peer, 'hangup', {});
+            scEnd(false);
+            return;
+        }
+    }
+
+    if (!SC.pc) {
+        SC.pc = new RTCPeerConnection({
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+                { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+            ]
+        });
+
+        SC.stream.getTracks().forEach(track => SC.pc.addTrack(track, SC.stream));
+
+        SC.pc.ontrack = (ev) => {
+            SC.remoteStream = ev.streams[0];
+            __scRingStop = true;
+            const h2 = document.querySelector('#scCallUI h2');
+            if (h2) h2.textContent = '🟢 ' + SC.peerName;
+
+            const audio = document.getElementById('scRemoteAudio');
+            const video = document.getElementById('scRemoteVideo');
+            if (audio) {
+                audio.srcObject = SC.remoteStream;
+                audio.play().catch(() => {
+                    const btn = document.createElement('button');
+                    btn.textContent = '🔊 TAP TO HEAR';
+                    btn.style.cssText = 'padding:12px 24px;border:none;border-radius:10px;background:#2563eb;color:white;font-weight:bold;font-size:16px;cursor:pointer;';
+                    btn.onclick = () => { audio.play(); btn.remove(); };
+                    audio.parentNode.appendChild(btn);
+                });
             }
-        });
-    } catch(e) { console.warn('sig fail', e.message); }
-}
-function scCallUI(state, title) {
-    var old = document.getElementById('scCallUI');
-    if (old) old.remove();
-    var ui = document.createElement('div');
-    ui.id = 'scCallUI';
-    ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.97);z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
+            if (video) {
+                video.srcObject = SC.remoteStream;
+                video.play().catch(() => {});
+            }
+        };
 
-    var videoHtml = SC.video ?
-        '<video id="scRemoteVideo" autoplay playsinline style="width:95%;height:55vh;object-fit:cover;border-radius:16px;background:#000;"></video>' : '';
-    var audioHtml = SC.video ?
-        '<audio id="scRemoteAudio" autoplay style="position:absolute;width:1px;height:1px;opacity:0.01;"></audio>' :
-        '<audio id="scRemoteAudio" autoplay controls style="width:90%;max-width:300px;height:40px;margin:8px 0;"></audio>';
-    var localVideoHtml = (SC.video && SC.stream) ?
-        '<video id="scLocalVideo" autoplay playsinline muted style="position:absolute;top:15px;right:15px;width:100px;border-radius:10px;border:2px solid rgba(255,255,255,.4);z-index:1;"></video>' : '';
+        SC.pc.onicecandidate = (ev) => {
+            if (ev.candidate) scSig(SC.peer, 'ice', { candidate: ev.candidate });
+        };
 
-    ui.innerHTML =
-        videoHtml +
-        audioHtml +
-        localVideoHtml +
-        '<h2 style="margin:10px 0 5px;">' + title + '</h2>' +
-        (state === 'calling' ? '<p id="scCallTimer" style="color:#94a3b8;">Ringing... 0s</p>' : '') +
-        '<button id="scEndBtn" style="width:70px;height:70px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:28px;cursor:pointer;margin-top:15px;">📵</button>';
-    document.body.appendChild(ui);
-
-    if (SC.video && SC.stream) {
-        var lv = document.getElementById('scLocalVideo');
-        if (lv) lv.srcObject = SC.stream;
+        SC.pc.onconnectionstatechange = () => {
+            if (SC.pc.connectionState === 'failed' || SC.pc.connectionState === 'disconnected') {
+                scEnd(false);
+            }
+        };
     }
 
-    if (state === 'calling') {
-        var t = 0;
-        window.__scCallTimer = setInterval(function() {
-            t++;
-            var el = document.getElementById('scCallTimer');
-            if (el) el.textContent = 'Ringing... ' + t + 's';
-            if (t >= 40) { clearInterval(window.__scCallTimer); scEnd(true); }
-            else if (!document.getElementById('scCallUI')) clearInterval(window.__scCallTimer);
-        }, 1000);
+    try {
+        await SC.pc.setRemoteDescription(new RTCSessionDescription(s.data.sdp));
+        const answer = await SC.pc.createAnswer();
+        await SC.pc.setLocalDescription(answer);
+        await scSig(s.from_id, 'answer', { sdp: SC.pc.localDescription });
+
+        // Apply any buffered ICE candidates now
+        if (__scIceBuffer.length) {
+            const buf = __scIceBuffer;
+            __scIceBuffer = [];
+            for (const c of buf) {
+                try { await SC.pc.addIceCandidate(c); } catch(e) {}
+            }
+        }
+    } catch(e) {
+        console.warn('Answer creation failed:', e.message);
     }
-
-    var endBtn = document.getElementById('scEndBtn');
-    endBtn.addEventListener('click', function(ev) {
-        ev.stopPropagation();
-        ev.preventDefault();
-        clearInterval(window.__scCallTimer);
-        scEnd(true);
-    });
-}
-function scEnd(notify) {
-    if (notify && SC.peer) scSig(SC.peer, 'hangup', {});
-    window.__scRingStop = true;
-    clearInterval(window.__scCallTimer);
-    clearInterval(window.__scRingbackInterval);
-    SC.inCall = false;
-    SC.peer = null;
-    if (SC.pc) { try { SC.pc.close(); } catch(e) {} SC.pc = null; }
-    if (SC.stream) { SC.stream.getTracks().forEach(function(t) { t.stop(); }); SC.stream = null; }
-    var u = document.getElementById('scCallUI');
-    if (u) u.remove();
-    var i = document.getElementById('scIncomingUI');
-    if (i) i.remove();
 }
 
-// ===== Incoming call =====
-async function scIncoming(s) {
+// ===== INCOMING CALL UI =====
+function scIncoming(s) {
     if (SC.inCall) return;
     scInit();
-    SC.peer = s.from_id; SC.peerName = s.from_name; SC.video = (s.data && s.data.video) || false;
-    // 📳 Strong vibration pattern (phone-style)
-    try { if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400, 200, 400]); } catch(e) {}
+    SC.inCall = true;           // 🔧 set state immediately
+    SC.peer = s.from_id;
+    SC.peerName = s.from_name;
+    SC.video = (s.data && s.data.video) || false;
 
-    // 🔔 RINGING SOUND — real telephone ring, synthesized (no audio file needed!)
+    // Vibration
+    try { if (navigator.vibrate) navigator.vibrate([400,200,400,200,400,200,400]); } catch(e) {}
+
+    // Ring sound
+    __scRingStop = false;
     try {
-        window.__scRingStop = false;
-        window.__scRingCtx = window.__scRingCtx || new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = window.__scRingCtx || new (window.AudioContext || window.webkitAudioContext)();
+        window.__scRingCtx = ctx;
         function ringOnce() {
-            if (window.__scRingStop) return;
-            var ctx = window.__scRingCtx;
-            // Two quick bell tones (classic ring-ring)
-            [0, 0.35].forEach(function(offset) {
-                var o = ctx.createOscillator();
-                var g = ctx.createGain();
+            if (__scRingStop) return;
+            [0, 0.35].forEach(offset => {
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
                 o.type = 'sine';
-                o.frequency.value = 880;      // ring tone
-                var o2 = ctx.createOscillator();
-                var g2 = ctx.createGain();
+                o.frequency.value = 880;
+                const o2 = ctx.createOscillator();
+                const g2 = ctx.createGain();
                 o2.type = 'sine';
-                o2.frequency.value = 1245;    // harmonic
-                var t = ctx.currentTime + offset;
+                o2.frequency.value = 1245;
+                const t = ctx.currentTime + offset;
                 g.gain.setValueAtTime(0.4, t);
                 g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
                 g2.gain.setValueAtTime(0.25, t);
@@ -561,25 +648,23 @@ async function scIncoming(s) {
                 o2.start(t); o2.stop(t + 0.3);
             });
         }
-        // Ring every 2 seconds until answered/declined/missed
-        window.__scRingInterval = setInterval(function() {
-            if (window.__scRingStop) { clearInterval(window.__scRingInterval); return; }
+        window.__scRingInterval = setInterval(() => {
+            if (__scRingStop) { clearInterval(window.__scRingInterval); return; }
             ringOnce();
         }, 2000);
         ringOnce();
     } catch(e) {}
 
-    // 🌅 Try to wake the screen (works on some Androids when tab is recent)
+    // Screen wake
     try {
         if ('wakeLock' in navigator && !window.__scWakeLock) {
-            navigator.wakeLock.request('screen').then(function(wl) { window.__scWakeLock = wl; }).catch(function(){});
+            navigator.wakeLock.request('screen').then(wl => window.__scWakeLock = wl).catch(() => {});
         }
-        if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400, 200, 400]);
     } catch(e) {}
-	
-    var ui = document.createElement('div');
+
+    const ui = document.createElement('div');
     ui.id = 'scIncomingUI';
-    ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.95);z-index:99998;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
+    ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.95);z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
     ui.innerHTML =
         '<div style="font-size:60px;margin-bottom:8px;animation:scP 1s infinite;">' + (SC.video ? '📹' : '📞') + '</div>' +
         '<h2>' + SC.peerName + ' is calling...</h2>' +
@@ -589,16 +674,12 @@ async function scIncoming(s) {
         '<style>@keyframes scP{0%,100%{transform:scale(1)}50%{transform:scale(1.15)}}</style>';
     document.body.appendChild(ui);
 
-        // 🔧 Bulletproof answer/decline — direct listeners, top z-index, state reset
-    ui.style.zIndex = '2147483000'; // ABOVE everything, even chat modals
-    var yesBtn = document.getElementById('scYes');
-    var noBtn = document.getElementById('scNo');
+    const yesBtn = document.getElementById('scYes');
+    const noBtn = document.getElementById('scNo');
 
-          document.getElementById('scYes').addEventListener('click', async function(ev) {
-        ev.stopPropagation();
-        ev.preventDefault();
-        SC.inCall = false;
-        window.__scRingStop = true;
+    yesBtn.addEventListener('click', async (ev) => {
+        ev.stopPropagation(); ev.preventDefault();
+        __scRingStop = true;
         ui.remove();
 
         try {
@@ -610,92 +691,108 @@ async function scIncoming(s) {
             return;
         }
 
-               scCallUI('active', '🟢 ' + SC.peerName);
+        scCallUI('active', '🟢 ' + SC.peerName);
         if (SC.pendingOffer) {
-            var offer = SC.pendingOffer;
+            const offer = SC.pendingOffer;
             SC.pendingOffer = null;
             await scHandleOffer(offer);
         }
     });
 
-    noBtn.addEventListener('click', function(ev) {
+    noBtn.addEventListener('click', (ev) => {
         ev.stopPropagation(); ev.preventDefault();
-        SC.inCall = false;              // 🔧 reset here too
-			   window.__scRingStop = true;   // 🔔 stop ringing
+        __scRingStop = true;
         ui.remove();
         scSig(SC.peer, 'hangup', {});
-        SC.peer = null;
+        scEnd(false);
     });
-    setTimeout(function() {
+
+    // Auto-miss after 30 seconds
+    setTimeout(() => {
         if (document.getElementById('scIncomingUI')) {
-            window.__scRingStop = true;   // 🔔 stop ringing
+            __scRingStop = true;
             ui.remove();
-            SC.peer = null;
-            SC.inCall = false;
+            scSig(SC.peer, 'hangup', {});
+            scEnd(false);
         }
     }, 30000);
 }
-async function scHandleOffer(s) {
-    try {
-        if (!SC.stream) {
-            SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video });
-        }
 
-        if (!SC.pc) {
-            SC.pc = new RTCPeerConnection({
-                iceServers: [
-                    { urls: 'stun:stun.l.google.com:19302' },
-                    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-                    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-                ]
-            });
+// ===== CALL UI (outgoing & active) =====
+function scCallUI(state, title) {
+    const old = document.getElementById('scCallUI');
+    if (old) old.remove();
 
-            SC.stream.getTracks().forEach(function(t) { SC.pc.addTrack(t, SC.stream); });
+    const ui = document.createElement('div');
+    ui.id = 'scCallUI';
+    ui.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.97);z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;';
 
-            SC.pc.ontrack = function(ev) {
-                SC.remoteStream = ev.streams[0];
-                window.__scRingStop = true;
-                clearInterval(window.__scCallTimer);
-                var h2 = document.querySelector('#scCallUI h2');
-                if (h2) h2.textContent = '🟢 ' + SC.peerName;
+    let videoHtml = SC.video ?
+        '<video id="scRemoteVideo" autoplay playsinline style="width:95%;height:55vh;object-fit:cover;border-radius:16px;background:#000;"></video>' : '';
+    let audioHtml = SC.video ?
+        '<audio id="scRemoteAudio" autoplay style="position:absolute;width:1px;height:1px;opacity:0.01;"></audio>' :
+        '<audio id="scRemoteAudio" autoplay controls style="width:90%;max-width:300px;height:40px;margin:8px 0;"></audio>';
+    let localVideoHtml = (SC.video && SC.stream) ?
+        '<video id="scLocalVideo" autoplay playsinline muted style="position:absolute;top:15px;right:15px;width:100px;border-radius:10px;border:2px solid rgba(255,255,255,.4);z-index:1;"></video>' : '';
 
-                var a = document.getElementById('scRemoteAudio');
-                var v = document.getElementById('scRemoteVideo');
-                if (a) {
-                    a.srcObject = SC.remoteStream;
-                    a.volume = 1.0;
-                    a.play().catch(function() {
-                        var btn = document.createElement('button');
-                        btn.textContent = '🔊 TAP TO HEAR';
-                        btn.style.cssText = 'padding:12px 24px;border:none;border-radius:10px;background:#2563eb;color:white;font-weight:bold;font-size:16px;cursor:pointer;';
-                        btn.onclick = function() { a.play(); btn.remove(); };
-                        a.parentNode.appendChild(btn);
-                    });
-                }
-                if (v) { v.srcObject = SC.remoteStream; v.play().catch(function(){}); }
-            };
+    ui.innerHTML = videoHtml + audioHtml + localVideoHtml +
+        '<h2 style="margin:10px 0 5px;">' + title + '</h2>' +
+        (state === 'calling' ? '<p id="scCallTimer" style="color:#94a3b8;">Ringing... 0s</p>' : '') +
+        '<button id="scEndBtn" style="width:70px;height:70px;border-radius:50%;border:none;background:#ef4444;color:white;font-size:28px;cursor:pointer;margin-top:15px;">📵</button>';
+    document.body.appendChild(ui);
 
-            SC.pc.onicecandidate = function(ev) {
-                if (ev.candidate) scSig(SC.peer, 'ice', { candidate: ev.candidate });
-            };
-        }
+    if (SC.video && SC.stream) {
+        const lv = document.getElementById('scLocalVideo');
+        if (lv) lv.srcObject = SC.stream;
+    }
 
-        await SC.pc.setRemoteDescription(new RTCSessionDescription(s.data.sdp));
-        var answer = await SC.pc.createAnswer();
-        await SC.pc.setLocalDescription(answer);
-        await scSig(s.from_id, 'answer', { sdp: SC.pc.localDescription });
+    if (state === 'calling') {
+        let t = 0;
+        __scCallTimer = setInterval(() => {
+            t++;
+            const el = document.getElementById('scCallTimer');
+            if (el) el.textContent = 'Ringing... ' + t + 's';
+            if (t >= 40) { clearInterval(__scCallTimer); scEnd(true); }
+        }, 1000);
+    }
 
-        // 🎯 THE CRITICAL FIX: Apply ALL buffered ICE candidates NOW!
-        if (window.__scIceBuffer && window.__scIceBuffer.length > 0) {
-            var buf = window.__scIceBuffer;
-            window.__scIceBuffer = [];
-            buf.forEach(function(c) {
-                try { SC.pc.addIceCandidate(c).catch(function(){}); } catch(e) {}
-            });
-        }
-
-    } catch(e) { console.warn('Offer failed:', e.message); }
+    document.getElementById('scEndBtn').addEventListener('click', () => scEnd(true));
 }
+
+// ===== END CALL =====
+function scEnd(notify) {
+    if (notify && SC.peer) scSig(SC.peer, 'hangup', {});
+    __scRingStop = true;
+    clearInterval(__scCallTimer);
+    clearInterval(__scRingbackInterval);
+    clearInterval(window.__scRingInterval);
+    SC.inCall = false;
+    SC.peer = null;
+    if (SC.pc) { try { SC.pc.close(); } catch(e) {} SC.pc = null; }
+    if (SC.stream) { SC.stream.getTracks().forEach(t => t.stop()); SC.stream = null; }
+    const u = document.getElementById('scCallUI');
+    if (u) u.remove();
+    const i = document.getElementById('scIncomingUI');
+    if (i) i.remove();
+    __scIceBuffer = [];
+}
+
+// ===== CALL FROM CHAT BUTTON =====
+function scCallFromChat(video) {
+    const sel = document.getElementById('chatRecipient') || document.getElementById('adminChatRecipient');
+    if (!sel) { alert('Open a chat first.'); return; }
+    const val = sel.value;
+    const nm = sel.options[sel.selectedIndex].text.replace('👤 ', '').replace('🟢 ', '');
+    if (val === 'All' || val === 'Cashier' || val === 'Kitchen' || val === 'Admin') {
+        alert('⚠️ Select a SPECIFIC person from the Direct Message list first.');
+        return;
+    }
+    scCall(val, nm, video);
+}
+
+
+
+
 // ================================================================
 // ✏️ PART 7 — TYPING + PRESENCE (bonus modern touches)
 // ================================================================
@@ -820,17 +917,12 @@ function scBoot() {
         })
         .subscribe();
 }
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(scBoot, 2000);
+} else {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(scBoot, 2000));
+}
 
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    setTimeout(scBoot, 2000);
-} else {
-    document.addEventListener('DOMContentLoaded', function() { setTimeout(scBoot, 2000); });
-}
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    setTimeout(scBoot, 2000);
-} else {
-    document.addEventListener('DOMContentLoaded', function() { setTimeout(scBoot, 2000); });
-}
 
 // 🖼️ LIGHTBOX — in-page fullscreen image viewer (NO blank page!)
 function scLightbox(imgId) {
