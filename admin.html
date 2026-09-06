@@ -1,4 +1,3 @@
-
 	<!DOCTYPE html>
 <head>
 	
@@ -3132,21 +3131,26 @@ function getLicense() { return JSON.parse(localStorage.getItem('smartshop_licens
 
 function isSubscriptionActive() { var lic = getLicense(); if (!lic) return true; return new Date() < new Date(lic.expiryDate); }
 function getDaysRemaining() { var lic = getLicense(); if (!lic) return 99999; return Math.ceil((new Date(lic.expiryDate) - new Date()) / 86400000); }
-function canAddProduct(currentCount) { var lic = getLicense(); var plan = lic ? lic.plan : 'starter'; return currentCount < (APP_CONFIG[plan] ? APP_CONFIG[plan].maxProducts : 15); }
-function canAddStaff(currentCount) {
-    var lic = getLicense();
-    if (!lic) return true;
-    if (lic.plan === 'enterprise') {
-        var limit = lic.maxCashiersPerShop;
-        if (limit === undefined || limit === null || limit === 0) limit = 2;
-        return currentCount < limit;
-    }
-    var plan = lic.plan || 'starter';
-    var config = APP_CONFIG[plan];
-    return currentCount < (config ? config.cashiers : 1);
+function isTrial() {
+    var shop = window.__currentShopRow;
+    return shop && shop.plan === 'trial' && shop.trial_expires && new Date(shop.trial_expires) > new Date();
 }
 
-	
+function canAddProduct(currentCount) {
+    if (isTrial()) return true;  // 🎁 TRIAL = UNLIMITED
+    var lic = getLicense();
+    if (!lic) return true;
+    return currentCount < (lic.maxProducts || 999999);
+}
+
+function canAddStaff(currentCount) {
+    if (isTrial()) return true;  // 🎁 TRIAL = UNLIMITED
+    var lic = getLicense();
+    if (!lic) return true;
+    if (lic.plan === 'enterprise') return currentCount < (lic.maxCashiersPerShop || 999);
+    var config = APP_CONFIG[lic.plan] || APP_CONFIG.starter;
+    return currentCount < (config ? config.cashiers : 1);
+}
 
 async function hashPassword(pwd) {
   try {
@@ -3158,7 +3162,6 @@ async function hashPassword(pwd) {
     return 'fb_' + (h1>>>0).toString(16) + '_' + (h2>>>0).toString(16);
   }
 }
-
 var ETH_MONTHS = ['መስከረም','ጥቅምት','ህዳር','ታህሳስ','ጥር','የካቲት','መጋቢት','ሚያዚያ','ግንቦት','ሰኔ','ሐምሌ','ነሐሴ','ጳጉሜ'];
 function ethiopianFromGregorian(gDate) {
   var d = new Date(gDate); var year = d.getFullYear();
@@ -10394,13 +10397,6 @@ function exitMaximize() {
 }
 
 	 
-
-
-
-
-
-
-
 	
 	// ===== SECURE PASSWORD CHANGE (VERIFY OLD PASSWORD FIRST) =====
 
@@ -10417,25 +10413,29 @@ async function changeMyAdminPassword() {
         alert("❌ Error: " + error.message);
     }
 }
-	
-	// ===== REGISTRATION MODAL CONTROLS =====
+	// ===== REGISTRATION MODAL CONTROLS (FIXED — form opens ON TOP of login) =====
 function showRegisterForm() {
+    // Hide the login screen FIRST so the register form is fully visible
+    document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('registerModal').classList.add('active');
 }
+
 function closeRegisterForm() {
     document.getElementById('registerModal').classList.remove('active');
+    // Bring the login screen BACK
+    document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('regShopName').value = '';
     document.getElementById('regPhone').value = '';
     document.getElementById('regEmail').value = '';
     document.getElementById('regPass').value = '';
 }
 
+	
 // ===== DEVICE LOCK 1 (Phone Memory) =====
 function checkDeviceLock() {
+	return;
     var registerBtn = document.getElementById('registerBtn');
     if (!registerBtn) return;
-
-    // If this phone has already created an account, HIDE the button forever!
     if (localStorage.getItem('deviceRegistered') === 'true') {
         registerBtn.style.display = 'none';
     } else {
@@ -10449,42 +10449,57 @@ async function registerAccount() {
     var phone = document.getElementById('regPhone').value.trim();
     var email = document.getElementById('regEmail').value.trim();
     var pass = document.getElementById('regPass').value.trim();
-    
+
     if (!shopName || !email || !pass) { alert('Please fill all required fields.'); return; }
-    
+
     try {
         // 1. Sign up user in Supabase Auth
         const { data, error } = await supabaseClient.auth.signUp({ email: email, password: pass });
         if (error) throw error;
         if (!data.user) throw new Error("Sign up failed.");
-        
+
         // 2. Generate Shop ID
         var shopId = shopName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 14) + '-' + Math.random().toString(36).substr(2, 4);
-        
+
         // 3. Create Shop record
-        await supabaseClient.from('shops').insert([{ 
-            shop_id: shopId, name: shopName, phone: phone, plan: 'trial', active: true, created_at: new Date().toISOString() 
+                   // 🎛️ TRIAL LENGTH — read from Master's global settings (fallback: 30)
+        var trialDays = 30;
+        try {
+            const { data: gs } = await supabaseClient.from('global_settings')
+                .select('default_trial_days').eq('id', 'globalConfig').maybeSingle();
+            if (gs && gs.default_trial_days && gs.default_trial_days > 0) {
+                trialDays = gs.default_trial_days;
+            }
+        } catch(e) { /* Master setting unavailable — use default */ }
+
+        await supabaseClient.from('shops').insert([{
+            shop_id: shopId, name: shopName, phone: phone,
+            owner_email: email,
+            plan: 'trial', active: true,
+            trial_expires: new Date(Date.now() + trialDays * 86400000).toISOString(),
+            registered_at: new Date().toISOString()
         }]);
-        
         // 4. Create Settings record
-        await supabaseClient.from('settings').insert([{ 
-            shop_id: shopId, name: shopName, currency: 'Br ' 
+        await supabaseClient.from('settings').insert([{
+            shop_id: shopId, name: shopName, currency: 'Br '
         }]);
-        
+
         // 5. Update user metadata
         await supabaseClient.auth.updateUser({ data: { shopId: shopId, shopName: shopName } });
-        
-        // 6. Save to local storage
+
+        // 6. Save to local storage + lock the device
         localStorage.setItem('shopId', shopId);
         localStorage.setItem('appCurrencySymbol', 'Br ');
-        
-        alert('✅ Account created! Your Shop ID is: ' + shopId + '. Please login.');
+        localStorage.setItem('deviceRegistered', 'true');
+
+        alert('✅ Account created! Your Shop ID is: ' + shopId + '.\n\nNow please LOGIN with your new email and password.');
         closeRegisterForm();
-        
+
     } catch(e) {
         alert('❌ Registration failed: ' + e.message);
     }
 }
+
 function contactSupport() {
     // Replace 2519xxxxxxxx with your phone number, including country code, no + or 00
     var phone = "251973316100"; 
@@ -10514,7 +10529,7 @@ async function checkAppPinStatus() {
             init();
         } else {
             alert("❌ PIN must be exactly 4 digits.");
-            auth.signOut(); // Log them out if they refuse to make a PIN
+            supabaseClient.auth.signOut(); // Log them out if they refuse to make a PIN
         }
     } else {
         // PIN already exists: Show the PIN screen
@@ -10603,7 +10618,55 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
             } catch (e) {
                 console.error("License check failed.", e);
             }
-        }
+         }
+
+			
+			            // 🛑 TRIAL EXPIRED? Show PLAN PICKER (not just block!)
+            try {
+                const { data: shopRow } = await supabaseClient.from('shops')
+                    .select('*').eq('shop_id', getShopId()).maybeSingle();
+                window.__currentShopRow = shopRow;
+
+                var trialExpired = shopRow && shopRow.plan === 'trial' &&
+                    shopRow.trial_expires && new Date(shopRow.trial_expires) < new Date();
+                var hardBlocked = shopRow && shopRow.blocked;
+
+                if (trialExpired || hardBlocked) {
+                    var picker = document.getElementById('planPicker');
+                    if (!picker) {
+                        picker = document.createElement('div');
+                        picker.id = 'planPicker';
+                        picker.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e3a8a);z-index:99999;overflow-y:auto;color:white;padding:20px;';
+                        document.body.appendChild(picker);
+                    }
+
+                    // Load plans from database
+                    const { data: plans } = await supabaseClient.from('plans').select('*').eq('active', true);
+                    var plansHtml = '';
+                    (plans || []).forEach(function(pl) {
+                        plansHtml += '<div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:16px;margin-bottom:10px;">' +
+                            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                            '<div><b style="font-size:16px;">' + pl.name + '</b> <small style="opacity:.6;">(' + pl.line + ')</small><br>' +
+                            '<small style="opacity:.7;">' + (pl.max_products < 999999 ? pl.max_products + ' products' : 'Unlimited') + ' · ' + (pl.max_cashiers < 999 ? pl.max_cashiers + ' staff' : 'Unlimited') + '</small></div>' +
+                            '<div style="text-align:right;"><b style="color:#fbbf24;font-size:18px;">' + (pl.price_monthly > 0 ? pl.price_monthly + ' Br/mo' : 'Call us') + '</b></div></div>' +
+                            '<a href="https://wa.me/251973316100?text=' + encodeURIComponent('Hello! I want the ' + pl.name + ' plan. My Shop ID: ' + getShopId()) + '" target="_blank" style="display:block;margin-top:10px;padding:10px;background:#25D366;color:white;text-align:center;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">💬 Choose ' + pl.name + ' (WhatsApp)</a>' +
+                            '</div>';
+                    });
+
+                    picker.innerHTML =
+                        '<div style="max-width:420px;margin:0 auto;text-align:center;padding-top:20px;">' +
+                        '<div style="font-size:50px;margin-bottom:10px;">' + (hardBlocked ? '⛔' : '⏰') + '</div>' +
+                        '<h2 style="margin-bottom:5px;">' + (hardBlocked ? 'Service Suspended' : 'Your Trial Has Ended') + '</h2>' +
+                        '<p style="color:#94a3b8;font-size:14px;margin-bottom:20px;">' + (hardBlocked ? 'Contact your provider to restore service.' : 'Thank you for trying SmartShop Pro!<br><b>Choose your plan to continue:</b>') + '</p>' +
+                        plansHtml +
+                        '<div style="margin-top:15px;padding:12px;background:rgba(255,255,255,.1);border-radius:10px;font-size:12px;color:#cbd5e1;">' +
+                        'After payment, you receive a <b>License Key</b>.<br>Activate it: Admin → License → Activate.</div>' +
+                        '<button onclick="supabaseClient.auth.signOut().then(()=>location.reload())" style="margin-top:15px;padding:10px 30px;border:none;border-radius:8px;background:rgba(255,255,255,.15);color:white;cursor:pointer;">Logout</button>' +
+                        '</div>';
+                    picker.style.display = 'block';
+                    return; // STOP — do not open the app
+                }
+            } catch(e) { console.warn('Trial check failed', e); }
 
         // 4. SUCCESS! Open the App
         if (loadingScreen) loadingScreen.style.display = 'none';
