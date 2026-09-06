@@ -8551,8 +8551,8 @@ async function loadAllCaches() {
       }
 
       // 2. LOAD SALES
-      const { data: sals } = await supabaseClient.from('sales').select('*').eq('shop_id', sid).order('time', { ascending: false });
-      if (sals) {
+     const { data: sals } = await supabaseClient.from('sales').select('*').eq('shop_id', sid).eq('voided', false).order('time', { ascending: false });
+     	if (sals) {
           salesCache = sals.map(function(s) {
                return { id: s.id, shopId: s.shop_id, cashierId: s.cashier_id, cashierName: s.cashier_name, time: s.time, total: s.total, profit: s.profit, subtotal: s.subtotal || 0, discount: s.discount || 0, tax: s.tax || 0, payments: s.payments || [], paymentMethod: s.payment_method, items: s.items, customerName: s.customer_name, customerPhone: s.customer_phone, shiftId: s.shift_id, note: s.note, invoiceNo: s.invoice_no, orderType: s.order_type, paidAt: s.paid_at };
 					});
