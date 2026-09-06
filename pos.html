@@ -684,8 +684,9 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     <div class="sidebar-tab" onclick="openPriceCheckFromMenu()">🏷️ Price Check</div>
     <div class="sidebar-tab" onclick="syncNow()">🔄 Sync Now</div>
 	  <div class="sidebar-tab" onclick="openClockModal()">⏰ Clock In / Out</div>
-	    <div class="sidebar-tab" onclick="openShift()">🔓 Open Shift</div>
-    <div class="sidebar-tab" onclick="openHeldOrdersFromMenu()">📋 Held Orders</div>
+    <div class="sidebar-tab" id="openShiftBtn" onclick="openShift()">🔓 Open Shift</div>
+    <div class="sidebar-tab" id="closeShiftBtn" onclick="closeShift()" style="display:none;color:#ef4444;">🔒 Close Shift</div>
+	<div class="sidebar-tab" onclick="openHeldOrdersFromMenu()">📋 Held Orders</div>
     <div class="sidebar-tab" onclick="openVoidRefundFromMenu()">↩️ Void / Refund</div>
       	<!-- MANAGER & OWNER MENU (Hidden by default) -->
     <div id="managerMenu" style="display:none; margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
@@ -2530,19 +2531,31 @@ function logout(){
 }
 		
 // ===== SHIFT =====
+function checkActiveShift() {
+    if (!currentCashier) return;
+    try {
+        const shift = JSON.parse(localStorage.getItem('shift_' + getShopId() + '_' + currentCashier.id) || 'null');
+        var openBtn = document.getElementById('openShiftBtn');
+        var closeBtn = document.getElementById('closeShiftBtn');
 
-function checkActiveShift(){
-    if (!currentCashier) return; // Safety: nobody logged in yet
-    const shift = JSON.parse(localStorage.getItem('shift_' + getShopId() + '_' + currentCashier.id) || 'null');
-    if (shift && shift.open) {
-        currentShiftId = shift.id;
-        shiftOpenTime = shift.openTime;
-        var ob = document.getElementById('openShiftBtn');
-        if (ob) ob.style.display = 'none';
-        var cb = document.getElementById('closeShiftBtn');
-        if (cb) cb.style.display = 'inline-block';
+        if (shift && shift.open) {
+            currentShiftId = shift.id;
+            shiftOpenTime = shift.openTime;
+            // 🔒 Shift is running → show CLOSE, hide OPEN
+            if (openBtn) openBtn.style.display = 'none';
+            if (closeBtn) closeBtn.style.display = 'block';
+            var cd = document.getElementById('cashierDisplay');
+            if (cd) cd.textContent = '👤 ' + currentCashier.name + ' ⏰ Shift ON';
+        } else {
+            // 🔓 No shift → show OPEN, hide CLOSE
+            if (openBtn) openBtn.style.display = 'block';
+            if (closeBtn) closeBtn.style.display = 'none';
+        }
+    } catch(e) {
+        console.error('checkActiveShift error:', e.message);
     }
 }
+
 		async function openShift(){
     const now=new Date().toLocaleString();
     if(!(await confirm(`Open shift now?\nStart time: ${now}`)))return;
