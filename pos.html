@@ -3633,40 +3633,68 @@ if(localStorage.getItem('darkMode')==='1')document.body.classList.add('dark');
 // ===== VOID / REFUND =====
 window.openVoidRefundFromMenu = async function() {
     closeSidebar();
-    // 🔐 SECURITY GATE — cashiers cannot open void without password
     var allowed = await verifyPosManager();
     if (!allowed) return;
     await loadRecentSalesForVoid();
     document.getElementById('voidRefundModal').classList.add('active');
 };
-
-// ===== 🔐 MANAGER VERIFICATION for POS =====
+// ===== 🔐 MANAGER VERIFICATION for POS (VOID/REFUND) =====
 async function verifyPosManager() {
-    var pass = prompt('🔐 VOID/REFUND REQUIRES AUTHORIZATION\n\nEnter Manager/Owner PIN or Admin password:');
-    if (!pass) return false;
+    // Step 1: Ask for the password (properly awaited!)
+    var pass = await prompt('🔐 VOID/REFUND REQUIRES AUTHORIZATION\n\nEnter Manager/Owner PIN or Admin password:');
+    if (pass === null || pass === undefined) {
+        // User tapped Cancel
+        showFloatingToast('Cancelled', true);
+        return false;
+    }
+    pass = String(pass).trim();
+    if (!pass) { showFloatingToast('❌ Empty password', true); return false; }
 
-    // Method 1: Manager/Owner PIN
+    // Step 2: Method 1 — check Manager/Owner PINs in employees table
     try {
-        const { data: staff } = await supabaseClient.from('employees')
-            .select('hashed_password, position').eq('shop_id', getShopId())
+        const { data: staff, error } = await supabaseClient.from('employees')
+            .select('hashed_password, position, name')
+            .eq('shop_id', getShopId())
             .in('position', ['Manager', 'Owner']);
-        for (var i = 0; i < (staff || []).length; i++) {
-            if (staff[i].hashed_password && sha256(pass) === staff[i].hashed_password) {
+        
+        if (error) {
+            console.warn('Staff lookup error:', error.message);
+        } else if (staff && staff.length > 0) {
+            var hashed = sha256(pass);
+            for (var i = 0; i < staff.length; i++) {
+                if (staff[i].hashed_password && staff[i].hashed_password === hashed) {
+                    // ✅ MATCH! Manager verified
+                    showFloatingToast('✅ Authorized: ' + staff[i].name + ' (' + staff[i].position + ')', false);
+                    return true;
+                }
+            }
+        } else {
+            console.warn('No Manager/Owner staff found for this shop');
+        }
+    } catch(e) {
+        console.warn('PIN check failed:', e.message);
+    }
+
+    // Step 3: Method 2 — check the Admin (Supabase Auth) password
+    try {
+        var { data: { user } } = await supabaseClient.auth.getUser();
+        if (user && user.email) {
+            const { error: signInError } = await supabaseClient.auth.signInWithPassword({ 
+                email: user.email, 
+                password: pass 
+            });
+            if (!signInError) {
+                // ✅ Admin password correct!
+                showFloatingToast('✅ Authorized: Admin', false);
                 return true;
             }
         }
-    } catch(e) { console.warn('Staff check failed:', e.message); }
+    } catch(e) {
+        console.warn('Admin check failed:', e.message);
+    }
 
-    // Method 2: Admin password
-    try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        if (user && user.email) {
-            const { error } = await supabaseClient.auth.signInWithPassword({ email: user.email, password: pass });
-            if (!error) return true;
-        }
-    } catch(e) { console.warn('Admin check failed:', e.message); }
-
-    alert('❌ Wrong password. Void cancelled.');
+    // ❌ Both methods failed
+    showFloatingToast('❌ Wrong password — action cancelled', true);
     return false;
 }
 
@@ -4034,8 +4062,6 @@ function copyReceiptText() {
 }
 
 
-		
-
 		// ===== UNIVERSAL MAXIMIZE LOGIC =====
 function maximizeTable(containerId) {
     const target = document.getElementById(containerId);
@@ -4073,39 +4099,35 @@ function exitMaximize() {
 // ===== MANAGER DUTY: VOID SALE WITH PIN PROTECTION (FIXED) =====
 
 async function voidSale(saleId) {
-    var allowed = await verifyPosManager();      // ← ADD THIS
+    if (!await confirm('Void this sale? Stock will be restored.')) return;
+    var allowed = await verifyPosManager();
     if (!allowed) return;
-	if (!await confirm('Void this sale? Stock will be restored.')) return;
     try {
         if (supabaseClient) {
-            // 1. Fetch the sale to know what items to restore
             const { data: saleData, error: fetchErr } = await supabaseClient.from('sales').select('*').eq('id', saleId).single();
             if (fetchErr) throw fetchErr;
-            
-            // 2. Restore Stock in Supabase
+
             if (saleData.items) {
                 for (const item of saleData.items) {
                     var product = products.find(x => x.id === item.productId);
                     if (product) {
-                        await supabaseClient.from('products').update({ stock: product.stock + item.qty }).eq('firebase_id', item.productId);
-                        product.stock += item.qty; // Update local cache
+                        await supabaseClient.from('products').update({ stock: (product.stock || 0) + item.qty }).eq('firebase_id', item.productId);
+                        product.stock += item.qty;
                     }
                 }
             }
-            
-            // 3. Delete the sale from Supabase
+
             const { error: delErr } = await supabaseClient.from('sales').delete().eq('id', saleId);
             if (delErr) throw delErr;
         }
-        
+
         alert('✅ Sale voided and stock restored.');
-        await loadRecentSalesForVoid(); 
+        await loadRecentSalesForVoid();
         if (typeof filterProducts === 'function') filterProducts();
     } catch (e) {
         alert("❌ Error voiding sale: " + e.message);
     }
 }
-		
 
 // ===== OWNER DUTY: OPEN CASH DRAWER =====
 function openCashDrawer() {
