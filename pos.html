@@ -5033,78 +5033,101 @@ function closeClockModal() {
 }
 
 async function clockInStaff() {
-    const id = document.getElementById('clockCashierName').value;
-    const pass = document.getElementById('clockPin').value.trim();
-    if (!id || !pass) { alert('Select your name and enter PIN!'); return; }
-
-    const cashier = cashierList.find(c => c.id === id);
-    if (!cashier) { alert('Staff member not found!'); return; }
-
-    // Verify PIN
-    let valid = false;
-    if (cashier.hashedPassword) {
-        valid = (sha256(pass) === cashier.hashedPassword);
-    } else if (cashier.password && pass === cashier.password) {
-        valid = true;
-    }
-    if (!valid) { alert('❌ Wrong PIN!'); return; }
-
-    // 1. Start Camera
-    const video = document.getElementById('clockVideo');
-    const canvas = document.getElementById('clockCanvas');
-    const context = canvas.getContext('2d');
-
     try {
-        clockStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        video.srcObject = clockStream;
-        video.style.display = 'block';
-        
-        // Wait 2 seconds for camera to warm up, then take photo
-        setTimeout(async () => {
-            // Draw video frame to canvas
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            // Convert canvas to image data (Base64)
-            const selfieData = canvas.toDataURL('image/jpeg', 0.5);
-            
-            // Stop camera
-            if (clockStream) {
-                clockStream.getTracks().forEach(track => track.stop());
-                clockStream = null;
-            }
-            video.style.display = 'none';
+        const id = document.getElementById('clockCashierName').value;
+        const pass = document.getElementById('clockPin').value.trim();
+        if (!id || !pass) { alert('Select your name and enter PIN!'); return; }
 
-            // 2. Get GPS Location
-            if (!navigator.geolocation) {
-                alert("GPS not supported. Clocking in without location.");
-                processClock(cashier, null, selfieData);
-                return;
-            }
+        const cashier = cashierList.find(c => c.id === id);
+        if (!cashier) { alert('Staff member not found!'); return; }
 
-            navigator.geolocation.getCurrentPosition(
-                function(position) {
-                    var lat = position.coords.latitude;
-                    var lon = position.coords.longitude;
-                    var mapsLink = "https://maps.google.com/?q=" + lat + "," + lon;
-                    
-                    // 3. Process Clock with GPS AND Selfie
-                    processClock(cashier, mapsLink, selfieData);
-                },
-                function(error) {
-                    alert("Location access denied. Clocking in without GPS.");
-                    processClock(cashier, null, selfieData);
-                },
-                { timeout: 10000 }
-            );
-        }, 2000);
-        
+        // Verify PIN
+        let valid = false;
+        if (cashier.hashedPassword) {
+            valid = (sha256(pass) === cashier.hashedPassword);
+        } else if (cashier.password && pass === cashier.password) {
+            valid = true;
+        }
+        if (!valid) { alert('❌ Wrong PIN!'); return; }
+
+        // 📷 Selfie (OPTIONAL — only if camera elements exist)
+        let selfieData = null;
+        const video = document.getElementById('clockVideo');
+        const canvas = document.getElementById('clockCanvas');
+        if (video && canvas) {
+            try {
+                clockStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+                video.srcObject = clockStream;
+                video.style.display = 'block';
+                await new Promise(r => setTimeout(r, 2000));
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+                selfieData = canvas.toDataURL('image/jpeg', 0.5);
+                if (clockStream) { clockStream.getTracks().forEach(track => track.stop()); clockStream = null; }
+                video.style.display = 'none';
+            } catch(e) {
+                // Camera failed → continue WITHOUT selfie (not a blocker!)
+                console.warn('Camera skipped:', e.message);
+            }
+        }
+
+        // 📍 GPS (OPTIONAL — not a blocker)
+        let gpsLink = null;
+        if (navigator.geolocation) {
+            gpsLink = await new Promise(function(resolve) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        resolve("https://maps.google.com/?q=" + position.coords.latitude + "," + position.coords.longitude);
+                    },
+                    function() { resolve(null); },  // denied → continue without GPS
+                    { timeout: 8000 }
+                );
+            });
+        }
+
+        // ✅ THE ACTUAL CLOCK IN/OUT — this is the important part!
+        const { data: openShift, error: shiftError } = await supabaseClient.from('timecards')
+            .select('*')
+            .eq('shop_id', getShopId())
+            .eq('employee_id', cashier.id)
+            .is('clock_out_time', null)
+            .limit(1)
+            .maybeSingle();
+
+        if (shiftError) throw shiftError;
+
+        if (!openShift) {
+            // CLOCK IN
+            const { error: insertError } = await supabaseClient.from('timecards').insert([{
+                shop_id: getShopId(),
+                employee_id: cashier.id,
+                employee_name: cashier.name,
+                clock_in_time: new Date().toISOString(),
+                clock_out_time: null,
+                clock_in_gps: gpsLink || 'No GPS',
+                clock_in_selfie: selfieData || null
+            }]);
+            if (insertError) throw insertError;
+            alert('✅ Clocked IN at ' + new Date().toLocaleTimeString() + '\nWelcome, ' + cashier.name + '!');
+        } else {
+            // CLOCK OUT
+            const { error: updateError } = await supabaseClient.from('timecards')
+                .update({
+                    clock_out_time: new Date().toISOString(),
+                    clock_out_gps: gpsLink || 'No GPS',
+                    clock_out_selfie: selfieData || null
+                })
+                .eq('id', openShift.id);
+            if (updateError) throw updateError;
+            alert('✅ Clocked OUT at ' + new Date().toLocaleTimeString() + '\nGoodbye, ' + cashier.name + '!');
+        }
+
+        closeClockModal();
     } catch(e) {
-        alert("❌ Camera access denied. You must allow camera to clock in!");
+        alert('❌ Error: ' + e.message);
     }
 }
-
 // Helper function to calculate distance (Haversine formula)
 function calculateDistance(lat1, lon1, lat2, lon2) {
     var R = 6371; // Radius of the earth in km
