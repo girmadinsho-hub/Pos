@@ -551,12 +551,32 @@ body.dark .maximized-card {
     display: none;
 }
 			
-		
+/* ===== COLLAPSIBLE SUB-MENUS ===== */
+.submenu { display:none; padding-left:12px; }
+.submenu.open { display:block; }
+.sidebar-tab.has-submenu::after { content:'▸'; margin-left:auto; transition:transform .2s; font-size:11px; opacity:.6; }
+.sidebar-tab.has-submenu.expanded::after { transform:rotate(90deg); opacity:1; }
+.submenu-item {
+    padding:10px 16px 10px 36px; cursor:pointer; font-size:13px; font-weight:500;
+    color:#64748b; border-left:3px solid transparent; display:flex; align-items:center; gap:8px;
+    transition:all .15s;
+}
+.submenu-item:hover { background:#f8fafc; color:#1e293b; border-left-color:#93c5fd; padding-left:40px; }
+.submenu-item.active { background:#eff6ff; color:#3b82f6; border-left-color:#3b82f6; font-weight:700; }
+body.dark .submenu-item { color:#94a3b8; }
+body.dark .submenu-item:hover { background:#334155; color:#e2e8f0; }
+body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
+
+/* ===== THIRD-LEVEL SUB-MENU ===== */
+.submenu-item.has-sub3::after { content:'▸'; margin-left:auto; font-size:10px; opacity:.5; transition:transform .2s; }
+.submenu-item.has-sub3.expanded::after { transform:rotate(90deg); opacity:1; }
+.sub-submenu { display:none; padding-left:10px; }
+.sub-submenu.open { display:block; }
+.sub-submenu .submenu-item { padding-left:52px; font-size:12px; border-left-color:transparent; }
+.sub-submenu .submenu-item:hover { border-left-color:#93c5fd; }
+			
 			
 	  	</style>
-
-
-
 	
      </head>
      <body>
@@ -750,25 +770,82 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <div class="sidebar" id="sidebar">
-    <div style="padding:20px;font-weight:bold;border-bottom:1px solid #f1f5f9">📋 Menu</div>
-        <div class="sidebar-tab active" onclick="selectTab(0, this)" title="View business dashboard">📊 Dashboard</div>
-    <div class="sidebar-tab" onclick="selectTab(1, this)" title="Manage products and inventory">📦 Products</div>
-    <div class="sidebar-tab" onclick="selectTab(2, this)" title="View sales records">💰 Sales</div>
-    <div class="sidebar-tab" onclick="selectTab(3, this)" title="Check stock levels">📊 Stock</div>
+<div style="padding:20px;font-weight:bold;border-bottom:1px solid #f1f5f9">📋 Menu</div>
+<div class="sidebar-tab active" onclick="selectTab(0, this)" title="View business dashboard">📊 Dashboard</div>
+      <div class="sidebar-tab has-submenu" onclick="toggleSubmenu(this)" title="Manage products and inventory">📦 Products</div>
+    <div class="submenu" data-parent="1">
+        <div class="submenu-item" onclick="subGo(1, this, 'addProduct')">➕ Add Product</div>
+        <div class="submenu-item" onclick="subGo(1, this, 'transfer')">🚚 Transfer to Branch</div>
+        <div class="submenu-item" onclick="subGo(1, this, 'stockTake')">🧮 Physical Stock Count</div>
+        <div class="submenu-item" onclick="subGo(1, this, 'restock')">🚨 Check Low Stock & Restock</div>
+    </div>
+
+	
+	    <div class="sidebar-tab has-submenu" onclick="toggleSubmenu(this)" title="View sales records">💰 Sales</div>
+    <div class="submenu" data-parent="2">
+        <div class="submenu-item" onclick="subGo(2, this, 'none')">📅 Daily / Weekly / Monthly</div>
+        <div class="submenu-item" onclick="subGo(2, this, 'none')">📋 Detailed Sales</div>
+        <div class="submenu-item" onclick="subGo(2, this, 'none')">📦 Item Detail</div>
+    </div>
+
+	
+	<div class="sidebar-tab" onclick="selectTab(3, this)" title="Check stock levels">📊 Stock</div>
     <div class="sidebar-tab" onclick="selectTab(4, this)" title="Manage customer credits">💳 Credits</div>
     <div class="sidebar-tab" onclick="selectTab(5, this)" title="Record damaged or lost goods">📉 Losses</div>
-    <div class="sidebar-tab" onclick="selectTab(6, this)" title="Manage staff and payroll">👥 Staff</div>
-    <div class="sidebar-tab" onclick="selectTab(7, this)" title="Record business expenses">💸 Expenses</div>
-    <div class="sidebar-tab" onclick="selectTab(8, this)" title="Generate business reports">📈 Reports</div>
-    <div class="sidebar-tab" onclick="selectTab(9, this)" title="Manage suppliers and orders">🏭 Suppliers</div>
+
+    <div class="sidebar-tab has-submenu" onclick="toggleSubmenu(this)" title="Manage staff and payroll">👥 Staff</div>
+    <div class="submenu" data-parent="6">
+        <div class="submenu-item" onclick="subGo(6, this, 'registerStaff')">➕ Register Staff</div>
+        <div class="submenu-item" onclick="subGo(6, this, 'staffList')">📋 Staff List</div>
+        <div class="submenu-item" onclick="subGo(6, this, 'payroll')">📊 Payroll Summary</div>
+        <div class="submenu-item" onclick="subGo(6, this, 'paySalary')">💰 Pay a Salary</div>
+    </div>
+
+	
+	<div class="sidebar-tab" onclick="selectTab(7, this)" title="Record business expenses">💸 Expenses</div>
+
+    <div class="sidebar-tab has-submenu" onclick="toggleSubmenu(this)" title="Generate business reports">📈 Analytics & Reports</div>
+    <div class="submenu" data-parent="8">
+        <div class="submenu-item has-sub3" onclick="toggleSub3(this)">📊 Standard Reports</div>
+        <div class="sub-submenu">
+            <div class="submenu-item" onclick="subGo(8, this, 'repDaily')">📅 Daily Summary</div>
+            <div class="submenu-item" onclick="subGo(8, this, 'repSales')">💰 Sales Report</div>
+            <div class="submenu-item" onclick="subGo(8, this, 'repCashier')">👤 Cashier Performance</div>
+            <div class="submenu-item" onclick="subGo(8, this, 'repTop')">🏆 Top Products</div>
+            <div class="submenu-item" onclick="subGo(8, this, 'repSalary')">💵 Staff Salary Report</div>
+        </div>
+        <div class="submenu-item" onclick="subGo(8, this, 'repPnL')">📈 P&L Statement</div>
+        <div class="submenu-item" onclick="subGo(8, this, 'repZ')">🖨️ Z-Report (End of Day)</div>
+        <div class="submenu-item" onclick="subGo(8, this, 'repTax')">🧮 Tax Liability</div>
+        <div class="submenu-item" onclick="subGo(8, this, 'repExpenses')">📉 Expense Breakdown</div>
+        <div class="submenu-item" onclick="subGo(8, this, 'repAudit')">🛡️ Audit Log</div>
+        <div class="submenu-item" onclick="subGo(8, this, 'repTimesheet')">⏰ Staff Timesheets</div>
+        <div class="submenu-item" onclick="subGo(8, this, 'repMenuEng')">🍕 Menu Engineering</div>
+        <div class="submenu-item" onclick="subGo(8, this, 'repCRM')">👥 Customer CRM</div>
+        <div class="submenu-item" onclick="subGo(8, this, 'repMarketing')">📣 WhatsApp Marketing</div>
+        <div class="submenu-item" onclick="subGo(8, this, 'repInvoice')">✍️ Manual Invoice</div>
+    </div>
+	
+	
+	<div class="sidebar-tab" onclick="selectTab(9, this)" title="Manage suppliers and orders">🏭 Suppliers</div>
     <div class="sidebar-tab" onclick="selectTab(18, this)" title="Create product recipes">📋 Recipes</div>
     <div class="sidebar-tab" onclick="selectTab(10, this)" title="Manage loyalty points">🎁 Loyalty</div>
     <div class="sidebar-tab" onclick="selectTab(11, this)" title="Track loans given/received">💸 Loans</div>
     <div class="sidebar-tab" onclick="selectTab(12, this)" title="Manage bank accounts">🏦 Bank</div>
     <div class="sidebar-tab" data-lang-key="notebook" onclick="selectTab(15, this)" title="Write quick notes">📓 Notebook</div>
 	  <div class="sidebar-tab" onclick="selectTab(19, this)">💬 Intercom</div>
-    <div class="sidebar-tab" id="sidebarSettingsTab" onclick="selectTab(13, this)">⚙️ Settings</div>
-	  <div class="sidebar-tab" onclick="selectTab(14, this)" title="View your license">🔑 License</div>
+
+    <div class="sidebar-tab has-submenu" onclick="toggleSubmenu(this)" id="sidebarSettingsTab">⚙️ Settings</div>
+    <div class="submenu" data-parent="13">
+        <div class="submenu-item" onclick="subGo(13, this, 'posFeatures')">🔧 POS Features</div>
+        <div class="submenu-item" onclick="subGo(13, this, 'branding')">🎨 Shop Branding</div>
+        <div class="submenu-item" onclick="subGo(13, this, 'tables')">🪑 Tables & QR Codes</div>
+        <div class="submenu-item" onclick="subGo(13, this, 'security')">🔐 Account & PIN</div>
+    </div>
+	
+
+	
+	<div class="sidebar-tab" onclick="selectTab(14, this)" title="View your license">🔑 License</div>
     <div class="sidebar-tab" id="shopSidebarTab" data-lang-key="shops" onclick="selectTab(16, this)" style="display:none;" title="Manage your branches">🏪 <span data-lang-key="shops">Shops</span></div>
 </div>
 
@@ -3321,6 +3398,225 @@ function closeSidebar() {
     document.getElementById('sidebarOverlay').classList.remove('show'); 
 }
 
+// ===== COLLAPSIBLE SUB-MENU SYSTEM =====
+function toggleSubmenu(tabEl) {
+    var submenu = tabEl.nextElementSibling;
+    if (!submenu || !submenu.classList.contains('submenu')) return;
+
+    // Accordion: close ALL other submenus first
+    document.querySelectorAll('.submenu.open').forEach(function(sm) {
+        if (sm !== submenu) { sm.classList.remove('open'); }
+    });
+    document.querySelectorAll('.sidebar-tab.has-submenu.expanded').forEach(function(t) {
+        if (t !== tabEl) t.classList.remove('expanded');
+    });
+	document.querySelectorAll('.submenu-item.has-sub3.expanded').forEach(function(t) {   // 🆕 AND THIS
+        t.classList.remove('expanded');
+    });
+
+    // Toggle THIS submenu (expand/collapse) — NO page navigation here!
+    var opening = !submenu.classList.contains('open');
+    submenu.classList.toggle('open', opening);
+    tabEl.classList.toggle('expanded', opening);
+
+    // 🌟 FIRST TAP BEHAVIOR: if this submenu was CLOSED and the tab content
+    // was never opened yet — open the TAB CONTENT (but the user stays on the
+    // same screen position — the submenu is what they see expanding).
+    // We only switch the tab when EXPANDING if the target tab is not already visible.
+    if (opening) {
+        var tabNum = parseInt(submenu.getAttribute('data-parent'));
+        if (!isNaN(tabNum)) {
+            var targetTab = document.getElementById('tab' + tabNum);
+            var alreadyVisible = targetTab && targetTab.style.display === 'block';
+            if (!alreadyVisible) {
+                // First expansion → show the tab content quietly (so sub-item
+                // navigation feels instant), but DON'T close the sidebar —
+                // the user is still choosing from the submenu!
+                if (typeof selectTab === 'function') selectTab(tabNum, tabEl);
+                // Re-open the submenu visually (selectTab doesn't touch it)
+                submenu.classList.add('open');
+                tabEl.classList.add('expanded');
+                // Keep the sidebar OPEN so the user can pick a sub-item!
+                var sb = document.getElementById('sidebar');
+                var ov = document.getElementById('sidebarOverlay');
+                if (sb && !sb.classList.contains('open')) { sb.classList.add('open'); if (ov) ov.classList.add('show'); }
+            }
+        }
+    }
+}
+
+// ===== THIRD-LEVEL TOGGLE (Standard Reports ▸) =====
+function toggleSub3(itemEl) {
+    var sub3 = itemEl.nextElementSibling;
+    if (!sub3 || !sub3.classList.contains('sub-submenu')) return;
+
+    // Close other third-level menus
+    document.querySelectorAll('.sub-submenu.open').forEach(function(sm) {
+        if (sm !== sub3) sm.classList.remove('open');
+    });
+    document.querySelectorAll('.submenu-item.has-sub3.expanded').forEach(function(t) {
+        if (t !== itemEl) t.classList.remove('expanded');
+    });
+
+    var opening = !sub3.classList.contains('open');
+    sub3.classList.toggle('open', opening);
+    itemEl.classList.toggle('expanded', opening);
+}
+
+	
+function subGo(tabNum, itemEl, action) {
+    // 1. Open the parent TAB (real navigation now!)
+    var parentTab = itemEl.closest('.submenu').previousElementSibling;
+    if (typeof selectTab === 'function' && parentTab) selectTab(tabNum, parentTab);
+
+    // 2. Highlight the chosen sub-item
+    document.querySelectorAll('.submenu-item.active').forEach(function(i) { i.classList.remove('active'); });
+    itemEl.classList.add('active');
+
+    // 3. Close the sidebar (now it's proper — user made their choice)
+    if (typeof closeSidebar === 'function') closeSidebar();
+
+   
+	
+    // 4. Fire the action!
+    try {
+        switch(action) {
+            case 'addProduct':
+                // Scroll to + open the Add Product card
+                var addCard = document.querySelector('#tab1 .card');
+                if (addCard) {
+                    addCard.scrollIntoView({ behavior:'smooth', block:'start' });
+                    var body = addCard.querySelector('.card-body');
+                    if (body && body.classList.contains('collapsed')) {
+                        var title = addCard.querySelector('.card-title');
+                        if (title && typeof toggleCard === 'function') toggleCard(title);
+                    }
+                }
+                break;
+            case 'transfer':
+                if (typeof openTransferModal === 'function') openTransferModal();
+                else alert('Transfer feature loading...');
+                break;
+            case 'stockTake':
+                if (typeof openStockTakeModal === 'function') openStockTakeModal();
+                else alert('Stock count feature loading...');
+                break;
+            case 'restock':
+                if (typeof openRestockModal === 'function') openRestockModal();
+                else alert('Restock feature loading...');
+                break;
+						case 'posFeatures':
+                var row = document.getElementById('posFeaturesCard') || document.querySelector('#tab13 .card:nth-child(2)');
+                if (row) row.scrollIntoView({ behavior:'smooth' });
+                break;
+            case 'branding':
+                var b = document.querySelector('#tab13 .card:nth-child(5)');
+                if (b) b.scrollIntoView({ behavior:'smooth' });
+                break;
+            case 'tables':
+                var t = document.getElementById('tableInputsContainer');
+                if (t) t.closest('.card').scrollIntoView({ behavior:'smooth' });
+                break;
+            case 'security':
+                var s = document.querySelector('#tab13 .card');
+                if (s) s.scrollIntoView({ behavior:'smooth' });
+                break;
+
+						            // ===== STAFF ACTIONS =====
+            case 'registerStaff':
+                var rs = document.querySelector('#tab6 .card');
+                if (rs) {
+                    rs.scrollIntoView({ behavior:'smooth' });
+                    var rsBody = rs.querySelector('.card-body');
+                    if (rsBody && rsBody.classList.contains('collapsed')) {
+                        var rsTitle = rs.querySelector('.card-title');
+                        if (rsTitle && typeof toggleCard === 'function') toggleCard(rsTitle);
+                    }
+                }
+                break;
+            case 'staffList':
+                var sl = document.getElementById('staffExcelContainer');
+                if (sl) sl.scrollIntoView({ behavior:'smooth' });
+                break;
+            case 'payroll':
+                if (typeof switchStaffSubTab === 'function') switchStaffSubTab('payroll');
+                var pg = document.getElementById('payrollSummaryContainer');
+                if (pg) pg.scrollIntoView({ behavior:'smooth' });
+                break;
+            case 'paySalary':
+                // Find first active staff's Pay button and highlight — or just open the list
+                var pl = document.getElementById('staffExcelContainer') || document.querySelector('#tab6 .card:nth-child(2)');
+                if (pl) {
+                    pl.scrollIntoView({ behavior:'smooth' });
+                    showFloatingToast && showFloatingToast('💡 Tap 💰 next to a staff member to pay their salary', false);
+                }
+                break;
+
+            // ===== REPORTS ACTIONS =====
+            case 'repOverview':
+                var ro = document.querySelector('#tab8 .dashboard-grid');
+                if (ro) ro.scrollIntoView({ behavior:'smooth' });
+                break;
+            case 'repDaily':
+                var rd = document.getElementById('dailySummaryExcelContainer');
+                if (rd) rd.closest('.card').scrollIntoView({ behavior:'smooth' });
+                break;
+            case 'repSales':
+                var rsl = document.getElementById('salesReportExcelContainer');
+                if (rsl) rsl.closest('.card').scrollIntoView({ behavior:'smooth' });
+                break;
+            case 'repCashier':
+                var rc = document.getElementById('cashierReportExcelContainer');
+                if (rc) rc.closest('.card').scrollIntoView({ behavior:'smooth' });
+                break;
+            case 'repTop':
+                var rt = document.getElementById('topProductsExcelContainer');
+                if (rt) rt.closest('.card').scrollIntoView({ behavior:'smooth' });
+                break;
+            case 'repSalary':
+                var rps = document.getElementById('salaryReportExcelContainer');
+                if (rps) rps.closest('.card').scrollIntoView({ behavior:'smooth' });
+                break;
+            case 'repPnL':
+                if (typeof openPnLModal === 'function') openPnLModal();
+                break;
+            case 'repZ':
+                if (typeof openZReportModal === 'function') openZReportModal();
+                break;
+            case 'repTax':
+                if (typeof openTaxReportModal === 'function') openTaxReportModal();
+                break;
+            case 'repExpenses':
+                if (typeof openExpenseReportModal === 'function') openExpenseReportModal();
+                break;
+						case 'repAudit':
+                if (typeof openAuditLogModal === 'function') openAuditLogModal();
+                else alert('Audit log feature loading...');
+                break;
+            case 'repTimesheet':
+                if (typeof openTimesheetModal === 'function') openTimesheetModal();
+                else alert('Timesheets feature loading...');
+                break;
+            case 'repMenuEng':
+                if (typeof openMenuEngModal === 'function') openMenuEngModal();
+                else alert('Menu engineering loading...');
+                break;
+            case 'repCRM':
+                if (typeof openCrmModal === 'function') openCrmModal();
+                else alert('Customer CRM loading...');
+                break;
+            case 'repMarketing':
+                if (typeof openMarketingModal === 'function') openMarketingModal();
+                else alert('WhatsApp marketing loading...');
+                break;
+            case 'repInvoice':
+                if (typeof openManualInvoiceModal === 'function') openManualInvoiceModal();
+                else alert('Manual invoice loading...');
+                break;
+        }
+    } catch(e) { console.warn('Submenu action failed:', e); }
+}
+	
 // ===== UNIFIED TAB SWITCHER (CLEAN & SAFE) =====
 function selectTab(i, el) {
     // 1. MANAGER RESTRICTION – only allow specific tabs
