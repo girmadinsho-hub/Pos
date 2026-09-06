@@ -820,21 +820,72 @@ async function loadLicenses() {
     allLicenses = data || [];
     filterLicenses(); loadRevenueSummary();
 }
-
-async function loadShops() {
-    const { data, error } = await supabaseClient.from('shops').select('*').order('created_at', { ascending: true });
-    const table = document.getElementById('shopsTable');
-    table.innerHTML = '<tr><th>Shop Name</th><th>Shop ID</th><th>Plan</th><th>Active</th><th>Actions</th></tr>';
-    if (!data || data.length === 0) { table.innerHTML += '<tr><td colspan="5">No shops found.</td></tr>'; return; }
-    data.forEach(s => {
-        table.innerHTML += `<tr class="${s.active?'':'shop-inactive'}">
-            <td>${s.name}</td><td>${s.shop_id}</td><td>${s.plan||'N/A'}</td><td>${s.active?'✅ Yes':'❌ No'}</td>
-            <td>
-                <button class="btn btn-yellow" onclick="toggleShopActive('${s.id}',${!s.active})">${s.active?'Deactivate':'Activate'}</button> 
-                <button class="btn btn-red" onclick="deleteShop('${s.id}','${s.name}')">🗑️ Delete</button>
-            </td>
-        </tr>`;
+function loadShops() {
+    var container = document.getElementById('shopsTable');
+    if (!container) return;
+    var html = '<tr style="background:#333;color:#fff;"><th>Shop Name</th><th>Shop ID</th><th>Plan</th><th>Email</th><th>Days Left</th><th>Active</th><th>Actions</th></tr>';
+    supabaseClient.from('shops').select('*').order('registered_at', { ascending: false }).then(({data, error}) => {
+        if (error) { alert('Error: ' + error.message); return; }
+        if (!data || data.length === 0) { container.innerHTML = html + '<tr><td colspan="7" style="padding:20px;color:#94a3b8;">No shops registered yet.</td></tr>'; return; }
+        data.forEach(function(shop) {
+            var daysLeft = shop.trial_expires ? Math.ceil((new Date(shop.trial_expires) - new Date()) / 86400000) : '—';
+            var daysColor = daysLeft === '—' ? '#64748b' : (daysLeft <= 7 ? '#ef4444' : (daysLeft <= 0 ? '#dc2626' : '#10b981'));
+            var trialBadge = (shop.plan === 'trial') ? ' <span style="background:#f59e0b;color:white;font-size:9px;padding:2px 6px;border-radius:4px;">TRIAL</span>' : '';
+            var blocked = shop.blocked ? '<span style="color:#ef4444;">⛔ BLOCKED</span>' : '✅';
+            html += '<tr>' +
+                '<td>' + shop.name + trialBadge + '</td>' +
+                '<td style="font-size:11px;">' + shop.shop_id + '</td>' +
+                '<td>' + (shop.plan || 'trial') + '</td>' +
+                '<td style="font-size:11px;">' + (shop.owner_email || '—') + '</td>' +
+                '<td style="color:' + daysColor + ';font-weight:bold;">' + (daysLeft <= 0 ? 'EXPIRED' : daysLeft + 'd') + '</td>' +
+                '<td>' + (shop.active ? blocked : 'inactive') + '</td>' +
+                '<td>' +
+                    '<button class="btn btn-sm btn-blue" onclick="generateLicenseFor(\'' + shop.shop_id + '\')">🔑 License</button> ' +
+							      '<button class="btn btn-sm btn-yellow" onclick="extendTrial(\'' + shop.shop_id + '\')">📅 Days</button> ' +
+                    '<button class="btn btn-sm btn-red" onclick="masterBlockShop(\'' + shop.shop_id + '\',' + !shop.blocked + ')">' + (shop.blocked ? 'Unblock' : 'Block') + '</button>' +
+                '</td></tr>';
+        });
+        container.innerHTML = html;
     });
+}
+
+async function masterBlockShop(shopId, block) {
+    if (!confirm(block ? 'Block this customer?' : 'Unblock?')) return;
+    await supabaseClient.from('shops').update({ blocked: block }).eq('shop_id', shopId);
+    loadShops();
+}
+async function extendTrial(shopId) {
+    var days = parseInt(prompt('Add how many days? (e.g. 7, 30, -5 to reduce)', '7'));
+    if (isNaN(days)) return;
+    try {
+        const { data: shop } = await supabaseClient.from('shops')
+            .select('trial_expires').eq('shop_id', shopId).maybeSingle();
+        var base = (shop && shop.trial_expires && new Date(shop.trial_expires) > new Date())
+            ? new Date(shop.trial_expires) : new Date();
+        var newDate = new Date(base.getTime() + days * 86400000);
+        const { error } = await supabaseClient.from('shops')
+            .update({ trial_expires: newDate.toISOString() })
+            .eq('shop_id', shopId);
+        if (error) throw error;
+        alert('✅ Trial now ends: ' + newDate.toLocaleDateString());
+        loadShops();
+    } catch(e) { alert('❌ ' + e.message); }
+}
+// Quick license generator for a known shop
+async function generateLicenseFor(shopId) {
+    var plan = prompt('Plan for ' + shopId + ' (shop/medium/supermarket/enterprise/cafe/restaurant/hotel):');
+    if (!plan) return;
+    var days = parseInt(prompt('Duration in days:', '30')) || 30;
+    var key = ('SMART-' + plan.toUpperCase() + '-' + shopId + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
+    const { error } = await supabaseClient.from('licenses').insert([{
+        shop_id: shopId, plan: plan, key: key, status: 'active',
+        start_date: new Date().toISOString(),
+        expiry_date: new Date(Date.now() + days * 86400000).toISOString(),
+        max_products: 999999, max_cashiers_per_shop: 999
+    }]);
+    if (error) return alert('❌ ' + error.message);
+    alert('✅ License created!\n\nKey: ' + key + '\nDays: ' + days + '\n\nSend this key to the customer — they activate it in Admin → License.');
+    loadShops();
 }
 
 async function toggleShopActive(docId, makeActive) {
@@ -1011,8 +1062,42 @@ function initMasterPanel() {
     populateSnapshotDropdown(); 
     loadGlobalTrialDays();
     loadTierSettings();
+	  setupRegistrationAlerts();
 }
+// ===== 📢 INSTANT NEW-REGISTRATION ALERTS =====
+function setupRegistrationAlerts() {
+    supabaseClient.channel('new-registrations')
+        .on('postgres_changes', 
+            { event: 'INSERT', schema: 'public', table: 'shops' },
+            function(payload) {
+                var shop = payload.new;
+                var trialEnds = shop.trial_expires ? new Date(shop.trial_expires).toLocaleDateString() : 'unknown';
+                
+                // Sound + popup
+                try {
+                    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    [660, 880, 1100].forEach(function(f, i) {
+                        var o = ctx.createOscillator(), g = ctx.createGain();
+                        o.frequency.value = f;
+                        g.gain.setValueAtTime(0.3, ctx.currentTime + i*0.15);
+                        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.15 + 0.3);
+                        o.connect(g); g.connect(ctx.destination);
+                        o.start(ctx.currentTime + i*0.15); o.stop(ctx.currentTime + i*0.15 + 0.32);
+                    });
+                } catch(e) {}
+                try { if (navigator.vibrate) navigator.vibrate([200,100,200]); } catch(e) {}
 
+                alert('🆕 NEW CUSTOMER REGISTERED!\n\n🏪 ' + (shop.name || 'Unknown') +
+                      '\n🆔 Shop ID: ' + shop.shop_id +
+                      '\n📧 ' + (shop.owner_email || 'no email') +
+                      '\n📱 ' + (shop.phone || 'no phone') +
+                      '\n📅 Trial ends: ' + trialEnds);
+                
+                // Refresh the shop list if visible
+                if (typeof loadShops === 'function') loadShops();
+            })
+        .subscribe();
+}
 function masterLogout() { supabaseClient.auth.signOut(); }
 
 // ===== SAAS SETTINGS LOGIC =====
