@@ -4393,6 +4393,7 @@ async function deleteCredit(saleId) {
     var expiryDate = safeGet('prodExpiry') || null;
     var imageUrl = safeGet('prodImageUrl');
     var station = safeGet('prodStation') || 'Kitchen';
+	 var mods = cleanModifiersForSave();
     var isAvailableOnMenu = safeChecked('prodAvailable');
 
     if (!name) { alert('Product name is required.'); return; }
@@ -4433,8 +4434,9 @@ const { data: inserted, error } = await supabaseClient.from('products').insert([
             is_available_on_menu: isAvailableOnMenu,
             sell_directly: sellDirectly,
             station: station,
-            image_url: imageUrl
-        }]);
+            image_url: imageUrl,
+            modifiers: mods
+           }]);
         if (error) throw error;
 
         // UPDATE LOCAL CACHE AND UI INSTANTLY
@@ -4456,8 +4458,9 @@ const { data: inserted, error } = await supabaseClient.from('products').insert([
             isAvailableOnMenu: isAvailableOnMenu,
             sellDirectly: sellDirectly,
             station: station, 
+            modifiers: mods,
             createdAt: new Date().toISOString()
-        });
+				});
         
         if (typeof filterProductView === 'function') filterProductView();
         if (window.productTable) window.productTable.setData(products);
@@ -4477,6 +4480,8 @@ const { data: inserted, error } = await supabaseClient.from('products').insert([
         setChk('isVirtual', false);
         setChk('prodAvailable', true);
         setChk('enableBulkPricing', false);
+			  tempModifiers = [];
+        var mb = document.getElementById('modifierBuilder'); if (mb) mb.innerHTML = '';
         
         if (typeof populateFilters === 'function') populateFilters();
         
@@ -4711,12 +4716,13 @@ async function saveEditProduct() {
     var addCost = parseFloat(document.getElementById('editNewCost').value) || 0;
 
     if (!newName) { alert('Product name is required.'); return; }
-
+    var mods = cleanModifiersForSave();
     var updateData = {
         name: newName, unit: newUnit, price: sellingPrice,
         cost_price: editedCost, category: category, barcode: barcode, station: station,
         image_url: imageUrl, sell_directly: sellDirectly, is_virtual: isVirtual,
-        reorder_level: newReorder, expiry_date: newExpiry, is_available_on_menu: isAvailableOnMenu
+        reorder_level: newReorder, expiry_date: newExpiry,         is_available_on_menu: isAvailableOnMenu,
+        modifiers: mods
     };
     if (!(addQty > 0)) updateData.stock = editedStock; // don't overwrite stock when adding new stock
 
@@ -4745,7 +4751,8 @@ async function saveEditProduct() {
                 name: newName, unit: newUnit, price: sellingPrice,
                 costPrice: editedCost, category: category, barcode: barcode, station: station,
                 imageUrl: imageUrl, sellDirectly: sellDirectly, isVirtual: isVirtual,
-                reorderLevel: newReorder, expiryDate: newExpiry, isAvailableOnMenu: isAvailableOnMenu
+                reorderLevel: newReorder, expiryDate: newExpiry,                 isAvailableOnMenu: isAvailableOnMenu,
+                modifiers: mods
             });
             p.stock = (addQty > 0) ? Math.round(((p.stock || 0) + addQty) * 1000) / 1000 : editedStock;
         }
@@ -5241,8 +5248,9 @@ async function recordLoss() {
       });
 
         alert(t('saved'));
-        if (typeof renderStockAlertCenter === 'function') renderStockAlertCenter();  // 🆕 add this line      document.getElementById('lossQty').value = ''; 
-      filterLossProducts(); 
+        if (typeof renderStockAlertCenter === 'function') renderStockAlertCenter();
+        document.getElementById('lossQty').value = '';
+		filterLossProducts(); 
       if (typeof switchLossView === 'function') switchLossView(currentLossView); // Refresh table
       
   } catch(e) {
@@ -5465,8 +5473,10 @@ async function paySalary(empId) {
         if (expError) throw expError;
         
         // 2. Update Employee Last Paid
-        const { error: empError } = await supabaseClient.from('employees')
-            .update({ last_paid: new Date().toISOString() }).eq('id', emp.id);
+                const { error: empError } = await ssById(
+            supabaseClient.from('employees').update({ last_paid: new Date().toISOString() }),
+            emp.id
+        );
         if (empError) throw empError;
         
         // 3. Update local cache
@@ -9557,7 +9567,6 @@ async function changeManagerPassword() {
 // ---------- MANAGER CHANGES OWN PASSWORD ----------
 var managerPwdStepSelf = 'verify';
 
-async function handleManagerPasswordSelf() {
     var input = document.getElementById('managerPwdInputSelf');
     var btn = document.getElementById('managerPwdBtnSelf');
     var msg = document.getElementById('managerPwdMsgSelf');
@@ -10697,8 +10706,8 @@ function exitMaximize() {
 	// ===== SECURE PASSWORD CHANGE (VERIFY OLD PASSWORD FIRST) =====
 
 async function changeMyAdminPassword() {
-    var newPass = prompt("Enter your NEW password (min 6 characters):");
-    if (!newPass || newPass.length < 6) { alert("Password too short."); return; }
+    var newPass = await prompt("Enter your NEW password (min 6 characters):");
+	if (!newPass || newPass.length < 6) { alert("Password too short."); return; }
     
     try {
         // Supabase Auth securely updates the logged-in user's password
@@ -11183,6 +11192,21 @@ function addModifierGroup(containerId) {
     };
     tempModifiers.push(group);
     renderModifierBuilder(containerId);
+}
+	function cleanModifiersForSave() {
+    return (tempModifiers || [])
+        .filter(function(g) { return g.name && g.name.trim(); })
+        .map(function(g) {
+            return {
+                name: g.name.trim(),
+                required: !!g.required,
+                multiSelect: !!g.multiSelect,
+                options: (g.options || [])
+                    .filter(function(o) { return o.name && o.name.trim(); })
+                    .map(function(o) { return { name: o.name.trim(), price: parseFloat(o.price) || 0 }; })
+            };
+        })
+        .filter(function(g) { return g.options.length > 0; });
 }
 function removeModifierGroup(id, containerId) {
     tempModifiers = tempModifiers.filter(function(g) { return g.id !== id; });
@@ -11820,13 +11844,22 @@ async function submitNewEmployeeFinal() {
 
         // 1. SAVE TO SUPABASE
         if (supabaseClient) {
-            const { error } = await supabaseClient.from('employees').insert([
+                        const { error } = await supabaseClient.from('employees').insert([
                 {
-                    firebase_id: docRef.id, 
+                    firebase_id: docRefId, 
                     shop_id: getShopId(),
                     name: name,
                     position: position,
                     salary: salary,
+                    payment_agreement: schedule,
+                    tip: tip,
+                    bonus: bonus,
+                    penalty: penalty,
+                    overtime: overtime,
+                    phone: phone,
+                    address: address,
+                    start_date: startDate || null,
+                    account_no: accountNo,
                     status: 'active',
                     hashed_password: employeeData.hashedPassword || null,
                     pin_locked: pinLocked || false
@@ -11969,8 +12002,8 @@ async function loadPeakHours() {
 // ===== FINAL STARTUP =====
 function init() {
     loadDashboard('daily', document.querySelector('.period-btn.active'));
-    if (db) loadAllCaches();
-    document.getElementById('langSelect').value = appLang;
+    if (supabaseClient) loadAllCaches();
+	document.getElementById('langSelect').value = appLang;
     setTimeout(function() { loadShopList(); }, 1000);
     
     // ===== FORCE SHOPS TAB FOR ENTERPRISE =====
@@ -12016,10 +12049,7 @@ window.addEventListener('offline', () => {
 });
 
 
-// In init(), change:
-if (db) loadAllCaches();
-// to:
-if (supabaseClient) loadAllCaches();
+
 
 	
 </script>
