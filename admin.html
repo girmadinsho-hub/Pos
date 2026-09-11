@@ -4373,7 +4373,7 @@ async function deleteCredit(saleId) {
     });
 }
 
-	async function addProduct() {
+async function addProduct() {
     var safeGet = function(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
     var safeGetNum = function(id) { var el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; };
     var safeGetInt = function(id) { var el = document.getElementById(id); return el ? (parseInt(el.value) || 0) : 0; };
@@ -4388,17 +4388,18 @@ async function deleteCredit(saleId) {
     var barcode = safeGet('prodBarcode');
     var sellDirectly = safeChecked('sellDirectly');
     var isVirtual = safeChecked('isVirtual');
-
     var reorderLevel = safeGetInt('prodReorderLevel') || 5;
     var expiryDate = safeGet('prodExpiry') || null;
     var imageUrl = safeGet('prodImageUrl');
     var station = safeGet('prodStation') || 'Kitchen';
-	 var mods = cleanModifiersForSave();
-	 var bulkQty1 = safeGetInt('bulkQty1'),  bulkPrice1 = safeGetNum('bulkPrice1');
+    var isAvailableOnMenu = safeChecked('prodAvailable');
+
+    var mods = cleanModifiersForSave();
+
+    var bulkQty1 = safeGetInt('bulkQty1'),  bulkPrice1 = safeGetNum('bulkPrice1');
     var bulkQty2 = safeGetInt('bulkQty2'),  bulkPrice2 = safeGetNum('bulkPrice2');
     var bulkQty3 = safeGetInt('bulkQty3'),  bulkPrice3 = safeGetNum('bulkPrice3');
     var useBulk = safeChecked('enableBulkPricing') && bulkQty1 > 0;
-    var isAvailableOnMenu = safeChecked('prodAvailable');
 
     if (!name) { alert('Product name is required.'); return; }
 
@@ -4420,11 +4421,10 @@ async function deleteCredit(saleId) {
     try {
         var docRefId = 'prod_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
 
-        // SAVE TO SUPABASE ONLY
-const { data: inserted, error } = await supabaseClient.from('products').insert([{
-			firebase_id: docRefId, 
+        const { data: inserted, error } = await supabaseClient.from('products').insert([{
+            firebase_id: docRefId,
             shop_id: getShopId(),
-            name: name, 
+            name: name,
             price: price,
             cost_price: cost,
             stock: stock,
@@ -4443,7 +4443,30 @@ const { data: inserted, error } = await supabaseClient.from('products').insert([
             bulk_qty_1: useBulk ? bulkQty1 : null,
             bulk_price_1: useBulk ? bulkPrice1 : null,
             bulk_qty_2: useBulk && bulkQty2 > 0 ? bulkQty2 : null,
-            station: station, 
+            bulk_price_2: useBulk && bulkQty2 > 0 ? bulkPrice2 : null,
+            bulk_qty_3: useBulk && bulkQty3 > 0 ? bulkQty3 : null,
+            bulk_price_3: useBulk && bulkQty3 > 0 ? bulkPrice3 : null
+        }]);
+        if (error) throw error;
+
+        products.push({
+            id: docRefId,
+            shopId: getShopId(),
+            name: name,
+            unit: unit || 'piece',
+            stock: stock,
+            costPrice: cost,
+            price: price,
+            category: category || 'General',
+            barcode: barcode,
+            imageUrl: imageUrl,
+            isVirtual: isVirtual || false,
+            soldCount: 0,
+            reorderLevel: reorderLevel,
+            expiryDate: expiryDate,
+            isAvailableOnMenu: isAvailableOnMenu,
+            sellDirectly: sellDirectly,
+            station: station,
             modifiers: mods,
             bulkQty1: useBulk ? bulkQty1 : 0,
             bulkPrice1: useBulk ? bulkPrice1 : 0,
@@ -4452,66 +4475,39 @@ const { data: inserted, error } = await supabaseClient.from('products').insert([
             bulkQty3: useBulk && bulkQty3 > 0 ? bulkQty3 : 0,
             bulkPrice3: useBulk && bulkQty3 > 0 ? bulkPrice3 : 0,
             createdAt: new Date().toISOString()
-           }]);
-        if (error) throw error;
+        });
 
-        // UPDATE LOCAL CACHE AND UI INSTANTLY
-        products.push({
-            id: docRefId, 
-            shopId: getShopId(), 
-            name: name, 
-            unit: unit || 'piece', 
-            stock: stock, 
-            costPrice: cost, 
-            price: price,
-            category: category || 'General', 
-            barcode: barcode, 
-            imageUrl: imageUrl,
-            isVirtual: isVirtual || false, 
-            soldCount: 0,
-            reorderLevel: reorderLevel,     
-            expiryDate: expiryDate,         
-            isAvailableOnMenu: isAvailableOnMenu,
-            sellDirectly: sellDirectly,
-            station: station, 
-            modifiers: mods,
-            createdAt: new Date().toISOString()
-				});
-        
         if (typeof filterProductView === 'function') filterProductView();
         if (window.productTable) window.productTable.setData(products);
 
         alert('✅ Product saved permanently!');
-        
-        // BULLETPROOF CLEANUP
+
         var setVal = function(id, val) { var el = document.getElementById(id); if(el) el.value = val; };
         var setChk = function(id, val) { var el = document.getElementById(id); if(el) el.checked = val; };
-        
-        setVal('prodName', ''); setVal('prodUnit', ''); setVal('prodStock', ''); 
+
+        setVal('prodName', ''); setVal('prodUnit', ''); setVal('prodStock', '');
         setVal('prodCostPrice', ''); setVal('prodPrice', ''); setVal('prodCategory', '');
         setVal('prodBarcode', ''); setVal('prodImageUrl', ''); setVal('prodReorderLevel', '5');
-        setVal('prodExpiry', ''); setVal('prodStation', 'Kitchen'); 
-        
+        setVal('prodExpiry', ''); setVal('prodStation', 'Kitchen');
+        setVal('bulkQty1', ''); setVal('bulkPrice1', '');
+        setVal('bulkQty2', ''); setVal('bulkPrice2', '');
+        setVal('bulkQty3', ''); setVal('bulkPrice3', '');
+
         setChk('sellDirectly', true);
         setChk('isVirtual', false);
         setChk('prodAvailable', true);
         setChk('enableBulkPricing', false);
-			  setVal('bulkQty1', ''); setVal('bulkPrice1', '');
-        setVal('bulkQty2', ''); setVal('bulkPrice2', '');
-        setVal('bulkQty3', ''); setVal('bulkPrice3', '');
+
+        tempModifiers = [];
+        var mb = document.getElementById('modifierBuilder'); if (mb) mb.innerHTML = '';
         var bf = document.getElementById('bulkFields'); if (bf) bf.style.display = 'none';
-			  tempModifiers = [];
-        var mb = document.getElementById('modifierBuilder'); if (mb) mb.innerHTML = '';
-			  tempModifiers = [];
-        var mb = document.getElementById('modifierBuilder'); if (mb) mb.innerHTML = '';
-        
+
         if (typeof populateFilters === 'function') populateFilters();
-        
+
     } catch (e) {
         alert('❌ Error: ' + e.message);
     }
 }
-
 	
 function populateFilters() {
     // Units
