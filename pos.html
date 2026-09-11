@@ -1248,7 +1248,6 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 
 <!-- ☢️ NUCLEAR RESCUE — add this line! -->
 <script src="rescue.js"></script>
-<script src="livecall.js"></script>
 <script src="smartcom.js"></script>
 	<!-- 4. YOUR SHARED FILES -->
 <script src="sheet.js"></script>			 
@@ -3997,11 +3996,11 @@ function downloadPDFReceipt() {
 
 		
 // ---------- Email Receipt ----------
-function emailReceipt() {
-    var receipt = window._lastReceipt;
+async function emailReceipt() {
+	var receipt = window._lastReceipt;
     if (!receipt) return;
-    var customerEmail = prompt('Enter customer email address:');
-    if (!customerEmail) return;
+    var customerEmail = await prompt('Enter customer email address:');
+	if (!customerEmail) return;
 
     // Use EmailJS (free tier: 200 emails/month)
     if (typeof emailjs !== 'undefined') {
