@@ -4495,11 +4495,17 @@ async function viewRecipeGuidePOS(productId) {
             html += '<h4 style="margin-bottom:5px;">🧪 Formulation</h4>';
             html += '<div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:15px;">';
             for(var i=0; i<recipe.items.length; i++) {
-                var item = recipe.items[i];
-                var actualQty = ((item.qty || 0) * (item.factor || 1)) / (recipe.yield || 1);
-                html += '<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #eee;">' +
+            var item = recipe.items[i];
+           var ing = products.find(function(p) { return p.id === item.ingredientId; });
+            var baseUnit = ing ? (ing.unit || '') : '';
+            var kitchenQty = Math.round(((item.qty || 0) / (recipe.yield || 1)) * 10000) / 10000;
+            var baseQty = Math.round((((item.qty || 0) * (item.factor || 1)) / (recipe.yield || 1)) * 10000) / 10000;
+            var label = kitchenQty + ' ' + (item.unit || '');
+            if (baseUnit && Math.abs(baseQty - kitchenQty) > 0.000001) {
+                label += '  (= ' + baseQty + ' ' + baseUnit + ')';
+            }                html += '<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #eee;">' +
                     '<span>' + sanitize(item.ingredientName) + '</span>' +
-                    '<b>' + actualQty + ' ' + (item.unit || '') + '</b>' +
+                    '<b>' + label + '</b>' +
                 '</div>';
             }
             html += '</div>';
