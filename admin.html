@@ -4748,12 +4748,11 @@ async function saveEditProduct() {
     var eP3 = parseFloat(document.getElementById('editBulkPrice3').value) || 0;
     if (eUseBulk && eQ1 <= 0) eUseBulk = false;
 
-	var updateData = {
+	    var updateData = {
         name: newName, unit: newUnit, price: sellingPrice,
         cost_price: editedCost, category: category, barcode: barcode, station: station,
         image_url: imageUrl, sell_directly: sellDirectly, is_virtual: isVirtual,
-        reorder_level: newReorder, expiry_date: newExpiry,        
-		    is_available_on_menu: isAvailableOnMenu,
+        reorder_level: newReorder, expiry_date: newExpiry, is_available_on_menu: isAvailableOnMenu,
         modifiers: mods,
         bulk_qty_1: eUseBulk && eQ1 > 0 ? eQ1 : null,
         bulk_price_1: eUseBulk && eQ1 > 0 ? eP1 : null,
