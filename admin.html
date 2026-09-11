@@ -4394,6 +4394,10 @@ async function deleteCredit(saleId) {
     var imageUrl = safeGet('prodImageUrl');
     var station = safeGet('prodStation') || 'Kitchen';
 	 var mods = cleanModifiersForSave();
+	 var bulkQty1 = safeGetInt('bulkQty1'),  bulkPrice1 = safeGetNum('bulkPrice1');
+    var bulkQty2 = safeGetInt('bulkQty2'),  bulkPrice2 = safeGetNum('bulkPrice2');
+    var bulkQty3 = safeGetInt('bulkQty3'),  bulkPrice3 = safeGetNum('bulkPrice3');
+    var useBulk = safeChecked('enableBulkPricing') && bulkQty1 > 0;
     var isAvailableOnMenu = safeChecked('prodAvailable');
 
     if (!name) { alert('Product name is required.'); return; }
@@ -4435,7 +4439,19 @@ const { data: inserted, error } = await supabaseClient.from('products').insert([
             sell_directly: sellDirectly,
             station: station,
             image_url: imageUrl,
-            modifiers: mods
+            modifiers: mods,
+            bulk_qty_1: useBulk ? bulkQty1 : null,
+            bulk_price_1: useBulk ? bulkPrice1 : null,
+            bulk_qty_2: useBulk && bulkQty2 > 0 ? bulkQty2 : null,
+            station: station, 
+            modifiers: mods,
+            bulkQty1: useBulk ? bulkQty1 : 0,
+            bulkPrice1: useBulk ? bulkPrice1 : 0,
+            bulkQty2: useBulk && bulkQty2 > 0 ? bulkQty2 : 0,
+            bulkPrice2: useBulk && bulkQty2 > 0 ? bulkPrice2 : 0,
+            bulkQty3: useBulk && bulkQty3 > 0 ? bulkQty3 : 0,
+            bulkPrice3: useBulk && bulkQty3 > 0 ? bulkPrice3 : 0,
+            createdAt: new Date().toISOString()
            }]);
         if (error) throw error;
 
@@ -4480,6 +4496,10 @@ const { data: inserted, error } = await supabaseClient.from('products').insert([
         setChk('isVirtual', false);
         setChk('prodAvailable', true);
         setChk('enableBulkPricing', false);
+			  setVal('bulkQty1', ''); setVal('bulkPrice1', '');
+        setVal('bulkQty2', ''); setVal('bulkPrice2', '');
+        setVal('bulkQty3', ''); setVal('bulkPrice3', '');
+        var bf = document.getElementById('bulkFields'); if (bf) bf.style.display = 'none';
 			  tempModifiers = [];
         var mb = document.getElementById('modifierBuilder'); if (mb) mb.innerHTML = '';
 			  tempModifiers = [];
@@ -4719,12 +4739,28 @@ async function saveEditProduct() {
 
     if (!newName) { alert('Product name is required.'); return; }
     var mods = cleanModifiersForSave();
-    var updateData = {
+    var eUseBulk = document.getElementById('editEnableBulk') && document.getElementById('editEnableBulk').checked;
+    var eQ1 = parseFloat(document.getElementById('editBulkQty1').value) || 0;
+    var eP1 = parseFloat(document.getElementById('editBulkPrice1').value) || 0;
+    var eQ2 = parseFloat(document.getElementById('editBulkQty2').value) || 0;
+    var eP2 = parseFloat(document.getElementById('editBulkPrice2').value) || 0;
+    var eQ3 = parseFloat(document.getElementById('editBulkQty3').value) || 0;
+    var eP3 = parseFloat(document.getElementById('editBulkPrice3').value) || 0;
+    if (eUseBulk && eQ1 <= 0) eUseBulk = false;
+
+	var updateData = {
         name: newName, unit: newUnit, price: sellingPrice,
         cost_price: editedCost, category: category, barcode: barcode, station: station,
         image_url: imageUrl, sell_directly: sellDirectly, is_virtual: isVirtual,
-        reorder_level: newReorder, expiry_date: newExpiry,         is_available_on_menu: isAvailableOnMenu,
-        modifiers: mods
+        reorder_level: newReorder, expiry_date: newExpiry,        
+		    is_available_on_menu: isAvailableOnMenu,
+        modifiers: mods,
+        bulk_qty_1: eUseBulk && eQ1 > 0 ? eQ1 : null,
+        bulk_price_1: eUseBulk && eQ1 > 0 ? eP1 : null,
+        bulk_qty_2: eUseBulk && eQ2 > 0 ? eQ2 : null,
+        bulk_price_2: eUseBulk && eQ2 > 0 ? eP2 : null,
+        bulk_qty_3: eUseBulk && eQ3 > 0 ? eQ3 : null,
+        bulk_price_3: eUseBulk && eQ3 > 0 ? eP3 : null
     };
     if (!(addQty > 0)) updateData.stock = editedStock; // don't overwrite stock when adding new stock
 
@@ -4753,8 +4789,15 @@ async function saveEditProduct() {
                 name: newName, unit: newUnit, price: sellingPrice,
                 costPrice: editedCost, category: category, barcode: barcode, station: station,
                 imageUrl: imageUrl, sellDirectly: sellDirectly, isVirtual: isVirtual,
-                reorderLevel: newReorder, expiryDate: newExpiry,                 isAvailableOnMenu: isAvailableOnMenu,
-                modifiers: mods
+                reorderLevel: newReorder, expiryDate: newExpiry,                
+							  isAvailableOnMenu: isAvailableOnMenu,
+                modifiers: mods,
+                bulkQty1: eUseBulk && eQ1 > 0 ? eQ1 : 0,
+                bulkPrice1: eUseBulk && eQ1 > 0 ? eP1 : 0,
+                bulkQty2: eUseBulk && eQ2 > 0 ? eQ2 : 0,
+                bulkPrice2: eUseBulk && eQ2 > 0 ? eP2 : 0,
+                bulkQty3: eUseBulk && eQ3 > 0 ? eQ3 : 0,
+                bulkPrice3: eUseBulk && eQ3 > 0 ? eP3 : 0
             });
             p.stock = (addQty > 0) ? Math.round(((p.stock || 0) + addQty) * 1000) / 1000 : editedStock;
         }
@@ -8553,8 +8596,13 @@ async function loadAllCaches() {
       const { data: prods } = await supabaseClient.from('products').select('*').eq('shop_id', sid);
       if (prods) {
           products = prods.map(function(p) {
-              return { id: p.firebase_id || p.id, shopId: p.shop_id, name: p.name, price: p.price, costPrice: p.cost_price, stock: p.stock, barcode: p.barcode, category: p.category, isVirtual: p.is_virtual, unit: p.unit, soldCount: p.sold_count, reorderLevel: p.reorder_level, expiryDate: p.expiry_date, isAvailableOnMenu: p.is_available_on_menu, sellDirectly: p.sell_directly, station: p.station, imageUrl: p.image_url, modifiers: p.modifiers || [] };
-          });
+             return { id: p.firebase_id || p.id, shopId: p.shop_id, name: p.name, price: p.price, costPrice: p.cost_price, stock: p.stock, barcode: p.barcode, category: p.category, isVirtual: p.is_virtual, unit: p.unit, soldCount: p.sold_count, reorderLevel: p.reorder_level, expiryDate: p.expiry_date, isAvailableOnMenu: p.is_available_on_menu, sellDirectly: p.sell_directly, station: p.station, 
+             imageUrl: p.image_url, modifiers: p.modifiers || [],
+              bulkQty1: p.bulk_qty_1 || 0, bulkPrice1: p.bulk_price_1 || 0,
+              bulkQty2: p.bulk_qty_2 || 0, bulkPrice2: p.bulk_price_2 || 0,
+              bulkQty3: p.bulk_qty_3 || 0, bulkPrice3: p.bulk_price_3 || 0 };
+	
+						});
           if (productTable) productTable.setData(products); 
           if (stockTable) stockTable.setData(products); 
           populateFilters();
