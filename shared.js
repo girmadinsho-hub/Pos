@@ -1140,7 +1140,6 @@ async function syncOfflineSales() {
 async function syncDeductStockForSale(items, invoiceNo, shopId, cashierId) {
     if (!items.length) return;
     try {
-        // Fetch this shop's products once (for is_virtual + unit lookups)
         const { data: prods, error: pErr } = await supabaseClient.from('products')
             .select('id, firebase_id, is_virtual, unit, name')
             .eq('shop_id', shopId);
@@ -1165,20 +1164,19 @@ async function syncDeductStockForSale(items, invoiceNo, shopId, cashierId) {
                 names[item.productId] = item.name || prod.name;
             }
 
-            // B. Recipe ingredients (with unit conversion when available)
-            const { data: recipe } = await supabaseClient.from('recipes')
-                .select('yield, items').eq('product_id', item.productId).limit(1).maybeSingle();
-            if (recipe && recipe.items && recipe.items.length) {
-                var y = recipe.yield || 1;
-                for (var j = 0; j < recipe.items.length; j++) {
-                    var ing = recipe.items[j];
-                    var need = ((ing.qty || 0) / y) * (item.qty || 0);
-                    var ingProd = byId[ing.ingredientId];
-                    if (ingProd && typeof getConversionFactor === 'function') {
-                        need = need * getConversionFactor(ing.unit, ingProd.unit);
+            // B. Recipe ingredients (VIRTUAL products only — uses saved factors)
+            if (prod && prod.is_virtual) {
+                const { data: recipe } = await supabaseClient.from('recipes')
+                    .select('yield, items').eq('product_id', item.productId).limit(1).maybeSingle();
+                if (recipe && recipe.items && recipe.items.length) {
+                    var y = recipe.yield || 1;
+                    for (var j = 0; j < recipe.items.length; j++) {
+                        var ing = recipe.items[j];
+                        var need = ((ing.qty || 0) * (ing.factor || 1) / y) * (item.qty || 0);
+                        plan[ing.ingredientId] = (plan[ing.ingredientId] || 0) + need;
+                        var ingProd = byId[ing.ingredientId];
+                        if (ingProd) names[ing.ingredientId] = ingProd.name;
                     }
-                    plan[ing.ingredientId] = (plan[ing.ingredientId] || 0) + need;
-                    if (ingProd) names[ing.ingredientId] = ingProd.name;
                 }
             }
         }
