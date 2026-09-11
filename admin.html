@@ -4482,6 +4482,8 @@ const { data: inserted, error } = await supabaseClient.from('products').insert([
         setChk('enableBulkPricing', false);
 			  tempModifiers = [];
         var mb = document.getElementById('modifierBuilder'); if (mb) mb.innerHTML = '';
+			  tempModifiers = [];
+        var mb = document.getElementById('modifierBuilder'); if (mb) mb.innerHTML = '';
         
         if (typeof populateFilters === 'function') populateFilters();
         
@@ -11198,7 +11200,8 @@ function addModifierGroup(containerId) {
     return (tempModifiers || [])
         .filter(function(g) { return g.name && g.name.trim(); })
         .map(function(g) {
-            return {
+          return {
+                id: g.id,
                 name: g.name.trim(),
                 required: !!g.required,
                 multiSelect: !!g.multiSelect,
@@ -11250,8 +11253,8 @@ function renderModifierBuilder(containerId) {
     var container = document.getElementById(containerId || 'modifierBuilder');
     if (!container) return;
     var html = '';
-    
-    tempModifiers.forEach(function(group) {
+        tempModifiers.forEach(function(group) {
+        if (!group.id) group.id = 'mod_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
         html += '<div style="background:white; border:1px solid #cbd5e1; border-radius:8px; padding:10px; margin-bottom:10px;">';
         html += '<div style="display:flex; gap:8px; margin-bottom:8px;">';
         html += '<input type="text" class="form-input" placeholder="Group Name (e.g., Milk Choice)" value="' + (group.name || '') + '" oninput="updateModifierGroup(\'' + group.id + '\', \'name\', this.value)" style="flex:1; padding:8px;">';
