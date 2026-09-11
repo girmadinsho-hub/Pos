@@ -4113,12 +4113,37 @@ async function voidSale(saleId) {
             // 🛡️ Already voided? Stop.
             if (saleData.voided) { alert('This sale is already voided!'); return; }
 
-            // 1️⃣ Restore stock
+            // 1️⃣ Restore stock — recipe-aware
             if (saleData.items) {
                 for (const item of saleData.items) {
                     var product = products.find(x => x.id === item.productId);
-                    if (product) {
-                        await supabaseClient.from('products').update({ stock: (product.stock || 0) + item.qty }).eq('firebase_id', item.productId);
+                    var isVirtual = product ? !!product.isVirtual : false;
+
+                    if (product && isVirtual) {
+                        // VIRTUAL product: restore the recipe INGREDIENTS (product stock stays 0)
+                        const { data: recipe } = await supabaseClient.from('recipes')
+                            .select('*').eq('product_id', item.productId).limit(1).maybeSingle();
+                        if (recipe && recipe.items && recipe.items.length) {
+                            var y = recipe.yield || 1;
+                            for (var r = 0; r < recipe.items.length; r++) {
+                                var ing = recipe.items[r];
+                                var ingProd = products.find(x => x.id === ing.ingredientId);
+                                var restoreQty = ((ing.qty || 0) * (ing.factor || 1) / y) * (item.qty || 0);
+                                if (ingProd && restoreQty > 0) {
+                                    await supabaseClient.from('products')
+                                        .update({ stock: (ingProd.stock || 0) + restoreQty })
+                                        .eq('firebase_id', ing.ingredientId);
+                                    ingProd.stock = Math.round(((ingProd.stock || 0) + restoreQty) * 1000) / 1000;
+                                }
+                            }
+                        } else {
+                            alert('⚠️ Note: "' + item.name + '" is virtual but has no recipe — nothing to restore.');
+                        }
+                    } else if (product) {
+                        // NORMAL product: restore its own stock
+                        await supabaseClient.from('products')
+                            .update({ stock: (product.stock || 0) + item.qty })
+                            .eq('firebase_id', item.productId);
                         product.stock += item.qty;
                     }
                 }
@@ -4140,13 +4165,13 @@ async function voidSale(saleId) {
                 action: 'SALE_VOIDED',
                 details: 'Invoice: ' + (saleData.invoice_no || saleId) +
                          ' | Amount: ' + (saleData.total || 0) +
-                         ' | Restocked ' + (saleData.items || []).length + ' items' +
+                         ' | Restocked ingredients for ' + (saleData.items || []).length + ' item(s)' +
                          ' | Authorized by: ' + ((currentCashier && currentCashier.name) || 'Unknown'),
                 cashier_name: (currentCashier && currentCashier.name) || 'Unknown',
                 timestamp: new Date().toISOString()
             }]);
 
-            alert('✅ Sale voided, stock restored, audit recorded.');
+            alert('✅ Sale voided, ingredients restored, audit recorded.');
             await loadRecentSalesForVoid();
             if (typeof filterProducts === 'function') filterProducts();
         }
@@ -4154,7 +4179,6 @@ async function voidSale(saleId) {
         alert("❌ Error voiding sale: " + e.message);
     }
 }
-
 // ===== OWNER DUTY: OPEN CASH DRAWER =====
 function openCashDrawer() {
     // Requires a thermal printer connected via ESC/POS
