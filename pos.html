@@ -5760,7 +5760,8 @@ function ssBounceCart() {
    Runs AFTER payment: main products + recipe ingredients,
    atomic (race-safe) via RPC, writes audit log,
    updates local UI + low-stock alerts. */
-async function ssDeductStock(cartItems, invoiceNo) {
+
+	async function ssDeductStock(cartItems, invoiceNo) {
     var plan = {}, names = {}, soldAdd = {};
 
     function add(pid, qty, name) {
@@ -5776,14 +5777,15 @@ async function ssDeductStock(cartItems, invoiceNo) {
         var p = products.find(function (x) { return x.id === item.id; });
         var isVirtual = p ? (p.isVirtual !== undefined ? !!p.isVirtual : !!p.is_virtual) : false;
 
-        // A) main product (skip virtual + skip unknown products)
+        // A) Main product: direct stock (sellable products only)
         if (p && !isVirtual) {
             add(item.id, item.qty, item.name);
             soldAdd[item.id] = (soldAdd[item.id] || 0) + item.qty;
         }
 
-        // B) recipe ingredients
-        if (supabaseClient && navigator.onLine) {
+        // B) Recipe ingredients: VIRTUAL products only.
+        //    Uses the recipe's own saved conversion factors ("1 Cup = X Kg").
+        if (isVirtual && supabaseClient && navigator.onLine) {
             try {
                 var res = await supabaseClient.from('recipes')
                     .select('*').eq('product_id', item.id).eq('shop_id', getShopId())
@@ -5794,11 +5796,10 @@ async function ssDeductStock(cartItems, invoiceNo) {
                     for (var j = 0; j < recipe.items.length; j++) {
                         var ing = recipe.items[j];
                         var ingP = products.find(function (x) { return x.id === ing.ingredientId; });
-                        var need = ((ing.qty || 0) / y) * item.qty;
-                        if (ingP) need = need * getConversionFactor(ing.unit, ingP.unit);
+                        var need = ((ing.qty || 0) * (ing.factor || 1) / y) * item.qty;
                         add(ing.ingredientId, need, ingP ? ingP.name : (ing.name || 'ingredient'));
                     }
-                } else if (isVirtual) {
+                } else {
                     console.warn('⚠️ Virtual "' + item.name + '" has no recipe — nothing deducted.');
                 }
             } catch (e) { console.warn('Recipe check failed for ' + item.name, e); }
@@ -5819,14 +5820,23 @@ async function ssDeductStock(cartItems, invoiceNo) {
             if (rpc.error) throw rpc.error;
         } catch (e) {
             console.warn('RPC failed → fallback updates', e);
-            // 2b. Fallback: read FRESH stock from server, then update
-            var fb = await supabaseClient.from('products').select('id, stock, sold_count').in('id', pids);
-            if (fb.error) throw fb.error;
-            for (var k = 0; k < (fb.data || []).length; k++) {
-                var row = fb.data[k];
-                var patch = { stock: ssRound3((row.stock || 0) - plan[row.id]) };
-                if (soldAdd[row.id]) patch.sold_count = (row.sold_count || 0) + soldAdd[row.id];
-                await supabaseClient.from('products').update(patch).eq('id', row.id);
+            // 2b. Fallback: read FRESH stock per product, then update (works with both ID types)
+            for (var k = 0; k < pids.length; k++) {
+                try {
+                    var pid = pids[k];
+                    var fr = await supabaseClient.from('products')
+                        .select('id, stock, sold_count').eq('firebase_id', pid).maybeSingle();
+                    var row = fr.data;
+                    if (!row) {
+                        var fr2 = await supabaseClient.from('products')
+                            .select('id, stock, sold_count').eq('id', pid).maybeSingle();
+                        row = fr2.data;
+                    }
+                    if (!row) continue;
+                    var patch = { stock: ssRound3((row.stock || 0) - plan[pid]) };
+                    if (soldAdd[pid]) patch.sold_count = (row.sold_count || 0) + soldAdd[pid];
+                    await supabaseClient.from('products').update(patch).eq('id', row.id);
+                } catch (e2) { console.warn('Fallback update failed for ' + pid, e2); }
             }
         }
 
@@ -5861,7 +5871,6 @@ async function ssDeductStock(cartItems, invoiceNo) {
     });
     if (low.length) ssLowStock(low);
 }
-
 // Local UI deduction for offline sales
 function ssLocalDeduct(cartItems) {
     cartItems.forEach(function (item) {
