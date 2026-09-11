@@ -2646,7 +2646,10 @@ async function closeShift() {
             sellDirectly: p.sell_directly,
             station: p.station,
             imageUrl: p.image_url,
-            modifiers: p.modifiers || []
+            modifiers: p.modifiers || [],
+            bulkQty1: p.bulk_qty_1 || 0, bulkPrice1: p.bulk_price_1 || 0,
+            bulkQty2: p.bulk_qty_2 || 0, bulkPrice2: p.bulk_price_2 || 0,
+            bulkQty3: p.bulk_qty_3 || 0, bulkPrice3: p.bulk_price_3 || 0
         };
     });
     
