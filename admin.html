@@ -4343,31 +4343,35 @@ async function saveEditedCredit() {
 }
 
 async function deleteCredit(saleId) {
-    showConfirm('Delete this credit sale? This will restore the stock.', 'Delete Credit', async function(ok) {
+    showConfirm('Close this credit?\n\n• The sale STAYS in your records as income.\n• Stock is NOT changed — the customer already took the items.\n• Use Void (in POS) only if the whole sale was a mistake.',
+        'Close Credit', async function(ok) {
         if (!ok) return;
         var sale = salesCache.find(s => s.id === saleId);
-        
+
         try {
-            // 1. Restore stock
-            if (sale && sale.items) {
-                for (var i = 0; i < sale.items.length; i++) {
-                    var item = sale.items[i];
-                    var product = products.find(p => p.id === item.productId);
-                    if (product) {
-                        await supabaseClient.from('products')
-                            .update({ stock: (product.stock || 0) + item.qty })
-                            .eq('firebase_id', item.productId);
-                    }
-                }
-            }
-            
-            // 2. Delete sale
-            const { error } = await supabaseClient.from('sales').delete().eq('id', saleId);
+            // 1. Mark the sale as paid/closed — income stays, stock untouched
+            const { error } = await supabaseClient.from('sales')
+                .update({ paid_at: new Date().toISOString() })
+                .eq('id', saleId);
             if (error) throw error;
-            
-            // 3. Update local cache
-            salesCache = salesCache.filter(s => s.id !== saleId);
-            alert('✅ Credit deleted');
+
+            // 2. Update local cache
+            if (sale) sale.paidAt = new Date().toISOString();
+
+            // 3. Audit log (permanent record of who closed it)
+            try {
+                await supabaseClient.from('audit_logs').insert([{
+                    shop_id: getShopId(),
+                    action: 'CREDIT_CLOSED',
+                    details: 'Invoice: ' + ((sale && sale.invoiceNo) || saleId) +
+                             ' | Amount: ' + ((sale && sale.total) || 0) +
+                             ' | Closed by Admin — sale kept as income, stock not changed',
+                    cashier_name: 'Admin',
+                    timestamp: new Date().toISOString()
+                }]);
+            } catch (e) {}
+
+            alert('✅ Credit closed.\nThe sale remains in your records as income. Stock was not changed.');
             switchCreditView(currentCreditView);
         } catch(e) { alert('❌ Error: ' + e.message); }
     });
