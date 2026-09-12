@@ -10074,7 +10074,7 @@ async function saveRecipe() {
     var productId = (selEl && selEl.value) || selectedRecipeProductId || null;
 
     if (!productId) {
-        alert('⚠️ Please select a product from the dropdown at the top.\n(A recipe must belong to a product — mainly your 🧪 virtual products.)');
+        alert('⚠️ Please select a product from the dropdown at the top.');
         return;
     }
 
@@ -10117,30 +10117,41 @@ async function saveRecipe() {
             if (error) throw error;
         }
 
-        // ===== AUTO-COST: update the virtual product's cost from the recipe =====
+        // ===== AUTO-COST with full diagnostics — never silent =====
         var costProd = products.find(function(p) { return p.id === productId; });
-        if (costProd && costProd.isVirtual) {
+
+        if (!costProd) {
+            alert('✅ Recipe saved.\n\n⚠️ AUTO-COST SKIPPED: product not found in your list (id: ' + productId + ')');
+        } else if (!costProd.isVirtual) {
+            alert('✅ Recipe saved.\n(Sellable product — its cost stays as the purchase cost. Recipe is a preparation guide.)');
+        } else {
             var totalCost = 0;
+            var missingList = [];
             (currentRecipeItems || []).forEach(function(item) {
                 var ing = products.find(function(p) { return p.id === item.ingredientId; });
-                if (ing) totalCost += (item.qty || 0) * (item.factor || 1) * (ing.costPrice || 0);
+                if (ing) {
+                    totalCost += (item.qty || 0) * (item.factor || 1) * (ing.costPrice || 0);
+                } else {
+                    missingList.push(item.ingredientName || item.ingredientId);
+                }
             });
             var perPortion = yieldVal > 0 ? totalCost / yieldVal : 0;
-            var trueCost = perPortion * (1 + (overheadPct + contingencyPct) / 100);
-            trueCost = Math.round(trueCost * 1000) / 1000;
+            var trueCost = Math.round(perPortion * (1 + (overheadPct + contingencyPct) / 100) * 1000) / 1000;
 
             if (trueCost > 0) {
-                await supabaseClient.from('products')
+                const { error: costErr } = await supabaseClient.from('products')
                     .update({ cost_price: trueCost })
                     .eq('firebase_id', productId);
+                if (costErr) throw new Error('Cost update FAILED: ' + costErr.message);
                 costProd.costPrice = trueCost;
                 if (window.productTable) window.productTable.setData(products);
+                alert('✅ Recipe saved!\n\n💰 Product cost auto-updated to ' + fmtMoney(trueCost) + ' per portion.\nAll future sales of this product now report honest profit.');
+            } else {
+                alert('✅ Recipe saved.\n\n⚠️ Cost NOT updated — the computed cost is 0.\n' +
+                      (missingList.length ? 'These ingredients were NOT found in your product list: ' + missingList.join(', ') :
+                      'Check that every ingredient in the recipe has a Cost Price.'));
             }
         }
-
-        alert('✅ Recipe saved!' +
-              (costProd && costProd.isVirtual && costProd.costPrice ?
-                '\n\n💰 Product cost auto-updated to ' + fmtMoney(costProd.costPrice) + ' per portion.\nProfit reports are now accurate for this product.' : ''));
 
         closeRecipeEditor();
         loadRecipesListener();
