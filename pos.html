@@ -4842,6 +4842,8 @@ window.loadTableBillToCart = async function(tableName) {
         cart = [];
         orders.forEach(function(o) {
             (o.items || []).forEach(function(item) {
+                // Look up the REAL product — so stock, cost and virtual status are correct
+                var prod = products.find(function(x) { return x.id === item.productId; });
                 var existing = cart.find(function(c) {
                     return c.id === item.productId &&
                            JSON.stringify(c.modifiers || []) === JSON.stringify(item.modifiers || []) &&
@@ -4851,8 +4853,12 @@ window.loadTableBillToCart = async function(tableName) {
                 else cart.push({
                     id: item.productId || item.id || Date.now().toString(),
                     name: item.name, price: item.price, qty: item.qty,
-                    unit: item.unit || '', stock: 9999, costPrice: 0,
-                    isVirtual: false, modifiers: item.modifiers || [], note: item.note || ''
+                    unit: (prod && prod.unit) || item.unit || '',
+                    stock: prod ? (prod.stock || 0) : 9999,
+                    costPrice: prod ? (prod.costPrice || 0) : 0,
+                    isVirtual: prod ? !!prod.isVirtual : false,
+                    modifiers: item.modifiers || [], note: item.note || '',
+                    station: (prod && prod.station) || 'Kitchen'
                 });
             });
         });
