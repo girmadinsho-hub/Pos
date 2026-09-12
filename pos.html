@@ -2446,22 +2446,19 @@ function checkPinLockStatus() {
         changePinBtn.style.display = 'block';
     }
 }
-
 function logout(){
     currentCashier=null;
     currentShiftId=null;
-    
-    // Sign out of Supabase Auth
-    if (supabaseClient) {
-        supabaseClient.auth.signOut();
-    }
-    
+
+    // NOTE: we do NOT sign out of Supabase here!
+    // The device keeps the owner's session (the device ID card).
+    // Cashier logout only ends the staff shift — not the device identity.
+
     document.getElementById('loginScreen').style.display='flex';
     document.getElementById('mainApp').style.display='none';
     loadCashierList();
     releaseWakeLock();
 }
-		
 // ===== POS SETTINGS =====
 	
   async function loadPosSettings(){
