@@ -11915,93 +11915,58 @@ async function submitNewEmployeeFinal() {
     var duplicate = employeesCache.find(function(e) { return e.name.toLowerCase() === name.toLowerCase(); });
     if (duplicate) { alert('⚠️ An employee with this name already exists!'); return; }
 
-    var employeeData = {
-        name: name, 
-        salary: salary, 
-        paymentAgreement: schedule, 
-        position: position,
-        tip: tip, bonus: bonus, penalty: penalty, overtime: overtime,
-        phone: phone, address: address, startDate: startDate, accountNo: accountNo,
-        status: 'active', 
-        shopId: getShopId(),
-        pinLocked: pinLocked, 
-        createdAt: new Date().toISOString()
-    };
-
+    var hashedPin = null;
     if (password) {
         if (typeof sha256 !== 'function') { alert('Password library not loaded.'); return; }
-        employeeData.hashedPassword = sha256(password);
+        hashedPin = sha256(password);
     }
 
     try {
-        var docRef = { id: 'emp_' + Date.now() };
+        var empId = 'emp_' + Date.now();
 
-        // 1. SAVE TO SUPABASE
+        // 1. SAVE TO SUPABASE (all fields — nothing dropped)
         if (supabaseClient) {
-                        const { error } = await supabaseClient.from('employees').insert([
-                {
-                    firebase_id: docRefId, 
-                    shop_id: getShopId(),
-                    name: name,
-                    position: position,
-                    salary: salary,
-                    payment_agreement: schedule,
-                    tip: tip,
-                    bonus: bonus,
-                    penalty: penalty,
-                    overtime: overtime,
-                    phone: phone,
-                    address: address,
-                    start_date: startDate || null,
-                    account_no: accountNo,
-                    status: 'active',
-                    hashed_password: employeeData.hashedPassword || null,
-                    pin_locked: pinLocked || false
-                }
-            ]);
-            if (error) throw error; // If it fails, stop here and show error
+            const { error } = await supabaseClient.from('employees').insert([{
+                firebase_id: empId,
+                shop_id: getShopId(),
+                name: name,
+                position: position,
+                salary: salary,
+                payment_agreement: schedule,
+                tip: tip,
+                bonus: bonus,
+                penalty: penalty,
+                overtime: overtime,
+                phone: phone,
+                address: address,
+                start_date: startDate || null,
+                account_no: accountNo,
+                status: 'active',
+                hashed_password: hashedPin,
+                pin_locked: pinLocked || false
+            }]);
+            if (error) throw error;
         }
 
         // 2. UPDATE LOCAL CACHE INSTANTLY
         employeesCache.push({
-            id: docRef.id, 
-            name: name, 
-            position: position, 
+            id: empId,
+            name: name,
+            position: position,
             salary: salary,
             paymentAgreement: schedule,
-            phone: phone, 
-            address: address, 
-            startDate: startDate,
-            accountNo: accountNo,
-            status: 'active', 
+            tip: tip, bonus: bonus, penalty: penalty, overtime: overtime,
+            phone: phone, address: address, startDate: startDate, accountNo: accountNo,
+            status: 'active',
             shopId: getShopId(),
-            pinLocked: pinLocked, 
-            hashedPassword: employeeData.hashedPassword,
+            pinLocked: pinLocked,
+            hashedPassword: hashedPin,
             createdAt: new Date().toISOString()
         });
-        
-        // 3. FORCE THE TABLE TO UPDATE (BULLETPROOF)
-        currentStaffView = 'excel';
-        document.getElementById('staffExcelContainer').style.display = 'block';
-        document.getElementById('staffListContainer').style.display = 'none';
-        document.getElementById('staffGridContainer').style.display = 'none';
 
-        // Highlight the Excel button
-        var btns = document.querySelectorAll('.staff-view-btn');
-        btns.forEach(function(b) { b.classList.toggle('active', b.dataset.view === 'excel'); });
+        // 3. REFRESH THE TABLE
+        if (typeof switchStaffView === 'function') switchStaffView('excel');
 
-        // If table doesn't exist, create it. If it does, force new data and render.
-        if (!window.staffTable) {
-            if (typeof initStaffExcelTable === 'function') initStaffExcelTable();
-        }
-        
-        if (window.staffTable) {
-            window.staffTable.setData(employeesCache);
-            if (typeof window.staffTable.render === 'function') {
-                window.staffTable.render();
-            }
-        }
-        
         // 4. CLEAR INPUTS
         document.getElementById('empName').value = '';
         document.getElementById('empSalary').value = '';
@@ -12015,15 +11980,14 @@ async function submitNewEmployeeFinal() {
         document.getElementById('empPenalty').value = '0';
         document.getElementById('empOvertime').value = '0';
         document.getElementById('empPinLocked').checked = false;
-        
+
         if (typeof toggleCashierFields === 'function') toggleCashierFields();
         alert('✅ Employee registered successfully!');
-        
-    } catch(e) { 
-        alert('❌ ' + e.message); 
+
+    } catch(e) {
+        alert('❌ ' + e.message);
     }
 }
-
 	
 // ===== PEAK HOUR ANALYSIS (SUPABASE) =====
 async function loadPeakHours() {
