@@ -4508,14 +4508,34 @@ function showCashierLogin() {
     if (cashier) cashier.style.display = 'block';
 }
 
-// Start monitoring the device status once we have a real session
+// Start monitoring + self-register if this device was activated before Phase 1c
 var _deviceMonitorStarted = false;
 function ensureDeviceMonitor() {
     if (_deviceMonitorStarted) return;
-    if (localStorage.getItem('deviceKey')) {
-        _deviceMonitorStarted = true;
-        startDeviceMonitor();
+    _deviceMonitorStarted = true;
+
+    var deviceKey = localStorage.getItem('deviceKey');
+    if (!deviceKey) {
+        // SELF-REGISTER: device was activated before we built the Device Manager
+        deviceKey = 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+        localStorage.setItem('deviceKey', deviceKey);
+
+        var deviceName = 'POS — ' + (getShopId() || 'Device');
+        supabaseClient.from('devices').upsert([{
+            device_key: deviceKey,
+            shop_id: getShopId(),
+            device_name: deviceName,
+            device_type: 'pos',
+            status: 'active',
+            last_seen: new Date().toISOString()
+        }], { onConflict: 'device_key' }).then(function() {
+            console.log('✅ Device self-registered:', deviceName);
+        }).catch(function(e) {
+            console.warn('Self-registration failed:', e.message);
+        });
     }
+
+    startDeviceMonitor();
 }
 	
 async function activateDevice() {
