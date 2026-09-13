@@ -628,6 +628,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
             <input type="text" id="ownerShopId" placeholder="Shop ID" style="width:100%; padding:12px; margin:5px 0; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
             <input type="email" id="ownerEmail" placeholder="Owner Email" style="width:100%; padding:12px; margin:5px 0; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
             <input type="password" id="ownerPass" placeholder="Owner Password" style="width:100%; padding:12px; margin:5px 0; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
+            <input type="text" id="deviceNameInput" placeholder="Device Name (e.g., Cashier 1, Martu phone)" style="width:100%; padding:12px; margin:5px 0; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
             <button class="login-btn" id="ownerActivateBtn" onclick="activateDevice()" style="margin-top:6px;">🔓 Activate Device</button>
             <p id="ownerActivateMsg" style="font-size:11px; color:#ef4444; margin-top:6px; text-align:center;"></p>
         </div>
@@ -4426,8 +4427,9 @@ if (urlShop) {
 supabaseClient.auth.onAuthStateChange((event, session) => {
     var isRealUser = session && session.user && session.user.email && !session.user.is_anonymous;
     if (isRealUser) {
-        if (typeof showCashierLogin === 'function') showCashierLogin();
-        if (typeof loadCashierList === 'function') loadCashierList();
+      if (typeof showCashierLogin === 'function') showCashierLogin();
+      if (typeof ensureDeviceMonitor === 'function') ensureDeviceMonitor();
+			if (typeof loadCashierList === 'function') loadCashierList();
     } else {
         if (typeof showOwnerActivation === 'function') showOwnerActivation();
     }
@@ -4445,6 +4447,60 @@ function showOwnerActivation() {
     if (msg) { msg.textContent = ''; msg.style.color = '#ef4444'; }
 }
 
+// ===== PHASE 1C: DEVICE MONITOR (real-time + safety net) =====
+function startDeviceMonitor() {
+    var deviceKey = localStorage.getItem('deviceKey');
+    if (!deviceKey) return;
+
+    // REAL-TIME: instant lock when revoked (< 0.1 seconds)
+    supabaseClient.channel('device-monitor-' + deviceKey)
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'devices',
+            filter: 'device_key=eq.' + deviceKey
+        }, function(payload) {
+            if (payload.new && payload.new.status === 'revoked') {
+                showDeviceLocked(payload.new.device_name);
+            }
+        })
+        .subscribe();
+
+    // SAFETY NET: check every 30 seconds (in case realtime disconnects)
+    setInterval(async function() {
+        try {
+            const { data } = await supabaseClient.from('devices')
+                .select('status, device_name').eq('device_key', deviceKey).maybeSingle();
+            if (data && data.status === 'revoked') {
+                showDeviceLocked(data.device_name);
+            }
+            // Update heartbeat (last_seen)
+            await supabaseClient.from('devices')
+                .update({ last_seen: new Date().toISOString() })
+                .eq('device_key', deviceKey);
+        } catch(e) {}
+    }, 30000);
+}
+
+function showDeviceLocked(deviceName) {
+    var lock = document.getElementById('deviceLockScreen');
+    if (!lock) {
+        lock = document.createElement('div');
+        lock.id = 'deviceLockScreen';
+        lock.style.cssText = 'position:fixed;inset:0;background:rgba(220,38,38,0.97);color:white;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;';
+        lock.innerHTML =
+            '<div style="font-size:60px;margin-bottom:15px;">⛔</div>' +
+            '<h1 style="font-size:28px;margin-bottom:10px;">Device Disabled</h1>' +
+            '<p style="font-size:16px;max-width:300px;color:#fecaca;line-height:1.6;">' +
+            (deviceName ? '"' + deviceName + '" has been ' : 'This device has been ') +
+            'disabled by the shop owner.<br>Contact your administrator to restore access.</p>';
+        document.body.appendChild(lock);
+    }
+    lock.style.display = 'flex';
+    // Sign out to remove the ID card
+    try { supabaseClient.auth.signOut(); } catch(e) {}
+}
+	
 function showCashierLogin() {
     var owner = document.getElementById('ownerSection');
     var cashier = document.getElementById('cashierSection');
@@ -4452,10 +4508,21 @@ function showCashierLogin() {
     if (cashier) cashier.style.display = 'block';
 }
 
+// Start monitoring the device status once we have a real session
+var _deviceMonitorStarted = false;
+function ensureDeviceMonitor() {
+    if (_deviceMonitorStarted) return;
+    if (localStorage.getItem('deviceKey')) {
+        _deviceMonitorStarted = true;
+        startDeviceMonitor();
+    }
+}
+	
 async function activateDevice() {
     var shopIdIn = document.getElementById('ownerShopId').value.trim();
     var email = document.getElementById('ownerEmail').value.trim();
     var pass = document.getElementById('ownerPass').value;
+    var deviceName = document.getElementById('deviceNameInput').value.trim() || 'POS Device';
     var msg = document.getElementById('ownerActivateMsg');
     if (!shopIdIn || !email || !pass) {
         msg.textContent = '⚠️ Fill Shop ID, Email and Password.';
@@ -4467,6 +4534,24 @@ async function activateDevice() {
         const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
         if (error) throw new Error(error.message === 'Invalid login credentials' ? '❌ Wrong email or password.' : error.message);
         localStorage.setItem('shopId', shopIdIn);
+
+        // ===== PHASE 1C: Register this device =====
+        var deviceKey = localStorage.getItem('deviceKey');
+        if (!deviceKey) {
+            deviceKey = 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+            localStorage.setItem('deviceKey', deviceKey);
+        }
+        try {
+            await supabaseClient.from('devices').upsert([{
+                device_key: deviceKey,
+                shop_id: shopIdIn,
+                device_name: deviceName,
+                device_type: 'pos',
+                status: 'active',
+                last_seen: new Date().toISOString()
+            }], { onConflict: 'device_key' });
+        } catch(e) { console.warn('Device registration failed:', e.message); }
+
         if (msg) { msg.style.color = '#10b981'; msg.textContent = '✅ Device activated!'; }
     } catch (e) {
         if (msg) { msg.style.color = '#ef4444'; msg.textContent = e.message; }
@@ -4474,7 +4559,6 @@ async function activateDevice() {
         if (btn) { btn.disabled = false; btn.textContent = '🔓 Activate Device'; }
     }
 }
-
 	
 
 // Manual Fallback Link for POS
