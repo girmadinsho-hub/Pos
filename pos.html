@@ -4435,51 +4435,83 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     }
 });
 
-function showOwnerActivation() {
-    var owner = document.getElementById('ownerSection');
-    var cashier = document.getElementById('cashierSection');
-    if (!owner || !cashier) return;
-    owner.style.display = 'block';
-    cashier.style.display = 'none';
-    var sid = document.getElementById('ownerShopId');
-    if (sid && !sid.value) sid.value = localStorage.getItem('shopId') || '';
-    var msg = document.getElementById('ownerActivateMsg');
-    if (msg) { msg.textContent = ''; msg.style.color = '#ef4444'; }
-}
+// ===== PHASE 1C: DEVICE MONITOR (POS) — register, check, lock =====
+var _deviceMonitorStarted = false;
+function ensureDeviceMonitor() {
+    if (_deviceMonitorStarted) return;
+    _deviceMonitorStarted = true;
 
-// ===== PHASE 1C: DEVICE MONITOR (real-time + safety net) =====
-function startDeviceMonitor() {
-    var deviceKey = localStorage.getItem('deviceKey_pos')
-    if (!deviceKey) return;
+    var deviceKey = localStorage.getItem('deviceKey_pos');
+    if (!deviceKey) {
+        deviceKey = 'dev_pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+        localStorage.setItem('deviceKey_pos', deviceKey);
+    }
 
-    // REAL-TIME: instant lock when revoked (< 0.1 seconds)
-    supabaseClient.channel('device-monitor-' + deviceKey)
-        .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'devices',
-            filter: 'device_key=eq.' + deviceKey
-        }, function(payload) {
-            if (payload.new && payload.new.status === 'revoked') {
-                showDeviceLocked(payload.new.device_name);
+    var deviceName = 'POS — ' + (getShopId() || 'Device');
+
+    // STEP 1: Check if device exists + its current status
+    supabaseClient.from('devices')
+        .select('id, status, device_name')
+        .eq('device_key', deviceKey)
+        .maybeSingle()
+        .then(function(result) {
+            var existing = result.data;
+
+            // If REVOKED — lock immediately, stop everything
+            if (existing && existing.status === 'revoked') {
+                showDeviceLocked(existing.device_name || deviceName);
+                return;
             }
+
+            if (existing) {
+                // Device exists — update last_seen ONLY (never touch status)
+                supabaseClient.from('devices')
+                    .update({ last_seen: new Date().toISOString() })
+                    .eq('device_key', deviceKey)
+                    .then(function(){}).catch(function(e){});
+            } else {
+                // New device — register it for the first time
+                supabaseClient.from('devices').insert([{
+                    device_key: deviceKey,
+                    shop_id: getShopId(),
+                    device_name: deviceName,
+                    device_type: 'pos',
+                    status: 'active',
+                    last_seen: new Date().toISOString()
+                }]).then(function(){}).catch(function(e){});
+            }
+
+            // STEP 2: Real-time monitor (instant lock, < 0.1 seconds)
+            supabaseClient.channel('device-monitor-' + deviceKey)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'devices',
+                    filter: 'device_key=eq.' + deviceKey
+                }, function(payload) {
+                    if (payload.new && payload.new.status === 'revoked') {
+                        showDeviceLocked(payload.new.device_name);
+                    }
+                })
+                .subscribe();
+
+            // STEP 3: Safety net every 30 seconds
+            setInterval(async function() {
+                try {
+                    const { data } = await supabaseClient.from('devices')
+                        .select('status, device_name').eq('device_key', deviceKey).maybeSingle();
+                    if (data && data.status === 'revoked') {
+                        showDeviceLocked(data.device_name);
+                    }
+                    await supabaseClient.from('devices')
+                        .update({ last_seen: new Date().toISOString() })
+                        .eq('device_key', deviceKey);
+                } catch(e) {}
+            }, 30000);
         })
-        .subscribe();
-
-    // SAFETY NET: check every 30 seconds (in case realtime disconnects)
-    setInterval(async function() {
-        try {
-            const { data } = await supabaseClient.from('devices')
-                .select('status, device_name').eq('device_key', deviceKey).maybeSingle();
-            if (data && data.status === 'revoked') {
-                showDeviceLocked(data.device_name);
-            }
-            // Update heartbeat (last_seen)
-            await supabaseClient.from('devices')
-                .update({ last_seen: new Date().toISOString() })
-                .eq('device_key', deviceKey);
-        } catch(e) {}
-    }, 30000);
+        .catch(function(e) {
+            console.warn('Device check failed:', e.message);
+        });
 }
 
 function showDeviceLocked(deviceName) {
@@ -4493,13 +4525,26 @@ function showDeviceLocked(deviceName) {
             '<h1 style="font-size:28px;margin-bottom:10px;">Device Disabled</h1>' +
             '<p style="font-size:16px;max-width:300px;color:#fecaca;line-height:1.6;">' +
             (deviceName ? '"' + deviceName + '" has been ' : 'This device has been ') +
-            'disabled by the shop owner.<br>Contact your administrator to restore access.</p>';
+            'disabled by the shop owner.<br>Contact your administrator.</p>';
         document.body.appendChild(lock);
     }
     lock.style.display = 'flex';
-    // Sign out to remove the ID card
     try { supabaseClient.auth.signOut(); } catch(e) {}
 }
+	
+function showOwnerActivation() {
+    var owner = document.getElementById('ownerSection');
+    var cashier = document.getElementById('cashierSection');
+    if (!owner || !cashier) return;
+    owner.style.display = 'block';
+    cashier.style.display = 'none';
+    var sid = document.getElementById('ownerShopId');
+    if (sid && !sid.value) sid.value = localStorage.getItem('shopId') || '';
+    var msg = document.getElementById('ownerActivateMsg');
+    if (msg) { msg.textContent = ''; msg.style.color = '#ef4444'; }
+}
+
+
 	
 function showCashierLogin() {
     var owner = document.getElementById('ownerSection');
@@ -4509,33 +4554,6 @@ function showCashierLogin() {
 }
 
 // Start monitoring + self-register if this device was activated before Phase 1c
-var _deviceMonitorStarted = false;
-function ensureDeviceMonitor() {
-    if (_deviceMonitorStarted) return;
-    _deviceMonitorStarted = true;
-
-    var deviceKey = localStorage.getItem('deviceKey_pos');
-    if (!deviceKey) {
-        deviceKey = 'dev_pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-        localStorage.setItem('deviceKey_pos', deviceKey);
-    }
-
-    var deviceName = 'POS — ' + (getShopId() || 'Device');
-    supabaseClient.from('devices').upsert([{
-        device_key: deviceKey,
-        shop_id: getShopId(),
-        device_name: deviceName,
-        device_type: 'pos',
-        status: 'active',
-        last_seen: new Date().toISOString()
-    }], { onConflict: 'device_key' }).then(function() {
-        console.log('✅ POS device registered');
-    }).catch(function(e) {
-        console.warn('POS registration failed:', e.message);
-    });
-
-    startDeviceMonitor();
-}
 	
 async function activateDevice() {
     var shopIdIn = document.getElementById('ownerShopId').value.trim();
@@ -4590,13 +4608,6 @@ function manualLinkPos() {
 		
 
 		
-// Manual Fallback Link
-function manualLinkPos() {
-    var id = document.getElementById('posLoginShopId').value.trim();
-    if (!id) { alert('Please enter Shop ID'); return; }
-    localStorage.setItem('shopId', id);
-    location.reload(); 
-}
 
 
 // Declare this at the top of your script if it's not already there
