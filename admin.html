@@ -846,6 +846,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 
 	
 	<div class="sidebar-tab" onclick="selectTab(14, this)" title="View your license">🔑 License</div>
+	    <div class="sidebar-tab" onclick="selectTab(20, this)" title="Manage connected devices">📱 Devices</div>
     <div class="sidebar-tab" id="shopSidebarTab" data-lang-key="shops" onclick="selectTab(16, this)" style="display:none;" title="Manage your branches">🏪 <span data-lang-key="shops">Shops</span></div>
 </div>
 
@@ -2356,7 +2357,21 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
     </div>
 </div>
 
-
+<!-- TAB 20: DEVICE MANAGER -->
+<div id="tab20" class="tab-content" style="display:none">
+    <div class="card">
+        <div class="card-title" style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            📱 Device Manager
+            <div style="margin-left:auto; display:flex; gap:6px;">
+                <button class="btn-mini" onclick="loadDevices()">🔄</button>
+                <button class="btn-mini" style="background:#dc2626; color:white; border:none;" onclick="lockAllDevices()">🔒 Lock ALL</button>
+                <button class="btn-mini" style="background:#10b981; color:white; border:none;" onclick="unlockAllDevices()">🔓 Unlock ALL</button>
+            </div>
+        </div>
+        <p style="font-size:12px; color:#64748b; margin-bottom:10px;">Every activated POS and Kitchen device appears here. Revoke instantly locks that device. Restore brings it back.</p>
+        <div id="devicesList"></div>
+    </div>
+</div>
 
 <!-- TAB 19: STAFF CHAT -->
 <div id="tab19" class="tab-content" style="display:none">
@@ -3674,6 +3689,7 @@ function selectTab(i, el) {
         if (i===17 && typeof loadIngredients === 'function') loadIngredients();
         if (i===18 && typeof initRecipeTab === 'function') initRecipeTab();
 			  if (i===19 && typeof initAdminChat === 'function') initAdminChat();
+			  if (i===20 && typeof loadDevices === 'function') loadDevices();
     } catch(e) {
         console.error("Error loading tab " + i + ":", e);
     }
@@ -7386,6 +7402,86 @@ function initSalesTables() {
     switchSalesView('detailed', 'excel');
 }
 
+// ===== PHASE 1C: DEVICE MANAGER (ADMIN) =====
+async function loadDevices() {
+    var container = document.getElementById('devicesList');
+    if (!container) return;
+    container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">Loading devices...</p>';
+    try {
+        const { data, error } = await supabaseClient.from('devices')
+            .select('*').eq('shop_id', getShopId())
+            .order('last_seen', { ascending: false });
+        if (error) throw error;
+        if (!data || data.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:20px;">No devices registered yet.<br>Activate a POS or Kitchen device first.</p>';
+            return;
+        }
+        var html = '<div style="overflow-x:auto;"><table class="excel-table" style="width:100%; min-width:500px;"><thead><tr>' +
+            '<th style="padding:10px;">Device Name</th><th style="padding:10px;">Type</th>' +
+            '<th style="padding:10px;">Status</th><th style="padding:10px;">Last Seen</th>' +
+            '<th style="padding:10px;">Action</th></tr></thead><tbody>';
+        data.forEach(function(d) {
+            var isActive = d.status === 'active';
+            var badge = isActive ? '<span style="color:#10b981; font-weight:bold;">🟢 Active</span>' : '<span style="color:#ef4444; font-weight:bold;">🔴 Revoked</span>';
+            var mins = d.last_seen ? Math.floor((Date.now() - new Date(d.last_seen)) / 60000) : null;
+            var seen = d.last_seen ? new Date(d.last_seen).toLocaleString() + (mins !== null && mins < 60 ? ' (' + mins + 'm ago)' : '') : 'Never';
+            var action = isActive ?
+                '<button class="btn-mini" style="background:#dc2626; color:white; border:none;" onclick="revokeDevice(\'' + d.id + '\')">⛔ Revoke</button>' :
+                '<button class="btn-mini" style="background:#10b981; color:white; border:none;" onclick="restoreDevice(\'' + d.id + '\')">✅ Restore</button>';
+            var icon = d.device_type === 'kitchen' ? '👨‍🍳' : '💰';
+            html += '<tr><td style="padding:10px; font-weight:600;">' + sanitize(d.device_name) + '</td>' +
+                '<td style="padding:10px;">' + icon + ' ' + d.device_type + '</td>' +
+                '<td style="padding:10px;">' + badge + '</td>' +
+                '<td style="padding:10px; font-size:12px; color:#64748b;">' + seen + '</td>' +
+                '<td style="padding:10px;">' + action + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch(e) {
+        container.innerHTML = '<p style="color:#ef4444; padding:10px;">Error: ' + e.message + '</p>';
+    }
+}
+
+async function revokeDevice(deviceId) {
+    if (!await confirm('Revoke this device? It will be locked instantly.')) return;
+    try {
+        const { error } = await supabaseClient.from('devices').update({ status: 'revoked' }).eq('id', deviceId);
+        if (error) throw error;
+        alert('✅ Device revoked.');
+        loadDevices();
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+async function restoreDevice(deviceId) {
+    if (!await confirm('Restore this device?')) return;
+    try {
+        const { error } = await supabaseClient.from('devices').update({ status: 'active' }).eq('id', deviceId);
+        if (error) throw error;
+        alert('✅ Device restored.');
+        loadDevices();
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+async function lockAllDevices() {
+    if (!await confirm('⚠️ Lock ALL devices? Every POS and Kitchen will be disabled instantly.')) return;
+    try {
+        const { error } = await supabaseClient.from('devices').update({ status: 'revoked' }).eq('shop_id', getShopId());
+        if (error) throw error;
+        alert('🔒 All devices locked.');
+        loadDevices();
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+async function unlockAllDevices() {
+    if (!await confirm('Unlock all devices?')) return;
+    try {
+        const { error } = await supabaseClient.from('devices').update({ status: 'active' }).eq('shop_id', getShopId());
+        if (error) throw error;
+        alert('🔓 All devices unlocked.');
+        loadDevices();
+    } catch(e) { alert('❌ ' + e.message); }
+}
+	
 function buildSalesSummaries() {
     // No longer needed; views are built on demand.
 }
