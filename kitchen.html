@@ -94,20 +94,35 @@
 <div class="login-screen" id="loginScreen">
     <div class="login-box">
         <h1>👨‍🍳 Kitchen Display</h1>
-        <p>Enter Shop ID and Chef PIN to login</p>
-        
-        <div id="manualShopEntry" style="display:none; margin-top:15px;">
-            <input type="text" class="login-input" id="loginShopId" placeholder="Enter Shop ID">
-            <button class="login-btn" onclick="manualLinkKitchen()" style="margin-bottom:10px;">Connect Device</button>
-        </div>
-        <p onclick="document.getElementById('manualShopEntry').style.display='block'; this.style.display='none';" style="font-size:12px; color:#94a3b8; margin-top:15px; cursor:pointer; text-decoration:underline;">Having trouble scanning? Enter ID manually.</p>
+        <p style="color:#94a3b8; margin-bottom:10px; font-size:13px;">Enter Shop ID and Chef PIN to login</p>
 
-        <select class="login-input" id="loginChefName" style="display:none;" onchange="document.getElementById('loginPin').style.display='block'"></select>
-        <input type="password" class="login-input" id="loginPin" placeholder="4-digit PIN" maxlength="4" style="display:none;">
-        <button class="login-btn" onclick="kitchenLogin()">🔓 Login</button>
+        <!-- PHASE 1B: OWNER DEVICE ACTIVATION (one time) -->
+        <div id="ownerSection" style="display:none; text-align:left; background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:14px; margin-bottom:12px;">
+            <b style="color:#1e3a8a;">🔐 Device Activation</b>
+            <p style="font-size:11px; color:#64748b; margin:4px 0 8px 0;">The shop owner signs in here ONCE. After this, chefs log in with their PIN as usual.</p>
+            <input type="text" id="ownerShopId" placeholder="Shop ID" style="width:100%; padding:12px; margin:5px 0; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
+            <input type="email" id="ownerEmail" placeholder="Owner Email" style="width:100%; padding:12px; margin:5px 0; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
+            <input type="password" id="ownerPass" placeholder="Owner Password" style="width:100%; padding:12px; margin:5px 0; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
+            <button class="login-btn" id="ownerActivateBtn" onclick="activateDevice()" style="margin-top:6px;">🔓 Activate Device</button>
+            <p id="ownerActivateMsg" style="font-size:11px; color:#ef4444; margin-top:6px; text-align:center;"></p>
+        </div>
+
+        <!-- CHEF LOGIN (existing, wrapped) -->
+        <div id="chefSection">
+            <div id="manualShopEntry" style="display:none; margin-top:15px;">
+                <input type="text" class="login-input" id="loginShopId" placeholder="Enter Shop ID">
+                <button class="login-btn" onclick="manualLinkKitchen()" style="margin-bottom:10px;">Connect Device</button>
+            </div>
+            <p onclick="document.getElementById('manualShopEntry').style.display='block'; this.style.display='none';" style="font-size:12px; color:#94a3b8; margin-top:15px; cursor:pointer; text-decoration:underline;">Having trouble scanning? Enter ID manually.</p>
+
+            <select class="login-input" id="loginChefName" style="display:none;" onchange="document.getElementById('loginPin').style.display='block'"></select>
+            <input type="password" class="login-input" id="loginPin" placeholder="4-digit PIN" maxlength="4" style="display:none;">
+            <button class="login-btn" onclick="kitchenLogin()">🔓 Login</button>
+        </div>
     </div>
 </div>
 
+	
 <!-- Main App -->
 <div id="mainApp" style="display:none;">
     <div class="header">
@@ -175,9 +190,7 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
-<script src="smartcom.js"></script>
-<!-- ADD THIS LINE -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="smartcom.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 	
 <script>
    
@@ -203,22 +216,68 @@
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-  // ===== SUPABASE ANONYMOUS AUTH =====
-supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (session) {
+// ===== PHASE 1B: DEVICE AUTH — OWNER SIGN-IN (replaces anonymous) =====
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    var isRealUser = session && session.user && session.user.email && !session.user.is_anonymous;
+    if (isRealUser) {
         if (localStorage.getItem('kitchenChefId')) {
             showMainApp();
+        } else if (shopId && shopId !== 'default') {
+            showChefLogin();
+            loadChefList();
         } else {
-            if (shopId && shopId !== 'default') {
-                loadChefList();
-            }
+            showOwnerActivation();
         }
     } else {
-        // No session, sign in anonymously
-        supabaseClient.auth.signInAnonymously().catch(e => console.error(e));
+        showOwnerActivation();
     }
 });
 
+function showOwnerActivation() {
+    var owner = document.getElementById('ownerSection');
+    var chef = document.getElementById('chefSection');
+    if (!owner || !chef) return;
+    owner.style.display = 'block';
+    chef.style.display = 'none';
+    var sid = document.getElementById('ownerShopId');
+    if (sid && !sid.value) sid.value = localStorage.getItem('kitchenShopId') || localStorage.getItem('shopId') || '';
+    var msg = document.getElementById('ownerActivateMsg');
+    if (msg) { msg.textContent = ''; msg.style.color = '#ef4444'; }
+}
+
+function showChefLogin() {
+    var owner = document.getElementById('ownerSection');
+    var chef = document.getElementById('chefSection');
+    if (owner) owner.style.display = 'none';
+    if (chef) chef.style.display = 'block';
+}
+
+async function activateDevice() {
+    var shopIdIn = document.getElementById('ownerShopId').value.trim();
+    var email = document.getElementById('ownerEmail').value.trim();
+    var pass = document.getElementById('ownerPass').value;
+    var msg = document.getElementById('ownerActivateMsg');
+    if (!shopIdIn || !email || !pass) {
+        msg.textContent = '⚠️ Fill Shop ID, Email and Password.';
+        return;
+    }
+    var btn = document.getElementById('ownerActivateBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Activating...'; }
+    try {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
+        if (error) throw new Error(error.message === 'Invalid login credentials' ? '❌ Wrong email or password.' : error.message);
+        localStorage.setItem('kitchenShopId', shopIdIn);
+        localStorage.setItem('shopId', shopIdIn);
+        shopId = shopIdIn;
+        if (msg) { msg.style.color = '#10b981'; msg.textContent = '✅ Device activated!'; }
+        showChefLogin();
+        loadChefList();
+    } catch (e) {
+        if (msg) { msg.style.color = '#ef4444'; msg.textContent = e.message; }
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔓 Activate Device'; }
+    }
+}
 	
     function manualLinkKitchen() {
         var id = document.getElementById('loginShopId').value.trim();
@@ -287,20 +346,13 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
         localStorage.setItem('kitchenChefName', chef.name);
         showMainApp();
     }
-
-        function kitchenLogout() {
-        // 1. Sign out of Supabase Auth
-        if (supabaseClient) {
-            supabaseClient.auth.signOut().then(() => {
-                // 2. Clear local storage and reload after signout completes
-                localStorage.removeItem('kitchenChefId');
-                location.reload();
-            });
-        } else {
-            localStorage.removeItem('kitchenChefId');
-            location.reload();
-        }
-    }
+function kitchenLogout() {
+    // Chef logout ends the chef shift only.
+    // The device KEEPS the owner's session (the device ID card).
+    localStorage.removeItem('kitchenChefId');
+    location.reload();
+}
+        
 
       var kitchenCallListener = null;
     async function fetchPendingWaiterCalls() {
