@@ -310,6 +310,23 @@
                 <button class="btn btn-outline" onclick="changeMasterPin()">🔢 Change App PIN</button>
             </div>
         </div>
+
+<div class="card">
+    <div class="card-title">📞 Support Contacts</div>
+    <p style="font-size:13px; color:#64748b; margin-bottom:15px;">These contacts appear on every customer screen (license activation, trial expiry, support buttons).</p>
+
+    <label style="font-weight:600; font-size:12px; color:#475569;">WhatsApp / Phone (with country code)</label>
+    <input type="text" id="supportPhoneInput" placeholder="+251973316100" style="margin-bottom:10px;">
+
+    <label style="font-weight:600; font-size:12px; color:#475569;">Email</label>
+    <input type="email" id="supportEmailInput" placeholder="support@yourapp.com" style="margin-bottom:10px;">
+
+    <label style="font-weight:600; font-size:12px; color:#475569;">Telegram (optional)</label>
+    <input type="text" id="supportTelegramInput" placeholder="@yourtelegram" style="margin-bottom:10px;">
+
+    <button class="btn btn-green" onclick="saveSupportContacts()">💾 Save Contacts</button>
+</div>
+			
     </div>
 </div>
 
@@ -1061,8 +1078,10 @@ function initMasterPanel() {
     loadAuditLog();
     populateSnapshotDropdown(); 
     loadGlobalTrialDays();
-    loadTierSettings();
+    loadSupportContacts();
+	loadTierSettings();
 	  setupRegistrationAlerts();
+	  loadSupportContacts();
 }
 // ===== 📢 INSTANT NEW-REGISTRATION ALERTS =====
 function setupRegistrationAlerts() {
@@ -1154,6 +1173,36 @@ async function loadTierSettings() {
     } catch(e) { console.error("Error loading tiers:", e); }
 }
 
+// ===== SUPPORT CONTACTS =====
+async function loadSupportContacts() {
+    try {
+        const { data } = await supabaseClient.from('global_settings')
+            .select('support_phone, support_email, support_telegram')
+            .eq('id', 'globalConfig').maybeSingle();
+        if (data) {
+            document.getElementById('supportPhoneInput').value = data.support_phone || '';
+            document.getElementById('supportEmailInput').value = data.support_email || '';
+            document.getElementById('supportTelegramInput').value = data.support_telegram || '';
+        }
+    } catch(e) { console.error('Load contacts error:', e.message); }
+}
+
+async function saveSupportContacts() {
+    var phone = document.getElementById('supportPhoneInput').value.trim();
+    var email = document.getElementById('supportEmailInput').value.trim();
+    var telegram = document.getElementById('supportTelegramInput').value.trim();
+
+    if (!phone) { alert('Phone number is required.'); return; }
+
+    try {
+        const { error } = await supabaseClient.from('global_settings')
+            .upsert({ id: 'globalConfig', support_phone: phone, support_email: email, support_telegram: telegram });
+        if (error) throw error;
+        alert('✅ Support contacts saved! Every screen now uses these.');
+        logAction('support_contacts', 'Updated support contacts');
+    } catch(e) { alert('❌ Error: ' + e.message); }
+}
+	
 // ===== SIDEBAR LOGIC =====
 function toggleSidebar() {
     document.getElementById('sidebar').classList.toggle('open');
@@ -1169,6 +1218,7 @@ function showMasterTab(tabId) {
     for (var i = 0; i < tabs.length; i++) tabs[i].style.display = 'none';
     document.getElementById(tabId).style.display = 'block';
 }
+	
 </script>
 </body>
 </html>
