@@ -8571,8 +8571,19 @@ async function activateLicense() {
     }
 }
 	
-function contactProvider() { alert('📞 +251973316100\n📧 girmadinsho@gmail.com'); }
-
+async function contactProvider() {
+    var phone = '+251973316100';
+    var email = 'girmadinsho@gmail.com';
+    try {
+        const { data } = await supabaseClient.from('global_settings')
+            .select('support_phone, support_email').eq('id', 'globalConfig').maybeSingle();
+        if (data) {
+            phone = data.support_phone || phone;
+            email = data.support_email || email;
+        }
+    } catch(e) {}
+    alert('📞 ' + phone + '\n📧 ' + email);
+}
 // ===== BARCODE SCANNER =====
 function startBarcodeScanner(targetId) {
   if (scannerActive) return;
@@ -10994,10 +11005,16 @@ async function registerAccount() {
     }
 }
 
-function contactSupport() {
-    // Replace 2519xxxxxxxx with your phone number, including country code, no + or 00
-    var phone = "251973316100"; 
+async function contactSupport() {
+    var phone = '251973316100';
     var msg = "Hello, my SmartBiz Pro trial has expired. I have just paid the subscription. Here is my transaction ID:";
+    try {
+        const { data } = await supabaseClient.from('global_settings')
+            .select('support_phone').eq('id', 'globalConfig').maybeSingle();
+        if (data && data.support_phone) {
+            phone = data.support_phone.replace(/[^0-9]/g, '');
+        }
+    } catch(e) {}
     var url = "https://wa.me/" + phone + "?text=" + encodeURIComponent(msg);
     window.open(url, '_blank');
 }
