@@ -245,7 +245,8 @@ function showOwnerActivation() {
     var msg = document.getElementById('ownerActivateMsg');
     if (msg) { msg.textContent = ''; msg.style.color = '#ef4444'; }
 }
-	// ===== PHASE 1C: DEVICE MONITOR (KITCHEN) =====
+
+	// ===== PHASE 1C: DEVICE MONITOR (KITCHEN) — register, check, lock =====
 var _deviceMonitorStarted = false;
 function ensureDeviceMonitor() {
     if (_deviceMonitorStarted) return;
@@ -257,46 +258,71 @@ function ensureDeviceMonitor() {
         localStorage.setItem('deviceKey_kitchen', deviceKey);
     }
 
-    var deviceName = 'Kitchen — ' + (shopId || 'Device');
+    var deviceName = 'Kitchen — ' + (shopId || getShopId() || 'Device');
 
-    supabaseClient.from('devices').upsert([{
-        device_key: deviceKey,
-        shop_id: shopId || getShopId(),
-        device_name: deviceName,
-        device_type: 'kitchen',
-        status: 'active',
-        last_seen: new Date().toISOString()
-    }], { onConflict: 'device_key' }).then(function() {
-        console.log('✅ Kitchen device registered');
-    }).catch(function(e) {
-        console.warn('Kitchen registration failed:', e.message);
-    });
+    // STEP 1: Check if device exists + its current status
+    supabaseClient.from('devices')
+        .select('id, status, device_name')
+        .eq('device_key', deviceKey)
+        .maybeSingle()
+        .then(function(result) {
+            var existing = result.data;
 
-    supabaseClient.channel('device-monitor-' + deviceKey)
-        .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'devices',
-            filter: 'device_key=eq.' + deviceKey
-        }, function(payload) {
-            if (payload.new && payload.new.status === 'revoked') {
-                showDeviceLocked(payload.new.device_name);
+            // If REVOKED — lock immediately, stop everything
+            if (existing && existing.status === 'revoked') {
+                showDeviceLocked(existing.device_name || deviceName);
+                return;
             }
+
+            if (existing) {
+                // Device exists — update last_seen ONLY (never touch status)
+                supabaseClient.from('devices')
+                    .update({ last_seen: new Date().toISOString() })
+                    .eq('device_key', deviceKey)
+                    .then(function(){}).catch(function(e){});
+            } else {
+                // New device — register it for the first time
+                supabaseClient.from('devices').insert([{
+                    device_key: deviceKey,
+                    shop_id: shopId || getShopId(),
+                    device_name: deviceName,
+                    device_type: 'kitchen',
+                    status: 'active',
+                    last_seen: new Date().toISOString()
+                }]).then(function(){}).catch(function(e){});
+            }
+
+            // STEP 2: Real-time monitor (instant lock, < 0.1 seconds)
+            supabaseClient.channel('device-monitor-' + deviceKey)
+                .on('postgres_changes', {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'devices',
+                    filter: 'device_key=eq.' + deviceKey
+                }, function(payload) {
+                    if (payload.new && payload.new.status === 'revoked') {
+                        showDeviceLocked(payload.new.device_name);
+                    }
+                })
+                .subscribe();
+
+            // STEP 3: Safety net every 30 seconds
+            setInterval(async function() {
+                try {
+                    const { data } = await supabaseClient.from('devices')
+                        .select('status, device_name').eq('device_key', deviceKey).maybeSingle();
+                    if (data && data.status === 'revoked') {
+                        showDeviceLocked(data.device_name);
+                    }
+                    await supabaseClient.from('devices')
+                        .update({ last_seen: new Date().toISOString() })
+                        .eq('device_key', deviceKey);
+                } catch(e) {}
+            }, 30000);
         })
-        .subscribe();
-
-    setInterval(async function() {
-        try {
-            const { data } = await supabaseClient.from('devices')
-                .select('status, device_name').eq('device_key', deviceKey).maybeSingle();
-            if (data && data.status === 'revoked') {
-                showDeviceLocked(data.device_name);
-            }
-            await supabaseClient.from('devices')
-                .update({ last_seen: new Date().toISOString() })
-                .eq('device_key', deviceKey);
-        } catch(e) {}
-    }, 30000);
+        .catch(function(e) {
+            console.warn('Device check failed:', e.message);
+        });
 }
 
 function showDeviceLocked(deviceName) {
