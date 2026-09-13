@@ -4449,7 +4449,7 @@ function showOwnerActivation() {
 
 // ===== PHASE 1C: DEVICE MONITOR (real-time + safety net) =====
 function startDeviceMonitor() {
-    var deviceKey = localStorage.getItem('deviceKey');
+    var deviceKey = localStorage.getItem('deviceKey_pos')
     if (!deviceKey) return;
 
     // REAL-TIME: instant lock when revoked (< 0.1 seconds)
@@ -4514,26 +4514,25 @@ function ensureDeviceMonitor() {
     if (_deviceMonitorStarted) return;
     _deviceMonitorStarted = true;
 
-    var deviceKey = localStorage.getItem('deviceKey');
+    var deviceKey = localStorage.getItem('deviceKey_pos');
     if (!deviceKey) {
-        // SELF-REGISTER: device was activated before we built the Device Manager
-        deviceKey = 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-        localStorage.setItem('deviceKey', deviceKey);
-
-        var deviceName = 'POS — ' + (getShopId() || 'Device');
-        supabaseClient.from('devices').upsert([{
-            device_key: deviceKey,
-            shop_id: getShopId(),
-            device_name: deviceName,
-            device_type: 'pos',
-            status: 'active',
-            last_seen: new Date().toISOString()
-        }], { onConflict: 'device_key' }).then(function() {
-            console.log('✅ Device self-registered:', deviceName);
-        }).catch(function(e) {
-            console.warn('Self-registration failed:', e.message);
-        });
+        deviceKey = 'dev_pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+        localStorage.setItem('deviceKey_pos', deviceKey);
     }
+
+    var deviceName = 'POS — ' + (getShopId() || 'Device');
+    supabaseClient.from('devices').upsert([{
+        device_key: deviceKey,
+        shop_id: getShopId(),
+        device_name: deviceName,
+        device_type: 'pos',
+        status: 'active',
+        last_seen: new Date().toISOString()
+    }], { onConflict: 'device_key' }).then(function() {
+        console.log('✅ POS device registered');
+    }).catch(function(e) {
+        console.warn('POS registration failed:', e.message);
+    });
 
     startDeviceMonitor();
 }
