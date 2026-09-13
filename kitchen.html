@@ -251,15 +251,14 @@ function ensureDeviceMonitor() {
     if (_deviceMonitorStarted) return;
     _deviceMonitorStarted = true;
 
-    var deviceKey = localStorage.getItem('deviceKey');
+    var deviceKey = localStorage.getItem('deviceKey_kitchen');
     if (!deviceKey) {
-        deviceKey = 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-        localStorage.setItem('deviceKey', deviceKey);
+        deviceKey = 'dev_kit_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+        localStorage.setItem('deviceKey_kitchen', deviceKey);
     }
 
-    var deviceName = localStorage.getItem('kitchenDeviceName') || ('Kitchen — ' + (shopId || 'Device'));
+    var deviceName = 'Kitchen — ' + (shopId || 'Device');
 
-    // Register / update this device
     supabaseClient.from('devices').upsert([{
         device_key: deviceKey,
         shop_id: shopId || getShopId(),
@@ -268,12 +267,11 @@ function ensureDeviceMonitor() {
         status: 'active',
         last_seen: new Date().toISOString()
     }], { onConflict: 'device_key' }).then(function() {
-        console.log('✅ Kitchen device registered:', deviceName);
+        console.log('✅ Kitchen device registered');
     }).catch(function(e) {
-        console.warn('Kitchen device registration failed:', e.message);
+        console.warn('Kitchen registration failed:', e.message);
     });
 
-    // REAL-TIME: instant lock when revoked
     supabaseClient.channel('device-monitor-' + deviceKey)
         .on('postgres_changes', {
             event: 'UPDATE',
@@ -287,7 +285,6 @@ function ensureDeviceMonitor() {
         })
         .subscribe();
 
-    // SAFETY NET: check every 30 seconds
     setInterval(async function() {
         try {
             const { data } = await supabaseClient.from('devices')
