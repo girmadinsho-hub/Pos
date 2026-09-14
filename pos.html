@@ -5649,7 +5649,17 @@ async function loadCashierList(){
     
     var shop = localStorage.getItem('shopId') || 'default';
     var sel = document.getElementById('cashierName');
-    
+
+    // DIAGNOSTIC: show auth status
+    var authCheck = await supabaseClient.auth.getSession();
+    var isAuth = authCheck.data && authCheck.data.session && authCheck.data.session.user && authCheck.data.session.user.email;
+    var diagEl = document.getElementById('loginSubtitle');
+    if (diagEl) {
+        diagEl.textContent = isAuth ?
+            'Authenticated as: ' + authCheck.data.session.user.email + ' | Shop: ' + shop :
+            '❌ NOT authenticated — session lost';
+        diagEl.style.color = isAuth ? '#64748b' : '#ef4444';
+    }
     if (shop === 'default' || !shop) {
         if (sel) sel.innerHTML = '<option value="">Device Not Linked</option>';
         return;
@@ -5685,9 +5695,14 @@ async function loadCashierList(){
             sel.innerHTML = '<option value="">-- Select Name --</option>' + 
                 cashierList.map(c => `<option value="${c.id}">${c.name} (${c.position})</option>`).join('');
         }
-    } catch(e) {
+       } catch(e) {
         console.error("Error loading staff:", e);
-        if (sel) sel.innerHTML = '<option value="">Error loading. Try manual link.</option>';
+        var errDiv = document.getElementById('loginSubtitle');
+        if (errDiv) {
+            errDiv.textContent = '❌ ' + e.message;
+            errDiv.style.color = '#ef4444';
+        }
+        if (sel) sel.innerHTML = '<option value="">Error — see message above</option>';
     }
 }
 		
