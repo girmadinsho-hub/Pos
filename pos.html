@@ -1804,53 +1804,47 @@ function renderGridDirect(container, data) {
 
   let holdNameResolve = null;
    // Open the hold-name modal and wait for input
-function holdOrder() {
-  if (!cart.length) { alert('Cart is empty.'); return; }
+async function holdOrder() {
+    if (!cart.length) { alert('Cart is empty.'); return; }
 
-  // If a table is selected, save it to heldOrders so it turns RED
-  if (currentTableName) {
-      var held = JSON.parse(localStorage.getItem('heldOrders') || '[]');
-      var updatedHeld = held.filter(function(o) { return o.name !== currentTableName; });
-      
-      updatedHeld.push({
-        id: Date.now(),
-        name: currentTableName,
-        cart: JSON.parse(JSON.stringify(cart)),
-        time: new Date().toISOString()
-      });
-      
-      localStorage.setItem('heldOrders', JSON.stringify(updatedHeld));
-      cart = [];
-      currentTableName = ''; 
-      var cartTitle = document.getElementById('cartTitle');
-      if (cartTitle) cartTitle.innerText = 'CART';
-      updateCart();
-      alert('✅ Order held! Table is now Busy (Red).');
-      return;
-  }
+    var orderType = currentOrderType || 'Dine-In';
 
-  // If no table selected, ask for a name (standard behavior)
-  document.getElementById('holdNameInput').value = '';
-  document.getElementById('holdNameModal').classList.add('active');
+    // If Dine-In with a table selected — hold against that table (turns it red)
+    if (currentTableName && orderType === 'Dine-In') {
+        var held = JSON.parse(localStorage.getItem('heldOrders') || '[]');
+        var updatedHeld = held.filter(function(o) { return o.name !== currentTableName; });
+        updatedHeld.push({
+            id: Date.now(),
+            name: currentTableName,
+            cart: JSON.parse(JSON.stringify(cart)),
+            time: new Date().toISOString()
+        });
+        localStorage.setItem('heldOrders', JSON.stringify(updatedHeld));
+        cart = [];
+        currentTableName = '';
+        var t = document.getElementById('cartTitle');
+        if (t) t.innerText = 'CART';
+        updateCart();
+        alert('✅ Order held! Table is now Busy (Red).');
+        return;
+    }
 
-  return new Promise(resolve => {
-    holdNameResolve = resolve;
-  }).then(orderName => {
+    // Takeaway / Delivery / no table — ask for a name
+    var orderName = await prompt('Name this held order (e.g., customer name, "Takeaway 3"):', orderType);
     if (orderName === null) return;
-    if (!orderName.trim()) orderName = 'Held Order';
+    orderName = (orderName || '').trim() || (orderType + ' Order');
 
     const held = JSON.parse(localStorage.getItem('heldOrders') || '[]');
     held.push({
-      id: Date.now(),
-      name: orderName.trim(),
-      cart: JSON.parse(JSON.stringify(cart)),
-      time: new Date().toISOString()
+        id: Date.now(),
+        name: orderName,
+        cart: JSON.parse(JSON.stringify(cart)),
+        time: new Date().toISOString()
     });
     localStorage.setItem('heldOrders', JSON.stringify(held));
     cart = [];
     updateCart();
-    alert('✅ Order held as "' + orderName.trim() + '".');
-  });
+    alert('✅ Order held as "' + orderName + '".');
 }
 
 		
@@ -4781,8 +4775,6 @@ window.openTableBillsModal = async function() {
 };
 
 window.loadTableBillToCart = async function(tableName) {
-    var ok = await confirm('Load ALL unpaid rounds for "' + tableName + '"?\nThe current cart will be replaced.');
-    if (!ok) return;
     try {
         var orders = [];
 
@@ -4791,7 +4783,7 @@ window.loadTableBillToCart = async function(tableName) {
             .select('*').eq('shop_id', getShopId()).eq('table_id', tableName).neq('status', 'Paid');
         if (res.data) orders = res.data;
 
-        // Method 2: nothing found? — maybe it's a single QR order — search by id
+        // Method 2: maybe it's a single QR order — search by id
         if (!orders.length) {
             var res2 = await supabaseClient.from('orders')
                 .select('*').eq('shop_id', getShopId()).eq('id', tableName).neq('status', 'Paid');
@@ -4800,54 +4792,108 @@ window.loadTableBillToCart = async function(tableName) {
 
         if (!orders.length) { alert('No unpaid orders found for "' + tableName + '".'); return; }
 
-        cart = [];
-        orders.forEach(function(o) {
-            (o.items || []).forEach(function(item) {
-                // Look up the REAL product — so stock, cost and virtual status are correct
-                var prod = products.find(function(x) { return x.id === item.productId; });
-                var existing = cart.find(function(c) {
-                    return c.id === item.productId &&
-                           JSON.stringify(c.modifiers || []) === JSON.stringify(item.modifiers || []) &&
-                           !c.note && !item.note;
-                });
-                if (existing) existing.qty += item.qty;
-                else cart.push({
-                    id: item.productId || item.id || Date.now().toString(),
-                    name: item.name, price: item.price, qty: item.qty,
-                    unit: (prod && prod.unit) || item.unit || '',
-                    stock: prod ? (prod.stock || 0) : 9999,
-                    costPrice: prod ? (prod.costPrice || 0) : 0,
-                    isVirtual: prod ? !!prod.isVirtual : false,
-                    modifiers: item.modifiers || [], note: item.note || '',
-                    station: (prod && prod.station) || 'Kitchen'
-                });
+        // ===== ROUND PICKER: let cashier choose which rounds to load =====
+        if (orders.length > 1) {
+            // Show a selection modal
+            var html = '<div style="max-height:50vh; overflow-y:auto;">';
+            html += '<p style="font-size:13px; color:#64748b; margin-bottom:10px;">This table has ' + orders.length + ' rounds. Select which to load:</p>';
+
+            orders.forEach(function(o, idx) {
+                var itemsStr = (o.items || []).map(function(i){ return i.qty + 'x ' + i.name; }).join(', ');
+                var timeStr = new Date(o.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                var st = o.status === 'Ready' ? '✅' : (o.status === 'Preparing' ? '🔵' : '🟡');
+                html += '<label style="display:flex; align-items:flex-start; gap:10px; padding:10px; border:1px solid #e2e8f0; border-radius:10px; margin-bottom:8px; cursor:pointer;">' +
+                    '<input type="checkbox" class="roundCheck" data-order-id="' + o.id + '" checked style="margin-top:3px;">' +
+                    '<div><b>' + st + ' Round ' + (idx + 1) + ' — ' + timeStr + '</b>' +
+                    '<div style="font-size:12px; color:#64748b; margin-top:3px;">' + itemsStr + '</div>' +
+                    '<div style="font-size:13px; font-weight:bold; margin-top:3px;">Total: ' + fmtMoney(o.total || 0) + '</div>' +
+                    '</div></label>';
             });
-        });
 
-        currentTableName = (orders[0].table_id && orders[0].table_id.indexOf('QR-') !== 0) ? orders[0].table_id : '';
-        window._pendingTableOrderIds = orders.map(function(o) { return o.id; });
-        isCartLocked = true;
+            html += '</div>';
+            html += '<div style="display:flex; gap:8px; margin-top:12px;">' +
+                '<button class="btn btn-success" style="flex:1;" onclick="loadSelectedRounds(\'' + tableName + '\')">✅ Load Selected</button>' +
+                '<button class="btn btn-outline" style="flex:1;" onclick="document.getElementById(\'tableBillsModal\').classList.remove(\'active\')">Cancel</button>' +
+                '</div>';
 
-        updateCart();
-        document.getElementById('tableBillsModal').classList.remove('active');
-        alert('✅ Bill loaded — ' + orders.length + ' round(s), ' + cart.reduce(function(s,i){return s+i.qty;},0) + ' items! Process the exact payment.');
+            var listDiv = document.getElementById('tableBillsList');
+            listDiv.innerHTML = html;
+            window._roundOrders = orders;
+            return;
+        }
+
+        // Single order — load it directly
+        window._loadRoundsIntoCart(orders);
+
     } catch(e) {
         alert('❌ Error: ' + e.message);
     }
 };
 
-	
-async function sendWaiterOrderToKitchen() {
+window.loadSelectedRounds = async function(tableName) {
+    var checkboxes = document.querySelectorAll('.roundCheck');
+    var selectedIds = [];
+    checkboxes.forEach(function(cb) { if (cb.checked) selectedIds.push(cb.getAttribute('data-order-id')); });
+
+    if (!selectedIds.length) { alert('Select at least one round.'); return; }
+
+    var orders = (window._roundOrders || []).filter(function(o) {
+        return selectedIds.indexOf(o.id) !== -1;
+    });
+
+    if (!orders.length) { alert('No rounds selected.'); return; }
+
+    var ok = await confirm('Load ' + orders.length + ' round(s)?\nThe current cart will be replaced.');
+    if (!ok) return;
+
+    window._loadRoundsIntoCart(orders);
+};
+
+window._loadRoundsIntoCart = function(orders) {
+    cart = [];
+    orders.forEach(function(o) {
+        (o.items || []).forEach(function(item) {
+            var prod = products.find(function(x) { return x.id === item.productId; });
+            var existing = cart.find(function(c) {
+                return c.id === item.productId &&
+                       JSON.stringify(c.modifiers || []) === JSON.stringify(item.modifiers || []) &&
+                       !c.note && !item.note;
+            });
+            if (existing) existing.qty += item.qty;
+            else cart.push({
+                id: item.productId || item.id || Date.now().toString(),
+                name: item.name, price: item.price, qty: item.qty,
+                unit: (prod && prod.unit) || item.unit || '',
+                stock: prod ? (prod.stock || 0) : 9999,
+                costPrice: prod ? (prod.costPrice || 0) : 0,
+                isVirtual: prod ? !!prod.isVirtual : false,
+                modifiers: item.modifiers || [], note: item.note || '',
+                station: (prod && prod.station) || 'Kitchen'
+            });
+        });
+    });
+
+    currentTableName = (orders[0].table_id && orders[0].table_id.indexOf('QR-') !== 0 && orders[0].table_id !== 'Takeaway' && orders[0].table_id !== 'Delivery') ? orders[0].table_id : '';
+    window._pendingTableOrderIds = orders.map(function(o) { return o.id; });
+    isCartLocked = true;
+
+    updateCart();
+    document.getElementById('tableBillsModal').classList.remove('active');
+    alert('✅ Loaded ' + orders.length + ' round(s), ' + cart.reduce(function(s,i){return s+i.qty;},0) + ' items. Process the payment.');
+};
+
+	async function sendWaiterOrderToKitchen() {
     if (!cart.length) { alert('Cart is empty.'); return; }
-    
-    if (!currentTableName) {
-        var isWalkIn = awaitconfirm('No table selected. Send as Walk-in / Takeaway order?');
-        if (!isWalkIn) {
-            alert('Please select a Table first (Click the 🪑 Tables button).');
-            return;
-        }
-        currentTableName = 'Walk-in'; 
+
+    var orderType = currentOrderType || 'Dine-In';
+
+    // Dine-In REQUIRES a table; Takeaway/Delivery do not
+    if (orderType === 'Dine-In' && !currentTableName) {
+        alert('🍽️ Dine-In orders need a table.\nTap 🪑 Tables to select one.\n\nOr switch to 🛍️ Takeaway / 🛵 Delivery at the top.');
+        return;
     }
+
+    var tableName = currentTableName || (orderType === 'Takeaway' ? 'Takeaway' : 'Delivery');
 
     var btn = document.getElementById('btnSendKitchen');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
@@ -4855,40 +4901,42 @@ async function sendWaiterOrderToKitchen() {
     var stationStatus = {};
     cart.forEach(function(item) {
         var st = item.station || 'Kitchen';
-        stationStatus[st] = false; 
+        stationStatus[st] = false;
     });
 
     var orderData = {
         shopId: getShopId(),
-        tableId: currentTableName,
-        items: cart.map(i => ({ 
-            productId: i.id, name: i.name, qty: i.qty, price: i.price, 
+        tableId: tableName,
+        items: cart.map(i => ({
+            productId: i.id, name: i.name, qty: i.qty, price: i.price,
             modifiers: i.modifiers || [], note: i.note || '',
             station: i.station || 'Kitchen'
         })),
         stationStatus: stationStatus,
         total: cart.reduce((s,i) => s+(i.price*i.qty), 0),
-        status: 'Pending', 
-        orderType: 'Waiter Dine-In',
+        status: 'Pending',
+        orderType: (orderType === 'Dine-In' ? 'Waiter Dine-In' : orderType),
         waiterName: currentCashier.name,
         time: new Date().toISOString()
     };
 
     try {
-        // SAVE ORDER TO SUPABASE ONLY
         if (supabaseClient) {
             const { error } = await supabaseClient.from('orders').insert([{
-                firebase_id: 'order_' + Date.now(), 
+                firebase_id: 'order_' + Date.now(),
                 shop_id: orderData.shopId, table_id: orderData.tableId,
-                items: orderData.items, station_status: orderData.stationStatus, total: orderData.total,
-                status: orderData.status, order_type: orderData.orderType, waiter_name: orderData.waiterName, time: orderData.time
+                items: orderData.items, station_status: orderData.stationStatus,
+                total: orderData.total, status: orderData.status,
+                order_type: orderData.orderType, waiter_name: orderData.waiterName,
+                time: orderData.time
             }]);
             if (error) throw error;
         }
-        
-        alert('✅ Order sent to Kitchen for ' + currentTableName + '!');
-        if (typeof printKOT === 'function') printKOT(orderData); 
-        
+
+        alert('✅ Order sent to Kitchen for ' + tableName + '!');
+        if (typeof printKOT === 'function') printKOT(orderData);
+
+        // Clear cart + table
         cart = [];
         currentTableName = '';
         var cartTitle = document.getElementById('cartTitle');
