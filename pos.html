@@ -5992,6 +5992,89 @@ async function loadCashierList(){
 document.addEventListener('DOMContentLoaded', function() {
     setTimeout(loadCashierList, 2000);
 });
+
+// ===== RECOVERY: LOGIN FUNCTION =====
+async function login() {
+    const id = document.getElementById('cashierName').value;
+    const pass = document.getElementById('loginPass').value.trim();
+    if (!id || !pass) { alert('Select your name and enter PIN!'); return; }
+
+    const cashier = window.cashierList.find(c => c.id === id);
+    if (!cashier) { alert('Staff member not found!'); return; }
+
+    if (cashier.status === 'inactive') {
+        alert('❌ Your account has been disabled. Please see the Owner.');
+        return;
+    }
+
+    let valid = false;
+    if (cashier.hashedPassword) {
+        valid = (sha256(pass) === cashier.hashedPassword);
+    }
+    if (!valid) { alert('❌ Wrong PIN!'); return; }
+
+    currentCashier = cashier;
+    currentCashier.role = cashier.position || 'Cashier';
+
+    // Hide login screen, show app
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    document.getElementById('cashierDisplay').textContent = '👤 ' + cashier.name;
+
+    // Start the app
+    try { loadProducts(); } catch(e) { console.warn('loadProducts failed:', e.message); }
+    try { loadPosSettings(); } catch(e) { console.warn('loadPosSettings failed:', e.message); }
+    try { checkActiveShift(); } catch(e) { console.warn('checkActiveShift failed:', e.message); }
+    try { syncNow(); } catch(e) {}
+    try { changeLanguage(appLang); } catch(e) {}
+    try { initPOS(); } catch(e) { console.warn('initPOS failed:', e.message); }
+    try { listenForWaiterCalls(); } catch(e) {}
+    try { requestWakeLock(); } catch(e) {}
+}
+
+// ===== RECOVERY: LOGOUT =====
+function logout(){
+    currentCashier = null;
+    currentShiftId = null;
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('mainApp').style.display = 'none';
+    loadCashierList();
+    try { releaseWakeLock(); } catch(e) {}
+}
+
+// ===== RECOVERY: CHANGE PASSWORD =====
+async function changePassword(){
+    const id = document.getElementById('cashierName').value;
+    const oldPwd = document.getElementById('oldPwd').value.trim();
+    const newPwd = document.getElementById('newPwd').value.trim();
+    if(!id || !oldPwd || !newPwd){ alert('Fill all fields!'); return; }
+    const cashier = window.cashierList.find(c => c.id === id);
+    if(!cashier){ alert('Cashier not found!'); return; }
+
+    let isValid = false;
+    if (cashier.hashedPassword) {
+        isValid = (sha256(oldPwd) === cashier.hashedPassword);
+    }
+    if (!isValid) { alert('❌ Wrong old password!'); return; }
+
+    const hashed = sha256(newPwd);
+    try {
+        const { error } = await supabaseClient.from('employees').update({ hashed_password: hashed }).eq('firebase_id', id);
+        if (error) throw error;
+        alert('✅ Password changed!');
+        document.getElementById('changePwdBox').style.display = 'none';
+        loadCashierList();
+    } catch(e) {
+        alert('❌ Error updating password: ' + e.message);
+    }
+}
+
+// ===== RECOVERY: SHOW/CANCEL PASSWORD BOX =====
+function showChangePassword(){
+    document.getElementById('changePwdBox').style.display = 'block';
+    document.getElementById('oldPwd').value = '';
+    document.getElementById('newPwd').value = '';
+}
 </script>
 
 </body>
