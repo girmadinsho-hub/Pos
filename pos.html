@@ -614,6 +614,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
   }, 1500);
 })();
 </script>
+	
 
 	<!-- LOGIN SCREEN -->
 <div class="login-screen" id="loginScreen">
@@ -5102,18 +5103,6 @@ function closeWaiterStatus() {
 }
 
 
-
-
-
-
-
-
-
-
-
-		
-
-
 // ===== FEATURE 5: WHATSAPP DIGITAL RECEIPT =====
     async function sendWhatsAppReceipt() {
 		var receiptText = document.getElementById('receiptContent').textContent;
@@ -5642,6 +5631,7 @@ async function buildDetailedHistory() {
 }
 
 async function loadCashierList(){
+	
     if (!supabaseClient) {
         console.log("Supabase not ready yet...");
         return;
@@ -5959,9 +5949,52 @@ document.addEventListener('keydown', function (e) {
         .catch(err => console.log('Service Worker registration failed: ', err));
     });
   }
+</script>
 
+<script>
+// ===== RECOVERY: CLEAN LOGIN SYSTEM =====
+async function loadCashierList(){
+    if (!supabaseClient) { return; }
+    var shop = localStorage.getItem('shopId') || 'default';
+    var sel = document.getElementById('cashierName');
+    if (shop === 'default' || !shop) { if (sel) sel.innerHTML = '<option value="">Device Not Linked</option>'; return; }
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Loading staff...</option>';
+    try {
+        const { data, error } = await supabaseClient.from('employees').select('*').eq('shop_id', shop);
+        if (error) throw error;
+        window.cashierList = [];
+        if (data) {
+            data.forEach(function(emp) {
+                var position = emp.position || 'Cashier';
+                if (emp.status === 'active' && (position === 'Cashier' || position === 'Manager' || position === 'Owner' || position === 'Waiter' || position === 'Chef')) {
+                    window.cashierList.push({
+                        id: emp.firebase_id || emp.id,
+                        name: emp.name,
+                        position: emp.position,
+                        status: emp.status,
+                        hashedPassword: emp.hashed_password,
+                        pinLocked: emp.pin_locked
+                    });
+                }
+            });
+        }
+        if (window.cashierList.length === 0) { sel.innerHTML = '<option value="">-- No staff found --</option>'; }
+        else {
+            sel.innerHTML = '<option value="">-- Select Name --</option>' +
+                window.cashierList.map(function(c){ return '<option value="' + c.id + '">' + c.name + ' (' + c.position + ')</option>'; }).join('');
+        }
+    } catch(e) {
+        if (sel) sel.innerHTML = '<option value="">Error: ' + e.message + '</option>';
+    }
+}
 
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(loadCashierList, 2000);
+});
+</script>
 
- </script>	
 </body>
 </html>
+
+ 
