@@ -2662,6 +2662,7 @@ async function closeShift() {
     
     if (typeof populatePosCategoryFilter === 'function') populatePosCategoryFilter();
     if (typeof filterProducts === 'function') filterProducts();
+	  loadRecipeCache();
 }
 function setView(v) {
     // Map the button value to the internal view name
@@ -2773,16 +2774,6 @@ function setView(v) {
 } 
 
 
-
-
-
-
-
-
-
-
-
-
 		
 function appendProducts(filtered, currentPage, totalPages) {
     var container = document.getElementById('productContainer');
@@ -2809,8 +2800,14 @@ function appendProducts(filtered, currentPage, totalPages) {
             var p = pageItems[i];
             var unit = p.unit || '';
             var bp = getBulkPrice(p, 1);
-            var low = (!p.isVirtual && p.stock <= (p.reorderLevel || 5)) ? ' ⚠️' : '';
-            
+                        var low = '';
+            if (!p.isVirtual && p.stock <= (p.reorderLevel || 5)) low = ' ⚠️';
+              if (p.isVirtual) {
+                var virtualCheck = checkVirtualIngredients(p.id, 1);
+                if (!virtualCheck.ok) low = ' ⛔';
+                else if (virtualCheck.optionalIssues.length > 0) low = ' ⚠️';
+            }
+					
             html += '<div class="product-row" style="display:flex; align-items:center; gap:8px; padding:8px 0;">' +
                 '<div style="flex:1; min-width:0; display:flex; align-items:baseline; gap:6px; overflow:hidden;">' +
                     '<span class="prod-name" style="font-weight:700; font-size:14px; white-space:nowrap;">' + sanitize(p.name) + low + '</span>' +
@@ -2985,10 +2982,24 @@ function addToCart(prodId, qty) {
     var p = products.find(function(x) { return x.id === prodId; });
     if (!p) return;
 
-    var isVirtual = p.isVirtual || false;
 
-    // 🛡️ RULE 3: ZERO STOCK = ABSOLUTE BLOCK (non-virtual only)
-    if (!isVirtual && (p.stock === 0 || p.stock === null)) {
+    // 🛡️ VIRTUAL PRODUCT: check recipe ingredients
+    if (isVirtual) {
+        var ingCheck = checkVirtualIngredients(prodId, qty);
+        // CRITICAL missing → BLOCK
+        if (!ingCheck.ok) {
+            showFloatingToast('⛔ ' + p.name + ' — cannot make!', true);
+            alert('⛔ CANNOT SELL ' + p.name + ':\n' + formatIngredientIssues(ingCheck.criticalIssues) + '\n\nThese are essential ingredients.');
+            return;
+        }
+        // OPTIONAL missing → WARN but allow
+        if (ingCheck.optionalIssues.length > 0) {
+            showFloatingToast('⚠️ ' + p.name + ' — missing optional: ' + ingCheck.optionalIssues.map(function(i){return i.name;}).join(', '), true);
+        }
+    }
+	
+
+	
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         showFloatingToast('⛔ ' + p.name + ' is OUT OF STOCK! Sale blocked.', true);
         return;
@@ -6146,7 +6157,28 @@ async function sendWaiterOrderToKitchen() {
 
     var btn = document.getElementById('btnSendKitchen');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
-
+            // 🛡️ FINAL CHECK: verify ingredients
+    for (var check = 0; check < cart.length; check++) {
+        var checkProd = products.find(function(x) { return x.id === cart[check].id; });
+        if (checkProd && checkProd.isVirtual) {
+            var finalCheck = checkVirtualIngredients(cart[check].id, cart[check].qty);
+            
+            // CRITICAL missing → BLOCK
+            if (!finalCheck.ok) {
+                alert('⛔ CANNOT SEND — ' + cart[check].name + ':\n' + formatIngredientIssues(finalCheck.criticalIssues) + '\n\nEssential ingredients missing.');
+                return;
+            }
+            
+            // OPTIONAL missing → ASK the waiter
+            if (finalCheck.optionalIssues.length > 0) {
+                var optionalMsg = finalCheck.optionalIssues.map(function(i){ return i.name + ' (have ' + i.available + ')'; }).join(', ');
+                var sendAnyway = await confirm(
+                    '⚠️ ' + cart[check].name + ' is missing OPTIONAL ingredients:\n' + optionalMsg + '\n\nThe kitchen can still prepare it (customer may not notice).\n\nSend anyway?'
+                );
+                if (!sendAnyway) return;
+            }
+        }
+    }
     var stationStatus = {};
     cart.forEach(function(item) {
         var st = item.station || 'Kitchen';
@@ -6234,6 +6266,100 @@ async function activateDevice() {
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '🔓 Activate Device'; }
     }
+}
+
+		
+</script>
+	<script>
+// ===== RECIPE INGREDIENT AVAILABILITY CHECKER =====
+var recipeCache = {};
+
+async function loadRecipeCache() {
+    try {
+        const { data } = await supabaseClient.from('recipes')
+            .select('product_id, yield, items').eq('shop_id', getShopId());
+        if (data) {
+            recipeCache = {};
+            data.forEach(function(r) { recipeCache[r.product_id] = r; });
+            if (typeof filterProducts === 'function') filterProducts();
+        }
+    } catch(e) { console.warn('Recipe cache load failed:', e.message); }
+}
+
+
+
+function formatIngredientIssues(issues) {
+    var msg = '';
+    issues.forEach(function(issue) {
+        msg += '\n❌ ' + issue.name + ': need ' + issue.needed + ' ' + issue.unit + ', have ' + issue.available;
+    });
+    return msg;
+}
+</script>
+	<script>
+// ===== RECIPE INGREDIENT AVAILABILITY CHECKER =====
+var recipeCache = {};
+
+async function loadRecipeCache() {
+    try {
+        const { data } = await supabaseClient.from('recipes')
+            .select('product_id, yield, items').eq('shop_id', getShopId());
+        if (data) {
+            recipeCache = {};
+            data.forEach(function(r) { recipeCache[r.product_id] = r; });
+        }
+    } catch(e) { console.warn('Recipe cache load failed:', e.message); }
+}
+		
+function checkVirtualIngredients(productId, qty) {
+    var recipe = recipeCache[productId];
+    if (!recipe || !recipe.items || !recipe.items.length) return { ok: true, criticalIssues: [], optionalIssues: [] };
+
+    var y = recipe.yield || 1;
+    var criticalIssues = [];
+    var optionalIssues = [];
+
+    recipe.items.forEach(function(ing) {
+        var ingProd = products.find(function(x) { return x.id === ing.ingredientId; });
+        if (!ingProd) return;
+        var need = ((ing.qty || 0) * (ing.factor || 1) / y) * qty;
+        if ((ingProd.stock || 0) < need) {
+            var issue = {
+                name: ingProd.name,
+                needed: Math.ceil(need * 100) / 100,
+                available: ingProd.stock || 0,
+                unit: ingProd.unit || ''
+            };
+            // Default to critical if not specified (old recipes)
+            if (ing.critical === false) {
+                optionalIssues.push(issue);
+            } else {
+                criticalIssues.push(issue);
+            }
+        }
+    });
+
+    return {
+        ok: criticalIssues.length === 0,
+        criticalIssues: criticalIssues,
+        optionalIssues: optionalIssues
+    };
+}
+
+function formatIngredientIssues(issues) {
+    var msg = '';
+    issues.forEach(function(issue) {
+        msg += '\n❌ ' + issue.name + ': need ' + issue.needed + ' ' + issue.unit + ', have ' + issue.available;
+    });
+    return msg;
+}
+
+function formatIngredientIssues(issues) {
+    var msg = '';
+    issues.forEach(function(issue) {
+        msg += '\n❌ ' + issue.name + ': need ' + issue.needed + ' ' + issue.unit + ', have ' + issue.available;
+    });
+    return msg;
 }
 </script>
 </body>
