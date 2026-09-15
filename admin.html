@@ -9708,12 +9708,13 @@ function renderCurrentRecipeItems() {
   
   var html = '<div style="width:100%; overflow-x:auto; padding-bottom:10px;">';
   html += '<table style="width:100%; min-width:500px; border-collapse:collapse; font-size:14px;">';
-  html += '<thead><tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">' +
-    '<th style="padding:10px; text-align:left; width:30%;">Ingredient</th>' +
-    '<th style="padding:10px; text-align:center; width:25%;">Qty & Unit</th>' +
-    '<th style="padding:10px; text-align:right; width:20%;">Cost</th>' +
-    '<th style="padding:10px; width:10%;"></th>' +
-    '</tr></thead><tbody>';
+     html += '<thead><tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0;">' +
+      '<th style="padding:10px; text-align:left; width:25%;">Ingredient</th>' +
+      '<th style="padding:4px; text-align:center; width:10%;">Must</th>' +
+      '<th style="padding:10px; text-align:center; width:25%;">Qty & Unit</th>' +
+      '<th style="padding:10px; text-align:right; width:20%;">Cost</th>' +
+      '<th style="padding:10px; width:10%;"></th>' +
+      '</tr></thead><tbody>';
   
   currentRecipeItems.forEach(function(item, idx) {
     var ingProd = products.find(function(p) { return p.id === item.ingredientId; });
@@ -9736,8 +9737,9 @@ function renderCurrentRecipeItems() {
             '</div>';
     }
     
-    html += '<tr style="border-bottom:1px solid #f1f5f9; vertical-align:top;" id="recipeRow' + idx + '">' +
+       html += '<tr style="border-bottom:1px solid #f1f5f9; vertical-align:top;" id="recipeRow' + idx + '">' +
       '<td style="padding:8px;"><b style="font-size:14px;">' + sanitize(item.ingredientName) + '</b><br><small style="color:#64748b; font-size:11px;">Base: ' + baseUnit + '</small></td>' +
+      '<td style="padding:4px; text-align:center;"><label style="font-size:10px; cursor:pointer;"><input type="checkbox" ' + (item.critical === false ? '' : 'checked') + ' onchange="toggleIngredientCritical(' + idx + ', this.checked)"><br>Must<br>Have</label></td>' +
       '<td style="padding:8px; text-align:center;">' +
         '<div style="display:flex; gap:4px;">' +
             '<input type="number" value="' + item.qty + '" step="0.001" min="0" oninput="updateRecipeItemLive(' + idx + ',\'qty\',this.value)" style="flex:1; min-width:50px; padding:8px; border:1px solid #cbd5e1; border-radius:6px; text-align:center; font-size:14px;">' +
@@ -9754,6 +9756,13 @@ function renderCurrentRecipeItems() {
   
   html += '</tbody></table></div>';
   container.innerHTML = html;
+}
+
+function toggleIngredientCritical(index, isCritical) {
+    if (currentRecipeItems[index]) {
+        currentRecipeItems[index].critical = isCritical;
+        calculateRecipeCostAndRow(index);
+    }
 }
 	
 function updateRecipeItemLive(index, field, value) {
@@ -11723,7 +11732,6 @@ async function submitNewEmployeeFinal() {
     try {
         var empId = 'emp_' + Date.now();
 
-        // 1. SAVE TO SUPABASE (all fields — nothing dropped)
         if (supabaseClient) {
             const { error } = await supabaseClient.from('employees').insert([{
                 firebase_id: empId,
@@ -11747,7 +11755,6 @@ async function submitNewEmployeeFinal() {
             if (error) throw error;
         }
 
-        // 2. UPDATE LOCAL CACHE INSTANTLY
         employeesCache.push({
             id: empId,
             name: name,
@@ -11763,10 +11770,8 @@ async function submitNewEmployeeFinal() {
             createdAt: new Date().toISOString()
         });
 
-        // 3. REFRESH THE TABLE
         if (typeof switchStaffView === 'function') switchStaffView('excel');
 
-        // 4. CLEAR INPUTS
         document.getElementById('empName').value = '';
         document.getElementById('empSalary').value = '';
         document.getElementById('empPhone').value = '';
