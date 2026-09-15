@@ -5,7 +5,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>SmartBiz Pro</title>
+    <title>SmartShop Pro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
     <script src="https://cdn.onesignal.com/sdks/OneSignalSDK.js" async></script>
@@ -595,7 +595,7 @@ body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
             <rect x="44" y="8" width="6" height="32" rx="1" fill="#10b981"/>
             <polyline points="44,8 44,2 48,4" fill="none" stroke="#f59e0b" stroke-width="2"/>
         </svg>
-        <h1>SmartBiz </h1>
+        <h1>SmartShop Pro </h1>
         <p>Business Intelligence &amp; POS</p>
     </div>
 </div>
@@ -616,7 +616,7 @@ body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
 <!-- Premium Admin Login Screen -->
 <div class="login-screen" id="loginScreen">
     <div class="login-box">
-        <h1>🏪 SmartBiz</h1>
+        <h1>🏪 SmartShop Pro</h1>
         <p style="color:#64748b; margin-bottom:10px;">Owner Administration Portal</p>
         
         <input type="email" id="loginEmail" placeholder="Owner Email" style="margin-bottom:10px;" autocomplete="off">
@@ -655,7 +655,7 @@ body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
 <!-- Loading Progress Screen -->
 <div id="loadingScreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#1e3a8a,#2563eb); z-index:10000; flex-direction:column; align-items:center; justify-content:center;">
     <div style="text-align:center; color:white;">
-        <div style="font-size:24px; font-weight:bold; margin-bottom:20px;">SmartBiz</div>
+        <div style="font-size:24px; font-weight:bold; margin-bottom:20px;">SmartShop Pro</div>
         <div style="font-size:16px; margin-bottom:10px;">Loading your workspace…</div>
         <div style="width:80%; max-width:300px; height:10px; background:rgba(255,255,255,0.2); border-radius:10px; overflow:hidden;">
         <div id="loadingBar" style="width:0%; height:100%; background:white; border-radius:10px; transition: width 0.3s;"></div>
@@ -752,7 +752,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
             <rect x="44" y="8" width="6" height="32" rx="1" fill="#10b981"/>
             <polyline points="44,8 44,2 48,4" fill="none" stroke="#f59e0b" stroke-width="2"/>
         </svg>
-        <span id="headerTitle">SmartBiz </span>
+        <span id="headerTitle">SmartShop Pro </span>
     </span>
     <div style="display:flex;gap:6px">
         <button onclick="toggleDarkMode()">🌓</button>
@@ -8089,7 +8089,7 @@ async function savePasswords() {
         
         localStorage.setItem('appCurrencySymbol', payload.currency);
         appCurrencySymbol = payload.currency;
-        document.getElementById('headerTitle').textContent = payload.name || 'SmartBiz Pro'; 
+        document.getElementById('headerTitle').textContent = payload.name || 'SmartShop Pro'; 
         alert(t('brandingSaved'));
     } catch(e) {
         alert('❌ Error saving branding: ' + e.message);
@@ -10366,7 +10366,7 @@ function toggleVirtualMode() {
 
 // Alert (OK button only)
 function showAlert(message, title, callback) {
-    title = title || 'SmartBiz Pro';
+    title = title || 'SmartShop Pro';
     var overlay = document.createElement('div');
     overlay.className = 'standard-dialog-overlay';
     overlay.innerHTML = 
@@ -10477,7 +10477,7 @@ function showPrompt(message, defaultValue, title, callback) {
 
 // ===== OVERRIDE BROWSER FUNCTIONS =====
 window.alert = function(message) {
-    showAlert(message, 'SmartBiz Pro', null);
+    showAlert(message, 'SmartShop Pro', null);
 };
 
 window.confirm = function(message) {
@@ -10702,7 +10702,7 @@ async function registerAccount() {
 
 async function contactSupport() {
     var phone = '251973316100';
-    var msg = "Hello, my SmartBiz Pro trial has expired. I have just paid the subscription. Here is my transaction ID:";
+    var msg = "Hello, my SmartShop Pro trial has expired. I have just paid the subscription. Here is my transaction ID:";
     try {
         const { data } = await supabaseClient.from('global_settings')
             .select('support_phone').eq('id', 'globalConfig').maybeSingle();
