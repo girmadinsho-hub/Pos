@@ -4432,9 +4432,8 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     if (isRealUser) {
         loadCashierList();
         ensureDeviceMonitor();
-} else {
-        var el = document.getElementById('loginSubtitle');
-        if (el) { el.textContent = '🔐 Ask owner to activate this device once.'; el.style.color = '#ef4444'; }
+    } else {
+        showOwnerActivation();
     }
 });
 
@@ -6151,6 +6150,13 @@ function showOwnerActivation() {
         var sid = document.getElementById('ownerShopId');
         if (sid && !sid.value) sid.value = localStorage.getItem('shopId') || '';
     }
+    // Hide the cashier login until activated
+    var cashierBox = document.getElementById('cashierName');
+    if (cashierBox) cashierBox.style.display = 'none';
+    var refreshBtn = cashierBox ? cashierBox.nextElementSibling : null;
+    if (refreshBtn) refreshBtn.style.display = 'none';
+    var passInput = document.getElementById('loginPass');
+    if (passInput) passInput.style.display = 'none';
 }
 
 async function activateDevice() {
