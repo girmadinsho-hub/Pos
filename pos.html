@@ -2974,32 +2974,28 @@ function confirmKeypad(){
     keypadTarget=null;
 }
 
-
-		
-// ===== CART =====
 function addToCart(prodId, qty) {
     qty = qty || 1;
     var p = products.find(function(x) { return x.id === prodId; });
     if (!p) return;
 
+    var isVirtual = p.isVirtual || false;
 
     // 🛡️ VIRTUAL PRODUCT: check recipe ingredients
     if (isVirtual) {
         var ingCheck = checkVirtualIngredients(prodId, qty);
-        // CRITICAL missing → BLOCK
         if (!ingCheck.ok) {
             showFloatingToast('⛔ ' + p.name + ' — cannot make!', true);
             alert('⛔ CANNOT SELL ' + p.name + ':\n' + formatIngredientIssues(ingCheck.criticalIssues) + '\n\nThese are essential ingredients.');
             return;
         }
-        // OPTIONAL missing → WARN but allow
         if (ingCheck.optionalIssues.length > 0) {
             showFloatingToast('⚠️ ' + p.name + ' — missing optional: ' + ingCheck.optionalIssues.map(function(i){return i.name;}).join(', '), true);
         }
     }
-	
 
-	
+    // 🛡️ ZERO STOCK = ABSOLUTE BLOCK (non-virtual only)
+    if (!isVirtual && (p.stock === 0 || p.stock === null)) {
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         showFloatingToast('⛔ ' + p.name + ' is OUT OF STOCK! Sale blocked.', true);
         return;
@@ -3008,7 +3004,6 @@ function addToCart(prodId, qty) {
     var existing = cart.find(function(x) { return x.id === prodId; });
     var totalQty = (existing ? existing.qty : 0) + qty;
 
-    // 🛡️ Can't sell more than exists
     if (!isVirtual && totalQty > p.stock) {
         if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
         if (p.stock === 1) showFloatingToast('⚠️ Only 1 ' + (p.unit || 'piece') + ' of ' + p.name + ' left!', true);
@@ -3031,10 +3026,8 @@ function addToCart(prodId, qty) {
         });
     }
 
-    // 🔔 LOW-STOCK ALARM — sounds when stock crosses the reorder limit
     var reorder = p.reorderLevel !== undefined ? p.reorderLevel : 5;
     if (!isVirtual && p.stock !== null && p.stock !== undefined && p.stock > 0 && p.stock <= reorder) {
-        var remaining = p.stock - totalQty;
         showFloatingToast('⚠️ LOW STOCK: ' + p.name + ' — only ' + p.stock + ' ' + (p.unit || '') + ' left (limit: ' + reorder + ')!', true);
     }
 
@@ -3043,7 +3036,6 @@ function addToCart(prodId, qty) {
     showFloatingToast('🛒 ' + p.name + ' ×' + totalQty + ' in cart' + remaining, false);
     updateCart();
 }
-
 // FLOATING TOAST FUNCTION FOR CASHIER FEEDBACK
 function showFloatingToast(message, isError) {
     var toast = document.createElement('div');
