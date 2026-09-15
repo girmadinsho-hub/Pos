@@ -614,54 +614,40 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
   }, 1500);
 })();
 </script>
-	
 
-	<!-- LOGIN SCREEN -->
-<div class="login-screen" id="loginScreen">
+	
+<!-- LOGIN SCREEN -->
+  <div class="login-screen" id="loginScreen">
     <div class="login-box">
         <h1>🏪 SmartShop POS</h1>
         <p style="color:#64748b; margin-bottom:10px;" id="loginSubtitle">Cashier Login</p>
-
-        <!-- PHASE 1B: OWNER DEVICE ACTIVATION (one time) -->
-        <div id="ownerSection" style="display:none; text-align:left; background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:14px; margin-bottom:12px;">
-            <b style="color:#1e3a8a;">🔐 Device Activation</b>
-            <p style="font-size:11px; color:#64748b; margin:4px 0 8px 0;">The shop owner signs in here ONCE. After this, cashiers log in with their PIN as usual.</p>
-            <input type="text" id="ownerShopId" placeholder="Shop ID" style="width:100%; padding:12px; margin:5px 0; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
-            <input type="email" id="ownerEmail" placeholder="Owner Email" style="width:100%; padding:12px; margin:5px 0; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
-            <input type="password" id="ownerPass" placeholder="Owner Password" style="width:100%; padding:12px; margin:5px 0; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
-            <input type="text" id="deviceNameInput" placeholder="Device Name (e.g., Cashier 1, Martu phone)" style="width:100%; padding:12px; margin:5px 0; border:2px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
-            <button class="login-btn" id="ownerActivateBtn" onclick="activateDevice()" style="margin-top:6px;">🔓 Activate Device</button>
-            <p id="ownerActivateMsg" style="font-size:11px; color:#ef4444; margin-top:6px; text-align:center;"></p>
+        
+        <!-- HIDDEN MANUAL FALLBACK -->
+        <div id="manualShopEntry" style="display:none; margin-bottom:15px;">
+            <input type="text" class="login-input" id="posLoginShopId" placeholder="Enter Shop ID" style="margin-bottom:10px;">
+            <button class="btn btn-outline" onclick="manualLinkPos()" style="margin-bottom:10px; width:100%;">Connect Device</button>
         </div>
-
-        <!-- CASHIER LOGIN (existing, wrapped) -->
-        <div id="cashierSection">
-            <div id="manualShopEntry" style="display:none; margin-bottom:15px;">
-                <input type="text" class="login-input" id="posLoginShopId" placeholder="Enter Shop ID" style="margin-bottom:10px;">
-                <button class="btn btn-outline" onclick="manualLinkPos()" style="margin-bottom:10px; width:100%;">Connect Device</button>
-            </div>
-            <p onclick="document.getElementById('manualShopEntry').style.display='block'; this.style.display='none';" style="font-size:12px; color:#94a3b8; margin-top:10px; cursor:pointer; text-decoration:underline;">Having trouble scanning? Enter ID manually.</p>
-
-            <select id="cashierName" onchange="onCashierSelected()">
-                <option value="">-- Select Name --</option>
-            </select>
-            <button onclick="loadCashierList()" style="margin-top:5px; font-size:12px; background:#eee; border:1px solid #ccc; padding:5px; border-radius:6px;">🔄 Refresh List</button>
-
-            <input type="password" id="loginPass" placeholder="Password">
-            <button class="login-btn" onclick="login()">🔓 Sign In</button>
-
-            <button class="btn btn-outline" onclick="showChangePassword()" style="margin-top:8px;">🔑 Change Password</button>
-            <div id="changePwdBox" style="display:none; margin-top:12px;">
-                <input type="password" id="oldPwd" placeholder="Old Password">
-                <input type="password" id="newPwd" placeholder="New Password">
-                <div class="flex-row">
-                    <button class="btn btn-success" onclick="changePassword()">Save</button>
-                    <button class="btn btn-outline" onclick="document.getElementById('changePwdBox').style.display='none'">Cancel</button>
-                </div>
+        <p onclick="document.getElementById('manualShopEntry').style.display='block'; this.style.display='none';" style="font-size:12px; color:#94a3b8; margin-top:10px; cursor:pointer; text-decoration:underline;">Having trouble scanning? Enter ID manually.</p>    
+        
+        <select id="cashierName" onchange="onCashierSelected()">
+            <option value="">-- Select Name --</option>
+        </select>
+        <button onclick="loadCashierList()" style="margin-top:5px; font-size:12px; background:#eee; border:1px solid #ccc; padding:5px; border-radius:6px;">🔄 Refresh List</button>
+        
+        <input type="password" id="loginPass" placeholder="Password">
+        <button class="login-btn" onclick="login()">🔓 Sign In</button>
+        
+        <button class="btn btn-outline" onclick="showChangePassword()" style="margin-top:8px;">🔑 Change Password</button>
+        <div id="changePwdBox" style="display:none; margin-top:12px;">
+            <input type="password" id="oldPwd" placeholder="Old Password">
+            <input type="password" id="newPwd" placeholder="New Password">
+            <div class="flex-row">
+                <button class="btn btn-success" onclick="changePassword()">Save</button>
+                <button class="btn btn-outline" onclick="document.getElementById('changePwdBox').style.display='none'">Cancel</button>
             </div>
         </div>
     </div>
-</div> 
+</div>
 
 <!-- MAIN APP -->
 <div id="mainApp" style="display:none;">	
@@ -1261,6 +1247,8 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- ☢️ NUCLEAR RESCUE — add this line! -->
+<script src="rescue.js"></script>
+<script src="livecall.js"></script>
 <script src="smartcom.js"></script>
 	<!-- 4. YOUR SHARED FILES -->
 <script src="sheet.js"></script>			 
@@ -1448,6 +1436,200 @@ function openNotebookFromMenu() { closeSidebar(); document.getElementById('noteb
 function openCustomerLookupFromMenu() { closeSidebar(); document.getElementById('customerLookupModal').classList.add('active'); }
 function openPriceCheckFromMenu() { closeSidebar(); document.getElementById('priceCheckModal').classList.add('active'); }
 function openSettingsFromMenu() { closeSidebar(); document.getElementById('settingsModal').classList.add('active'); }
+
+
+		
+// ===== EXCELTABLE CLASS (unchanged) =====
+class ExcelTable {
+  constructor(containerId, options) {
+    options = options || {};
+    this.container = document.getElementById(containerId);
+    if (!this.container) return;
+    this.data = options.data || [];
+    this.columns = options.columns || [];
+    this.rowsPerBatch = options.rowsPerBatch || 30;
+    this.emptyMessage = options.emptyMessage || 'No data';
+    this.sortCol = null; this.sortAsc = true;
+    this.searchText = ''; this.visibleRows = 0;
+    this.loading = false; this.columnFilters = {};
+    this.hiddenColumns = new Set(); this.frozenColumns = 1;
+    this.selectedRows = new Set(); this.multiSort = [];
+    this.columnLayout = this.loadLayout();
+    this.showSearch = options.showSearch !== false;
+    this.showFontSlider = options.showFontSlider !== false;
+    this.currentFontSize = 14;
+    this.build();
+  }
+  build() {
+    this.container.innerHTML = '';
+    var toolbar = document.createElement('div');
+    toolbar.className = 'filter-bar';
+    toolbar.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:4px;border-bottom:1px solid #e2e8f0;margin-bottom:6px;max-width:100%;overflow-x:auto;';
+    var self = this;
+    if (this.showSearch) {
+      this.searchInput = document.createElement('input');
+      this.searchInput.type = 'text';
+      this.searchInput.placeholder = '🔍 Search';
+      this.searchInput.style.cssText = 'flex:1;min-width:120px;';
+      this.searchInput.oninput = function() { self.searchText = this.value.toLowerCase(); self.resetAndRender(); };
+      toolbar.appendChild(this.searchInput);
+    }
+    var toggleDiv = document.createElement('div'); toggleDiv.className = 'column-toggle';
+    var toggleBtn = document.createElement('button'); toggleBtn.className = 'column-toggle-btn'; toggleBtn.textContent = '☰';
+    toggleBtn.onclick = function(e) { e.stopPropagation(); var dd = toggleDiv.querySelector('.column-toggle-dropdown'); dd.style.display = dd.style.display === 'block' ? 'none' : 'block'; };
+    toggleDiv.appendChild(toggleBtn);
+    var dropdown = document.createElement('div'); dropdown.className = 'column-toggle-dropdown';
+    for (var idx = 0; idx < this.columns.length; idx++) {
+      var col = this.columns[idx];
+      var label = document.createElement('label');
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = !this.hiddenColumns.has(idx);
+      (function(idx, self) { cb.onchange = function() { if (cb.checked) self.hiddenColumns.delete(idx); else self.hiddenColumns.add(idx); self.render(); }; })(idx, this);
+      label.appendChild(cb); label.appendChild(document.createTextNode(' ' + col.title)); dropdown.appendChild(label);
+    }
+    toggleDiv.appendChild(dropdown); toolbar.appendChild(toggleDiv);
+    document.addEventListener('click', function(e) { if (!toggleDiv.contains(e.target)) dropdown.style.display = 'none'; });
+    var exportXlsxBtn = document.createElement('button'); exportXlsxBtn.className = 'btn-mini'; exportXlsxBtn.textContent = '📊 XLSX';
+    exportXlsxBtn.onclick = function() { self.exportXLSX(); }; toolbar.appendChild(exportXlsxBtn);
+    var fitBtn = document.createElement('button'); fitBtn.className = 'btn-mini'; fitBtn.textContent = '↔️ Fit';
+    fitBtn.onclick = function() { self.fitColumns(); }; toolbar.appendChild(fitBtn);
+    var resetBtn = document.createElement('button'); resetBtn.className = 'btn-mini'; resetBtn.textContent = '↺ Reset';
+    resetBtn.onclick = function() {
+      self.searchText = ''; self.columnFilters = {}; self.hiddenColumns.clear();
+      self.sortCol = null; self.multiSort = []; self.selectedRows.clear();
+      if (self.searchInput) self.searchInput.value = ''; self.resetAndRender();
+    };
+    toolbar.appendChild(resetBtn);
+    var fontSizeRange = document.createElement('input');
+    fontSizeRange.type = 'range'; fontSizeRange.min = '10'; fontSizeRange.max = '22';
+    fontSizeRange.value = this.currentFontSize; fontSizeRange.style.width = '80px';
+    fontSizeRange.oninput = function() { self.currentFontSize = parseInt(this.value); self.table.style.fontSize = self.currentFontSize + 'px'; };
+    if (!this.showFontSlider) fontSizeRange.style.display = 'none';
+    toolbar.appendChild(fontSizeRange);
+    this.container.appendChild(toolbar);
+    this.statsBar = document.createElement('div'); this.statsBar.style.cssText = 'padding:4px 8px;font-size:12px;background:#f8fafc;border-radius:6px;margin-bottom:4px;display:none;';
+    this.container.appendChild(this.statsBar);
+    this.wrapper = document.createElement('div'); this.wrapper.className = 'excel-table-container';
+    this.table = document.createElement('table'); this.table.className = 'excel-table';
+    this.table.style.fontSize = this.currentFontSize + 'px';
+    this.thead = document.createElement('thead'); this.tbody = document.createElement('tbody'); this.tfoot = document.createElement('tfoot');
+    this.buildHeader();
+    this.table.appendChild(this.thead); this.table.appendChild(this.tbody); this.table.appendChild(this.tfoot);
+    this.wrapper.appendChild(this.table); this.container.appendChild(this.wrapper);
+    this.wrapper.addEventListener('scroll', function() { self.onScroll(); });
+    this.table.addEventListener('click', function(e) { self.handleRowClick(e); });
+    this.table.addEventListener('dblclick', function(e) { self.handleCellDblClick(e); });
+    this.table.addEventListener('contextmenu', function(e) { self.showContextMenu(e); });
+    if (this.columnLayout && this.columnLayout.hidden) { this.hiddenColumns = new Set(this.columnLayout.hidden); }
+    this.render();
+  }
+	
+  buildHeader() {
+    this.thead.innerHTML = ''; var headerRow = document.createElement('tr'); var self = this;
+    for (var idx = 0; idx < this.columns.length; idx++) {
+      var col = this.columns[idx]; var th = document.createElement('th');
+      th.innerHTML = col.title + ' <span class="sort-arrow"></span>';
+      if (col.width) th.style.width = col.width;
+      if (idx < this.frozenColumns) th.classList.add('frozen-col');
+      th.dataset.columnIndex = idx;
+      th.addEventListener('click', function(e) {
+        if (e.target.tagName === 'INPUT' || (e.target.className && e.target.className.includes('resize-handle'))) return;
+        var colIdx = parseInt(this.dataset.columnIndex);
+        if (e.shiftKey) { var existing = self.multiSort.find(function(s) { return s.colIndex === colIdx; }); if (existing) existing.asc = !existing.asc; else self.multiSort.push({ colIndex: colIdx, asc: true }); }
+        else { self.multiSort = [{ colIndex: colIdx, asc: self.sortCol === colIdx ? !self.sortAsc : true }]; self.sortCol = colIdx; self.sortAsc = self.multiSort[0].asc; }
+        self.resetAndRender();
+      });
+      var handle = document.createElement('div'); handle.className = 'resize-handle';
+      handle.addEventListener('mousedown', function(e) { self.startResize(e, th); });
+      handle.addEventListener('touchstart', function(e) { self.startResize(e, th); });
+      th.appendChild(handle);
+      if (col.filterable !== false) {
+        var ddBtn = document.createElement('span'); ddBtn.textContent = '▼'; ddBtn.style.cssText = 'cursor:pointer;margin-left:4px;font-size:10px;';
+        (function(idx, self) { ddBtn.onclick = function(e) { e.stopPropagation(); self.showColumnFilterDropdown(e, idx); }; })(idx, this);
+        th.appendChild(ddBtn);
+      }
+      headerRow.appendChild(th);
+    }
+    this.thead.appendChild(headerRow);
+  }
+  loadLayout() { try { return JSON.parse(localStorage.getItem('excelLayout_' + this.container.id) || 'null') || {}; } catch(e) { return {}; } }
+  saveLayout() { var layout = { widths: {}, hidden: Array.from(this.hiddenColumns), frozen: this.frozenColumns }; this.table.querySelectorAll('th').forEach(function(th, idx) { layout.widths[idx] = th.style.width || ''; }); localStorage.setItem('excelLayout_' + this.container.id, JSON.stringify(layout)); this.columnLayout = layout; }
+  startResize(e, th) {
+    e.preventDefault(); e.stopPropagation(); var startX = e.type === 'mousedown' ? e.pageX : e.touches[0].pageX; var startW = th.offsetWidth; var self = this;
+    var move = function(e) { var x = e.type === 'mousemove' ? e.pageX : e.touches[0].pageX; var w = Math.max(40, startW + (x - startX)); th.style.width = w + 'px'; };
+    var up = function() { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); document.removeEventListener('touchmove', move); document.removeEventListener('touchend', up); self.saveLayout(); };
+    document.addEventListener('mousemove', move); document.addEventListener('mouseup', up); document.addEventListener('touchmove', move); document.addEventListener('touchend', up);
+  }
+  getFilteredData() { return this.data; }
+  resetAndRender() { this.visibleRows = 0; this.render(); }
+  render() {
+    this.table.style.fontSize = this.currentFontSize + 'px';
+    var filtered = this.getFilteredData();
+    var batch = filtered.slice(0, this.visibleRows + this.rowsPerBatch);
+    this.visibleRows = Math.min(batch.length, filtered.length);
+    var ths = this.thead.querySelectorAll('th'); var self = this;
+    ths.forEach(function(th, idx) { if (self.hiddenColumns.has(idx)) th.style.display = 'none'; else th.style.display = ''; });
+    this.tbody.innerHTML = '';
+    if (batch.length === 0) { this.tbody.innerHTML = '<tr class="empty-row"><td colspan="' + this.columns.length + '">' + this.emptyMessage + '</td></tr>'; }
+    else {
+      batch.forEach(function(item, rowIndex) {
+        var tr = document.createElement('tr');
+        self.columns.forEach(function(col, idx) {
+          if (self.hiddenColumns.has(idx)) return;
+          var td = document.createElement('td');
+          if (col.render) td.innerHTML = col.render(item, true, rowIndex);
+          else td.textContent = item[col.field] || '';
+          tr.appendChild(td);
+        });
+        self.tbody.appendChild(tr);
+      });
+    }
+    this.tfoot.innerHTML = '';
+  }
+  onScroll() { if (this.loading) return; if (this.wrapper.scrollTop + this.wrapper.clientHeight >= this.wrapper.scrollHeight - 50) { var filtered = this.getFilteredData(); if (this.visibleRows < filtered.length) { this.loading = true; var self = this; setTimeout(function() { self.loading = false; self.render(); }, 100); } } }
+  handleRowClick(e) { }
+  handleCellDblClick(e) { }
+  showContextMenu(e) {
+    e.preventDefault(); var existing = document.querySelector('.column-context-menu'); if (existing) existing.remove();
+    var th = e.target.closest('th'); if (!th) return;
+    var colIdx = parseInt(th.dataset.columnIndex); if (isNaN(colIdx)) return;
+    var menu = document.createElement('div'); menu.className = 'column-context-menu'; var self = this;
+    var addOption = function(text, callback) { var div = document.createElement('div'); div.textContent = text; div.onclick = function() { callback(); menu.remove(); }; menu.appendChild(div); };
+    addOption('Sort A→Z', function() { self.sortColumn(colIdx, true); });
+    addOption('Sort Z→A', function() { self.sortColumn(colIdx, false); });
+    addOption('Hide Column', function() { self.hiddenColumns.add(colIdx); self.render(); });
+    addOption('Auto‑fit Column', function() { self.autoFitColumn(colIdx); });
+    addOption('Copy Column', function() { self.copyColumn(colIdx); });
+    menu.style.top = e.pageY + 'px'; menu.style.left = e.pageX + 'px'; document.body.appendChild(menu);
+    document.addEventListener('click', function() { menu.remove(); }, { once: true });
+  }
+  sortColumn(idx, asc) { if (asc === undefined) asc = true; this.multiSort = [{ colIndex: idx, asc: asc }]; this.sortCol = idx; this.sortAsc = asc; this.resetAndRender(); }
+  autoFitColumn(idx) { this.fitColumns(idx); }
+  fitColumns(onlyIdx) { var ths = this.table.querySelectorAll('th'); var tds = this.table.querySelectorAll('tbody tr:first-child td'); if (onlyIdx !== undefined) { var th = ths[onlyIdx]; var td = tds[onlyIdx]; if (th && td) { var w = Math.max(th.offsetWidth, td.offsetWidth) + 20; th.style.width = w + 'px'; } } else { ths.forEach(function(th, idx) { var td = tds[idx]; if (th && td) { var w = Math.max(th.offsetWidth, td.offsetWidth) + 20; th.style.width = w + 'px'; } }); } this.saveLayout(); }
+  copyColumn(idx) { var filtered = this.getFilteredData(); var col = this.columns[idx]; var text = filtered.map(function(item) { return col.render ? col.render(item, false) : (item[col.field] || ''); }).join('\n'); navigator.clipboard.writeText(text).catch(function(){}); }
+  showColumnFilterDropdown(e, idx) {
+    var existing = document.querySelector('.filter-dropdown'); if (existing) existing.remove();
+    var dropdown = document.createElement('div'); dropdown.className = 'filter-dropdown'; var self = this;
+    var unique = [...new Set(this.data.map(function(item) { var col = self.columns[idx]; return col.render ? col.render(item, false) : (item[col.field] || ''); }))];
+    unique.forEach(function(v) { var div = document.createElement('div'); div.textContent = v; div.onclick = function() { self.setColumnFilter(idx, v); dropdown.remove(); }; dropdown.appendChild(div); });
+    var clearDiv = document.createElement('div'); clearDiv.textContent = '(Clear Filter)'; clearDiv.onclick = function() { self.clearColumnFilter(idx); dropdown.remove(); }; dropdown.appendChild(clearDiv);
+    dropdown.style.top = e.pageY + 'px'; dropdown.style.left = e.pageX + 'px'; document.body.appendChild(dropdown);
+    document.addEventListener('click', function() { dropdown.remove(); }, { once: true });
+  }
+  setColumnFilter(idx, value) { this.columnFilters[idx] = value.toLowerCase(); this.resetAndRender(); }
+  clearColumnFilter(idx) { delete this.columnFilters[idx]; this.resetAndRender(); }
+  exportXLSX() {
+    try {
+      var filtered = this.getFilteredData(); var wsData = []; var headerRow = []; var self = this;
+      this.columns.forEach(function(col, idx) { if (!self.hiddenColumns.has(idx)) headerRow.push(col.title); }); wsData.push(headerRow);
+      filtered.forEach(function(item) { var row = []; self.columns.forEach(function(col, idx) { if (!self.hiddenColumns.has(idx)) { var val = col.render ? col.render(item, false) : (item[col.field] || ''); row.push(val); } }); wsData.push(row); });
+      var wb = XLSX.utils.book_new(); var ws = XLSX.utils.aoa_to_sheet(wsData); XLSX.utils.book_append_sheet(wb, ws, 'Sheet1'); XLSX.writeFile(wb, 'export.xlsx');
+    } catch(e) { alert('XLSX export failed. Make sure SheetJS is loaded.'); }
+  }
+  setData(newData) { this.data = newData; this.resetAndRender(); }
+  search() { if (this.searchInput) { this.searchText = this.searchInput.value.toLowerCase(); this.resetAndRender(); } }
+}
+
+
 
 
 		
@@ -1805,47 +1987,53 @@ function renderGridDirect(container, data) {
 
   let holdNameResolve = null;
    // Open the hold-name modal and wait for input
-async function holdOrder() {
-    if (!cart.length) { alert('Cart is empty.'); return; }
+function holdOrder() {
+  if (!cart.length) { alert('Cart is empty.'); return; }
 
-    var orderType = currentOrderType || 'Dine-In';
+  // If a table is selected, save it to heldOrders so it turns RED
+  if (currentTableName) {
+      var held = JSON.parse(localStorage.getItem('heldOrders') || '[]');
+      var updatedHeld = held.filter(function(o) { return o.name !== currentTableName; });
+      
+      updatedHeld.push({
+        id: Date.now(),
+        name: currentTableName,
+        cart: JSON.parse(JSON.stringify(cart)),
+        time: new Date().toISOString()
+      });
+      
+      localStorage.setItem('heldOrders', JSON.stringify(updatedHeld));
+      cart = [];
+      currentTableName = ''; 
+      var cartTitle = document.getElementById('cartTitle');
+      if (cartTitle) cartTitle.innerText = 'CART';
+      updateCart();
+      alert('✅ Order held! Table is now Busy (Red).');
+      return;
+  }
 
-    // If Dine-In with a table selected — hold against that table (turns it red)
-    if (currentTableName && orderType === 'Dine-In') {
-        var held = JSON.parse(localStorage.getItem('heldOrders') || '[]');
-        var updatedHeld = held.filter(function(o) { return o.name !== currentTableName; });
-        updatedHeld.push({
-            id: Date.now(),
-            name: currentTableName,
-            cart: JSON.parse(JSON.stringify(cart)),
-            time: new Date().toISOString()
-        });
-        localStorage.setItem('heldOrders', JSON.stringify(updatedHeld));
-        cart = [];
-        currentTableName = '';
-        var t = document.getElementById('cartTitle');
-        if (t) t.innerText = 'CART';
-        updateCart();
-        alert('✅ Order held! Table is now Busy (Red).');
-        return;
-    }
+  // If no table selected, ask for a name (standard behavior)
+  document.getElementById('holdNameInput').value = '';
+  document.getElementById('holdNameModal').classList.add('active');
 
-    // Takeaway / Delivery / no table — ask for a name
-    var orderName = await prompt('Name this held order (e.g., customer name, "Takeaway 3"):', orderType);
+  return new Promise(resolve => {
+    holdNameResolve = resolve;
+  }).then(orderName => {
     if (orderName === null) return;
-    orderName = (orderName || '').trim() || (orderType + ' Order');
+    if (!orderName.trim()) orderName = 'Held Order';
 
     const held = JSON.parse(localStorage.getItem('heldOrders') || '[]');
     held.push({
-        id: Date.now(),
-        name: orderName,
-        cart: JSON.parse(JSON.stringify(cart)),
-        time: new Date().toISOString()
+      id: Date.now(),
+      name: orderName.trim(),
+      cart: JSON.parse(JSON.stringify(cart)),
+      time: new Date().toISOString()
     });
     localStorage.setItem('heldOrders', JSON.stringify(held));
     cart = [];
     updateCart();
-    alert('✅ Order held as "' + orderName + '".');
+    alert('✅ Order held as "' + orderName.trim() + '".');
+  });
 }
 
 		
@@ -2247,19 +2435,22 @@ function checkPinLockStatus() {
         changePinBtn.style.display = 'block';
     }
 }
+
 function logout(){
     currentCashier=null;
     currentShiftId=null;
-
-    // NOTE: we do NOT sign out of Supabase here!
-    // The device keeps the owner's session (the device ID card).
-    // Cashier logout only ends the staff shift — not the device identity.
-
+    
+    // Sign out of Supabase Auth
+    if (supabaseClient) {
+        supabaseClient.auth.signOut();
+    }
+    
     document.getElementById('loginScreen').style.display='flex';
     document.getElementById('mainApp').style.display='none';
     loadCashierList();
     releaseWakeLock();
 }
+		
 // ===== POS SETTINGS =====
 	
   async function loadPosSettings(){
@@ -2455,11 +2646,8 @@ async function closeShift() {
             isAvailableOnMenu: p.is_available_on_menu,
             sellDirectly: p.sell_directly,
             station: p.station,
-           imageUrl: p.image_url,
-            modifiers: p.modifiers || [],
-            bulkQty1: p.bulk_qty_1 || 0, bulkPrice1: p.bulk_price_1 || 0,
-            bulkQty2: p.bulk_qty_2 || 0, bulkPrice2: p.bulk_price_2 || 0,
-            bulkQty3: p.bulk_qty_3 || 0, bulkPrice3: p.bulk_price_3 || 0
+            imageUrl: p.image_url,
+            modifiers: p.modifiers || []
         };
     });
     
@@ -3809,11 +3997,11 @@ function downloadPDFReceipt() {
 
 		
 // ---------- Email Receipt ----------
-async function emailReceipt() {
-	var receipt = window._lastReceipt;
+function emailReceipt() {
+    var receipt = window._lastReceipt;
     if (!receipt) return;
-    var customerEmail = await prompt('Enter customer email address:');
-	if (!customerEmail) return;
+    var customerEmail = prompt('Enter customer email address:');
+    if (!customerEmail) return;
 
     // Use EmailJS (free tier: 200 emails/month)
     if (typeof emailjs !== 'undefined') {
@@ -3923,37 +4111,12 @@ async function voidSale(saleId) {
             // 🛡️ Already voided? Stop.
             if (saleData.voided) { alert('This sale is already voided!'); return; }
 
-            // 1️⃣ Restore stock — recipe-aware
+            // 1️⃣ Restore stock
             if (saleData.items) {
                 for (const item of saleData.items) {
                     var product = products.find(x => x.id === item.productId);
-                    var isVirtual = product ? !!product.isVirtual : false;
-
-                    if (product && isVirtual) {
-                        // VIRTUAL product: restore the recipe INGREDIENTS (product stock stays 0)
-                        const { data: recipe } = await supabaseClient.from('recipes')
-                            .select('*').eq('product_id', item.productId).limit(1).maybeSingle();
-                        if (recipe && recipe.items && recipe.items.length) {
-                            var y = recipe.yield || 1;
-                            for (var r = 0; r < recipe.items.length; r++) {
-                                var ing = recipe.items[r];
-                                var ingProd = products.find(x => x.id === ing.ingredientId);
-                                var restoreQty = ((ing.qty || 0) * (ing.factor || 1) / y) * (item.qty || 0);
-                                if (ingProd && restoreQty > 0) {
-                                    await supabaseClient.from('products')
-                                        .update({ stock: (ingProd.stock || 0) + restoreQty })
-                                        .eq('firebase_id', ing.ingredientId);
-                                    ingProd.stock = Math.round(((ingProd.stock || 0) + restoreQty) * 1000) / 1000;
-                                }
-                            }
-                        } else {
-                            alert('⚠️ Note: "' + item.name + '" is virtual but has no recipe — nothing to restore.');
-                        }
-                    } else if (product) {
-                        // NORMAL product: restore its own stock
-                        await supabaseClient.from('products')
-                            .update({ stock: (product.stock || 0) + item.qty })
-                            .eq('firebase_id', item.productId);
+                    if (product) {
+                        await supabaseClient.from('products').update({ stock: (product.stock || 0) + item.qty }).eq('firebase_id', item.productId);
                         product.stock += item.qty;
                     }
                 }
@@ -3975,13 +4138,13 @@ async function voidSale(saleId) {
                 action: 'SALE_VOIDED',
                 details: 'Invoice: ' + (saleData.invoice_no || saleId) +
                          ' | Amount: ' + (saleData.total || 0) +
-                         ' | Restocked ingredients for ' + (saleData.items || []).length + ' item(s)' +
+                         ' | Restocked ' + (saleData.items || []).length + ' items' +
                          ' | Authorized by: ' + ((currentCashier && currentCashier.name) || 'Unknown'),
                 cashier_name: (currentCashier && currentCashier.name) || 'Unknown',
                 timestamp: new Date().toISOString()
             }]);
 
-            alert('✅ Sale voided, ingredients restored, audit recorded.');
+            alert('✅ Sale voided, stock restored, audit recorded.');
             await loadRecentSalesForVoid();
             if (typeof filterProducts === 'function') filterProducts();
         }
@@ -3989,6 +4152,7 @@ async function voidSale(saleId) {
         alert("❌ Error voiding sale: " + e.message);
     }
 }
+
 // ===== OWNER DUTY: OPEN CASH DRAWER =====
 function openCashDrawer() {
     // Requires a thermal printer connected via ESC/POS
@@ -4223,180 +4387,17 @@ if (urlShop) {
     window.history.replaceState({}, document.title, window.location.pathname);
 }
 
-// ===== PHASE 1B: DEVICE AUTH — OWNER SIGN-IN (replaces anonymous) =====
+// ===== DEVICE AUTH — OWNER ACTIVATION =====
 supabaseClient.auth.onAuthStateChange((event, session) => {
     var isRealUser = session && session.user && session.user.email && !session.user.is_anonymous;
     if (isRealUser) {
-      if (typeof showCashierLogin === 'function') showCashierLogin();
-      if (typeof ensureDeviceMonitor === 'function') ensureDeviceMonitor();
-			if (typeof loadCashierList === 'function') loadCashierList();
+        loadCashierList();
     } else {
-        if (typeof showOwnerActivation === 'function') showOwnerActivation();
+        var el = document.getElementById('loginSubtitle');
+        if (el) { el.textContent = '🔐 Ask owner to activate this device once.'; el.style.color = '#ef4444'; }
     }
 });
 
-// ===== PHASE 1C: DEVICE MONITOR (POS) — register, check, lock =====
-var _deviceMonitorStarted = false;
-function ensureDeviceMonitor() {
-    if (_deviceMonitorStarted) return;
-    _deviceMonitorStarted = true;
-
-    var deviceKey = localStorage.getItem('deviceKey_pos');
-    if (!deviceKey) {
-        deviceKey = 'dev_pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-        localStorage.setItem('deviceKey_pos', deviceKey);
-    }
-
-    var deviceName = 'POS — ' + (getShopId() || 'Device');
-
-    // STEP 1: Check if device exists + its current status
-    supabaseClient.from('devices')
-        .select('id, status, device_name')
-        .eq('device_key', deviceKey)
-        .maybeSingle()
-        .then(function(result) {
-            var existing = result.data;
-
-            // If REVOKED — lock immediately, stop everything
-            if (existing && existing.status === 'revoked') {
-                showDeviceLocked(existing.device_name || deviceName);
-                return;
-            }
-
-            if (existing) {
-                // Device exists — update last_seen ONLY (never touch status)
-                supabaseClient.from('devices')
-                    .update({ last_seen: new Date().toISOString() })
-                    .eq('device_key', deviceKey)
-                    .then(function(){}).catch(function(e){});
-            } else {
-                // New device — register it for the first time
-                supabaseClient.from('devices').insert([{
-                    device_key: deviceKey,
-                    shop_id: getShopId(),
-                    device_name: deviceName,
-                    device_type: 'pos',
-                    status: 'active',
-                    last_seen: new Date().toISOString()
-                }]).then(function(){}).catch(function(e){});
-            }
-
-            // STEP 2: Real-time monitor (instant lock, < 0.1 seconds)
-            supabaseClient.channel('device-monitor-' + deviceKey)
-                .on('postgres_changes', {
-                    event: 'UPDATE',
-                    schema: 'public',
-                    table: 'devices',
-                    filter: 'device_key=eq.' + deviceKey
-                }, function(payload) {
-                    if (payload.new && payload.new.status === 'revoked') {
-                        showDeviceLocked(payload.new.device_name);
-                    }
-                })
-                .subscribe();
-
-            // STEP 3: Safety net every 30 seconds
-            setInterval(async function() {
-                try {
-                    const { data } = await supabaseClient.from('devices')
-                        .select('status, device_name').eq('device_key', deviceKey).maybeSingle();
-                    if (data && data.status === 'revoked') {
-                        showDeviceLocked(data.device_name);
-                    }
-                    await supabaseClient.from('devices')
-                        .update({ last_seen: new Date().toISOString() })
-                        .eq('device_key', deviceKey);
-                } catch(e) {}
-            }, 30000);
-        })
-        .catch(function(e) {
-            console.warn('Device check failed:', e.message);
-        });
-}
-
-function showDeviceLocked(deviceName) {
-    var lock = document.getElementById('deviceLockScreen');
-    if (!lock) {
-        lock = document.createElement('div');
-        lock.id = 'deviceLockScreen';
-        lock.style.cssText = 'position:fixed;inset:0;background:rgba(220,38,38,0.97);color:white;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;';
-        lock.innerHTML =
-            '<div style="font-size:60px;margin-bottom:15px;">⛔</div>' +
-            '<h1 style="font-size:28px;margin-bottom:10px;">Device Disabled</h1>' +
-            '<p style="font-size:16px;max-width:300px;color:#fecaca;line-height:1.6;">' +
-            (deviceName ? '"' + deviceName + '" has been ' : 'This device has been ') +
-            'disabled by the shop owner.<br>Contact your administrator.</p>';
-        document.body.appendChild(lock);
-    }
-    lock.style.display = 'flex';
-    try { supabaseClient.auth.signOut(); } catch(e) {}
-}
-	
-function showOwnerActivation() {
-    var owner = document.getElementById('ownerSection');
-    var cashier = document.getElementById('cashierSection');
-    if (!owner || !cashier) return;
-    owner.style.display = 'block';
-    cashier.style.display = 'none';
-    var sid = document.getElementById('ownerShopId');
-    if (sid && !sid.value) sid.value = localStorage.getItem('shopId') || '';
-    var msg = document.getElementById('ownerActivateMsg');
-    if (msg) { msg.textContent = ''; msg.style.color = '#ef4444'; }
-}
-
-
-	
-function showCashierLogin() {
-    var owner = document.getElementById('ownerSection');
-    var cashier = document.getElementById('cashierSection');
-    if (owner) owner.style.display = 'none';
-    if (cashier) cashier.style.display = 'block';
-}
-
-// Start monitoring + self-register if this device was activated before Phase 1c
-	
-async function activateDevice() {
-    var shopIdIn = document.getElementById('ownerShopId').value.trim();
-    var email = document.getElementById('ownerEmail').value.trim();
-    var pass = document.getElementById('ownerPass').value;
-    var deviceName = document.getElementById('deviceNameInput').value.trim() || 'POS Device';
-    var msg = document.getElementById('ownerActivateMsg');
-    if (!shopIdIn || !email || !pass) {
-        msg.textContent = '⚠️ Fill Shop ID, Email and Password.';
-        return;
-    }
-    var btn = document.getElementById('ownerActivateBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Activating...'; }
-    try {
-        const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
-        if (error) throw new Error(error.message === 'Invalid login credentials' ? '❌ Wrong email or password.' : error.message);
-        localStorage.setItem('shopId', shopIdIn);
-
-        // ===== PHASE 1C: Register this device =====
-        var deviceKey = localStorage.getItem('deviceKey');
-        if (!deviceKey) {
-            deviceKey = 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-            localStorage.setItem('deviceKey', deviceKey);
-        }
-        try {
-            await supabaseClient.from('devices').upsert([{
-                device_key: deviceKey,
-                shop_id: shopIdIn,
-                device_name: deviceName,
-                device_type: 'pos',
-                status: 'active',
-                last_seen: new Date().toISOString()
-            }], { onConflict: 'device_key' });
-        } catch(e) { console.warn('Device registration failed:', e.message); }
-
-        if (msg) { msg.style.color = '#10b981'; msg.textContent = '✅ Device activated!'; }
-    } catch (e) {
-        if (msg) { msg.style.color = '#ef4444'; msg.textContent = e.message; }
-    } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '🔓 Activate Device'; }
-    }
-}
-	
 
 // Manual Fallback Link for POS
 function manualLinkPos() {
@@ -4407,7 +4408,15 @@ function manualLinkPos() {
 }
 		
 
+
 		
+// Manual Fallback Link
+function manualLinkPos() {
+    var id = document.getElementById('posLoginShopId').value.trim();
+    if (!id) { alert('Please enter Shop ID'); return; }
+    localStorage.setItem('shopId', id);
+    location.reload(); 
+}
 
 
 // Declare this at the top of your script if it's not already there
@@ -4451,17 +4460,11 @@ async function viewRecipeGuidePOS(productId) {
             html += '<h4 style="margin-bottom:5px;">🧪 Formulation</h4>';
             html += '<div style="background:#f8fafc; padding:10px; border-radius:8px; margin-bottom:15px;">';
             for(var i=0; i<recipe.items.length; i++) {
-            var item = recipe.items[i];
-           var ing = products.find(function(p) { return p.id === item.ingredientId; });
-            var baseUnit = ing ? (ing.unit || '') : '';
-            var kitchenQty = Math.round(((item.qty || 0) / (recipe.yield || 1)) * 10000) / 10000;
-            var baseQty = Math.round((((item.qty || 0) * (item.factor || 1)) / (recipe.yield || 1)) * 10000) / 10000;
-            var label = kitchenQty + ' ' + (item.unit || '');
-            if (baseUnit && Math.abs(baseQty - kitchenQty) > 0.000001) {
-                label += '  (= ' + baseQty + ' ' + baseUnit + ')';
-            }                html += '<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #eee;">' +
+                var item = recipe.items[i];
+                var actualQty = ((item.qty || 0) * (item.factor || 1)) / (recipe.yield || 1);
+                html += '<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #eee;">' +
                     '<span>' + sanitize(item.ingredientName) + '</span>' +
-                    '<b>' + label + '</b>' +
+                    '<b>' + actualQty + ' ' + (item.unit || '') + '</b>' +
                 '</div>';
             }
             html += '</div>';
@@ -4776,6 +4779,8 @@ window.openTableBillsModal = async function() {
 };
 
 window.loadTableBillToCart = async function(tableName) {
+    var ok = await confirm('Load ALL unpaid rounds for "' + tableName + '"?\nThe current cart will be replaced.');
+    if (!ok) return;
     try {
         var orders = [];
 
@@ -4784,7 +4789,7 @@ window.loadTableBillToCart = async function(tableName) {
             .select('*').eq('shop_id', getShopId()).eq('table_id', tableName).neq('status', 'Paid');
         if (res.data) orders = res.data;
 
-        // Method 2: maybe it's a single QR order — search by id
+        // Method 2: nothing found? — maybe it's a single QR order — search by id
         if (!orders.length) {
             var res2 = await supabaseClient.from('orders')
                 .select('*').eq('shop_id', getShopId()).eq('id', tableName).neq('status', 'Paid');
@@ -4793,108 +4798,48 @@ window.loadTableBillToCart = async function(tableName) {
 
         if (!orders.length) { alert('No unpaid orders found for "' + tableName + '".'); return; }
 
-        // ===== ROUND PICKER: let cashier choose which rounds to load =====
-        if (orders.length > 1) {
-            // Show a selection modal
-            var html = '<div style="max-height:50vh; overflow-y:auto;">';
-            html += '<p style="font-size:13px; color:#64748b; margin-bottom:10px;">This table has ' + orders.length + ' rounds. Select which to load:</p>';
-
-            orders.forEach(function(o, idx) {
-                var itemsStr = (o.items || []).map(function(i){ return i.qty + 'x ' + i.name; }).join(', ');
-                var timeStr = new Date(o.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                var st = o.status === 'Ready' ? '✅' : (o.status === 'Preparing' ? '🔵' : '🟡');
-                html += '<label style="display:flex; align-items:flex-start; gap:10px; padding:10px; border:1px solid #e2e8f0; border-radius:10px; margin-bottom:8px; cursor:pointer;">' +
-                    '<input type="checkbox" class="roundCheck" data-order-id="' + o.id + '" checked style="margin-top:3px;">' +
-                    '<div><b>' + st + ' Round ' + (idx + 1) + ' — ' + timeStr + '</b>' +
-                    '<div style="font-size:12px; color:#64748b; margin-top:3px;">' + itemsStr + '</div>' +
-                    '<div style="font-size:13px; font-weight:bold; margin-top:3px;">Total: ' + fmtMoney(o.total || 0) + '</div>' +
-                    '</div></label>';
+        cart = [];
+        orders.forEach(function(o) {
+            (o.items || []).forEach(function(item) {
+                var existing = cart.find(function(c) {
+                    return c.id === item.productId &&
+                           JSON.stringify(c.modifiers || []) === JSON.stringify(item.modifiers || []) &&
+                           !c.note && !item.note;
+                });
+                if (existing) existing.qty += item.qty;
+                else cart.push({
+                    id: item.productId || item.id || Date.now().toString(),
+                    name: item.name, price: item.price, qty: item.qty,
+                    unit: item.unit || '', stock: 9999, costPrice: 0,
+                    isVirtual: false, modifiers: item.modifiers || [], note: item.note || ''
+                });
             });
+        });
 
-            html += '</div>';
-            html += '<div style="display:flex; gap:8px; margin-top:12px;">' +
-                '<button class="btn btn-success" style="flex:1;" onclick="loadSelectedRounds(\'' + tableName + '\')">✅ Load Selected</button>' +
-                '<button class="btn btn-outline" style="flex:1;" onclick="document.getElementById(\'tableBillsModal\').classList.remove(\'active\')">Cancel</button>' +
-                '</div>';
+        currentTableName = (orders[0].table_id && orders[0].table_id.indexOf('QR-') !== 0) ? orders[0].table_id : '';
+        window._pendingTableOrderIds = orders.map(function(o) { return o.id; });
+        isCartLocked = true;
 
-            var listDiv = document.getElementById('tableBillsList');
-            listDiv.innerHTML = html;
-            window._roundOrders = orders;
-            return;
-        }
-
-        // Single order — load it directly
-        window._loadRoundsIntoCart(orders);
-
+        updateCart();
+        document.getElementById('tableBillsModal').classList.remove('active');
+        alert('✅ Bill loaded — ' + orders.length + ' round(s), ' + cart.reduce(function(s,i){return s+i.qty;},0) + ' items! Process the exact payment.');
     } catch(e) {
         alert('❌ Error: ' + e.message);
     }
 };
 
-window.loadSelectedRounds = async function(tableName) {
-    var checkboxes = document.querySelectorAll('.roundCheck');
-    var selectedIds = [];
-    checkboxes.forEach(function(cb) { if (cb.checked) selectedIds.push(cb.getAttribute('data-order-id')); });
-
-    if (!selectedIds.length) { alert('Select at least one round.'); return; }
-
-    var orders = (window._roundOrders || []).filter(function(o) {
-        return selectedIds.indexOf(o.id) !== -1;
-    });
-
-    if (!orders.length) { alert('No rounds selected.'); return; }
-
-    var ok = await confirm('Load ' + orders.length + ' round(s)?\nThe current cart will be replaced.');
-    if (!ok) return;
-
-    window._loadRoundsIntoCart(orders);
-};
-
-window._loadRoundsIntoCart = function(orders) {
-    cart = [];
-    orders.forEach(function(o) {
-        (o.items || []).forEach(function(item) {
-            var prod = products.find(function(x) { return x.id === item.productId; });
-            var existing = cart.find(function(c) {
-                return c.id === item.productId &&
-                       JSON.stringify(c.modifiers || []) === JSON.stringify(item.modifiers || []) &&
-                       !c.note && !item.note;
-            });
-            if (existing) existing.qty += item.qty;
-            else cart.push({
-                id: item.productId || item.id || Date.now().toString(),
-                name: item.name, price: item.price, qty: item.qty,
-                unit: (prod && prod.unit) || item.unit || '',
-                stock: prod ? (prod.stock || 0) : 9999,
-                costPrice: prod ? (prod.costPrice || 0) : 0,
-                isVirtual: prod ? !!prod.isVirtual : false,
-                modifiers: item.modifiers || [], note: item.note || '',
-                station: (prod && prod.station) || 'Kitchen'
-            });
-        });
-    });
-
-    currentTableName = (orders[0].table_id && orders[0].table_id.indexOf('QR-') !== 0 && orders[0].table_id !== 'Takeaway' && orders[0].table_id !== 'Delivery') ? orders[0].table_id : '';
-    window._pendingTableOrderIds = orders.map(function(o) { return o.id; });
-    isCartLocked = true;
-
-    updateCart();
-    document.getElementById('tableBillsModal').classList.remove('active');
-    alert('✅ Loaded ' + orders.length + ' round(s), ' + cart.reduce(function(s,i){return s+i.qty;},0) + ' items. Process the payment.');
-};
-
-	async function sendWaiterOrderToKitchen() {
+	
+async function sendWaiterOrderToKitchen() {
     if (!cart.length) { alert('Cart is empty.'); return; }
-
-    var orderType = currentOrderType || 'Dine-In';
-
-    // Dine-In REQUIRES a table; Takeaway/Delivery do not
-    if (orderType === 'Dine-In' && !currentTableName) {
-        alert('🍽️ Dine-In orders need a table.\nTap 🪑 Tables to select one.\n\nOr switch to 🛍️ Takeaway / 🛵 Delivery at the top.');
-        return;
+    
+    if (!currentTableName) {
+        var isWalkIn = awaitconfirm('No table selected. Send as Walk-in / Takeaway order?');
+        if (!isWalkIn) {
+            alert('Please select a Table first (Click the 🪑 Tables button).');
+            return;
+        }
+        currentTableName = 'Walk-in'; 
     }
-
-    var tableName = currentTableName || (orderType === 'Takeaway' ? 'Takeaway' : 'Delivery');
 
     var btn = document.getElementById('btnSendKitchen');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
@@ -4902,42 +4847,40 @@ window._loadRoundsIntoCart = function(orders) {
     var stationStatus = {};
     cart.forEach(function(item) {
         var st = item.station || 'Kitchen';
-        stationStatus[st] = false;
+        stationStatus[st] = false; 
     });
 
     var orderData = {
         shopId: getShopId(),
-        tableId: tableName,
-        items: cart.map(i => ({
-            productId: i.id, name: i.name, qty: i.qty, price: i.price,
+        tableId: currentTableName,
+        items: cart.map(i => ({ 
+            productId: i.id, name: i.name, qty: i.qty, price: i.price, 
             modifiers: i.modifiers || [], note: i.note || '',
             station: i.station || 'Kitchen'
         })),
         stationStatus: stationStatus,
         total: cart.reduce((s,i) => s+(i.price*i.qty), 0),
-        status: 'Pending',
-        orderType: (orderType === 'Dine-In' ? 'Waiter Dine-In' : orderType),
+        status: 'Pending', 
+        orderType: 'Waiter Dine-In',
         waiterName: currentCashier.name,
         time: new Date().toISOString()
     };
 
     try {
+        // SAVE ORDER TO SUPABASE ONLY
         if (supabaseClient) {
             const { error } = await supabaseClient.from('orders').insert([{
-                firebase_id: 'order_' + Date.now(),
+                firebase_id: 'order_' + Date.now(), 
                 shop_id: orderData.shopId, table_id: orderData.tableId,
-                items: orderData.items, station_status: orderData.stationStatus,
-                total: orderData.total, status: orderData.status,
-                order_type: orderData.orderType, waiter_name: orderData.waiterName,
-                time: orderData.time
+                items: orderData.items, station_status: orderData.stationStatus, total: orderData.total,
+                status: orderData.status, order_type: orderData.orderType, waiter_name: orderData.waiterName, time: orderData.time
             }]);
             if (error) throw error;
         }
-
-        alert('✅ Order sent to Kitchen for ' + tableName + '!');
-        if (typeof printKOT === 'function') printKOT(orderData);
-
-        // Clear cart + table
+        
+        alert('✅ Order sent to Kitchen for ' + currentTableName + '!');
+        if (typeof printKOT === 'function') printKOT(orderData); 
+        
         cart = [];
         currentTableName = '';
         var cartTitle = document.getElementById('cartTitle');
@@ -5101,6 +5044,18 @@ function closeWaiterStatus() {
         waiterOrderListener = null;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+		
 
 
 // ===== FEATURE 5: WHATSAPP DIGITAL RECEIPT =====
@@ -5382,7 +5337,6 @@ async function unlinkDevice() {
     if (await confirm('Are you sure? This will log you out and ask for a new Shop ID.')) {
         localStorage.removeItem('shopId');
         localStorage.removeItem('kitchenShopId');
-        try { await supabaseClient.auth.signOut(); } catch(e) {}
         location.reload();
     }
 }
@@ -5631,7 +5585,6 @@ async function buildDetailedHistory() {
 }
 
 async function loadCashierList(){
-	
     if (!supabaseClient) {
         console.log("Supabase not ready yet...");
         return;
@@ -5639,17 +5592,7 @@ async function loadCashierList(){
     
     var shop = localStorage.getItem('shopId') || 'default';
     var sel = document.getElementById('cashierName');
-
-    // DIAGNOSTIC: show auth status
-    var authCheck = await supabaseClient.auth.getSession();
-    var isAuth = authCheck.data && authCheck.data.session && authCheck.data.session.user && authCheck.data.session.user.email;
-    var diagEl = document.getElementById('loginSubtitle');
-    if (diagEl) {
-        diagEl.textContent = isAuth ?
-            'Authenticated as: ' + authCheck.data.session.user.email + ' | Shop: ' + shop :
-            '❌ NOT authenticated — session lost';
-        diagEl.style.color = isAuth ? '#64748b' : '#ef4444';
-    }
+    
     if (shop === 'default' || !shop) {
         if (sel) sel.innerHTML = '<option value="">Device Not Linked</option>';
         return;
@@ -5685,14 +5628,9 @@ async function loadCashierList(){
             sel.innerHTML = '<option value="">-- Select Name --</option>' + 
                 cashierList.map(c => `<option value="${c.id}">${c.name} (${c.position})</option>`).join('');
         }
-       } catch(e) {
+    } catch(e) {
         console.error("Error loading staff:", e);
-        var errDiv = document.getElementById('loginSubtitle');
-        if (errDiv) {
-            errDiv.textContent = '❌ ' + e.message;
-            errDiv.style.color = '#ef4444';
-        }
-        if (sel) sel.innerHTML = '<option value="">Error — see message above</option>';
+        if (sel) sel.innerHTML = '<option value="">Error loading. Try manual link.</option>';
     }
 }
 		
@@ -5787,8 +5725,7 @@ function ssBounceCart() {
    Runs AFTER payment: main products + recipe ingredients,
    atomic (race-safe) via RPC, writes audit log,
    updates local UI + low-stock alerts. */
-
-	async function ssDeductStock(cartItems, invoiceNo) {
+async function ssDeductStock(cartItems, invoiceNo) {
     var plan = {}, names = {}, soldAdd = {};
 
     function add(pid, qty, name) {
@@ -5804,15 +5741,14 @@ function ssBounceCart() {
         var p = products.find(function (x) { return x.id === item.id; });
         var isVirtual = p ? (p.isVirtual !== undefined ? !!p.isVirtual : !!p.is_virtual) : false;
 
-        // A) Main product: direct stock (sellable products only)
+        // A) main product (skip virtual + skip unknown products)
         if (p && !isVirtual) {
             add(item.id, item.qty, item.name);
             soldAdd[item.id] = (soldAdd[item.id] || 0) + item.qty;
         }
 
-        // B) Recipe ingredients: VIRTUAL products only.
-        //    Uses the recipe's own saved conversion factors ("1 Cup = X Kg").
-        if (isVirtual && supabaseClient && navigator.onLine) {
+        // B) recipe ingredients
+        if (supabaseClient && navigator.onLine) {
             try {
                 var res = await supabaseClient.from('recipes')
                     .select('*').eq('product_id', item.id).eq('shop_id', getShopId())
@@ -5823,10 +5759,11 @@ function ssBounceCart() {
                     for (var j = 0; j < recipe.items.length; j++) {
                         var ing = recipe.items[j];
                         var ingP = products.find(function (x) { return x.id === ing.ingredientId; });
-                        var need = ((ing.qty || 0) * (ing.factor || 1) / y) * item.qty;
+                        var need = ((ing.qty || 0) / y) * item.qty;
+                        if (ingP) need = need * getConversionFactor(ing.unit, ingP.unit);
                         add(ing.ingredientId, need, ingP ? ingP.name : (ing.name || 'ingredient'));
                     }
-                } else {
+                } else if (isVirtual) {
                     console.warn('⚠️ Virtual "' + item.name + '" has no recipe — nothing deducted.');
                 }
             } catch (e) { console.warn('Recipe check failed for ' + item.name, e); }
@@ -5847,23 +5784,14 @@ function ssBounceCart() {
             if (rpc.error) throw rpc.error;
         } catch (e) {
             console.warn('RPC failed → fallback updates', e);
-            // 2b. Fallback: read FRESH stock per product, then update (works with both ID types)
-            for (var k = 0; k < pids.length; k++) {
-                try {
-                    var pid = pids[k];
-                    var fr = await supabaseClient.from('products')
-                        .select('id, stock, sold_count').eq('firebase_id', pid).maybeSingle();
-                    var row = fr.data;
-                    if (!row) {
-                        var fr2 = await supabaseClient.from('products')
-                            .select('id, stock, sold_count').eq('id', pid).maybeSingle();
-                        row = fr2.data;
-                    }
-                    if (!row) continue;
-                    var patch = { stock: ssRound3((row.stock || 0) - plan[pid]) };
-                    if (soldAdd[pid]) patch.sold_count = (row.sold_count || 0) + soldAdd[pid];
-                    await supabaseClient.from('products').update(patch).eq('id', row.id);
-                } catch (e2) { console.warn('Fallback update failed for ' + pid, e2); }
+            // 2b. Fallback: read FRESH stock from server, then update
+            var fb = await supabaseClient.from('products').select('id, stock, sold_count').in('id', pids);
+            if (fb.error) throw fb.error;
+            for (var k = 0; k < (fb.data || []).length; k++) {
+                var row = fb.data[k];
+                var patch = { stock: ssRound3((row.stock || 0) - plan[row.id]) };
+                if (soldAdd[row.id]) patch.sold_count = (row.sold_count || 0) + soldAdd[row.id];
+                await supabaseClient.from('products').update(patch).eq('id', row.id);
             }
         }
 
@@ -5898,6 +5826,7 @@ function ssBounceCart() {
     });
     if (low.length) ssLowStock(low);
 }
+
 // Local UI deduction for offline sales
 function ssLocalDeduct(cartItems) {
     cartItems.forEach(function (item) {
@@ -5949,135 +5878,333 @@ document.addEventListener('keydown', function (e) {
         .catch(err => console.log('Service Worker registration failed: ', err));
     });
   }
-</script>
 
+
+
+ </script>
 <script>
-// ===== RECOVERY: CLEAN LOGIN SYSTEM =====
-async function loadCashierList(){
-    if (!supabaseClient) { return; }
-    var shop = localStorage.getItem('shopId') || 'default';
-    var sel = document.getElementById('cashierName');
-    if (shop === 'default' || !shop) { if (sel) sel.innerHTML = '<option value="">Device Not Linked</option>'; return; }
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Loading staff...</option>';
+/* ================================================================
+   WAITER TOOLKIT RESCUE — Tables + Order Status + Send to Kitchen
+   Self-contained. Overrides any broken copies.
+   ================================================================ */
+
+// ---------- Load tables ----------
+window.loadPOSTables = async function() {
+    window.posTables = [];
+    if (!supabaseClient) return;
     try {
-        const { data, error } = await supabaseClient.from('employees').select('*').eq('shop_id', shop);
-        if (error) throw error;
-        window.cashierList = [];
-        if (data) {
-            data.forEach(function(emp) {
-                var position = emp.position || 'Cashier';
-                if (emp.status === 'active' && (position === 'Cashier' || position === 'Manager' || position === 'Owner' || position === 'Waiter' || position === 'Chef')) {
-                    window.cashierList.push({
-                        id: emp.firebase_id || emp.id,
-                        name: emp.name,
-                        position: emp.position,
-                        status: emp.status,
-                        hashedPassword: emp.hashed_password,
-                        pinLocked: emp.pin_locked
-                    });
+        var res = await supabaseClient.from('settings')
+            .select('table_names').eq('shop_id', getShopId()).maybeSingle();
+        if (res.data && res.data.table_names) {
+            window.posTables = res.data.table_names.split(',')
+                .map(function(t) { return t.trim(); })
+                .filter(function(t) { return t !== ''; });
+        }
+    } catch(e) { console.error('loadPOSTables error:', e.message); }
+};
+
+// ---------- Tables (floor map) ----------
+window.openTablesModal = async function() {
+    try {
+        var modal = document.getElementById('tablesModal');
+        var grid = document.getElementById('tablesGrid');
+        if (!modal || !grid) { alert('⚠️ tablesModal/tablesGrid missing from HTML!'); return; }
+
+        modal.classList.add('active');
+        grid.innerHTML = '<p style="text-align:center; color:#94a3b8; grid-column:1/-1;">Loading...</p>';
+
+        await window.loadPOSTables();
+
+        if (!posTables.length) {
+            grid.innerHTML = '<p style="text-align:center; color:#94a3b8; grid-column:1/-1;">No tables found.<br>Save tables in Admin → Settings → Table Setup.</p>';
+            return;
+        }
+
+        var activeOrders = {};
+        try {
+            var res = await supabaseClient.from('orders')
+                .select('*').eq('shop_id', getShopId()).neq('status', 'Paid');
+            (res.data || []).forEach(function(o) {
+                if (o.table_id && (!activeOrders[o.table_id] || new Date(o.time) > new Date(activeOrders[o.table_id].time))) {
+                    activeOrders[o.table_id] = o;
                 }
             });
-        }
-        if (window.cashierList.length === 0) { sel.innerHTML = '<option value="">-- No staff found --</option>'; }
-        else {
-            sel.innerHTML = '<option value="">-- Select Name --</option>' +
-                window.cashierList.map(function(c){ return '<option value="' + c.id + '">' + c.name + ' (' + c.position + ')</option>'; }).join('');
-        }
-    } catch(e) {
-        if (sel) sel.innerHTML = '<option value="">Error: ' + e.message + '</option>';
+        } catch(e) { console.error('Orders fetch failed:', e.message); }
+
+        var html = '<div class="floor-map-container">';
+        posTables.forEach(function(name) {
+            var o = activeOrders[name];
+            var cls = 'table-free', txt = 'Free', mins = 0;
+            if (o) {
+                mins = Math.floor((Date.now() - new Date(o.time).getTime()) / 60000);
+                if (o.status === 'Ready') {
+                    cls = (mins > 5) ? 'table-urgent' : 'table-ready';
+                    txt = 'Ready to Pay';
+                } else {
+                    cls = 'table-preparing'; txt = 'Busy';
+                }
+            }
+            html += '<button onclick="window.selectTable(\'' + name + '\',' + (o ? 1 : 0) + ')" class="floor-table-btn ' + cls + '">' +
+                    '<span style="font-size:24px;">🪑</span><span>' + name + '</span>' +
+                    '<span class="table-status-txt">' + txt + (o ? ' (' + mins + 'm)' : '') + '</span></button>';
+        });
+        grid.innerHTML = html + '</div>';
+    } catch(e) { showFloatingToast('❌ Tables failed — try again', true); }
+};
+
+// ---------- Select a table ----------
+window.selectTable = async function(tableName, isBusy) {
+    if (isBusy) {
+        var ok = await confirm('Table ' + tableName + ' has an UNPAID bill.\nStart a NEW order for this table?');
+        if (!ok) return;
     }
-}
+    cart = [];
+    currentTableName = tableName;
+    var t = document.getElementById('cartTitle');
+    if (t) t.innerText = 'CART - ' + tableName;
+    updateCart();
+    var m = document.getElementById('tablesModal');
+    if (m) m.classList.remove('active');
+};
 
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(loadCashierList, 2000);
-});
-
-// ===== RECOVERY: LOGIN FUNCTION =====
-async function login() {
-    const id = document.getElementById('cashierName').value;
-    const pass = document.getElementById('loginPass').value.trim();
-    if (!id || !pass) { alert('Select your name and enter PIN!'); return; }
-
-    const cashier = window.cashierList.find(c => c.id === id);
-    if (!cashier) { alert('Staff member not found!'); return; }
-
-    if (cashier.status === 'inactive') {
-        alert('❌ Your account has been disabled. Please see the Owner.');
-        return;
-    }
-
-    let valid = false;
-    if (cashier.hashedPassword) {
-        valid = (sha256(pass) === cashier.hashedPassword);
-    }
-    if (!valid) { alert('❌ Wrong PIN!'); return; }
-
-    currentCashier = cashier;
-    currentCashier.role = cashier.position || 'Cashier';
-
-    // Hide login screen, show app
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    document.getElementById('cashierDisplay').textContent = '👤 ' + cashier.name;
-
-    // Start the app
-    try { loadProducts(); } catch(e) { console.warn('loadProducts failed:', e.message); }
-    try { loadPosSettings(); } catch(e) { console.warn('loadPosSettings failed:', e.message); }
-    try { checkActiveShift(); } catch(e) { console.warn('checkActiveShift failed:', e.message); }
-    try { syncNow(); } catch(e) {}
-    try { changeLanguage(appLang); } catch(e) {}
-    try { initPOS(); } catch(e) { console.warn('initPOS failed:', e.message); }
-    try { listenForWaiterCalls(); } catch(e) {}
-    try { requestWakeLock(); } catch(e) {}
-}
-
-// ===== RECOVERY: LOGOUT =====
-function logout(){
-    currentCashier = null;
-    currentShiftId = null;
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('mainApp').style.display = 'none';
-    loadCashierList();
-    try { releaseWakeLock(); } catch(e) {}
-}
-
-// ===== RECOVERY: CHANGE PASSWORD =====
-async function changePassword(){
-    const id = document.getElementById('cashierName').value;
-    const oldPwd = document.getElementById('oldPwd').value.trim();
-    const newPwd = document.getElementById('newPwd').value.trim();
-    if(!id || !oldPwd || !newPwd){ alert('Fill all fields!'); return; }
-    const cashier = window.cashierList.find(c => c.id === id);
-    if(!cashier){ alert('Cashier not found!'); return; }
-
-    let isValid = false;
-    if (cashier.hashedPassword) {
-        isValid = (sha256(oldPwd) === cashier.hashedPassword);
-    }
-    if (!isValid) { alert('❌ Wrong old password!'); return; }
-
-    const hashed = sha256(newPwd);
+// ---------- Order Status (waiter live view) ----------
+window.openWaiterStatus = async function() {
     try {
-        const { error } = await supabaseClient.from('employees').update({ hashed_password: hashed }).eq('firebase_id', id);
-        if (error) throw error;
-        alert('✅ Password changed!');
-        document.getElementById('changePwdBox').style.display = 'none';
-        loadCashierList();
-    } catch(e) {
-        alert('❌ Error updating password: ' + e.message);
-    }
-}
+        var modal = document.getElementById('waiterStatusModal');
+        var listDiv = document.getElementById('waiterStatusList');
+        if (!modal || !listDiv) { alert('⚠️ waiterStatusModal/waiterStatusList missing from HTML!'); return; }
 
-// ===== RECOVERY: SHOW/CANCEL PASSWORD BOX =====
-function showChangePassword(){
-    document.getElementById('changePwdBox').style.display = 'block';
-    document.getElementById('oldPwd').value = '';
-    document.getElementById('newPwd').value = '';
-}
+        modal.classList.add('active');
+        listDiv.innerHTML = '<p style="text-align:center; color:#94a3b8;">Loading...</p>';
+
+        var res = await supabaseClient.from('orders')
+            .select('*').eq('shop_id', getShopId()).neq('status', 'Paid');
+        if (res.error) throw res.error;
+
+        var orders = (res.data || []).sort(function(a, b) { return new Date(a.time) - new Date(b.time); });
+        var html = '';
+        if (!orders.length) {
+            html = '<p style="text-align:center; color:#94a3b8;">No active orders right now.</p>';
+        } else {
+            orders.forEach(function(o) {
+                var color = o.status === 'Ready' ? '#10b981' : (o.status === 'Preparing' ? '#3b82f6' : '#f59e0b');
+                var txt = o.status === 'Ready' ? '✅ Ready to Serve' : (o.status === 'Preparing' ? '🔵 Preparing' : '🟡 Pending');
+                html += '<div style="background:#f8fafc; border-left:5px solid ' + color + '; padding:12px; margin-bottom:10px; border-radius:8px;">' +
+                    '<div style="display:flex; justify-content:space-between; margin-bottom:5px;">' +
+                    '<b style="font-size:16px;">🪑 ' + (o.table_id || 'Takeaway') + '</b>' +
+                    '<span style="color:' + color + '; font-weight:bold;">' + txt + '</span></div>' +
+                    '<div style="font-size:13px; color:#64748b; margin-bottom:8px;">';
+                (o.items || []).forEach(function(it) { html += it.qty + 'x ' + it.name + '<br>'; });
+                html += '</div><div style="display:flex; justify-content:space-between; border-top:1px solid #e2e8f0; padding-top:8px; font-weight:bold;">' +
+                    '<span>Payment: <span style="color:#ef4444;">UNPAID</span></span>' +
+                    '<span>Total: ' + fmtMoney(o.total || 0) + '</span></div></div>';
+            });
+        }
+        listDiv.innerHTML = html;
+    } catch(e) { showFloatingToast('❌ Status failed', true); }
+};
+
+// ---------- SEND TO KITCHEN ----------
+window.sendWaiterOrderToKitchen = async function() {
+    try {
+        if (!cart || !cart.length) { showFloatingToast('🛒 Cart is empty!', true); return; }
+			        // 🛡️ Block sending out-of-stock items
+        for (var q = 0; q < c.length; q++) {
+            var pr = products.find(function(x) { return x.id === c[q].id; });
+            if (pr && !pr.isVirtual && (pr.stock || 0) < c[q].qty) {
+                showFloatingToast('⛔ ' + c[q].name + ' — not enough stock (' + (pr.stock || 0) + ' left)!', true);
+                return;
+            }
+        }
+
+        // Table check (with PROPER await — the old copy missed this!)
+        if (!currentTableName) {
+            var isWalkIn = await confirm('No table selected. Send as Walk-in / Takeaway order?');
+            if (!isWalkIn) {
+                alert('Please select a table first (tap 🪑 Tables).');
+                return;
+            }
+            currentTableName = 'Walk-in';
+        }
+
+        var btn = document.getElementById('btnSendKitchen');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+
+        // Station status (each station starts not-done)
+        var stationStatus = {};
+        cart.forEach(function(item) {
+            var st = item.station || 'Kitchen';
+            stationStatus[st] = false;
+        });
+
+        var now = new Date().toISOString();
+        var waiterName = (typeof currentCashier !== 'undefined' && currentCashier) ? currentCashier.name : 'Waiter';
+        var cartItems = cart.map(function(i) {
+            return {
+                productId: i.id,
+                name: i.name,
+                qty: i.qty,
+                price: i.price,
+                modifiers: i.modifiers || [],
+                note: i.note || '',
+                station: i.station || 'Kitchen'
+            };
+        });
+        var total = cart.reduce(function(s, i) { return s + (i.price * i.qty); }, 0);
+
+        // 1. Save to Supabase (snake_case)
+        const { error } = await supabaseClient.from('orders').insert([{
+            firebase_id: 'order_' + Date.now(),
+            shop_id: getShopId(),
+            table_id: currentTableName,
+            items: cartItems,
+            station_status: stationStatus,
+            total: total,
+            status: 'Pending',
+            order_type: 'Waiter Dine-In',
+            waiter_name: waiterName,
+            time: now
+        }]);
+        if (error) throw error;
+
+        alert('✅ Order sent to Kitchen for ' + currentTableName + '!');
+
+        // 2. Print kitchen tickets (if printer function is alive)
+        if (typeof printKOT === 'function') {
+            try {
+                printKOT({ tableId: currentTableName, items: cartItems, time: now, waiterName: waiterName });
+            } catch(e) { console.warn('KOT print failed:', e.message); }
+        }
+
+        // 3. Clear cart
+        cart = [];
+        currentTableName = '';
+        var cartTitle = document.getElementById('cartTitle');
+        if (cartTitle) cartTitle.innerText = 'CART';
+        updateCart();
+
+    } catch(e) {
+        alert('❌ Error sending order: ' + e.message);
+    } finally {
+        var btn = document.getElementById('btnSendKitchen');
+        if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; }
+    }
+};
 </script>
 
+
+
+
+
+
+
+
+
+
+
+
+
+	<script>
+/* ☢️ FINAL WEAPON — top of body, nothing can break this */
+
+function __shop() {
+    try { if (typeof getShopId === 'function') return getShopId(); } catch(e) {}
+    return localStorage.getItem('shopId') || 'default';
+}
+
+setTimeout(function() {
+
+    // 🪑 TABLES
+    window.openTablesModal = async function() {
+        var modal = document.getElementById('tablesModal');
+        var grid = document.getElementById('tablesGrid');
+        if (!modal || !grid) { console.error('tablesModal missing'); return; }
+        modal.classList.add('active');
+        grid.innerHTML = '<p style="color:#94a3b8;text-align:center;">Loading...</p>';
+        try {
+            var r = await supabaseClient.from('settings').select('table_names').eq('shop_id', __shop()).maybeSingle();
+            var tables = (r.data && r.data.table_names) ? r.data.table_names.split(',').map(function(t){return t.trim();}).filter(function(t){return t;}) : [];
+            if (!tables.length) { grid.innerHTML = '<p style="color:#94a3b8;text-align:center;">No tables found.<br>Add them in Admin → Settings.</p>'; return; }
+            var r2 = await supabaseClient.from('orders').select('table_id,status').eq('shop_id', __shop()).neq('status', 'Paid');
+            var busy = {};
+            (r2.data || []).forEach(function(o) { if (o.table_id) busy[o.table_id] = o; });
+            var html = '';
+            tables.forEach(function(name) {
+                var o = busy[name];
+                var bg = o ? (o.status === 'Ready' ? '#f59e0b' : '#3b82f6') : '#10b981';
+                var txt = o ? (o.status === 'Ready' ? 'Ready to Pay' : 'Busy') : 'Free';
+                html += '<button onclick="window.selectTable(\'' + name + '\')" style="aspect-ratio:1;border:none;border-radius:12px;color:white;font-weight:bold;font-size:14px;background:' + bg + ';padding:8px;cursor:pointer;">🪑<br>' + name + '<br><small>' + txt + '</small></button>';
+            });
+            grid.innerHTML = html;
+            grid.style.display = 'grid';
+            grid.style.gridTemplateColumns = 'repeat(3,1fr)';
+            grid.style.gap = '10px';
+        } catch(e) { grid.innerHTML = '<p style="color:red;">Error: ' + e.message + '</p>'; }
+    };
+
+    window.selectTable = function(name) {
+        try { cart = []; currentTableName = name;
+            var t = document.getElementById('cartTitle'); if (t) t.innerText = 'CART - ' + name;
+            if (typeof updateCart === 'function') updateCart();
+        } catch(e) {}
+        var m = document.getElementById('tablesModal'); if (m) m.classList.remove('active');
+    };
+
+    // 🚦 ORDER STATUS
+    window.openWaiterStatus = async function() {
+        var modal = document.getElementById('waiterStatusModal');
+        var list = document.getElementById('waiterStatusList');
+        if (!modal || !list) { alert('⚠️ waiterStatusModal HTML missing!'); return; }
+        modal.classList.add('active');
+        list.innerHTML = '<p style="color:#94a3b8;text-align:center;">Loading...</p>';
+        try {
+            var r = await supabaseClient.from('orders').select('*').eq('shop_id', __shop()).neq('status', 'Paid');
+            var os = (r.data || []);
+            if (!os.length) { list.innerHTML = '<p style="color:#94a3b8;text-align:center;">No active orders. ✅</p>'; return; }
+            var html = '';
+            os.forEach(function(o) {
+                var c = o.status === 'Ready' ? '#10b981' : (o.status === 'Preparing' ? '#3b82f6' : '#f59e0b');
+                html += '<div style="background:#f1f5f9;border-left:5px solid ' + c + ';padding:10px;margin-bottom:8px;border-radius:8px;"><b>🪑 ' + (o.table_id || 'Takeaway') + '</b> — <span style="color:' + c + ';font-weight:bold;">' + o.status + '</span><br><small style="color:#475569;">' + (o.items || []).map(function(i){return i.qty + 'x ' + i.name;}).join(', ') + '</small><br><b>Total: ' + (o.total || 0) + '</b></div>';
+            });
+            list.innerHTML = html;
+        } catch(e) { list.innerHTML = '<p style="color:red;">Error: ' + e.message + '</p>'; }
+    };
+
+    // 🔔 SEND TO KITCHEN (no invisible dialogs — auto walk-in)
+    window.sendWaiterOrderToKitchen = async function() {
+        var c = (typeof cart !== 'undefined') ? cart : [];
+        if (!c.length) { showFloatingToast('✅ Sent to Kitchen: ' + table, false); return; }
+        var table = (typeof currentTableName !== 'undefined' && currentTableName) ? currentTableName : 'Walk-in';
+        var btn = document.getElementById('btnSendKitchen');
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+        try {
+            var items = c.map(function(i) { return { productId: i.id, name: i.name, qty: i.qty, price: i.price, modifiers: i.modifiers || [], note: i.note || '', station: i.station || 'Kitchen' }; });
+            var st = {}; items.forEach(function(i) { st[i.station] = false; });
+            var total = 0; items.forEach(function(i) { total += i.price * i.qty; });
+            var r = await supabaseClient.from('orders').insert([{
+                firebase_id: 'order_' + Date.now(), shop_id: __shop(), table_id: table,
+                items: items, station_status: st, total: total, status: 'Pending',
+                order_type: 'Waiter Dine-In',
+                waiter_name: (typeof currentCashier !== 'undefined' && currentCashier) ? currentCashier.name : 'Waiter',
+                time: new Date().toISOString()
+            }]);
+            if (r.error) throw new Error(r.error.message);
+            showFloatingToast('✅ Sent to Kitchen: ' + table, false);
+            try { cart = []; currentTableName = '';
+                var t = document.getElementById('cartTitle'); if (t) t.innerText = 'CART';
+                if (typeof updateCart === 'function') updateCart();
+            } catch(e) {}
+        } catch(e) {
+            showFloatingToast('❌ Send failed — check connection', true) + console.error(e.message);
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; }
+        }
+    };
+
+}, 4000);
+</script>
+
+
+	
 </body>
 </html>
-
- 
