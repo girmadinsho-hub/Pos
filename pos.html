@@ -4422,7 +4422,8 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     var isRealUser = session && session.user && session.user.email && !session.user.is_anonymous;
     if (isRealUser) {
         loadCashierList();
-    } else {
+        ensureDeviceMonitor();
+} else {
         var el = document.getElementById('loginSubtitle');
         if (el) { el.textContent = '🔐 Ask owner to activate this device once.'; el.style.color = '#ef4444'; }
     }
@@ -5902,7 +5903,94 @@ document.addEventListener('keydown', function (e) {
     if (b && !b.disabled) { e.preventDefault(); completePayment(); }
 });
 
+// ===== PHASE 1C: DEVICE MONITOR (POS) =====
+var _deviceMonitorStarted = false;
+function ensureDeviceMonitor() {
+    if (_deviceMonitorStarted) return;
+    _deviceMonitorStarted = true;
 
+    var deviceKey = localStorage.getItem('deviceKey_pos');
+    if (!deviceKey) {
+        deviceKey = 'dev_pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+        localStorage.setItem('deviceKey_pos', deviceKey);
+    }
+
+    var deviceName = 'POS — ' + (getShopId() || 'Device');
+
+    supabaseClient.from('devices')
+        .select('id, status, device_name')
+        .eq('device_key', deviceKey)
+        .maybeSingle()
+        .then(function(result) {
+            var existing = result.data;
+
+            // If REVOKED — lock immediately
+            if (existing && existing.status === 'revoked') {
+                showDeviceLocked(existing.device_name || deviceName);
+                return;
+            }
+
+            if (existing) {
+                // Exists — update last_seen ONLY (never touch status)
+                supabaseClient.from('devices')
+                    .update({ last_seen: new Date().toISOString() })
+                    .eq('device_key', deviceKey)
+                    .then(function(){}).catch(function(e){});
+            } else {
+                // New device — register
+                supabaseClient.from('devices').insert([{
+                    device_key: deviceKey,
+                    shop_id: getShopId(),
+                    device_name: deviceName,
+                    device_type: 'pos',
+                    status: 'active',
+                    last_seen: new Date().toISOString()
+                }]).then(function(){}).catch(function(e){});
+            }
+
+            // Real-time lock (< 0.1 seconds)
+            supabaseClient.channel('device-monitor-' + deviceKey)
+                .on('postgres_changes', {
+                    event: 'UPDATE', schema: 'public', table: 'devices',
+                    filter: 'device_key=eq.' + deviceKey
+                }, function(payload) {
+                    if (payload.new && payload.new.status === 'revoked') {
+                        showDeviceLocked(payload.new.device_name);
+                    }
+                }).subscribe();
+
+            // Safety net every 30 seconds
+            setInterval(async function() {
+                try {
+                    const { data } = await supabaseClient.from('devices')
+                        .select('status, device_name').eq('device_key', deviceKey).maybeSingle();
+                    if (data && data.status === 'revoked') showDeviceLocked(data.device_name);
+                    await supabaseClient.from('devices')
+                        .update({ last_seen: new Date().toISOString() })
+                        .eq('device_key', deviceKey);
+                } catch(e) {}
+            }, 30000);
+        })
+        .catch(function(e) { console.warn('Device check failed:', e.message); });
+}
+
+function showDeviceLocked(deviceName) {
+    var lock = document.getElementById('deviceLockScreen');
+    if (!lock) {
+        lock = document.createElement('div');
+        lock.id = 'deviceLockScreen';
+        lock.style.cssText = 'position:fixed;inset:0;background:rgba(220,38,38,0.97);color:white;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;';
+        lock.innerHTML =
+            '<div style="font-size:60px;margin-bottom:15px;">⛔</div>' +
+            '<h1 style="font-size:28px;margin-bottom:10px;">Device Disabled</h1>' +
+            '<p style="font-size:16px;max-width:300px;color:#fecaca;line-height:1.6;">' +
+            (deviceName ? '"' + deviceName + '" has been ' : 'This device has been ') +
+            'disabled by the shop owner.<br>Contact your administrator.</p>';
+        document.body.appendChild(lock);
+    }
+    lock.style.display = 'flex';
+    try { supabaseClient.auth.signOut(); } catch(e) {}
+}
 
     
   // Register the Service Worker for Offline PWA capabilities
