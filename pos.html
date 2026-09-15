@@ -3272,8 +3272,14 @@ async function completePayment() {
     var taxEnabled = document.getElementById('enableTax').checked;
     var tax = (taxRowVisible && taxEnabled) ? afterDisc * (parseFloat(document.getElementById('taxRate').value) || 0) / 100 : 0;
     var total = afterDisc + tax;
-    var profit = cart.reduce((s,i) => s + ((i.price - (i.costPrice || 0)) * i.qty), 0) - discount;
-    
+    // HONEST PROFIT: look up the live cost for each product
+    var profit = 0;
+    cart.forEach(function(i) {
+        var prod = products.find(function(x) { return x.id === i.id; });
+        var cost = (prod && prod.costPrice) ? prod.costPrice : (i.costPrice || 0);
+        profit += (i.price - cost) * i.qty;
+    });
+    profit = profit - discount;    
     var items = cart.map(i => ({ 
         name: i.name, 
         productId: i.id, 
@@ -5725,7 +5731,9 @@ function ssBounceCart() {
    Runs AFTER payment: main products + recipe ingredients,
    atomic (race-safe) via RPC, writes audit log,
    updates local UI + low-stock alerts. */
-async function ssDeductStock(cartItems, invoiceNo) {
+   
+	
+	async function ssDeductStock(cartItems, invoiceNo) {
     var plan = {}, names = {}, soldAdd = {};
 
     function add(pid, qty, name) {
@@ -5741,14 +5749,15 @@ async function ssDeductStock(cartItems, invoiceNo) {
         var p = products.find(function (x) { return x.id === item.id; });
         var isVirtual = p ? (p.isVirtual !== undefined ? !!p.isVirtual : !!p.is_virtual) : false;
 
-        // A) main product (skip virtual + skip unknown products)
+        // A) Main product: direct stock (sellable products only, NOT virtual)
         if (p && !isVirtual) {
             add(item.id, item.qty, item.name);
             soldAdd[item.id] = (soldAdd[item.id] || 0) + item.qty;
         }
 
-        // B) recipe ingredients
-        if (supabaseClient && navigator.onLine) {
+        // B) Recipe ingredients: VIRTUAL products only.
+        //    Uses the recipe's own saved conversion factors.
+        if (isVirtual && supabaseClient && navigator.onLine) {
             try {
                 var res = await supabaseClient.from('recipes')
                     .select('*').eq('product_id', item.id).eq('shop_id', getShopId())
@@ -5759,11 +5768,10 @@ async function ssDeductStock(cartItems, invoiceNo) {
                     for (var j = 0; j < recipe.items.length; j++) {
                         var ing = recipe.items[j];
                         var ingP = products.find(function (x) { return x.id === ing.ingredientId; });
-                        var need = ((ing.qty || 0) / y) * item.qty;
-                        if (ingP) need = need * getConversionFactor(ing.unit, ingP.unit);
+                        var need = ((ing.qty || 0) * (ing.factor || 1) / y) * item.qty;
                         add(ing.ingredientId, need, ingP ? ingP.name : (ing.name || 'ingredient'));
                     }
-                } else if (isVirtual) {
+                } else {
                     console.warn('⚠️ Virtual "' + item.name + '" has no recipe — nothing deducted.');
                 }
             } catch (e) { console.warn('Recipe check failed for ' + item.name, e); }
@@ -5775,7 +5783,7 @@ async function ssDeductStock(cartItems, invoiceNo) {
 
     // 2. Apply to Supabase
     if (navigator.onLine && supabaseClient) {
-        // 2a. Atomic RPC — safe when 2 cashiers sell at the same time
+        // 2a. Atomic RPC
         try {
             var moves = pids.map(function (pid) {
                 return { product_id: pid, qty: plan[pid], is_sale_item: !!soldAdd[pid] };
@@ -5784,18 +5792,27 @@ async function ssDeductStock(cartItems, invoiceNo) {
             if (rpc.error) throw rpc.error;
         } catch (e) {
             console.warn('RPC failed → fallback updates', e);
-            // 2b. Fallback: read FRESH stock from server, then update
-            var fb = await supabaseClient.from('products').select('id, stock, sold_count').in('id', pids);
-            if (fb.error) throw fb.error;
-            for (var k = 0; k < (fb.data || []).length; k++) {
-                var row = fb.data[k];
-                var patch = { stock: ssRound3((row.stock || 0) - plan[row.id]) };
-                if (soldAdd[row.id]) patch.sold_count = (row.sold_count || 0) + soldAdd[row.id];
-                await supabaseClient.from('products').update(patch).eq('id', row.id);
+            // 2b. Fallback
+            for (var k = 0; k < pids.length; k++) {
+                try {
+                    var pid = pids[k];
+                    var fr = await supabaseClient.from('products')
+                        .select('id, stock, sold_count').eq('firebase_id', pid).maybeSingle();
+                    var row = fr.data;
+                    if (!row) {
+                        var fr2 = await supabaseClient.from('products')
+                            .select('id, stock, sold_count').eq('id', pid).maybeSingle();
+                        row = fr2.data;
+                    }
+                    if (!row) continue;
+                    var patch = { stock: ssRound3((row.stock || 0) - plan[pid]) };
+                    if (soldAdd[pid]) patch.sold_count = (row.sold_count || 0) + soldAdd[pid];
+                    await supabaseClient.from('products').update(patch).eq('id', row.id);
+                } catch (e2) { console.warn('Fallback update failed for ' + pid, e2); }
             }
         }
 
-        // 2c. Audit log (who sold what, which invoice)
+        // 2c. Audit log
         try {
             var logs = pids.map(function (pid) {
                 return {
@@ -5809,8 +5826,7 @@ async function ssDeductStock(cartItems, invoiceNo) {
         } catch (e) { console.warn('stock_movements log failed', e); }
     }
 
-    // 3. Update local products + low stock alerts
-    var low = [];
+    // 3. Update local products
     pids.forEach(function (pid) {
         var p = products.find(function (x) { return x.id === pid; });
         if (!p) return;
@@ -5819,12 +5835,7 @@ async function ssDeductStock(cartItems, invoiceNo) {
             if (p.soldCount !== undefined) p.soldCount = (p.soldCount || 0) + soldAdd[pid];
             else if (p.sold_count !== undefined) p.sold_count = (p.sold_count || 0) + soldAdd[pid];
         }
-        var isV = p.isVirtual !== undefined ? !!p.isVirtual : !!p.is_virtual;
-        var reorder = p.reorderLevel !== undefined ? p.reorderLevel
-                    : (p.reorder_level !== undefined ? p.reorder_level : 5);
-        if (!isV && (p.stock || 0) <= reorder) low.push(p);
     });
-    if (low.length) ssLowStock(low);
 }
 
 // Local UI deduction for offline sales
