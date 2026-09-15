@@ -1234,7 +1234,6 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 	
 
 <!-- 2. Other Libraries -->
-<!-- 2. Other Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1247,7 +1246,6 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- ☢️ NUCLEAR RESCUE — add this line! -->
-<script src="rescue.js"></script>
 <script src="livecall.js"></script>
 <script src="smartcom.js"></script>
 	<!-- 4. YOUR SHARED FILES -->
@@ -4860,70 +4858,6 @@ window.loadTableBillToCart = async function(tableName) {
 };
 
 	
-async function sendWaiterOrderToKitchen() {
-    if (!cart.length) { alert('Cart is empty.'); return; }
-    
-    if (!currentTableName) {
-        var isWalkIn = awaitconfirm('No table selected. Send as Walk-in / Takeaway order?');
-        if (!isWalkIn) {
-            alert('Please select a Table first (Click the 🪑 Tables button).');
-            return;
-        }
-        currentTableName = 'Walk-in'; 
-    }
-
-    var btn = document.getElementById('btnSendKitchen');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
-
-    var stationStatus = {};
-    cart.forEach(function(item) {
-        var st = item.station || 'Kitchen';
-        stationStatus[st] = false; 
-    });
-
-    var orderData = {
-        shopId: getShopId(),
-        tableId: currentTableName,
-        items: cart.map(i => ({ 
-            productId: i.id, name: i.name, qty: i.qty, price: i.price, 
-            modifiers: i.modifiers || [], note: i.note || '',
-            station: i.station || 'Kitchen'
-        })),
-        stationStatus: stationStatus,
-        total: cart.reduce((s,i) => s+(i.price*i.qty), 0),
-        status: 'Pending', 
-        orderType: 'Waiter Dine-In',
-        waiterName: currentCashier.name,
-        time: new Date().toISOString()
-    };
-
-    try {
-        // SAVE ORDER TO SUPABASE ONLY
-        if (supabaseClient) {
-            const { error } = await supabaseClient.from('orders').insert([{
-                firebase_id: 'order_' + Date.now(), 
-                shop_id: orderData.shopId, table_id: orderData.tableId,
-                items: orderData.items, station_status: orderData.stationStatus, total: orderData.total,
-                status: orderData.status, order_type: orderData.orderType, waiter_name: orderData.waiterName, time: orderData.time
-            }]);
-            if (error) throw error;
-        }
-        
-        alert('✅ Order sent to Kitchen for ' + currentTableName + '!');
-        if (typeof printKOT === 'function') printKOT(orderData); 
-        
-        cart = [];
-        currentTableName = '';
-        var cartTitle = document.getElementById('cartTitle');
-        if (cartTitle) cartTitle.innerText = 'CART';
-        updateCart();
-    } catch(e) {
-        alert('❌ Error sending order: ' + e.message);
-    } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; }
-    }
-}
-
 
 	
 // ===== PRINT KITCHEN/STATION ORDER TICKETS (SPLIT) =====
@@ -6127,92 +6061,7 @@ window.openWaiterStatus = async function() {
     } catch(e) { showFloatingToast('❌ Status failed', true); }
 };
 
-// ---------- SEND TO KITCHEN ----------
-window.sendWaiterOrderToKitchen = async function() {
-    try {
-        if (!cart || !cart.length) { showFloatingToast('🛒 Cart is empty!', true); return; }
-			        // 🛡️ Block sending out-of-stock items
-        for (var q = 0; q < c.length; q++) {
-            var pr = products.find(function(x) { return x.id === c[q].id; });
-            if (pr && !pr.isVirtual && (pr.stock || 0) < c[q].qty) {
-                showFloatingToast('⛔ ' + c[q].name + ' — not enough stock (' + (pr.stock || 0) + ' left)!', true);
-                return;
-            }
-        }
 
-        // Table check (with PROPER await — the old copy missed this!)
-        if (!currentTableName) {
-            var isWalkIn = await confirm('No table selected. Send as Walk-in / Takeaway order?');
-            if (!isWalkIn) {
-                alert('Please select a table first (tap 🪑 Tables).');
-                return;
-            }
-            currentTableName = 'Walk-in';
-        }
-
-        var btn = document.getElementById('btnSendKitchen');
-        if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
-
-        // Station status (each station starts not-done)
-        var stationStatus = {};
-        cart.forEach(function(item) {
-            var st = item.station || 'Kitchen';
-            stationStatus[st] = false;
-        });
-
-        var now = new Date().toISOString();
-        var waiterName = (typeof currentCashier !== 'undefined' && currentCashier) ? currentCashier.name : 'Waiter';
-        var cartItems = cart.map(function(i) {
-            return {
-                productId: i.id,
-                name: i.name,
-                qty: i.qty,
-                price: i.price,
-                modifiers: i.modifiers || [],
-                note: i.note || '',
-                station: i.station || 'Kitchen'
-            };
-        });
-        var total = cart.reduce(function(s, i) { return s + (i.price * i.qty); }, 0);
-
-        // 1. Save to Supabase (snake_case)
-        const { error } = await supabaseClient.from('orders').insert([{
-            firebase_id: 'order_' + Date.now(),
-            shop_id: getShopId(),
-            table_id: currentTableName,
-            items: cartItems,
-            station_status: stationStatus,
-            total: total,
-            status: 'Pending',
-            order_type: 'Waiter Dine-In',
-            waiter_name: waiterName,
-            time: now
-        }]);
-        if (error) throw error;
-
-        alert('✅ Order sent to Kitchen for ' + currentTableName + '!');
-
-        // 2. Print kitchen tickets (if printer function is alive)
-        if (typeof printKOT === 'function') {
-            try {
-                printKOT({ tableId: currentTableName, items: cartItems, time: now, waiterName: waiterName });
-            } catch(e) { console.warn('KOT print failed:', e.message); }
-        }
-
-        // 3. Clear cart
-        cart = [];
-        currentTableName = '';
-        var cartTitle = document.getElementById('cartTitle');
-        if (cartTitle) cartTitle.innerText = 'CART';
-        updateCart();
-
-    } catch(e) {
-        alert('❌ Error sending order: ' + e.message);
-    } finally {
-        var btn = document.getElementById('btnSendKitchen');
-        if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; }
-    }
-};
 </script>
 
 
@@ -6294,35 +6143,71 @@ setTimeout(function() {
     };
 
     // 🔔 SEND TO KITCHEN (no invisible dialogs — auto walk-in)
-    window.sendWaiterOrderToKitchen = async function() {
-        var c = (typeof cart !== 'undefined') ? cart : [];
-        if (!c.length) { showFloatingToast('✅ Sent to Kitchen: ' + table, false); return; }
-        var table = (typeof currentTableName !== 'undefined' && currentTableName) ? currentTableName : 'Walk-in';
-        var btn = document.getElementById('btnSendKitchen');
-        if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
-        try {
-            var items = c.map(function(i) { return { productId: i.id, name: i.name, qty: i.qty, price: i.price, modifiers: i.modifiers || [], note: i.note || '', station: i.station || 'Kitchen' }; });
-            var st = {}; items.forEach(function(i) { st[i.station] = false; });
-            var total = 0; items.forEach(function(i) { total += i.price * i.qty; });
-            var r = await supabaseClient.from('orders').insert([{
-                firebase_id: 'order_' + Date.now(), shop_id: __shop(), table_id: table,
-                items: items, station_status: st, total: total, status: 'Pending',
-                order_type: 'Waiter Dine-In',
-                waiter_name: (typeof currentCashier !== 'undefined' && currentCashier) ? currentCashier.name : 'Waiter',
-                time: new Date().toISOString()
-            }]);
-            if (r.error) throw new Error(r.error.message);
-            showFloatingToast('✅ Sent to Kitchen: ' + table, false);
-            try { cart = []; currentTableName = '';
-                var t = document.getElementById('cartTitle'); if (t) t.innerText = 'CART';
-                if (typeof updateCart === 'function') updateCart();
-            } catch(e) {}
-        } catch(e) {
-            showFloatingToast('❌ Send failed — check connection', true) + console.error(e.message);
-        } finally {
-            if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; }
-        }
+    async function sendWaiterOrderToKitchen() {
+    if (!cart.length) { alert('Cart is empty.'); return; }
+
+    var orderType = currentOrderType || 'Dine-In';
+
+    // Dine-In REQUIRES a table; Takeaway/Delivery do not
+    if (orderType === 'Dine-In' && !currentTableName) {
+        alert('🍽️ Dine-In orders need a table.\nTap 🪑 Tables to select one.\n\nOr switch to 🛍️ Takeaway / 🛵 Delivery at the top.');
+        return;
+    }
+
+    var tableName = currentTableName || (orderType === 'Takeaway' ? 'Takeaway' : 'Delivery');
+
+    var btn = document.getElementById('btnSendKitchen');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending...'; }
+
+    var stationStatus = {};
+    cart.forEach(function(item) {
+        var st = item.station || 'Kitchen';
+        stationStatus[st] = false;
+    });
+
+    var orderData = {
+        shopId: getShopId(),
+        tableId: tableName,
+        items: cart.map(i => ({
+            productId: i.id, name: i.name, qty: i.qty, price: i.price,
+            modifiers: i.modifiers || [], note: i.note || '',
+            station: i.station || 'Kitchen'
+        })),
+        stationStatus: stationStatus,
+        total: cart.reduce((s,i) => s+(i.price*i.qty), 0),
+        status: 'Pending',
+        orderType: (orderType === 'Dine-In' ? 'Waiter Dine-In' : orderType),
+        waiterName: currentCashier.name,
+        time: new Date().toISOString()
     };
+
+    try {
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('orders').insert([{
+                firebase_id: 'order_' + Date.now(),
+                shop_id: orderData.shopId, table_id: orderData.tableId,
+                items: orderData.items, station_status: orderData.stationStatus,
+                total: orderData.total, status: orderData.status,
+                order_type: orderData.orderType, waiter_name: orderData.waiterName,
+                time: orderData.time
+            }]);
+            if (error) throw error;
+        }
+
+        alert('✅ Order sent to Kitchen for ' + tableName + '!');
+        if (typeof printKOT === 'function') printKOT(orderData);
+
+        cart = [];
+        currentTableName = '';
+        var cartTitle = document.getElementById('cartTitle');
+        if (cartTitle) cartTitle.innerText = 'CART';
+        updateCart();
+    } catch(e) {
+        alert('❌ Error sending order: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; }
+    }
+}
 
 }, 4000);
 </script>
