@@ -1247,8 +1247,8 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 <!-- 2. Other Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+	<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/escpos-web@1.0.0/dist/escpos-web.min.js"></script>
@@ -1257,7 +1257,6 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <!-- ☢️ NUCLEAR RESCUE — add this line! -->
-<script src="livecall.js"></script>
 <script src="smartcom.js"></script>
 	<!-- 4. YOUR SHARED FILES -->
 <script src="sheet.js"></script>			 
@@ -2141,9 +2140,9 @@ async function deleteHeldOrder(id) {
     confirmed = await new Promise(resolve => {
       showCustomConfirm('Delete this held order?', 'Confirm Delete', ok => resolve(ok));
     });
-  } else {
-    // Fallback to native browser confirm
-    confirmed = confirm('Delete this held order?');
+   } else {
+    // Fallback confirm (must await — window.confirm is overridden)
+    confirmed = await confirm('Delete this held order?');
   }
 
   // 3. If the user cancelled, reopen the held orders modal and stop
@@ -2178,7 +2177,11 @@ function loadNotes() {
         .order('created_at', { ascending: false })
         .then(({data, error}) => {
             if (error) { console.error("Notes load error:", error.message); return; }
-            notesData = data || [];
+            notesData = (data || []).map(function(n) {
+                return { id: n.id, text: n.text, category: n.category,
+                         reminderDate: n.reminder_date, reminderTime: n.reminder_time,
+                         createdAt: n.created_at };
+            });
             filterNotes();
         });
 }
@@ -2400,12 +2403,13 @@ async function login() {
   }
   if (!valid) { alert('❌ Wrong PIN!'); return; }
 
-  try {
-
-		        const { data: { session } } = await supabaseClient.auth.getSession();
-        if (!session) await supabaseClient.auth.signInAnonymously();
-	
-	} catch (e) {
+   try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (!session || !session.user || !session.user.email || session.user.is_anonymous) {
+        alert('🔒 This device is not activated.\n\nThe OWNER must sign in once at the top of this screen (Device Activation).');
+        return;
+    }
+  } catch (e) {
     alert('Network Error: Could not connect to database.'); return;
   }
 
@@ -4341,6 +4345,16 @@ function handleWaiterCall(call) {
     }   // Load POS Settings (Shop Type, Cafe/Retail toggles)
     loadPosSettings();
 		listenForWaiterCalls();
+			        // 🔔 NEW QR ORDER ALERTS
+        if (window.qrOrderChannel) { try { supabaseClient.removeChannel(window.qrOrderChannel); } catch(e) {} }
+        window.qrOrderChannel = supabaseClient.channel('pos-qr-orders-' + getShopId())
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: 'shop_id=eq.' + getShopId() },
+                function(payload) {
+                    var o = payload.new || {};
+                    if (o.order_type === 'QR Dine-In' || o.order_type === 'Scan & Go') {
+                        showQRToast(o.table_id || 'QR', o.total || 0);
+                    }
+                }).subscribe();
 
         // Load shop branding from Supabase
     if (supabaseClient) {
