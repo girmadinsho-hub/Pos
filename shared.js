@@ -1000,9 +1000,12 @@ async function addShop() {
     var phone = document.getElementById('newShopPhone').value.trim();
     
     try {
+        var ownerEmail = '';
+        try { var u = await supabaseClient.auth.getUser(); if (u.data && u.data.user) ownerEmail = u.data.user.email || ''; } catch(e) {}
         const { error } = await supabaseClient.from('shops').insert([{
             name: name, shop_id: shopId, address: address, phone: phone,
-            plan: lic.plan, active: true, created_at: new Date().toISOString()
+            plan: lic.plan, active: true, created_at: new Date().toISOString(),
+            owner_email: ownerEmail
         }]);
         if (error) throw error;
         
