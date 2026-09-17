@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartshop-v151';
+const CACHE_NAME = 'smartshop-v153';
 const CDN_CACHE = 'smartshop-cdn-v1';
 
 // ALL app files — nothing missing
