@@ -285,7 +285,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
         try {
             if (supabaseClient) {
                 // 1. FETCH SETTINGS FROM SUPABASE
-                const { data: settings, error: setErr } = await supabaseClient.from('settings').select('*').eq('shop_id', shopId).single();
+                const { data: settings, error: setErr } = await supabaseClient.from('menu_settings').select('*').eq('shop_id', shopId).single();
                 if (settings) {
                     document.getElementById('heroTitle').innerText = settings.name || 'SmartShop Menu';
                     if (settings.currency) currency = settings.currency;
@@ -354,7 +354,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
                 }
 
                 // 2. FETCH PRODUCTS FROM SUPABASE
-                const { data: prods, error: prodErr } = await supabaseClient.from('products').select('*').eq('shop_id', shopId);
+                const { data: prods, error: prodErr } = await supabaseClient.from('menu_products').select('*').eq('shop_id', shopId);
                 allProducts = [];
                 if (prods) {
                     prods.forEach(function(p) {
@@ -409,7 +409,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     // System Lock Checker for Supabase
     async function checkSystemLock() {
         if (!supabaseClient) return;
-        const { data, error } = await supabaseClient.from('settings').select('system_locked').eq('shop_id', shopId).single();
+        const { data, error } = await supabaseClient.from('menu_settings').select('system_locked').eq('shop_id', shopId).single();
         if (data && data.system_locked === true) {
             document.getElementById('menuContainer').innerHTML = '<div style="text-align:center; padding:60px 20px;"><h2 style="color:#ef4444; font-size:28px; margin-bottom:10px;">🔒 Temporarily Closed</h2><p style="color:var(--text-muted);">We are not taking online orders right now. Please call a waiter.</p></div>';
             document.getElementById('cartFab').style.display = 'none';
