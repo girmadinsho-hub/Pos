@@ -21,8 +21,8 @@
     // OneSignal will handle web push notifications directly.
   });
 </script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <style>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+	<style>
 			.sidebar-overlay.show { display: block; }
         *{margin:0;padding:0;box-sizing:border-box}
         body{font-family:'Segoe UI',Roboto,Arial,sans-serif;background:#f0f4f8;color:#1e293b;font-size:15px}
@@ -8225,6 +8225,16 @@ async function activateLicense() {
             }
             saveShopId(lic.shop_id);   // adopt the licensed shop
         }
+        // 🤝 CLAIM ownership if this shop has no owner yet
+        try {
+            var u2 = await supabaseClient.auth.getUser();
+            if (u2.data && u2.data.user && u2.data.user.email) {
+                await supabaseClient.from('shops')
+                    .update({ owner_email: u2.data.user.email })
+                    .eq('shop_id', lic.shop_id)
+                    .is('owner_email', null);
+            }
+        } catch(e) { console.warn('Shop claim skipped:', e.message); }
 
         // 3. Save license locally (format your app already reads)
         saveLicense({
@@ -10764,13 +10774,13 @@ function verifyAppPin() {
 
 
 // Change PIN (Requires old PIN first)
-function changeAppPin() {
-    var oldPin = prompt("Enter your CURRENT 4-digit App PIN:");
+async function changeAppPin() {
+    var oldPin = await prompt("Enter your CURRENT 4-digit App PIN:");
     if (sha256(oldPin) !== localStorage.getItem('appPinHash')) {
         alert("❌ Incorrect current PIN.");
         return;
     }
-    var newPin = prompt("Enter your NEW 4-digit App PIN:");
+    var newPin = await prompt("Enter your NEW 4-digit App PIN:");
     if (newPin && newPin.length === 4) {
         localStorage.setItem('appPinHash', sha256(newPin));
         alert("✅ App PIN changed successfully!");
@@ -10806,8 +10816,11 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
         }
 
         // 2. Check Owner Bypass
-        var isOwner = (user.email === "girmadinsho@gmail.com");
-
+        var isOwner = false;
+        try {
+            const { data: mu } = await supabaseClient.from('master_users').select('role').eq('email', user.email).maybeSingle();
+            isOwner = !!(mu && mu.role === 'master');
+        } catch(e) { console.warn('Owner check failed', e); }
         // 3. Check License (Using Local Storage to avoid Firebase dependency)
         if (!isOwner) {
             try {
@@ -11865,30 +11878,29 @@ async function loadPeakHours() {
 function init() {
     loadDashboard('daily', document.querySelector('.period-btn.active'));
     if (supabaseClient) loadAllCaches();
-	document.getElementById('langSelect').value = appLang;
+    document.getElementById('langSelect').value = appLang;
     setTimeout(function() { loadShopList(); }, 1000);
-    
-    // ===== FORCE SHOPS TAB FOR ENTERPRISE =====
+
+    // Enterprise-only UI
     var lic = getLicense();
     if (lic && lic.plan === 'enterprise') {
         var shopTab = document.getElementById('shopSidebarTab');
         if (shopTab) shopTab.style.display = 'flex';
         var shopSwitcher = document.getElementById('shopSwitcher');
         if (shopSwitcher) shopSwitcher.style.display = 'inline-block';
+    }
 
-			       // ⚡ INSTANT Active Tables — realtime, no waiting
+    // ⚡ LIVE DASHBOARD — now for EVERY shop
     if (window.adminTablesChannel) { try { supabaseClient.removeChannel(window.adminTablesChannel); } catch(e) {} }
-    window.adminTablesChannel = supabaseClient.channel('admin-tables-' + getShopId())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `shop_id=eq.${getShopId()}` },
+    window.adminTablesChannel = supabaseClient.channel('admin-live-' + getShopId())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'shop_id=eq.' + getShopId() },
             function() {
                 try { if (typeof loadActiveTables === 'function') loadActiveTables(); } catch(e) {}
                 try { if (typeof loadKitchenAnalytics === 'function') loadKitchenAnalytics(); } catch(e) {}
             })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'sales', filter: `shop_id=eq.${getShopId()}` },
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sales', filter: 'shop_id=eq.' + getShopId() },
             function() {
                 try { if (typeof loadDashboard === 'function' && currentPeriod) loadDashboard(currentPeriod); } catch(e) {}
-                // 📦 STOCK REFRESH — reload stock data + alerts after every sale
-                // (only when Stock tab is open — keeps other tabs fast)
                 try {
                     var stockTab = document.getElementById('tab3');
                     if (stockTab && stockTab.style.display !== 'none' && typeof loadAllCaches === 'function') {
@@ -11897,7 +11909,6 @@ function init() {
                 } catch(e) {}
             })
         .subscribe();
-    }
 }
 	
 // ===== OFFLINE INDICATOR =====
