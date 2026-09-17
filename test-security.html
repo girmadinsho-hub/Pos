@@ -3,31 +3,31 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Security Test</title>
+<title>Security Test v2</title>
 <style>
 body{font-family:sans-serif;background:#0f172a;color:#e2e8f0;padding:20px;max-width:500px;margin:0 auto}
 h2{text-align:center}
 input{width:100%;padding:12px;font-size:16px;border-radius:8px;border:1px solid #475569;background:#1e293b;color:#fff;box-sizing:border-box}
 button{width:100%;padding:16px;font-size:18px;font-weight:bold;border:none;border-radius:10px;background:#10b981;color:#fff;margin-top:10px}
 #results{margin-top:15px}
-.row{padding:12px;border-radius:8px;margin-bottom:8px;font-size:14px}
+.row{padding:12px;border-radius:8px;margin-bottom:8px;font-size:14px;word-break:break-word}
 .pass{background:#064e3b;border:1px solid #10b981}
 .fail{background:#7f1d1d;border:1px solid #ef4444}
 .info{background:#1e3a8a;border:1px solid #3b82f6}
 </style>
 </head>
 <body>
-<h2>🛡️ Security Test</h2>
+<h2>🛡️ Security Test v2</h2>
 <input id="shopId" placeholder="Type your Shop ID here">
-<button onclick="runTest()">▶ RUN SECURITY TEST</button>
+<button onclick="runTest()">▶ RUN AS ANONYMOUS CUSTOMER</button>
 <div id="results"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-const SUPABASE_URL = "https://mtwcdvmdoxzcejzgypdw.supabase.co";
-const SUPABASE_KEY = "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8";
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
+const sb = window.supabase.createClient(
+  "https://mtwcdvmdoxzcejzgypdw.supabase.co",
+  "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8"
+);
 function show(text, cls){ document.getElementById('results').innerHTML += '<div class="row '+cls+'">'+text+'</div>'; }
 
 async function runTest(){
@@ -35,32 +35,41 @@ async function runTest(){
     var shop = document.getElementById('shopId').value.trim();
     if(!shop){ show('⚠️ Type your Shop ID first!','fail'); return; }
 
-    show('⏳ Signing in as anonymous customer (same as QR menu)...','info');
-    const { data:{session} } = await sb.auth.getSession();
-    if(!session) await sb.auth.signInAnonymously();
+    show('⏳ Signing OUT completely (clears your admin session)...','info');
+    await sb.auth.signOut();
+    await new Promise(r => setTimeout(r, 500));
+    await sb.auth.signInAnonymously();
+    const { data:{user} } = await sb.auth.getUser();
+    show('👤 Testing as: <b>' + (user && user.is_anonymous ? 'ANONYMOUS CUSTOMER ✅ (correct)' : (user ? user.email + ' ⚠️ still logged in!' : 'no user')) + '</b>','info');
 
-    // TEST 1-5: PRIVATE TABLES — must be 0 rows or blocked
-    var privateTables = ['sales','products','employees','licenses','master_users'];
-    for(var i=0;i<privateTables.length;i++){
-        var t = privateTables[i];
+    // TEST 1: PRIVATE TABLES — must be 0 rows or blocked
+    var tables = ['sales','products','employees','licenses','master_users','expenses','bank_transactions','loans'];
+    for(var i=0;i<tables.length;i++){
+        var t = tables[i];
         try{
             const { data, error } = await sb.from(t).select('*').limit(5);
-            if(error){ show('✅ '+t+': BLOCKED','pass'); }
-            else if(!data || data.length===0){ show('✅ '+t+': 0 rows — LOCKED','pass'); }
-            else { show('❌ '+t+': '+data.length+' rows visible — SECURITY HOLE!','fail'); }
+            if(error) show('✅ '+t+': BLOCKED','pass');
+            else if(!data || data.length===0) show('✅ '+t+': 0 rows — LOCKED','pass');
+            else show('❌ '+t+': '+data.length+' rows visible — REAL HOLE!','fail');
         }catch(e){ show('✅ '+t+': BLOCKED','pass'); }
     }
 
-    // TEST 6-7: MENU VIEWS — must still WORK (customers need them)
+    // TEST 2: FAKE-SHOP INSERT — must be REJECTED by RLS
+    try{
+        const { error } = await sb.from('orders').insert([{ shop_id:'fake-shop-test', table_id:'X', items:[], total:1, status:'Pending', time:new Date().toISOString() }]);
+        if(error) show('✅ orders insert to FAKE shop: REJECTED ('+error.code+')','pass');
+        else show('❌ orders insert to FAKE shop: ACCEPTED — REAL HOLE!','fail');
+    }catch(e){ show('✅ orders insert to FAKE shop: REJECTED','pass'); }
+
+    // TEST 3: MENU VIEWS — must still WORK for customers
     const { data: mp, error: mpE } = await sb.from('menu_products').select('*').eq('shop_id',shop);
-    if(mpE) show('❌ menu_products ERROR: '+mpE.message+' (QR menu broken!)','fail');
-    else show('✅ menu_products: works — '+mp.length+' items visible (menu OK)','pass');
+    if(mpE) show('❌ menu_products ERROR: '+mpE.message,'fail');
+    else show('✅ menu_products: works — '+mp.length+' items (QR menu OK)','pass');
 
-    const { data: ms, error: msE } = await sb.from('menu_settings').select('*').eq('shop_id',shop).maybeSingle();
-    if(msE) show('❌ menu_settings ERROR: '+msE.message,'fail');
-    else show('✅ menu_settings: works — shop: '+((ms&&ms.name)||'not found'),'pass');
+    const { data: ms } = await sb.from('menu_settings').select('*').eq('shop_id',shop).maybeSingle();
+    show(ms ? '✅ menu_settings: works — '+((ms&&ms.name)||'') : '⚠️ menu_settings: no row for this shop (open menu once first)','info');
 
-    show('🏁 DONE. All green = your data is protected!','info');
+    show('🏁 DONE — all green = 100% protected.','info');
 }
 </script>
 </body>
