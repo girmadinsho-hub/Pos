@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Security Test</title>
+<style>
+body{font-family:sans-serif;background:#0f172a;color:#e2e8f0;padding:20px;max-width:500px;margin:0 auto}
+h2{text-align:center}
+input{width:100%;padding:12px;font-size:16px;border-radius:8px;border:1px solid #475569;background:#1e293b;color:#fff;box-sizing:border-box}
+button{width:100%;padding:16px;font-size:18px;font-weight:bold;border:none;border-radius:10px;background:#10b981;color:#fff;margin-top:10px}
+#results{margin-top:15px}
+.row{padding:12px;border-radius:8px;margin-bottom:8px;font-size:14px}
+.pass{background:#064e3b;border:1px solid #10b981}
+.fail{background:#7f1d1d;border:1px solid #ef4444}
+.info{background:#1e3a8a;border:1px solid #3b82f6}
+</style>
+</head>
+<body>
+<h2>🛡️ Security Test</h2>
+<input id="shopId" placeholder="Type your Shop ID here">
+<button onclick="runTest()">▶ RUN SECURITY TEST</button>
+<div id="results"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = "https://mtwcdvmdoxzcejzgypdw.supabase.co";
+const SUPABASE_KEY = "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+function show(text, cls){ document.getElementById('results').innerHTML += '<div class="row '+cls+'">'+text+'</div>'; }
+
+async function runTest(){
+    document.getElementById('results').innerHTML = '';
+    var shop = document.getElementById('shopId').value.trim();
+    if(!shop){ show('⚠️ Type your Shop ID first!','fail'); return; }
+
+    show('⏳ Signing in as anonymous customer (same as QR menu)...','info');
+    const { data:{session} } = await sb.auth.getSession();
+    if(!session) await sb.auth.signInAnonymously();
+
+    // TEST 1-5: PRIVATE TABLES — must be 0 rows or blocked
+    var privateTables = ['sales','products','employees','licenses','master_users'];
+    for(var i=0;i<privateTables.length;i++){
+        var t = privateTables[i];
+        try{
+            const { data, error } = await sb.from(t).select('*').limit(5);
+            if(error){ show('✅ '+t+': BLOCKED','pass'); }
+            else if(!data || data.length===0){ show('✅ '+t+': 0 rows — LOCKED','pass'); }
+            else { show('❌ '+t+': '+data.length+' rows visible — SECURITY HOLE!','fail'); }
+        }catch(e){ show('✅ '+t+': BLOCKED','pass'); }
+    }
+
+    // TEST 6-7: MENU VIEWS — must still WORK (customers need them)
+    const { data: mp, error: mpE } = await sb.from('menu_products').select('*').eq('shop_id',shop);
+    if(mpE) show('❌ menu_products ERROR: '+mpE.message+' (QR menu broken!)','fail');
+    else show('✅ menu_products: works — '+mp.length+' items visible (menu OK)','pass');
+
+    const { data: ms, error: msE } = await sb.from('menu_settings').select('*').eq('shop_id',shop).maybeSingle();
+    if(msE) show('❌ menu_settings ERROR: '+msE.message,'fail');
+    else show('✅ menu_settings: works — shop: '+((ms&&ms.name)||'not found'),'pass');
+
+    show('🏁 DONE. All green = your data is protected!','info');
+}
+</script>
+</body>
+</html>
