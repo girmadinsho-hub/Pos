@@ -905,9 +905,8 @@ function changeLanguage(lc) {
 }
 
 // ===== SUPABASE INITIALIZATION =====
-const SUPABASE_URL = "https://mtwcdvmdoxzcejzgypdw.supabase.co";
-const SUPABASE_KEY = "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8";
-
+const SUPABASE_URL = SS_CONFIG.SUPABASE_URL;
+const SUPABASE_KEY = SS_CONFIG.SUPABASE_KEY;
 let supabaseClient = null; 
 if (typeof window.supabase !== 'undefined') {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
