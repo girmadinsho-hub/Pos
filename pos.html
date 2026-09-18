@@ -2488,10 +2488,8 @@ function logout(){
     currentCashier=null;
     currentShiftId=null;
     
-    // Sign out of Supabase Auth
-    if (supabaseClient) {
-        supabaseClient.auth.signOut();
-    }
+    // ⚠️ DO NOT sign out — the owner session is this device's ID card (same as Kitchen).
+    // Only "Unlink Device" (Settings) removes it.
     
     document.getElementById('loginScreen').style.display='flex';
     document.getElementById('mainApp').style.display='none';
@@ -4473,16 +4471,38 @@ if (urlShop) {
     window.history.replaceState({}, document.title, window.location.pathname);
 }
 
-// ===== DEVICE AUTH — OWNER ACTIVATION =====
-supabaseClient.auth.onAuthStateChange((event, session) => {
+  // ===== DEVICE AUTH — OWNER ACTIVATION (v2: race-safe, fresh-device proof) =====
+function ssPosAuthRoute(event, session) {
     var isRealUser = session && session.user && session.user.email && !session.user.is_anonymous;
     if (isRealUser) {
-        loadCashierList();
-        ensureDeviceMonitor();
+        var sid = localStorage.getItem('shopId') || '';
+        if (!sid || sid === 'default') {
+            // Owner signed in but this POS has no shop linked yet → show activation (like Kitchen)
+            if (typeof showOwnerActivation === 'function') showOwnerActivation();
+            else ssWaitForFn('showOwnerActivation');
+            return;
+        }
+        if (typeof loadCashierList === 'function') loadCashierList();
+        else ssWaitForFn('loadCashierList');
+        if (typeof ensureDeviceMonitor === 'function') ensureDeviceMonitor();
     } else {
-        showOwnerActivation();
+        // Fresh device / logged out → activation form comes FIRST (like Kitchen)
+        if (typeof showOwnerActivation === 'function') showOwnerActivation();
+        else ssWaitForFn('showOwnerActivation');
     }
-});
+}
+
+// Waits for a function to finish loading (fixes the page-load race)
+function ssWaitForFn(fnName) {
+    var tries = 0;
+    var iv = setInterval(function() {
+        tries++;
+        if (typeof window[fnName] === 'function') { clearInterval(iv); window[fnName](); }
+        else if (tries > 40) clearInterval(iv); // give up after 10 seconds
+    }, 250);
+}
+
+supabaseClient.auth.onAuthStateChange(ssPosAuthRoute);
 
 
 // Manual Fallback Link for POS
