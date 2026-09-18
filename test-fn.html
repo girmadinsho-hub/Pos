@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Fn Check</title>
+<style>body{font-family:sans-serif;background:#0f172a;color:#e2e8f0;padding:20px}
+button{width:100%;padding:16px;font-size:18px;font-weight:bold;border:none;border-radius:10px;background:#10b981;color:#fff}
+.row{padding:12px;border-radius:8px;margin-top:8px;word-break:break-word}
+.pass{background:#064e3b;border:1px solid #10b981}.fail{background:#7f1d1d;border:1px solid #ef4444}</style>
+</head><body>
+<button onclick="check()">▶ IS staff-login DEPLOYED?</button>
+<div id="out"></div>
+<script>
+async function check(){
+  document.getElementById('out').innerHTML='';
+  try{
+    var res = await fetch('https://mtwcdvmdoxzcejzgypdw.supabase.co/functions/v1/staff-login',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':'sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8'},
+      body:'{}'
+    });
+    var txt = await res.text();
+    if(res.status===404){
+      document.getElementById('out').innerHTML='<div class="row fail">❌ NOT DEPLOYED (404)<br>Response: '+txt+'</div>';
+    } else {
+      document.getElementById('out').innerHTML='<div class="row pass">✅ ALIVE! Status '+res.status+'<br>Response: '+txt+'<br><br>Any JSON reply (even "bad_request") = deployed correctly!</div>';
+    }
+  }catch(e){ document.getElementById('out').innerHTML='<div class="row fail">Network error: '+e.message+'</div>'; }
+}
+</script></body></html>
