@@ -781,6 +781,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <button class="btn btn-success" onclick="checkout()" id="btnPay" style="flex:2; min-width:100px;">💰 PAY NOW</button>
         <button class="btn btn-outline" onclick="openTablesModal()" id="btnTables" style="flex:1; min-width:70px; background:#0d64f0; color:white; border:none;">🪑 Tables</button>
         <button class="btn btn-outline" onclick="openTableBillsModal()" id="btnTableBills" style="flex:1; min-width:70px; background:#dc2626; color:white; border:none;">🧾 Table Bills</button>
+			  <button class="btn btn-outline" onclick="openExitVerifyModal()" id="btnVerifyExit" style="flex:1; min-width:70px; background:#0f766e; color:white; border:none; display:none;">🛡️ Verify Exit</button>
     </div>
 </div>
 
@@ -1186,7 +1187,23 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <div id="tableBillsList" style="margin-top:15px;"></div>
     </div>
 </div>
-	
+
+	<!-- Exit QR Verification Modal (Guard) -->
+<div class="modal" id="exitVerifyModal">
+    <div class="modal-content" style="max-width:420px; text-align:center;">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+            🛡️ Verify Exit (Guard)
+            <button onclick="stopExitScanner(); document.getElementById('exitVerifyModal').classList.remove('active');" style="background:none;border:none;font-size:24px;cursor:pointer;color:#64748b;">✖</button>
+        </div>
+        <p style="font-size:12px; color:#64748b; margin-bottom:10px;">Scan the customer's exit QR — or type the code printed under their QR.</p>
+        <button class="btn btn-primary" onclick="startExitScanner()" style="width:100%; margin-bottom:8px;">📷 Scan Exit QR</button>
+        <div style="display:flex; gap:8px;">
+            <input type="text" id="exitCodeInput" class="form-input" placeholder="order_XXXXX..." style="flex:1;">
+            <button class="btn btn-success" style="width:auto; padding:0 18px;" onclick="verifyExitCode()">✅ Check</button>
+        </div>
+        <div id="exitVerifyResult" style="margin-top:12px;"></div>
+    </div>
+</div>
 
 	<!-- Waiter Live Status Modal -->
 <div class="modal" id="waiterStatusModal">
@@ -1248,9 +1265,9 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+	<script src="config.js"></script>
 	<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/escpos-web@1.0.0/dist/escpos-web.min.js"></script>
 
 <!-- 3. SUPABASE LIBRARY (MUST BE BEFORE shared.js!) -->
@@ -1261,6 +1278,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 	<!-- 4. YOUR SHARED FILES -->
 <script src="sheet.js"></script>			 
 <script src="shared.js"></script>
+	<script src="ssauth.js"></script>
 <script>
   
 		// ===== GLOBAL UNIT CONVERSION ENGINE =====
@@ -1775,11 +1793,20 @@ function setReportPeriod(period, btn) {
     
     allSales.forEach(s => {
         total += s.total || 0;
-        var m = s.payment_method || 'cash';
-        if (m === 'cash') cashTotal += s.total || 0;
+
+			        var m = s.payment_method || 'cash';
+        if (m === 'split' && Array.isArray(s.payments)) {
+            s.payments.forEach(function(p) {
+                var pm = p.method || 'cash'; var amt = p.amount || 0;
+                if (pm === 'cash') cashTotal += amt;
+                else if (pm === 'card') cardTotal += amt;
+                else if (pm === 'mobile') mobileTotal += amt;
+                else if (pm === 'credit') creditTotal += amt;
+            });
+        } else if (m === 'cash') cashTotal += s.total || 0;
         else if (m === 'card') cardTotal += s.total || 0;
         else if (m === 'mobile') mobileTotal += s.total || 0;
-        else creditTotal += s.total || 0;
+        else if (m === 'credit') creditTotal += s.total || 0;
         
         (s.items || []).forEach(i => { itemSales[i.name] = (itemSales[i.name] || 0) + (i.qty || 0); });
     });
@@ -2361,18 +2388,13 @@ async function changePassword(){
     if(!id||!oldPwd||!newPwd){alert('Fill all fields!');return;}
     const cashier=cashierList.find(c=>c.id===id);
     if(!cashier){alert('Cashier not found!');return;}
-    let isValid = false;
-    if (cashier.hashedPassword) {
-        isValid = await verifyPassword(oldPwd, cashier.hashedPassword);
-    } else if (cashier.password && oldPwd === cashier.password) {
-        isValid = true;
-    }
-    if (!isValid) { alert('❌ Wrong old password!'); return; }
+
+	    var v = await ssVerifyStaffPin(getShopId(), id, oldPwd);
+    if (!v.ok) { alert('❌ Wrong old password!'); return; }
     
-    const hashed = hashPassword(newPwd);
     try {
-        const { error } = await supabaseClient.from('employees').update({ hashed_password: hashed }).eq('firebase_id', id);
-        if (error) throw error;
+        var okSet = await ssSetPin(id, newPwd);
+        if (!okSet) throw new Error('Could not update PIN');
         alert('✅ Password changed!');
         document.getElementById('changePwdBox').style.display='none';
         loadCashierList();
@@ -2395,13 +2417,20 @@ async function login() {
       return;
   }
 
-  let valid = false;
-  if (cashier.hashedPassword) {
-      valid = (sha256(pass) === cashier.hashedPassword);
-  } else if (cashier.password && pass === cashier.password) {
-      valid = true;
+   // 🔐 SERVER-SIDE SECURE LOGIN (salted + rate-limited)
+  var v = await ssVerifyStaffPin(getShopId(), id, pass);
+  if (!v.ok) {
+      if (v.reason === 'locked') alert('🔒 Too many wrong attempts.\nLogin locked for ' + v.minutes + ' more minute(s).');
+      else if (v.reason === 'inactive') alert('❌ This account has been disabled. Please see the Owner.');
+      else if (v.reason === 'network') alert('📶 No internet. Connect to Wi-Fi or data to sign in.');
+      else if (v.reason === 'no_session') alert('🔒 Device not activated. The owner must sign in once (Device Activation).');
+      else alert('❌ Wrong PIN!' + (v.attempts_left > 0 ? '\n' + v.attempts_left + ' attempt(s) left before 10-min lock.' : ''));
+      return;
   }
-  if (!valid) { alert('❌ Wrong PIN!'); return; }
+
+  // ⏰ SERVER-SIDE LICENSE / TRIAL CHECK (cannot be bypassed by editing the phone)
+  var licCheck = await ssCheckLicense();
+  if (!licCheck.allowed) { alert(licCheck.message); return; }
 
    try {
     const { data: { session } } = await supabaseClient.auth.getSession();
@@ -2434,6 +2463,12 @@ async function login() {
   initPOS();
 	listenForWaiterCalls();
 	requestWakeLock();
+	        // ⏰ Re-verify license every 30 minutes (catches expiry/revocation mid-shift)
+        if (window.ssLicenseTimer) clearInterval(window.ssLicenseTimer);
+        window.ssLicenseTimer = setInterval(async function(){
+            var r = await ssCheckLicense();
+            if (!r.allowed) { alert(r.message); logout(); }
+        }, 30*60*1000);
 }
 
 // Function to check if staff can change their PIN
@@ -2517,6 +2552,8 @@ function logout(){
     if (waiterStatusBtn) waiterStatusBtn.style.display = 'none';
     if (btnTables) btnTables.style.display = 'none';
     if (btnTableBills) btnTableBills.style.display = 'none';
+	  var verifyExitBtn = document.getElementById('btnVerifyExit');
+    if (verifyExitBtn) verifyExitBtn.style.display = 'none';
 
     // Then show what this role deserves
     if (staffRole === 'Waiter' && shopType === 'cafe') {
@@ -2532,10 +2569,12 @@ function logout(){
             if (waiterStatusBtn) waiterStatusBtn.style.display = 'block';
             if (btnTables) btnTables.style.display = 'block';
             if (btnTableBills) btnTableBills.style.display = 'block';
-        } else {
+
+					 } else {
             if (clearBtn) clearBtn.style.display = 'block';
             if (holdBtn) holdBtn.style.display = 'block';
             if (heldBtn) heldBtn.style.display = 'block';
+            if (verifyExitBtn) verifyExitBtn.style.display = 'block';
         }
     }
 
@@ -3675,8 +3714,8 @@ async function verifyPosManager() {
     // Step 2: Method 1 — check Manager/Owner PINs in employees table
     try {
         const { data: staff, error } = await supabaseClient.from('employees')
-            .select('hashed_password, position, name')
-            .eq('shop_id', getShopId())
+         .select('hashed_password, pin_salt, position, name')
+					.eq('shop_id', getShopId())
             .in('position', ['Manager', 'Owner']);
         
         if (error) {
@@ -3684,8 +3723,14 @@ async function verifyPosManager() {
         } else if (staff && staff.length > 0) {
             var hashed = sha256(pass);
             for (var i = 0; i < staff.length; i++) {
-                if (staff[i].hashed_password && staff[i].hashed_password === hashed) {
-                    // ✅ MATCH! Manager verified
+                var matches = false;
+                if (staff[i].pin_salt && staff[i].hashed_password) {
+                    matches = (await ssHashPin(pass, staff[i].pin_salt)) === staff[i].hashed_password;
+                } else if (staff[i].hashed_password) {
+                    matches = (hashed === staff[i].hashed_password);
+                }
+                if (matches) {
+	// ✅ MATCH! Manager verified
                     showFloatingToast('✅ Authorized: ' + staff[i].name + ' (' + staff[i].position + ')', false);
                     return true;
                 }
@@ -4018,31 +4063,16 @@ function downloadPDFReceipt() {
 
 
 		
-// ---------- Email Receipt ----------
-function emailReceipt() {
+// ---------- Email Receipt (native mail app — no service needed) ----------
+async function emailReceipt() {
     var receipt = window._lastReceipt;
-    if (!receipt) return;
-    var customerEmail = prompt('Enter customer email address:');
-    if (!customerEmail) return;
-
-    // Use EmailJS (free tier: 200 emails/month)
-    if (typeof emailjs !== 'undefined') {
-        emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', {
-            to_email: customerEmail,
-            subject: 'Receipt ' + receipt.data.invoiceNo,
-            message: receipt.text.replace(/\n/g, '<br>')
-        }).then(function() {
-            alert('✅ Receipt sent to ' + customerEmail);
-        }).catch(function(err) {
-            alert('❌ Failed: ' + JSON.stringify(err));
-        });
-    } else {
-        // Fallback: open mailto
-        var mailtoLink = 'mailto:' + customerEmail + '?subject=Receipt%20' + receipt.data.invoiceNo + '&body=' + encodeURIComponent(receipt.text);
-        window.open(mailtoLink);
-    }
+    if (!receipt) { alert('No receipt data found!'); return; }
+    var email = await prompt('Enter customer email address:');
+    if (!email) return;
+    var subject = encodeURIComponent('Receipt ' + receipt.data.invoiceNo);
+    var body = encodeURIComponent(receipt.text);
+    window.location.href = 'mailto:' + email + '?subject=' + subject + '&body=' + body;
 }
-
 
 
 
@@ -4199,50 +4229,50 @@ async function voidSale(saleId) {
     }
 }
 
-// ===== OWNER DUTY: OPEN CASH DRAWER =====
-function openCashDrawer() {
-    // Requires a thermal printer connected via ESC/POS
-    if (typeof escpos === 'undefined') {
-        alert("Cash drawer printer not connected.");
+// ===== OWNER DUTY: OPEN CASH DRAWER (Bluetooth ESC/POS) =====
+async function openCashDrawer() {
+    if (!navigator.bluetooth) {
+        alert('Cash drawer requires Bluetooth.\nThis device/browser does not support it.');
         return;
     }
-    // Send the standard ESC/POS pulse to kick open the drawer
-    escpos.print('\x1B\x70\x00\x19\xFA');
-    alert("✅ Cash drawer opened.");
+    try {
+        const device = await navigator.bluetooth.requestDevice({
+            filters: [{ services: ['000018f0-0000-1000-8000-00805f9b34fb'] }]
+        });
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+        const chars = await service.getCharacteristics();
+        var writeChar = null;
+        for (var i = 0; i < chars.length; i++) {
+            if (chars[i].properties.write || chars[i].properties.writeWithoutResponse) { writeChar = chars[i]; break; }
+        }
+        if (!writeChar) throw new Error('Printer write channel not found');
+        // Standard ESC/POS drawer kick: ESC p 0 25 250
+        await writeChar.writeValue(new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]));
+        alert('✅ Cash drawer opened.');
+        device.gatt.disconnect();
+    } catch(e) {
+        if (e && e.name === 'NotFoundError') { alert('No printer selected.'); return; }
+        alert('❌ Cash drawer failed: ' + (e.message || e) + '\n\nTip: pair your ESC/POS printer with this phone first.');
+    }
 }
-
 		
 // ===== STAFF DUTY: CHANGE OWN PIN =====
-
 async function openChangePinModal() {
     var oldPin = await prompt("Enter your CURRENT PIN to verify it's you:");
     if (!oldPin) return;
 
-    var hashedOld = sha256(oldPin);
-    if (currentCashier.hashedPassword && currentCashier.hashedPassword !== hashedOld) {
-        alert("❌ Current PIN is incorrect.");
-        return;
-    }
+    var v = await ssVerifyStaffPin(getShopId(), currentCashier.id, oldPin);
+    if (!v.ok) { alert("❌ Current PIN is incorrect."); return; }
 
     var newPin = await prompt("Enter your NEW 4-digit PIN:");
-    if (!newPin || newPin.length < 4) {
-        alert("PIN must be at least 4 digits.");
-        return;
-    }
+    if (!newPin || newPin.length < 4) { alert("PIN must be at least 4 digits."); return; }
     var confirmPin = await prompt("Confirm your NEW PIN:");
-    if (newPin !== confirmPin) {
-        alert("PINs do not match.");
-        return;
-    }
+    if (newPin !== confirmPin) { alert("PINs do not match."); return; }
 
-    var newHashed = sha256(newPin);
-    supabaseClient.from('employees').update({ hashed_password: newHashed }).eq('firebase_id', currentCashier.id)
-    .then(function() {
-        currentCashier.hashedPassword = newHashed;
-        alert("✅ Your PIN has been changed successfully!");
-    }).catch(function(e) {
-        alert("❌ Error changing PIN: " + e.message);
-    });
+    var okSet = await ssSetPin(currentCashier.id, newPin);
+    if (okSet) alert("✅ Your PIN has been changed successfully!");
+    else alert("❌ Error changing PIN. Try again.");
 }
 		
 	// ===== ADMIN MAXIMIZE / MINIMIZE LOGIC =====
@@ -6008,7 +6038,85 @@ function showDeviceLocked(deviceName) {
     lock.style.display = 'flex';
     try { supabaseClient.auth.signOut(); } catch(e) {}
 }
+// ===== EXIT QR VERIFICATION (GUARD — Scan & Go) =====
+function openExitVerifyModal() {
+    closeSidebar();
+    document.getElementById('exitVerifyResult').innerHTML = '';
+    document.getElementById('exitCodeInput').value = '';
+    document.getElementById('exitVerifyModal').classList.add('active');
+}
 
+var exitDetector = null, exitStream = null;
+async function startExitScanner() {
+    var resultDiv = document.getElementById('exitVerifyResult');
+    if (!('BarcodeDetector' in window)) {
+        resultDiv.innerHTML = '<p style="color:#f59e0b; font-size:12px;">📷 QR camera not supported on this device — type the code below instead.</p>';
+        return;
+    }
+    try {
+        exitStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        var video = document.createElement('video');
+        video.autoplay = true; video.playsInline = true;
+        video.style.cssText = 'width:100%; border-radius:12px; margin-bottom:8px;';
+        resultDiv.innerHTML = ''; resultDiv.appendChild(video);
+        video.srcObject = exitStream;
+        exitDetector = new BarcodeDetector({ formats: ['qr_code'] });
+        var scanning = true;
+        (async function loop() {
+            while (scanning) {
+                try {
+                    var codes = await exitDetector.detect(video);
+                    if (codes.length > 0) {
+                        scanning = false;
+                        stopExitScanner();
+                        document.getElementById('exitCodeInput').value = codes[0].rawValue;
+                        verifyExitCode();
+                        return;
+                    }
+                } catch(e) {}
+                await new Promise(function(r) { setTimeout(r, 300); });
+            }
+        })();
+    } catch(e) {
+        resultDiv.innerHTML = '<p style="color:#ef4444; font-size:12px;">Camera error: ' + (e.message || e) + ' — type the code instead.</p>';
+    }
+}
+
+function stopExitScanner() {
+    if (exitStream) { try { exitStream.getTracks().forEach(function(t) { t.stop(); }); } catch(e) {} exitStream = null; }
+}
+
+async function verifyExitCode() {
+    var code = (document.getElementById('exitCodeInput').value || '').trim();
+    var resultDiv = document.getElementById('exitVerifyResult');
+    if (!code) { resultDiv.innerHTML = '<p style="color:#ef4444;">Enter or scan a code first.</p>'; return; }
+    stopExitScanner();
+    resultDiv.innerHTML = '<p style="color:#94a3b8;">⏳ Checking...</p>';
+    try {
+        const { data, error } = await supabaseClient.from('orders')
+            .select('*').eq('shop_id', getShopId()).eq('firebase_id', code).maybeSingle();
+        if (error) throw error;
+        if (!data) {
+            resultDiv.innerHTML = '<div style="background:#fef2f2; border:2px solid #ef4444; padding:14px; border-radius:10px; font-weight:800; color:#991b1b;">❌ ORDER NOT FOUND<small style="font-weight:400; display:block; margin-top:4px;">Invalid or foreign code. Do NOT allow exit — call the manager.</small></div>';
+            return;
+        }
+        var paid = data.status === 'Paid';
+        var itemsStr = (data.items || []).map(function(i) { return i.qty + 'x ' + i.name; }).join(', ');
+        var color = paid ? '#10b981' : '#ef4444';
+        var bg = paid ? '#ecfdf5' : '#fef2f2';
+        var head = paid ? '✅ PAID — ALLOW EXIT' : '❌ NOT PAID — STOP';
+        resultDiv.innerHTML = '<div style="background:' + bg + '; border:2px solid ' + color + '; padding:14px; border-radius:10px; text-align:left;">' +
+            '<div style="font-size:18px; font-weight:800; color:' + color + '; margin-bottom:6px;">' + head + '</div>' +
+            '<div style="font-size:13px; color:#334155;">' +
+            '<b>Table/Ref:</b> ' + (data.table_id || '—') + '<br>' +
+            '<b>Items:</b> ' + sanitize(itemsStr || '—') + '<br>' +
+            '<b>Total:</b> ' + fmtMoney(data.total || 0) + '<br>' +
+            '<b>Status:</b> ' + data.status + (data.paid_at ? ' · paid ' + new Date(data.paid_at).toLocaleTimeString() : '') + '<br>' +
+            '<b>Placed:</b> ' + new Date(data.time).toLocaleTimeString() + '</div></div>';
+    } catch(e) {
+        resultDiv.innerHTML = '<p style="color:#ef4444;">Error: ' + e.message + '</p>';
+    }
+}
     
   // Register the Service Worker for Offline PWA capabilities
   if ('serviceWorker' in navigator) {
