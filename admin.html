@@ -687,7 +687,7 @@ body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
         
         <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:15px; margin-bottom:20px;">
             <h3 style="color:#1e293b; margin-bottom:10px;">💳 How to Pay:</h3>
-            <p style="font-size:14px; color:#334155; margin-bottom:5px;"><b>Telebirr / CBE Birr:</b> +251973316100</p>
+            <p style="font-size:14px; color:#334155; margin-bottom:5px;"><b>Telebirr / CBE Birr:</b> <span id="lockoutPayPhone">+251973316100</span>
             <p style="font-size:14px; color:#334155; margin-bottom:5px;"><b>Amount:</b> 1,000 Br / Month</p>
             <p style="font-size:13px; color:#64748b; margin-top:10px;">After paying, send the transaction ID to this number via WhatsApp or SMS, or click the button below.</p>
         </div>
@@ -3179,14 +3179,15 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
 <!-- PDF & Email -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
 <!-- ESC/POS thermal printer (pure JavaScript, no native plugin) -->
 <script src="https://cdn.jsdelivr.net/npm/escpos-web@1.0.0/dist/escpos-web.min.js"></script>
 
 <!-- 4. YOUR SHARED FILES -->
+<script src="config.js"></script>	 
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <script src="sheet.js"></script>			 
 <script src="shared.js"></script>
+<script src="ssauth.js"></script>	 
 <script src="advanced.js"></script>
 <script src="smartcom.js"></script>
 			 
@@ -3203,7 +3204,37 @@ var APP_CONFIG = {
   enterprise:{ maxProducts: 999999,cashiers:999,priceMonthly:5000, priceYearly:50000, trialDays: 30 }
 };
 
-	
+	// ===== UNIVERSAL SUPPORT CONTACTS (Master-controlled, offline-cached) =====
+window.SUPPORT = { phone: SS_CONFIG.SUPPORT.phone, whatsapp: SS_CONFIG.SUPPORT.whatsapp,
+                   email: SS_CONFIG.SUPPORT.email, telegram: '', facebook: '', instagram: '', website: '' };
+
+async function loadSupportContactsUniversal() {
+    // 1. Load cached values first (works offline, instantly)
+    try {
+        var cached = JSON.parse(localStorage.getItem('ss_support_contacts') || 'null');
+        if (cached && cached.phone) window.SUPPORT = cached;
+    } catch(e) {}
+
+    // 2. Refresh from database (Master's latest changes)
+    try {
+        const { data } = await supabaseClient.from('global_settings')
+            .select('support_phone, support_email, support_telegram, support_facebook, support_instagram, support_website')
+            .eq('id', 'globalConfig').maybeSingle();
+        if (data && data.support_phone) {
+            window.SUPPORT = {
+                phone: data.support_phone,
+                whatsapp: (data.support_phone || '').replace(/[^0-9]/g, ''),
+                email: data.support_email || SS_CONFIG.SUPPORT.email,
+                telegram: data.support_telegram || '',
+                facebook: data.support_facebook || '',
+                instagram: data.support_instagram || '',
+                website: data.support_website || ''
+            };
+            localStorage.setItem('ss_support_contacts', JSON.stringify(window.SUPPORT));
+        }
+    } catch(e) {}
+    return window.SUPPORT;
+}
 
 function getLicense() { return JSON.parse(localStorage.getItem('smartshop_license') || 'null'); }
 
@@ -3243,6 +3274,7 @@ function canAddStaff(currentCount) {
     var config = APP_CONFIG[lic.plan] || APP_CONFIG.starter;
     return currentCount < (config ? config.cashiers : 1);
 }
+	
 
 async function hashPassword(pwd) {
   try {
@@ -6193,7 +6225,20 @@ var PER_PAGE_LIST = 20, PER_PAGE_GRID = 12;
 
 // Safe number helper (always returns a number)
 function toNum(val) { return Number(val) || 0; }
-
+// Split a sale into payment buckets (handles split payments correctly)
+function ssSplitPaymentBuckets(sale) {
+    var b = { cash: 0, card: 0, mobile: 0, credit: 0 };
+    if (sale.paymentMethod === 'split' && Array.isArray(sale.payments)) {
+        sale.payments.forEach(function(p) {
+            var m = p.method || 'cash';
+            if (b[m] !== undefined) b[m] += toNum(p.amount);
+        });
+    } else {
+        var m2 = sale.paymentMethod || 'cash';
+        if (b[m2] !== undefined) b[m2] += toNum(sale.total);
+    }
+    return b;
+}
 // Filtered detailed sales
 function getFilteredDetailedSales() {
     var filtered = salesCache.slice();
@@ -7519,13 +7564,14 @@ function getSalesReportData() {
     sales.forEach(function(s) {
         var d = new Date(s.time);
         var key = d.toDateString();
-        if (!map[key]) map[key] = { date: d.toISOString(), cash:0, card:0, mobile:0, credit:0, total:0 };
-        map[key][s.paymentMethod] = (map[key][s.paymentMethod]||0) + (s.total||0);
-        map[key].total += s.total||0;
+        if (!map[key]) map[key] = { date: d.toISOString(), cash: 0, card: 0, mobile: 0, credit: 0, total: 0 };
+        var b = ssSplitPaymentBuckets(s);
+        map[key].cash += b.cash; map[key].card += b.card;
+        map[key].mobile += b.mobile; map[key].credit += b.credit;
+        map[key].total += toNum(s.total);
     });
-    return Object.values(map).sort(function(a,b){ return new Date(b.date) - new Date(a.date); });
+    return Object.values(map).sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
 }
-
 function switchSalesReportView(view) {
     currentSalesRepView = view;
     var btns = document.querySelectorAll('.salesrep-view-btn');
@@ -7593,13 +7639,14 @@ function getCashierReportData() {
     var map = {};
     sales.forEach(function(s) {
         var name = s.cashierName || 'Unknown';
-        if (!map[name]) map[name] = { name: name, cash:0, card:0, mobile:0, credit:0, total:0 };
-        map[name][s.paymentMethod] = (map[name][s.paymentMethod]||0) + (s.total||0);
-        map[name].total += s.total||0;
+        if (!map[name]) map[name] = { name: name, cash: 0, card: 0, mobile: 0, credit: 0, total: 0 };
+        var b = ssSplitPaymentBuckets(s);
+        map[name].cash += b.cash; map[name].card += b.card;
+        map[name].mobile += b.mobile; map[name].credit += b.credit;
+        map[name].total += toNum(s.total);
     });
-    return Object.values(map).sort(function(a,b){ return b.total - a.total; });
+    return Object.values(map).sort(function(a, b) { return b.total - a.total; });
 }
-
 function switchCashierReportView(view) {
     currentCashierRepView = view;
     var btns = document.querySelectorAll('.cashierrep-view-btn');
@@ -8268,19 +8315,29 @@ async function activateLicense() {
 }
 	
 async function contactProvider() {
-    var phone = '+251973316100';
-    var email = 'girmadinsho@gmail.com';
-    try {
-        const { data } = await supabaseClient.from('global_settings')
-            .select('support_phone, support_email').eq('id', 'globalConfig').maybeSingle();
-        if (data) {
-            phone = data.support_phone || phone;
-            email = data.support_email || email;
-        }
-    } catch(e) {}
-    alert('📞 ' + phone + '\n📧 ' + email);
+    await loadSupportContactsUniversal();
+    var s = window.SUPPORT;
+    var old = document.getElementById('supportModal'); if (old) old.remove();
+    var m = document.createElement('div');
+    m.className = 'modal active'; m.id = 'supportModal';
+    var b = function(bg, link, label) {
+        return '<a href="' + link + '" target="_blank" style="display:block;background:' + bg + ';color:#fff;padding:14px;border-radius:10px;text-decoration:none;font-weight:bold;margin-bottom:8px;">' + label + '</a>';
+    };
+    var html = '<div class="modal-content" style="text-align:center;"><h3>📞 Contact Your Provider</h3>';
+    if (s.whatsapp) html += b('#25D366', 'https://wa.me/' + s.whatsapp, '💬 WhatsApp: ' + s.phone);
+    if (s.telegram) html += b('#229ED9', 'https://t.me/' + s.telegram.replace('@',''), '✈️ Telegram: ' + s.telegram);
+    if (s.email) html += b('#ef4444', 'mailto:' + s.email, '📧 ' + s.email);
+    if (s.facebook) { var fb = s.facebook.startsWith('http') ? s.facebook : 'https://' + s.facebook; html += b('#1877F2', fb, '👍 Facebook Page'); }
+    if (s.instagram) html += b('linear-gradient(45deg,#f09433,#dc2743,#bc1888)', 'https://instagram.com/' + s.instagram.replace('@',''), '📸 Instagram');
+    if (s.website) { var ws = s.website.startsWith('http') ? s.website : 'https://' + s.website; html += b('#64748b', ws, '🌐 Website'); }
+    if (!s.whatsapp && s.phone) html += '<p>📱 Call: ' + s.phone + '</p>';
+    html += '<button class="btn btn-outline" onclick="document.getElementById(\'supportModal\').classList.remove(\'active\')">Close</button></div>';
+    m.innerHTML = html;
+    document.body.appendChild(m);
+    m.addEventListener('click', function(e) { if (e.target === m) m.classList.remove('active'); });
 }
-// ===== BARCODE SCANNER =====
+	
+	// ===== BARCODE SCANNER =====
 function startBarcodeScanner(targetId) {
   if (scannerActive) return;
   scannerActive = true;
@@ -9693,17 +9750,6 @@ function addIngredientToRecipe(ingredientId) {
 }
 
 
-
-
-
-
-
-
-
-
-
-	
-	
 // ===== FORMULATION TABLE (WITH INLINE CUSTOM UNITS) =====
 var KITCHEN_UNITS = ['Kg', 'g', 'Litre', 'ml', 'Cup', 'Glass', 'Spoon', 'Piece', 'Bottle', 'Dish', 'Bundle', 'Pack'];
 
@@ -10711,19 +10757,11 @@ async function registerAccount() {
 }
 
 async function contactSupport() {
-    var phone = '251973316100';
+    await loadSupportContactsUniversal();
     var msg = "Hello, my SmartShop Pro trial has expired. I have just paid the subscription. Here is my transaction ID:";
-    try {
-        const { data } = await supabaseClient.from('global_settings')
-            .select('support_phone').eq('id', 'globalConfig').maybeSingle();
-        if (data && data.support_phone) {
-            phone = data.support_phone.replace(/[^0-9]/g, '');
-        }
-    } catch(e) {}
-    var url = "https://wa.me/" + phone + "?text=" + encodeURIComponent(msg);
+    var url = "https://wa.me/" + window.SUPPORT.whatsapp + "?text=" + encodeURIComponent(msg);
     window.open(url, '_blank');
 }
-
 // ===== APP PIN LOGIC (FIXED FOR CUSTOM PROMPTS) =====
 async function checkAppPinStatus() {
     var appPinScreen = document.getElementById('appPinScreen');
@@ -10821,7 +10859,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
             const { data: mu } = await supabaseClient.from('master_users').select('role').eq('email', user.email).maybeSingle();
             isOwner = !!(mu && mu.role === 'master');
         } catch(e) { console.warn('Owner check failed', e); }
-        // 3. Check License (Using Local Storage to avoid Firebase dependency)
+               // 3. Check License (Using Local Storage to avoid Firebase dependency)
         if (!isOwner) {
             try {
                 var licStr = localStorage.getItem('smartshop_license');
@@ -10831,6 +10869,12 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
                     if (lic.expiryDate && new Date(lic.expiryDate) < new Date()) {
                         if (loadingScreen) loadingScreen.style.display = 'none';
                         if (lockoutScreen) lockoutScreen.style.display = 'flex';
+                        // 📞 Show Master-controlled payment/support phone
+                        try {
+                            await loadSupportContactsUniversal();
+                            var lp = document.getElementById('lockoutPayPhone');
+                            if (lp) lp.textContent = window.SUPPORT.phone;
+                        } catch(e) {}
                         return; // Stop here. Do not open app.
                     }
                 }
@@ -10838,7 +10882,6 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
                 console.error("License check failed.", e);
             }
          }
-
 			
 			            // 🛑 TRIAL EXPIRED? Show PLAN PICKER (not just block!)
             try {
@@ -10860,6 +10903,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
                     }
 
                     // Load plans from database
+									 await loadSupportContactsUniversal();
                     const { data: plans } = await supabaseClient.from('plans').select('*').eq('active', true);
                     var plansHtml = '';
                     (plans || []).forEach(function(pl) {
@@ -10868,7 +10912,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
                             '<div><b style="font-size:16px;">' + pl.name + '</b> <small style="opacity:.6;">(' + pl.line + ')</small><br>' +
                             '<small style="opacity:.7;">' + (pl.max_products < 999999 ? pl.max_products + ' products' : 'Unlimited') + ' · ' + (pl.max_cashiers < 999 ? pl.max_cashiers + ' staff' : 'Unlimited') + '</small></div>' +
                             '<div style="text-align:right;"><b style="color:#fbbf24;font-size:18px;">' + (pl.price_monthly > 0 ? pl.price_monthly + ' Br/mo' : 'Call us') + '</b></div></div>' +
-                            '<a href="https://wa.me/251973316100?text=' + encodeURIComponent('Hello! I want the ' + pl.name + ' plan. My Shop ID: ' + getShopId()) + '" target="_blank" style="display:block;margin-top:10px;padding:10px;background:#25D366;color:white;text-align:center;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">💬 Choose ' + pl.name + ' (WhatsApp)</a>' +
+                            '<a href="https://wa.me/' + window.SUPPORT.whatsapp + '?text=' + encodeURIComponent('Hello! I want the ' + pl.name + ' plan. My Shop ID: ' + getShopId()) + '" target="_blank" style="display:block;margin-top:10px;padding:10px;background:#25D366;color:white;text-align:center;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">💬 Choose ' + pl.name + ' (WhatsApp)</a>' +
                             '</div>';
                     });
 
@@ -11736,10 +11780,10 @@ async function submitNewEmployeeFinal() {
     var duplicate = employeesCache.find(function(e) { return e.name.toLowerCase() === name.toLowerCase(); });
     if (duplicate) { alert('⚠️ An employee with this name already exists!'); return; }
 
-    var hashedPin = null;
+    var hashedPin = null, pinSalt = null;
     if (password) {
-        if (typeof sha256 !== 'function') { alert('Password library not loaded.'); return; }
-        hashedPin = sha256(password);
+        pinSalt = ssRandomSalt();
+        hashedPin = await ssHashPin(password, pinSalt);
     }
 
     try {
@@ -11763,7 +11807,8 @@ async function submitNewEmployeeFinal() {
                 account_no: accountNo,
                 status: 'active',
                 hashed_password: hashedPin,
-                pin_locked: pinLocked || false
+                pin_salt: pinSalt,
+	            pin_locked: pinLocked || false
             }]);
             if (error) throw error;
         }
@@ -11877,6 +11922,7 @@ async function loadPeakHours() {
 // ===== FINAL STARTUP =====
 function init() {
     loadDashboard('daily', document.querySelector('.period-btn.active'));
+	    loadSupportContactsUniversal();
     if (supabaseClient) loadAllCaches();
     document.getElementById('langSelect').value = appLang;
     setTimeout(function() { loadShopList(); }, 1000);
