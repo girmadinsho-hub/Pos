@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIN Doctor</title>
+<style>
+body{font-family:sans-serif;background:#0f172a;color:#e2e8f0;padding:20px;max-width:500px;margin:0 auto}
+input,select{width:100%;padding:12px;font-size:16px;border-radius:8px;border:1px solid #475569;background:#1e293b;color:#fff;box-sizing:border-box;margin-bottom:8px}
+button{width:100%;padding:14px;font-size:16px;font-weight:bold;border:none;border-radius:10px;background:#10b981;color:#fff;margin-bottom:8px}
+.row{padding:12px;border-radius:8px;margin-top:8px;font-size:13px;word-break:break-word}
+.pass{background:#064e3b;border:1px solid #10b981}
+.fail{background:#7f1d1d;border:1px solid #ef4444}
+.info{background:#1e3a8a;border:1px solid #3b82f6}
+small{color:#94a3b8}
+</style></head>
+<body>
+<h2>🩺 PIN Doctor</h2>
+<input id="shopId" placeholder="Shop ID">
+<input id="email" type="email" placeholder="Owner email (your Admin login)">
+<input id="pass" type="password" placeholder="Owner password">
+<button onclick="signIn()">1️⃣ Sign In & Load Staff</button>
+<select id="staffSel" style="display:none"></select>
+<input id="pin" type="password" placeholder="The PIN you think is correct" maxlength="6" style="display:none">
+<button id="testBtn" onclick="testPin()" style="display:none">2️⃣ Test PIN on Server</button>
+<div id="out"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+<script>
+const sb = supabase.createClient("https://mtwcdvmdoxzcejzgypdw.supabase.co","sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8");
+function show(t,c){document.getElementById('out').innerHTML+='<div class="row '+c+'">'+t+'</div>';}
+var staff=[];
+
+async function signIn(){
+  document.getElementById('out').innerHTML='';
+  var email=document.getElementById('email').value.trim();
+  var pass=document.getElementById('pass').value;
+  var shop=document.getElementById('shopId').value.trim();
+  if(!email||!pass||!shop){show('⚠️ Fill shop, email and password first.','fail');return;}
+
+  show('Signing in as owner...','info');
+  const {error}=await sb.auth.signInWithPassword({email:email,password:pass});
+  if(error){show('❌ Owner login failed: '+error.message,'fail');return;}
+  show('✅ Owner signed in','pass');
+
+  // Show ALL shops you can see (helps find the exact shop_id)
+  const {data:shops}=await sb.from('shops').select('shop_id,name').order('created_at');
+  if(shops&&shops.length){
+    var list=shops.map(s=>'<b>'+s.shop_id+'</b> — '+s.name).join('<br>');
+    show('🏪 Shops visible to you:<br>'+list+'<br><br><small>If your Shop ID is not in this list, retype the EXACT shop_id above and tap 1️⃣ again.</small>','info');
+  }
+
+  const {data,error:e2}=await sb.from('employees')
+    .select('firebase_id,id,name,position,hashed_password,pin_salt')
+    .eq('shop_id',shop);
+  if(e2){show('❌ Employee load failed: '+e2.message,'fail');return;}
+  staff=data||[];
+
+  if(staff.length===0){
+    show('⚠️ 0 STAFF FOUND for shop "'+shop+'"! The cashier is registered under a DIFFERENT shop_id. Copy the correct shop_id from the list above, retype it, tap 1️⃣ again.','fail');
+    return;
+  }
+
+  var sel=document.getElementById('staffSel');
+  sel.innerHTML=staff.map(s=>'<option value="'+(s.firebase_id||s.id)+'">'+s.name+' ('+s.position+')</option>').join('');
+  sel.style.display='block';
+  document.getElementById('pin').style.display='block';
+  document.getElementById('testBtn').style.display='block';
+  show('✅ Loaded '+staff.length+' staff. Pick one, enter the PIN, tap 2️⃣','pass');
+}
+
+async function testPin(){
+  var shop=document.getElementById('shopId').value.trim();
+  var empId=document.getElementById('staffSel').value;
+  var pin=document.getElementById('pin').value.trim();
+  if(!pin){show('⚠️ Enter the PIN.','fail');return;}
+
+  // LOCAL check (what the old app did)
+  var emp=staff.find(s=>(s.firebase_id||s.id)===empId);
+  if(emp&&emp.hashed_password&&!emp.pin_salt){
+    show((typeof sha256==='function'&&sha256(pin)===emp.hashed_password)
+      ?'✅ LOCAL: PIN MATCHES the old hash (so the PIN is definitely right)'
+      :'ℹ️ LOCAL: does NOT match old hash (the PIN may be different than you think)','info');
+  } else if(emp&&emp.pin_salt){
+    show('ℹ️ This staff already has a SALTED pin (upgraded). Local check not possible.','info');
+  }
+
+  show('Calling server...','info');
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    var res=await fetch("https://mtwcdvmdoxzcejzgypdw.supabase.co/functions/v1/staff-login",{
+      method:'POST',
+      headers:{'Content-Type':'application/json','apikey':'sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8','Authorization':'Bearer '+(session?session.access_token:'')},
+      body:JSON.stringify({shop_id:shop,employee_id:empId,pin:pin})
+    });
+    var raw=await res.text();
+    show('HTTP status: <b>'+res.status+'</b>','info');
+    show('RAW SERVER ANSWER: <b>'+raw+'</b>','pass');
+    var d={};try{d=JSON.parse(raw);}catch(e){}
+    if(res.status===404)show('📋 FUNCTION NOT DEPLOYED — redeploy staff-login.','fail');
+    else if(d.ok===true)show('🎉 SERVER SAYS PIN IS CORRECT! → bug is in app wiring. Send me the RAW line.','pass');
+    else if(d.reason==='wrong')show('📋 Server says genuinely wrong PIN. Send me the RAW line + the LOCAL line above.','fail');
+    else if(d.reason==='locked')show('📋 Locked for '+d.minutes+' min. Unlock: update employees set lock_until=null, failed_attempts=0;','fail');
+    else if(d.reason==='not_found')show('📋 Employee not found for THIS shop → shop_id mismatch!','fail');
+    else if(d.reason==='no_session')show('📋 Session not passed correctly.','fail');
+    else show('📋 Unknown response — send me the RAW line.','fail');
+  }catch(e){show('❌ Network error: '+e.message,'fail');}
+}
+</script></body></html>
