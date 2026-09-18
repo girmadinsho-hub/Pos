@@ -136,6 +136,7 @@
         <div style="padding:15px 20px; cursor:pointer; font-weight:600; color:#64748b;" onclick="showMasterTab('tabSettings')">⚙️ Settings</div>
     </div>
 
+	
     <div style="padding:15px; max-width:1000px; margin:0 auto;">
         <!-- TAB 1: LICENSES -->
         <div id="tabLicenses" class="master-tab-content">
@@ -312,25 +313,34 @@
         </div>
 
 <div class="card">
-    <div class="card-title">📞 Support Contacts</div>
-    <p style="font-size:13px; color:#64748b; margin-bottom:15px;">These contacts appear on every customer screen (license activation, trial expiry, support buttons).</p>
+    <div class="card-title">📞 Support Contacts (All Screens)</div>
+    <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Change ONCE here — every customer screen (license activation, trial expiry, support buttons) updates automatically.</p>
 
-    <label style="font-weight:600; font-size:12px; color:#475569;">WhatsApp / Phone (with country code)</label>
+    <label>📱 Phone / WhatsApp (with country code) *</label>
     <input type="text" id="supportPhoneInput" placeholder="+251973316100" style="margin-bottom:10px;">
 
-    <label style="font-weight:600; font-size:12px; color:#475569;">Email</label>
+    <label>📧 Email</label>
     <input type="email" id="supportEmailInput" placeholder="support@yourapp.com" style="margin-bottom:10px;">
 
-    <label style="font-weight:600; font-size:12px; color:#475569;">Telegram (optional)</label>
+    <label>✈️ Telegram (optional)</label>
     <input type="text" id="supportTelegramInput" placeholder="@yourtelegram" style="margin-bottom:10px;">
+
+    <label>👍 Facebook page (optional)</label>
+    <input type="text" id="supportFacebookInput" placeholder="facebook.com/yourpage" style="margin-bottom:10px;">
+
+    <label>📸 Instagram (optional)</label>
+    <input type="text" id="supportInstagramInput" placeholder="@yourinstagram" style="margin-bottom:10px;">
+
+    <label>🌐 Website (optional)</label>
+    <input type="text" id="supportWebsiteInput" placeholder="https://yourwebsite.com" style="margin-bottom:10px;">
 
     <button class="btn btn-green" onclick="saveSupportContacts()">💾 Save Contacts</button>
 </div>
-			
-    </div>
+</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+	<script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
 <script>
 // ===== SUPABASE INITIALIZATION =====
@@ -1173,32 +1183,38 @@ async function loadTierSettings() {
     } catch(e) { console.error("Error loading tiers:", e); }
 }
 
-// ===== SUPPORT CONTACTS =====
+// ===== SUPPORT CONTACTS (6 PLATFORMS — controls all customer screens) =====
 async function loadSupportContacts() {
     try {
         const { data } = await supabaseClient.from('global_settings')
-            .select('support_phone, support_email, support_telegram')
+            .select('support_phone, support_email, support_telegram, support_facebook, support_instagram, support_website')
             .eq('id', 'globalConfig').maybeSingle();
         if (data) {
             document.getElementById('supportPhoneInput').value = data.support_phone || '';
             document.getElementById('supportEmailInput').value = data.support_email || '';
             document.getElementById('supportTelegramInput').value = data.support_telegram || '';
+            document.getElementById('supportFacebookInput').value = data.support_facebook || '';
+            document.getElementById('supportInstagramInput').value = data.support_instagram || '';
+            document.getElementById('supportWebsiteInput').value = data.support_website || '';
         }
     } catch(e) { console.error('Load contacts error:', e.message); }
 }
 
 async function saveSupportContacts() {
     var phone = document.getElementById('supportPhoneInput').value.trim();
-    var email = document.getElementById('supportEmailInput').value.trim();
-    var telegram = document.getElementById('supportTelegramInput').value.trim();
-
     if (!phone) { alert('Phone number is required.'); return; }
-
     try {
-        const { error } = await supabaseClient.from('global_settings')
-            .upsert({ id: 'globalConfig', support_phone: phone, support_email: email, support_telegram: telegram });
+        const { error } = await supabaseClient.from('global_settings').upsert({
+            id: 'globalConfig',
+            support_phone: phone,
+            support_email: document.getElementById('supportEmailInput').value.trim(),
+            support_telegram: document.getElementById('supportTelegramInput').value.trim(),
+            support_facebook: document.getElementById('supportFacebookInput').value.trim(),
+            support_instagram: document.getElementById('supportInstagramInput').value.trim(),
+            support_website: document.getElementById('supportWebsiteInput').value.trim()
+        });
         if (error) throw error;
-        alert('✅ Support contacts saved! Every screen now uses these.');
+        alert('✅ Saved! All customer screens now use these contacts.');
         logAction('support_contacts', 'Updated support contacts');
     } catch(e) { alert('❌ Error: ' + e.message); }
 }
