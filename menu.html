@@ -224,6 +224,7 @@
 
 <!-- ADD THIS LINE BELOW -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+	<script src="config.js"></script>
 	
 <script>
    
@@ -642,6 +643,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
                         <h2 style="font-family:'Playfair Display', serif; color:var(--primary); margin-bottom:10px; font-size:24px;">✅ Order Placed!</h2>
                         <p style="color:var(--text-muted); margin-bottom:20px;">Show this QR code to the guard at the exit to verify your items.</p>
                         <img src="${qrUrl}" style="width:220px; height:220px; border-radius:12px; margin-bottom:20px; background:white; padding:10px;">
+											  <div style="background:#1e293b; padding:12px; border-radius:10px; margin-bottom:20px; font-family:monospace; font-size:15px; color:#fbbf24; word-break:break-all; letter-spacing:1px;">🪪 ${orderId}</div>
                         <div style="background:var(--bg-card); padding:15px; border-radius:12px; display:inline-block; text-align:left; width:100%; max-width:300px;">
                             <div style="font-weight:bold; font-size:18px; margin-bottom:10px;">Total: ${fmtMoney(totalPaid)}</div>
                             ${cart.map(i => `<div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px;"><span>${i.qty}x ${i.name}</span><span>${fmtMoney(i.price*i.qty)}</span></div>`).join('')}
