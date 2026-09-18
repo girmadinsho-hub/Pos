@@ -190,7 +190,10 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
-<script src="smartcom.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="smartcom.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+	<script src="config.js"></script>
+	<script src="ssauth.js"></script>
 	
 <script>
    
@@ -431,13 +434,16 @@ async function activateDevice() {
         var chef = chefList.find(c => c.id === chefId);
         if (!chef) { alert('Chef not found!'); return; }
 
-        var valid = false;
-        if (chef.hashedPassword) {
-            if (typeof sha256 !== 'undefined' && sha256(pin) === chef.hashedPassword) valid = true;
-        } else if (chef.password && pin === chef.password) {
-            valid = true;
+              var v = await ssVerifyStaffPin(shopId, chefId, pin);
+        if (!v.ok) {
+            if (v.reason === 'locked') alert('🔒 Too many wrong attempts. Locked for ' + v.minutes + ' more minute(s).');
+            else if (v.reason === 'inactive') alert('❌ Account disabled.');
+            else if (v.reason === 'network') alert('📶 No internet — connect to sign in.');
+            else alert('❌ Wrong PIN!');
+            return;
         }
-        if (!valid) { alert('❌ Wrong PIN!'); return; }
+        var licCheck = await ssCheckLicense();
+        if (!licCheck.allowed) { alert(licCheck.message); return; }
 
                localStorage.setItem('kitchenShopId', shopId);
         localStorage.setItem('kitchenChefId', chefId);
@@ -756,11 +762,17 @@ function kitchenLogout() {
         // Method 1: check Manager/Owner PIN in employees table
         try {
             const { data: staff } = await supabaseClient.from('employees')
-                .select('hashed_password, position').eq('shop_id', shopId)
-                .in('position', ['Manager', 'Owner']);
+              .select('hashed_password, pin_salt, position').eq('shop_id', shopId)   
+							.in('position', ['Manager', 'Owner']);
             for (var i = 0; i < (staff || []).length; i++) {
-                if (staff[i].hashed_password && sha256(pass) === staff[i].hashed_password) {
-                    return true; // ✅ Manager verified
+                          var matches = false;
+                if (staff[i].pin_salt && staff[i].hashed_password) {
+                    matches = (await ssHashPin(pass, staff[i].pin_salt)) === staff[i].hashed_password;
+                } else if (staff[i].hashed_password) {
+                    matches = (sha256(pass) === staff[i].hashed_password);
+                }
+                if (matches) {
+							return true; // ✅ Manager verified
                 }
             }
         } catch(e) { console.warn('Staff check failed:', e.message); }
