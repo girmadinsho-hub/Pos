@@ -358,19 +358,33 @@ async function activateDevice() {
     var email = document.getElementById('ownerEmail').value.trim();
     var pass = document.getElementById('ownerPass').value;
     var msg = document.getElementById('ownerActivateMsg');
-    if (!shopIdIn || !email || !pass) {
-        msg.textContent = '⚠️ Fill Shop ID, Email and Password.';
-        return;
-    }
+    if (!email || !pass) { if (msg) { msg.style.color = '#ef4444'; msg.textContent = '⚠️ Fill Email and Password.'; } return; }
     var btn = document.getElementById('ownerActivateBtn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Activating...'; }
     try {
         const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
         if (error) throw new Error(error.message === 'Invalid login credentials' ? '❌ Wrong email or password.' : error.message);
-        localStorage.setItem('kitchenShopId', shopIdIn);
-        localStorage.setItem('shopId', shopIdIn);
-        shopId = shopIdIn;
-        if (msg) { msg.style.color = '#10b981'; msg.textContent = '✅ Device activated!'; }
+
+        var finalShopId = shopIdIn;
+        if (finalShopId) {
+            const { data: shopRow } = await supabaseClient.from('shops').select('shop_id,name').eq('shop_id', finalShopId).maybeSingle();
+            if (!shopRow) throw new Error('❌ Shop ID "' + finalShopId + '" not found for this account. Check spelling — or leave empty to auto-detect.');
+        } else {
+            const { data: myShops } = await supabaseClient.from('shops').select('shop_id,name').eq('owner_email', email).eq('active', true);
+            if (myShops && myShops.length === 1) {
+                finalShopId = myShops[0].shop_id;
+                if (msg) { msg.style.color = '#10b981'; msg.textContent = '✅ Found your shop: ' + (myShops[0].name || finalShopId); }
+            } else if (myShops && myShops.length > 1) {
+                throw new Error('🏢 You have ' + myShops.length + ' shops: ' + myShops.map(function(s){ return s.shop_id; }).join(', ') + ' — type the one for THIS device.');
+            } else {
+                throw new Error('❌ No shop found for this email. Type the Shop ID manually.');
+            }
+        }
+
+        localStorage.setItem('kitchenShopId', finalShopId);
+        localStorage.setItem('shopId', finalShopId);
+        shopId = finalShopId;
+        if (msg) { msg.style.color = '#10b981'; msg.textContent = '✅ Activated for: ' + finalShopId; }
         showChefLogin();
         loadChefList();
     } catch (e) {
@@ -378,8 +392,7 @@ async function activateDevice() {
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '🔓 Activate Device'; }
     }
-}
-	
+}	
     function manualLinkKitchen() {
         var id = document.getElementById('loginShopId').value.trim();
         if (!id) { alert('Please enter Shop ID'); return; }
