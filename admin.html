@@ -638,17 +638,65 @@ body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
 <div class="modal" id="registerModal">
     <div class="modal-content">
         <div class="card-title">📝 Create Account</div>
-        <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Enter your details to set up your shop.</p>
-        
-        <input type="text" id="regShopName" class="form-input" placeholder="Shop Name (e.g., Arada Supermarket)">
+        <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Set up your shop in one minute.</p>
+
+        <input type="text" id="regShopName" class="form-input" placeholder="Shop Name * (e.g., Friends Coffee)" oninput="regPreviewShopId()">
+
+        <label style="font-size:11px; color:#64748b; font-weight:700;">🔑 YOUR SHOP ID (for connecting POS/Kitchen devices)</label>
+        <div style="display:flex; gap:6px; align-items:center;">
+            <input type="text" id="regShopId" class="form-input" placeholder="auto from shop name" style="flex:1;" oninput="regShopIdInput()">
+            <span id="regShopIdStatus" style="font-size:20px; min-width:26px; text-align:center;"></span>
+        </div>
+        <small id="regShopIdHint" style="font-size:11px; color:#64748b; display:block; margin-bottom:10px;">Auto-made from your shop name — you can edit it.</small>
+
         <input type="tel" id="regPhone" class="form-input" placeholder="Phone Number">
-        <input type="email" id="regEmail" class="form-input" placeholder="Your Email Address">
-        <input type="password" id="regPass" class="form-input" placeholder="Create Password (min 6 characters)">
-        
+        <input type="email" id="regEmail" class="form-input" placeholder="Your Email Address *">
+        <input type="password" id="regPass" class="form-input" placeholder="Create Password * (min 6 characters)">
+
         <div class="flex-row" style="margin-top: 10px;">
             <button class="btn btn-outline" onclick="closeRegisterForm()">Cancel</button>
             <button class="btn btn-success" onclick="registerAccount()">Create Account</button>
         </div>
+    </div>
+</div>
+
+<!-- 🎉 New Registration Success Card -->
+<div class="modal" id="regSuccessModal" style="z-index:10002;">
+    <div class="modal-content" style="text-align:center;">
+        <div style="font-size:48px;">🎉</div>
+        <h3 style="margin-bottom:4px;">Account Created!</h3>
+        <p style="font-size:12px; color:#64748b;">SAVE this information — you need it to sign in & connect devices.</p>
+        <div style="background:#eff6ff; border:2px dashed #2563eb; border-radius:12px; padding:14px; margin:12px 0;">
+            <div style="font-size:10px; color:#64748b; font-weight:800; letter-spacing:1px;">🔑 YOUR SHOP ID</div>
+            <div id="regSuccessShopId" style="font-size:24px; font-weight:800; color:#2563eb; word-break:break-all; margin:4px 0;"></div>
+            <button class="btn btn-primary btn-sm" onclick="ssCopyText(document.getElementById('regSuccessShopId').textContent, 'Shop ID')" style="width:auto; padding:8px 16px;">📋 Copy Shop ID</button>
+        </div>
+        <div style="text-align:left; font-size:13px; color:#334155; line-height:1.7;">
+            <b>📝 Your login:</b> <span id="regSuccessEmail"></span> + the password you created<br>
+            <b>Next steps:</b><br>
+            1️⃣ Tap "Continue" and sign in<br>
+            2️⃣ POS/Kitchen devices: during activation just sign in with your email — your shop is found <b>automatically</b> (no typing!)<br>
+            🔑 Forgot password? Tap "Forgot Password?" on the login screen<br>
+            🔍 Find your Shop ID anytime: Dashboard wizard or Settings tab
+        </div>
+        <button class="btn btn-success" onclick="closeRegSuccess()" style="margin-top:14px;">Continue →</button>
+    </div>
+</div>
+
+<!-- 👋 Welcome Back Card (existing account) -->
+<div class="modal" id="welcomeBackModal" style="z-index:10002;">
+    <div class="modal-content" style="text-align:center;">
+        <div style="font-size:44px;">👋</div>
+        <h3 style="margin-bottom:4px;">Welcome Back!</h3>
+        <p style="font-size:13px; color:#64748b;">This email already has a shop — no new account needed. Here is your information:</p>
+        <div id="welcomeBackShops" style="margin:12px 0;"></div>
+        <div style="text-align:left; font-size:12px; color:#334155; background:#f8fafc; border-radius:10px; padding:10px; line-height:1.6;">
+            📧 <b>Login email:</b> <span id="welcomeBackEmail"></span><br>
+            ✅ You are already signed in — just close this window!<br>
+            📱 <b>Connect POS/Kitchen:</b> during device activation, sign in with your email — shop found automatically<br>
+            🔑 <b>Forgot password?</b> Logout → "Forgot Password?" on the login screen
+        </div>
+        <button class="btn btn-success" onclick="document.getElementById('welcomeBackModal').classList.remove('active')" style="margin-top:12px;">Continue →</button>
     </div>
 </div>
 
@@ -2399,7 +2447,15 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 
    <!-- Settings -->
 <div id="tab13" class="tab-content" style="display:none">
-    
+     <div class="card" style="background:#eff6ff; border:2px solid #2563eb;">
+        <div class="card-title">🔑 Your Shop ID</div>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <div id="settingsShopIdDisplay" style="flex:1; font-size:20px; font-weight:800; color:#2563eb; word-break:break-all;">—</div>
+            <button class="btn-mini" onclick="ssCopyText(localStorage.getItem('shopId') || '', 'Shop ID')">📋 Copy</button>
+        </div>
+        <p style="font-size:11px; color:#64748b; margin-top:6px;">Use this ID when connecting POS/Kitchen devices (or just sign in with your email — auto-detected).</p>
+    </div>
+  
     <!-- NEW: Secure Account Password -->
     <div class="card">
         <div class="card-title" onclick="toggleCard(this)">🔐 Account Password <span class="arrow open">▶</span></div>
@@ -10675,113 +10731,209 @@ async function changeMyAdminPassword() {
         alert("❌ Error: " + error.message);
     }
 }
-	// ===== REGISTRATION MODAL CONTROLS (FIXED — form opens ON TOP of login) =====
+
+// ═══ REGISTRATION SYSTEM v3 — Friendly Shop ID + Welcome-Back + Device Lock ═══
+
+function ssCopyText(text, label) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() { alert('📋 ' + label + ' copied:\n' + text); });
+    } else {
+        var ta = document.createElement('textarea'); ta.value = text;
+        document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); alert('📋 ' + label + ' copied:\n' + text); }
+        catch(e) { alert(label + ': ' + text); }
+        document.body.removeChild(ta);
+    }
+}
+
+var regShopIdTouched = false, regShopIdAvailable = null, regCheckTimer = null;
+
+function regGenerateShopId(name) { return (name || '').toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20); }
+
+function regPreviewShopId() {
+    if (regShopIdTouched) return;
+    document.getElementById('regShopId').value = regGenerateShopId(document.getElementById('regShopName').value);
+    regCheckShopIdDebounced();
+}
+
+function regShopIdInput() {
+    regShopIdTouched = true;
+    var el = document.getElementById('regShopId');
+    var clean = el.value.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
+    if (clean !== el.value) el.value = clean;
+    regCheckShopIdDebounced();
+}
+
+function regCheckShopIdDebounced() {
+    clearTimeout(regCheckTimer);
+    var id = document.getElementById('regShopId').value.trim();
+    var st = document.getElementById('regShopIdStatus');
+    var hint = document.getElementById('regShopIdHint');
+    regShopIdAvailable = null;
+    if (!id) { st.textContent = ''; hint.textContent = 'Auto-made from your shop name — you can edit it.'; hint.style.color = '#64748b'; return; }
+    if (id.length < 3) { st.textContent = '⚠️'; hint.textContent = 'At least 3 characters.'; hint.style.color = '#f59e0b'; return; }
+    st.textContent = '⏳'; hint.textContent = 'Checking availability...'; hint.style.color = '#64748b';
+    regCheckTimer = setTimeout(async function() {
+        try {
+            const { data: available } = await supabaseClient.rpc('check_shop_id_available', { p_shop_id: id });
+            regShopIdAvailable = !!available;
+            if (available) { st.textContent = '✅'; hint.textContent = '"' + id + '" is available!'; hint.style.color = '#10b981'; }
+            else { st.textContent = '❌'; hint.textContent = '"' + id + '" is taken — try another.'; hint.style.color = '#ef4444'; }
+        } catch(e) { st.textContent = ''; hint.textContent = 'Will verify when you tap Create.'; hint.style.color = '#64748b'; }
+    }, 500);
+}
+
+// Finds a free Shop ID: name → name2 → name3... (sagure, sagure2, sagure3)
+async function ssResolveShopId(baseId) {
+    if (!baseId) baseId = 'shop' + Date.now().toString(36);
+    try {
+        for (var attempt = 0; attempt < 30; attempt++) {
+            var tryId = attempt === 0 ? baseId : baseId + attempt;
+            const { data: avail } = await supabaseClient.rpc('check_shop_id_available', { p_shop_id: tryId });
+            if (avail) return tryId;
+        }
+    } catch(e) {}
+    return baseId + '-' + Math.random().toString(36).substr(2, 4);
+}
+
 function showRegisterForm() {
-    // Hide the login screen FIRST so the register form is fully visible
     document.getElementById('loginScreen').style.display = 'none';
+    ['regShopName','regShopId','regPhone','regEmail','regPass'].forEach(function(id){ var el = document.getElementById(id); if (el) el.value = ''; });
+    regShopIdTouched = false; regShopIdAvailable = null;
+    var st = document.getElementById('regShopIdStatus'); if (st) st.textContent = '';
+    var hint = document.getElementById('regShopIdHint');
+    if (hint) { hint.textContent = 'Auto-made from your shop name — you can edit it.'; hint.style.color = '#64748b'; }
     document.getElementById('registerModal').classList.add('active');
 }
 
 function closeRegisterForm() {
     document.getElementById('registerModal').classList.remove('active');
-    // Bring the login screen BACK
     document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('regShopName').value = '';
-    document.getElementById('regPhone').value = '';
-    document.getElementById('regEmail').value = '';
-    document.getElementById('regPass').value = '';
 }
+function closeRegSuccess() { document.getElementById('regSuccessModal').classList.remove('active'); }
 
-	
-// ===== DEVICE LOCK 1 (Phone Memory) =====
 function checkDeviceLock() {
     var registerBtn = document.getElementById('registerBtn');
     if (!registerBtn) return;
-    if (localStorage.getItem('deviceRegistered') === 'true') {
-        registerBtn.style.display = 'none';
-    } else {
-        registerBtn.style.display = 'block';
-    }
+    registerBtn.style.display = (localStorage.getItem('deviceRegistered') === 'true') ? 'none' : 'block';
 }
-// ===== CUSTOMER REGISTRATION (Double-Lock Security) =====
+
 async function registerAccount() {
     var shopName = document.getElementById('regShopName').value.trim();
     var phone = document.getElementById('regPhone').value.trim();
     var email = document.getElementById('regEmail').value.trim();
     var pass = document.getElementById('regPass').value.trim();
-
     if (!shopName || !email || !pass) { alert('Please fill all required fields.'); return; }
-      // 🛡️ ONE DEVICE = ONE SHOP (client check)
+
+    // 🛡️ ONE DEVICE = ONE SHOP (client + server)
     if (localStorage.getItem('deviceRegistered') === 'true') {
-        alert('⛔ This device already registered a shop.\n\nOne device = one shop.\nNeed more shops? Upgrade to Enterprise (multi-branch) or contact support.');
+        var existingShop = localStorage.getItem('shopId') || '';
+        alert('⛔ This device already has a shop' + (existingShop ? ': ' + existingShop : '') + '.\n\nOne device = one shop.\nUse the LOGIN screen with your email and password.\nNeed another shop? Upgrade to Enterprise or contact support.');
         return;
     }
-    // 🛡️ ONE DEVICE = ONE SHOP (server check — survives cleared browser data)
     var dk = localStorage.getItem('deviceKey_admin');
     if (!dk) { dk = 'dev_adm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12); localStorage.setItem('deviceKey_admin', dk); }
     try {
         const { data: already } = await supabaseClient.rpc('check_device_registered', { p_device_key: dk });
-        if (already === true) {
-            localStorage.setItem('deviceRegistered', 'true');
-            alert('⛔ This device already registered a shop (server record).\nOne device = one shop.');
-            return;
-        }
-    } catch(e) { /* offline — client check above still guards */ }
+        if (already === true) { localStorage.setItem('deviceRegistered', 'true'); alert('⛔ This device already registered a shop (server record).'); return; }
+    } catch(e) {}
+
+    // 🔑 Resolve Shop ID
+    var baseId = document.getElementById('regShopId').value.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
+    if (!baseId) baseId = regGenerateShopId(shopName);
+    if (!baseId) { alert('Enter a shop name with letters or numbers.'); return; }
+    if (regShopIdAvailable === false) { alert('❌ Shop ID "' + baseId + '" is taken. Choose another.'); return; }
 
     try {
-        // 1. Sign up user in Supabase Auth
         const { data, error } = await supabaseClient.auth.signUp({ email: email, password: pass });
+
+        // 🔄 EMAIL ALREADY HAS AN ACCOUNT → Welcome-Back flow (help, don't block!)
+        if (error && (error.message || '').toLowerCase().indexOf('already') !== -1) {
+            var shopId2 = await ssResolveShopId(baseId);
+            await handleExistingAccount(email, pass, shopName, phone, dk, shopId2);
+            return;
+        }
         if (error) throw error;
-        if (!data.user) throw new Error("Sign up failed.");
+        if (!data.user) throw new Error('Sign up failed.');
 
-        // 2. Generate Shop ID
-        var shopId = shopName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 14) + '-' + Math.random().toString(36).substr(2, 4);
-
-        // 3. Create Shop record
-                   // 🎛️ TRIAL LENGTH — read from Master's global settings (fallback: 30)
-        var trialDays = 30;
-        try {
-            const { data: gs } = await supabaseClient.from('global_settings')
-                .select('default_trial_days').eq('id', 'globalConfig').maybeSingle();
-            if (gs && gs.default_trial_days && gs.default_trial_days > 0) {
-                trialDays = gs.default_trial_days;
-            }
-        } catch(e) { /* Master setting unavailable — use default */ }
-
-        await supabaseClient.from('shops').insert([{
-            shop_id: shopId, name: shopName, phone: phone,
-            owner_email: email,
-            plan: 'trial', active: true,
-            trial_expires: new Date(Date.now() + trialDays * 86400000).toISOString(),
-            registered_at: new Date().toISOString()
-        }]);
-        // 4. Create Settings record
-        await supabaseClient.from('settings').insert([{
-            shop_id: shopId, name: shopName, currency: 'Br '
-        }]);
-
-        // 5. Update user metadata
-        await supabaseClient.auth.updateUser({ data: { shopId: shopId, shopName: shopName } });
-
-        // 6. Save to local storage + lock the device
-        localStorage.setItem('shopId', shopId);
-        localStorage.setItem('appCurrencySymbol', 'Br ');
-        localStorage.setItem('deviceRegistered', 'true');
-              // 📱 Register this device server-side (one device = one shop)
-        try {
-            await supabaseClient.from('devices').insert([{
-                device_key: dk, shop_id: shopId, device_name: 'Admin — ' + shopName,
-                device_type: 'admin', status: 'active', last_seen: new Date().toISOString()
-            }]);
-        } catch(e) { console.warn('Device registration skipped:', e.message); }
-
-        alert('✅ Account created! Your Shop ID is: ' + shopId + '.\n\nNow please LOGIN with your new email and password.');
-        closeRegisterForm();
-
+        var shopId = await ssResolveShopId(baseId);
+        await ssCompleteRegistration(shopId, shopName, phone, email, dk);
     } catch(e) {
         alert('❌ Registration failed: ' + e.message);
     }
 }
+
+// 🔄 Existing account → verify password → show their shop info (or complete unfinished registration)
+async function handleExistingAccount(email, pass, shopName, phone, dk, fallbackShopId) {
+    const { error: signInErr } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
+
+    if (signInErr) {
+        // Wrong password — guide to login, reveal nothing
+        closeRegisterForm();
+        document.getElementById('loginEmail').value = email;
+        alert('📧 This email already has a SmartShop account!\n\nNo need to create a new one — we already typed your email on the login screen.\n\n1. Enter your PASSWORD and sign in\n2. Forgot it? Tap "Forgot Password?" — a reset link goes to your email.');
+        return;
+    }
+
+    // Password correct → they own the account → fetch their shops
+    var myShops = [];
+    try {
+        const { data } = await supabaseClient.from('shops').select('shop_id, name, plan, trial_expires').eq('owner_email', email).eq('active', true);
+        myShops = data || [];
+    } catch(e) {}
+
+    if (myShops.length > 0) {
+        var list = '';
+        myShops.forEach(function(s) {
+            var daysLeft = s.trial_expires ? Math.ceil((new Date(s.trial_expires) - new Date()) / 86400000) : null;
+            list += '<div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:8px; text-align:left;">' +
+                '<b style="font-size:15px;">🏪 ' + sanitize(s.name) + '</b><br>' +
+                '<span style="font-size:11px; color:#64748b;">🔑 Shop ID:</span> <b style="color:#2563eb;">' + s.shop_id + '</b> ' +
+                '<button class="btn-mini" onclick="ssCopyText(\'' + s.shop_id + '\', \'Shop ID\')">📋</button><br>' +
+                '<small style="color:#64748b;">Plan: ' + (s.plan || 'trial') + (daysLeft !== null ? ' · ' + (daysLeft > 0 ? daysLeft + ' day(s) left' : 'expired') : '') + '</small>' +
+                '</div>';
+        });
+        document.getElementById('welcomeBackShops').innerHTML = list;
+        document.getElementById('welcomeBackEmail').textContent = email;
+        document.getElementById('registerModal').classList.remove('active');
+        document.getElementById('welcomeBackModal').classList.add('active');
+        return;
+    }
+
+    // Account exists but has NO shop (unfinished registration) → complete it now
+    await ssCompleteRegistration(fallbackShopId, shopName, phone, email, dk);
+}
+
+// 🏗️ Creates the shop + settings + device record → shows Success Card
+async function ssCompleteRegistration(shopId, shopName, phone, email, dk) {
+    var trialDays = 30;
+    try {
+        const { data: gs } = await supabaseClient.from('global_settings').select('default_trial_days').eq('id', 'globalConfig').maybeSingle();
+        if (gs && gs.default_trial_days > 0) trialDays = gs.default_trial_days;
+    } catch(e) {}
+
+    await supabaseClient.from('shops').insert([{
+        shop_id: shopId, name: shopName, phone: phone, owner_email: email,
+        plan: 'trial', active: true,
+        trial_expires: new Date(Date.now() + trialDays * 86400000).toISOString(),
+        registered_at: new Date().toISOString()
+    }]);
+    await supabaseClient.from('settings').insert([{ shop_id: shopId, name: shopName, currency: 'Br ' }]);
+    try { await supabaseClient.auth.updateUser({ data: { shopId: shopId, shopName: shopName } }); } catch(e) {}
+
+    localStorage.setItem('shopId', shopId);
+    localStorage.setItem('appCurrencySymbol', 'Br ');
+    localStorage.setItem('deviceRegistered', 'true');
+    try {
+        await supabaseClient.from('devices').insert([{ device_key: dk, shop_id: shopId, device_name: 'Admin — ' + shopName, device_type: 'admin', status: 'active', last_seen: new Date().toISOString() }]);
+    } catch(e) {}
+
+    document.getElementById('regSuccessShopId').textContent = shopId;
+    document.getElementById('regSuccessEmail').textContent = email;
+    document.getElementById('registerModal').classList.remove('active');
+    document.getElementById('regSuccessModal').classList.add('active');
+}
+	
 
 async function contactSupport() {
     await loadSupportContactsUniversal();
@@ -11949,7 +12101,9 @@ async function loadPeakHours() {
 // ===== FINAL STARTUP =====
 function init() {
     loadDashboard('daily', document.querySelector('.period-btn.active'));
-	    loadSupportContactsUniversal();
+    var ssSid = document.getElementById('settingsShopIdDisplay');
+    if (ssSid) ssSid.textContent = getShopId();
+	  loadSupportContactsUniversal();
     if (supabaseClient) loadAllCaches();
     document.getElementById('langSelect').value = appLang;
     setTimeout(function() { loadShopList(); }, 1000);
