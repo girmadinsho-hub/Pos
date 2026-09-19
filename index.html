@@ -203,10 +203,15 @@ document.getElementById('logoBtn').addEventListener('click', function(){
 });
 </script>
 <script>
-// Recovery link may land on the launcher — forward it to admin.html with the code intact
-if (window.location.hash && window.location.hash.indexOf('code=') !== -1) {
-    location.replace('admin.html' + window.location.hash);
-}
+// Recovery/reset links may land on the launcher — forward them to admin.html intact
+(function() {
+    var h = window.location.hash || '';
+    var q = window.location.search || '';
+    if (h.indexOf('type=recovery') !== -1 || h.indexOf('access_token') !== -1 ||
+        q.indexOf('code=') !== -1 || h.indexOf('code=') !== -1) {
+        location.replace('admin.html' + h + q);
+    }
+})();
 </script>
   
 </body>
