@@ -202,5 +202,12 @@ document.getElementById('logoBtn').addEventListener('click', function(){
   }
 });
 </script>
+<script>
+// Recovery link may land on the launcher — forward it to admin.html with the code intact
+if (window.location.hash && window.location.hash.indexOf('code=') !== -1) {
+    location.replace('admin.html' + window.location.hash);
+}
+</script>
+  
 </body>
 </html>
