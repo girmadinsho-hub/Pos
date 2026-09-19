@@ -660,6 +660,18 @@ body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
     </div>
 </div>
 
+<!-- 🔑 Password Recovery (from reset email link) -->
+<div class="modal" id="newPasswordModal" style="z-index:10003;">
+    <div class="modal-content" style="text-align:center;">
+        <div style="font-size:40px;">🔑</div>
+        <h3>Set Your New Password</h3>
+        <p style="font-size:12px; color:#64748b;">You opened the reset link — choose your new password now.</p>
+        <input type="password" id="recoveryNewPass1" class="form-input" placeholder="New password (min 6 characters)">
+        <input type="password" id="recoveryNewPass2" class="form-input" placeholder="Confirm new password">
+        <button class="btn btn-success" onclick="saveNewPasswordFromRecovery()">💾 Save New Password</button>
+    </div>
+</div>
+       
 <!-- 🎉 New Registration Success Card -->
 <div class="modal" id="regSuccessModal" style="z-index:10002;">
     <div class="modal-content" style="text-align:center;">
@@ -10446,15 +10458,38 @@ async function forgotPassword() {
     var email = await prompt("Please enter your registered email address to receive a password reset link:");
     if (!email) return;
     try {
-        const { error } = await supabaseClient.auth.resetPasswordForEmail(email);
+        // Build the redirect target = this exact Admin page
+        var base = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: base + 'admin.html' });
         if (error) throw error;
         alert("✅ Password reset link sent!\n\nPlease check your email inbox (and Spam folder).");
     } catch (error) {
         alert("❌ Error: " + error.message);
     }
-}
-	
+}	
 
+// ===== PASSWORD RECOVERY — user clicked the email link =====
+supabaseClient.auth.onAuthStateChange(async (event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+        var m = document.getElementById('newPasswordModal');
+        if (m) m.classList.add('active');
+    }
+});
+
+async function saveNewPasswordFromRecovery() {
+    var p1 = document.getElementById('recoveryNewPass1').value;
+    var p2 = document.getElementById('recoveryNewPass2').value;
+    if (!p1 || p1.length < 6) { alert('Password must be at least 6 characters.'); return; }
+    if (p1 !== p2) { alert('Passwords do not match.'); return; }
+    try {
+        const { error } = await supabaseClient.auth.updateUser({ password: p1 });
+        if (error) throw error;
+        document.getElementById('newPasswordModal').classList.remove('active');
+        alert('✅ Password changed successfully!\nLogin with your new password.');
+        await supabaseClient.auth.signOut(); // fresh login with new password
+    } catch(e) { alert('❌ ' + e.message); }
+}
+  
 function toggleVirtualMode() {
     var checked = document.getElementById('isVirtual').checked;
     var stockInput = document.getElementById('prodStock');
@@ -12164,5 +12199,32 @@ window.addEventListener('offline', () => {
     });
   }
 </script>
+<script>
+// ═══ PASSWORD RECOVERY — catch the reset-link session on ANY arrival ═══
+(function() {
+    function ssShowRecoveryModal() {
+        var m = document.getElementById('newPasswordModal');
+        if (m) m.classList.add('active');
+    }
+    // Listen for the recovery event from Supabase (works from direct link or SPA redirect)
+    if (window.supabaseClient) {
+        supabaseClient.auth.onAuthStateChange(function(event) {
+            if (event === 'PASSWORD_RECOVERY') ssShowRecoveryModal();
+        });
+        // Fallback: if the page was opened WITH a recovery code in the URL,
+        // exchange it once (then clean the address bar)
+        if (window.location.hash && window.location.hash.indexOf('code=') !== -1) {
+            var code = window.location.hash.split('code=')[1].split('&')[0];
+            supabaseClient.auth.exchangeCodeForSession(code).then(function(r) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+                if (r.data && r.data.session && r.error === null) {
+                    setTimeout(ssShowRecoveryModal, 300);
+                }
+            }).catch(function(){});
+        }
+    }
+})();
+</script>
+       
 </body>
 </html>
