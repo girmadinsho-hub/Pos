@@ -11044,6 +11044,13 @@ async function changeAppPin() {
 // ===== SUPABASE AUTH LISTENER (WITH AUTO-REPAIR) =====
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
     var loadingScreen = document.getElementById('loadingScreen');
+      // 🔑 PASSWORD RECOVERY LINK — show reset modal, skip normal login routing
+    if (event === 'PASSWORD_RECOVERY') {
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        var ls = document.getElementById('loginScreen'); if (ls) ls.style.display = 'none';
+        var rm = document.getElementById('newPasswordModal'); if (rm) rm.classList.add('active');
+        return;
+    }
     var loginScreen = document.getElementById('loginScreen');
     var mainApp = document.getElementById('mainApp');
     var lockoutScreen = document.getElementById('lockoutScreen');
@@ -12200,29 +12207,16 @@ window.addEventListener('offline', () => {
   }
 </script>
 <script>
-// ═══ PASSWORD RECOVERY — catch the reset-link session on ANY arrival ═══
+// ═══ PASSWORD RECOVERY (implicit flow) — modal already handled by main listener;
+// this is a safety net in case the event fires before the page finished loading
 (function() {
-    function ssShowRecoveryModal() {
-        var m = document.getElementById('newPasswordModal');
-        if (m) m.classList.add('active');
-    }
-    // Listen for the recovery event from Supabase (works from direct link or SPA redirect)
-    if (window.supabaseClient) {
-        supabaseClient.auth.onAuthStateChange(function(event) {
-            if (event === 'PASSWORD_RECOVERY') ssShowRecoveryModal();
-        });
-        // Fallback: if the page was opened WITH a recovery code in the URL,
-        // exchange it once (then clean the address bar)
-        if (window.location.hash && window.location.hash.indexOf('code=') !== -1) {
-            var code = window.location.hash.split('code=')[1].split('&')[0];
-            supabaseClient.auth.exchangeCodeForSession(code).then(function(r) {
-                window.history.replaceState({}, document.title, window.location.pathname);
-                if (r.data && r.data.session && r.error === null) {
-                    setTimeout(ssShowRecoveryModal, 300);
-                }
-            }).catch(function(){});
+    supabaseClient.auth.onAuthStateChange(function(event) {
+        if (event === 'PASSWORD_RECOVERY') {
+            var ls = document.getElementById('loginScreen'); if (ls) ls.style.display = 'none';
+            var m = document.getElementById('newPasswordModal');
+            if (m) m.classList.add('active');
         }
-    }
+    });
 })();
 </script>
        
