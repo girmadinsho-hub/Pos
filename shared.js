@@ -1,5 +1,3 @@
-// ===== GLOBAL CURRENCY FORMATTER =====
-var appCurrencySymbol = localStorage.getItem('appCurrencySymbol') || 'Br ';
 function fmtMoney(amount) {
     return appCurrencySymbol + Number(amount || 0).toFixed(2);
 }
@@ -937,49 +935,67 @@ async function switchShop(newShopId) {
 async function loadShopList() {
     var select = document.getElementById('shopSwitcher');
     if (!select) return;
+
+    // 🛡️ ENTERPRISE ONLY — one account = one shop for everyone else
+    var lic = (typeof getLicense === 'function') ? getLicense() : null;
+    if (!lic || lic.plan !== 'enterprise') { select.style.display = 'none'; return; }
+
     select.innerHTML = '<option value="">Loading shops…</option>';
-    if (!supabaseClient) { select.innerHTML = '<option value="">DB not connected</option>'; return; }
+    if (!supabaseClient) { select.style.display = 'none'; return; }
     try {
-        const { data, error } = await supabaseClient.from('shops').select('*').eq('active', true);
+        // 🛡️ MY OWN BRANCHES ONLY — never other customers' shops (even for master admin)
+        var myEmail = '';
+        try { const { data: { user } } = await supabaseClient.auth.getUser(); if (user && user.email) myEmail = user.email; } catch(e) {}
+        if (!myEmail) { select.style.display = 'none'; return; }
+
+        const { data, error } = await supabaseClient.from('shops')
+            .select('*').eq('active', true).eq('owner_email', myEmail);
         if (error) throw error;
+        if (!data || data.length === 0) { select.style.display = 'none'; return; }
+
         var html = '';
-        if (!data || data.length === 0) { html = '<option value="">No branches found</option>'; }
-        else {
-            data.forEach(function(shop) {
-                var selected = (shop.shop_id === getShopId()) ? ' selected' : '';
-                html += '<option value="' + shop.shop_id + '"' + selected + '>' + sanitize(shop.name) + '</option>';
-            });
-        }
+        data.forEach(function(shop) {
+            var selected = (shop.shop_id === getShopId()) ? ' selected' : '';
+            html += '<option value="' + shop.shop_id + '"' + selected + '>' + sanitize(shop.name) + '</option>';
+        });
         select.innerHTML = html;
         select.style.display = 'inline-block';
-    } catch(e) { select.innerHTML = '<option value="">Error loading shops</option>'; }
+    } catch(e) { select.style.display = 'none'; }
 }
 
 function loadShopsList() {
     var container = document.getElementById('shopsListContainer');
     if (!container) return;
     container.innerHTML = '<p style="color:#94a3b8;">Loading branches…</p>';
-    supabaseClient.from('shops').select('*').eq('active', true).then(({data, error}) => {
-        if (error) { container.innerHTML = '<p style="color:#f44336;">Error loading branches.</p>'; return; }
-        var html = '';
-        if (!data || data.length === 0) { html = '<p style="color:#94a3b8;">No branches yet.</p>'; }
-        else {
-            data.forEach(function(shop) {
-                html += '<div style="background:#fff; border-radius:12px; padding:14px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;">' +
-                    '<div><b>' + sanitize(shop.name) + '</b>' +
-                    (shop.address ? '<br><small>' + sanitize(shop.address) + '</small>' : '') +
-                    (shop.phone ? '<br><small>📱 ' + sanitize(shop.phone) + '</small>' : '') +
-                    '<br><small style="color:#94a3b8;">ID: ' + shop.shop_id + '</small></div>' +
-                    '<div style="display:flex;gap:4px;">' +
-                    '<button class="btn-mini" onclick="editShop(\'' + shop.id + '\')">✏️</button>' +
-                    '<button class="btn-mini delete" onclick="deleteShop(\'' + shop.id + '\')">🗑️</button>' +
-                    '</div></div>';
-            });
+    (async function(){
+        try {
+            // 🛡️ MY OWN BRANCHES ONLY
+            var myEmail = '';
+            try { const { data: { user } } = await supabaseClient.auth.getUser(); if (user && user.email) myEmail = user.email; } catch(e) {}
+            const { data, error } = await supabaseClient.from('shops').select('*').eq('active', true).eq('owner_email', myEmail);
+            if (error) throw error;
+            var html = '';
+            if (!data || data.length === 0) {
+                html = '<p style="color:#94a3b8;">No branches yet. Use the form above to add one.</p>';
+            } else {
+                data.forEach(function(shop) {
+                    html += '<div style="background:#fff; border-radius:12px; padding:14px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;">' +
+                        '<div><b>' + sanitize(shop.name) + '</b>' +
+                        (shop.address ? '<br><small>' + sanitize(shop.address) + '</small>' : '') +
+                        (shop.phone ? '<br><small>📱 ' + sanitize(shop.phone) + '</small>' : '') +
+                        '<br><small style="color:#94a3b8;">ID: ' + shop.shop_id + '</small></div>' +
+                        '<div style="display:flex;gap:4px;">' +
+                        '<button class="btn-mini" onclick="editShop(\'' + shop.id + '\')">✏️</button>' +
+                        '<button class="btn-mini delete" onclick="deleteShop(\'' + shop.id + '\')">🗑️</button>' +
+                        '</div></div>';
+                });
+            }
+            container.innerHTML = html;
+        } catch(e) {
+            container.innerHTML = '<p style="color:#f44336;">Error loading branches.</p>';
         }
-        container.innerHTML = html;
-    });
+    })();
 }
-
 async function addShop() {
     if (!canManageShops()) { alert('Only available for Enterprise plans.'); return; }
     var name = document.getElementById('newShopName').value.trim();
