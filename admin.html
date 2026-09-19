@@ -9067,29 +9067,35 @@ function loadShopsList() {
     var container = document.getElementById('shopsListContainer');
     if (!container) return;
     container.innerHTML = '<p style="color:#94a3b8;">Loading branches…</p>';
-    supabaseClient.from('shops').select('*').eq('active', true).then(({data, error}) => {
-        if (error) { container.innerHTML = '<p style="color:#f44336;">Error loading branches.</p>'; return; }
-        var html = '';
-        if (!data || data.length === 0) { 
-            html = '<p style="color:#94a3b8;">No branches yet. Use the form above to add one.</p>'; 
-        } else {
-            data.forEach(function(shop) {
-                html += '<div style="background:#fff; border-radius:12px; padding:14px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;">' +
-                    '<div><b>' + sanitize(shop.name) + '</b>' +
-                    (shop.address ? '<br><small>' + sanitize(shop.address) + '</small>' : '') +
-                    (shop.phone ? '<br><small>📱 ' + sanitize(shop.phone) + '</small>' : '') +
-                    '<br><small style="color:#94a3b8;">ID: ' + shop.shop_id + '</small></div>' +
-                    '<div style="display:flex;gap:4px;">' +
-                    '<button class="btn-mini" onclick="editShop(\'' + shop.id + '\')">✏️</button>' +
-                    '<button class="btn-mini delete" onclick="deleteShop(\'' + shop.id + '\')">🗑️</button>' +
-                    '</div></div>';
-            });
+    (async function(){
+        try {
+            // 🛡️ MY OWN BRANCHES ONLY
+            var myEmail = '';
+            try { const { data: { user } } = await supabaseClient.auth.getUser(); if (user && user.email) myEmail = user.email; } catch(e) {}
+            const { data, error } = await supabaseClient.from('shops').select('*').eq('active', true).eq('owner_email', myEmail);
+            if (error) throw error;
+            var html = '';
+            if (!data || data.length === 0) {
+                html = '<p style="color:#94a3b8;">No branches yet. Use the form above to add one.</p>';
+            } else {
+                data.forEach(function(shop) {
+                    html += '<div style="background:#fff; border-radius:12px; padding:14px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05); display:flex; justify-content:space-between; align-items:center;">' +
+                        '<div><b>' + sanitize(shop.name) + '</b>' +
+                        (shop.address ? '<br><small>' + sanitize(shop.address) + '</small>' : '') +
+                        (shop.phone ? '<br><small>📱 ' + sanitize(shop.phone) + '</small>' : '') +
+                        '<br><small style="color:#94a3b8;">ID: ' + shop.shop_id + '</small></div>' +
+                        '<div style="display:flex;gap:4px;">' +
+                        '<button class="btn-mini" onclick="editShop(\'' + shop.id + '\')">✏️</button>' +
+                        '<button class="btn-mini delete" onclick="deleteShop(\'' + shop.id + '\')">🗑️</button>' +
+                        '</div></div>';
+                });
+            }
+            container.innerHTML = html;
+        } catch(e) {
+            container.innerHTML = '<p style="color:#f44336;">Error loading branches.</p>';
         }
-        container.innerHTML = html;
-    });
-}
-
-// ===== DELETE PRODUCT =====
+    })();
+}// ===== DELETE PRODUCT =====
 			async function deleteProduct(productId) {
     if (!await confirm('Delete this product permanently?')) return;
     try {
@@ -10689,7 +10695,6 @@ function closeRegisterForm() {
 	
 // ===== DEVICE LOCK 1 (Phone Memory) =====
 function checkDeviceLock() {
-	return;
     var registerBtn = document.getElementById('registerBtn');
     if (!registerBtn) return;
     if (localStorage.getItem('deviceRegistered') === 'true') {
@@ -10698,7 +10703,6 @@ function checkDeviceLock() {
         registerBtn.style.display = 'block';
     }
 }
-
 // ===== CUSTOMER REGISTRATION (Double-Lock Security) =====
 async function registerAccount() {
     var shopName = document.getElementById('regShopName').value.trim();
@@ -10707,6 +10711,22 @@ async function registerAccount() {
     var pass = document.getElementById('regPass').value.trim();
 
     if (!shopName || !email || !pass) { alert('Please fill all required fields.'); return; }
+      // 🛡️ ONE DEVICE = ONE SHOP (client check)
+    if (localStorage.getItem('deviceRegistered') === 'true') {
+        alert('⛔ This device already registered a shop.\n\nOne device = one shop.\nNeed more shops? Upgrade to Enterprise (multi-branch) or contact support.');
+        return;
+    }
+    // 🛡️ ONE DEVICE = ONE SHOP (server check — survives cleared browser data)
+    var dk = localStorage.getItem('deviceKey_admin');
+    if (!dk) { dk = 'dev_adm_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12); localStorage.setItem('deviceKey_admin', dk); }
+    try {
+        const { data: already } = await supabaseClient.rpc('check_device_registered', { p_device_key: dk });
+        if (already === true) {
+            localStorage.setItem('deviceRegistered', 'true');
+            alert('⛔ This device already registered a shop (server record).\nOne device = one shop.');
+            return;
+        }
+    } catch(e) { /* offline — client check above still guards */ }
 
     try {
         // 1. Sign up user in Supabase Auth
@@ -10747,6 +10767,13 @@ async function registerAccount() {
         localStorage.setItem('shopId', shopId);
         localStorage.setItem('appCurrencySymbol', 'Br ');
         localStorage.setItem('deviceRegistered', 'true');
+              // 📱 Register this device server-side (one device = one shop)
+        try {
+            await supabaseClient.from('devices').insert([{
+                device_key: dk, shop_id: shopId, device_name: 'Admin — ' + shopName,
+                device_type: 'admin', status: 'active', last_seen: new Date().toISOString()
+            }]);
+        } catch(e) { console.warn('Device registration skipped:', e.message); }
 
         alert('✅ Account created! Your Shop ID is: ' + shopId + '.\n\nNow please LOGIN with your new email and password.');
         closeRegisterForm();
