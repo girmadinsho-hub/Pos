@@ -1217,6 +1217,19 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     </div>
 </div>
 
+  <!-- 🧾 Kitchen Ticket Options (when mode = ask) -->
+<div class="modal" id="kotTicketModal">
+    <div class="modal-content" style="max-width:380px; text-align:center;">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+            🧾 Kitchen Ticket
+            <button onclick="kotCancelTicketChoice()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748b;">✖</button>
+        </div>
+        <p style="font-size:12px; color:#64748b;">Order already sent to Kitchen app ✅<br>Do you also want a paper ticket for the kitchen?</p>
+        <button class="btn btn-success" style="background:#10b981; margin-bottom:8px;" onclick="kotChoicePrint()">🖨️ Print Paper Ticket</button>
+        <button class="btn btn-outline" style="margin-bottom:8px;" onclick="kotChoiceSkip()">🖥️ No — Kitchen has tablet</button>
+        <div id="kotTicketResult" style="font-size:12px; margin-top:8px;"></div>
+    </div>
+</div>
 	
 <!-- Clock In/Out Modal -->
 <div class="modal" id="clockModal">
@@ -6144,7 +6157,119 @@ async function verifyExitCode() {
         resultDiv.innerHTML = '<p style="color:#ef4444;">Error: ' + e.message + '</p>';
     }
 }
-    
+// ═══ KITCHEN TICKET SYSTEM — digital always + optional paper ═══
+var kotPendingOrderData = null;
+
+function kotGetMode() {
+    return (posSettings && posSettings.kotPrintMode) || 'digital';
+}
+
+async function kotHandleAfterSend(orderData) {
+    var mode = kotGetMode();
+    if (mode === 'auto') {
+        await kotPrintPaper(orderData);
+    } else if (mode === 'ask') {
+        kotPendingOrderData = orderData;
+        var r = document.getElementById('kotTicketResult'); if (r) r.innerHTML = '';
+        document.getElementById('kotTicketModal').classList.add('active');
+    }
+    // mode === 'digital' → nothing (kitchen app already got it)
+}
+
+function kotCancelTicketChoice() {
+    document.getElementById('kotTicketModal').classList.remove('active');
+    kotPendingOrderData = null;
+}
+function kotChoiceSkip() {
+    document.getElementById('kotTicketModal').classList.remove('active');
+    kotPendingOrderData = null;
+}
+async function kotChoicePrint() {
+    var r = document.getElementById('kotTicketResult');
+    if (r) r.innerHTML = '⏳ Printing...';
+    try {
+        await kotPrintPaper(kotPendingOrderData);
+        if (r) r.innerHTML = '✅ Ticket printed!';
+        setTimeout(function(){ document.getElementById('kotTicketModal').classList.remove('active'); kotPendingOrderData = null; }, 900);
+    } catch(e) {
+        if (r) r.innerHTML = '❌ ' + (e.message || e);
+    }
+}
+
+// Print station tickets through the UNIVERSAL print engine (ssprint.js)
+async function kotPrintPaper(orderData) {
+    if (!orderData || !orderData.items || !orderData.items.length) return;
+
+    // Group items by station (Kitchen / Bar / Coffee) — one ticket per station
+    var stations = {};
+    orderData.items.forEach(function(item) {
+        var st = item.station || 'Kitchen';
+        if (!stations[st]) stations[st] = [];
+        stations[st].push(item);
+    });
+
+    // Digital mode? Route to system print. Thermal printer chosen? Native ESC/POS.
+    for (var stName in stations) {
+        if (!stations.hasOwnProperty(stName)) continue;
+        var items = stations[stName];
+        var w = ssCharWidth();
+        var enc = function(s){ return new TextEncoder().encode(s); };
+        var n2 = function(v){ return Number(v || 0).toFixed(2); };
+        var row = function(l, r2){
+            l = String(l); r2 = String(r2);
+            var sp = w - l.length - r2.length;
+            if (sp < 1) { l = l.substring(0, Math.max(1, w - r2.length - 1)); sp = Math.max(1, w - l.length - r2.length); }
+            return l + ' '.repeat(sp) + r2 + '\n';
+        };
+        var text = '';
+        text += stName.toUpperCase() + ' TICKET\n';
+        text += '='.repeat(w) + '\n';
+        text += 'Table: ' + (orderData.tableId || 'Takeaway') + '\n';
+        text += 'Time:  ' + new Date(orderData.time || Date.now()).toLocaleTimeString() + '\n';
+        if (orderData.waiterName) text += 'Waiter: ' + orderData.waiterName + '\n';
+        text += '-'.repeat(w) + '\n';
+        items.forEach(function(it) {
+            text += it.qty + ' x ' + String(it.name).substring(0, w - 6) + '\n';
+            if (it.modifiers && it.modifiers.length) text += '  + ' + it.modifiers.join(', ').substring(0, w - 4) + '\n';
+            if (it.note) text += '  NOTE: ' + String(it.note).substring(0, w - 8) + '\n';
+        });
+        text += '-'.repeat(w) + '\n';
+        text += (orderData.orderType || '') + (orderData.orderType ? ' | ' : '') + 'Status: NEW\n\n\n\n';
+
+        // Route via print engine
+        if (SS_PRINT.method === 'ble') {
+            var bytes = prCat([prInit(), prAlign(0), enc(text), prFeed(1), prCut()]);
+            await prConnectBLE(); await prSendBLE(bytes);
+        } else if (SS_PRINT.method === 'usb') {
+            var bytes2 = prCat([prInit(), prAlign(0), enc(text), prFeed(1), prCut()]);
+            await prConnectUSB(); await prSendUSB(bytes2);
+        } else {
+            // system / not set yet → styled window print (58/80mm aware)
+            var mm = SS_PRINT.paper === '80' ? '80' : '58';
+            var widthMM = mm === '80' ? 72 : 48;
+            var printWindow = window.open('', '_blank', 'width=400,height=600');
+            if (!printWindow) { alert('Popup blocked — allow popups to print tickets. Or set a thermal printer: Print → Printer Settings.'); return; }
+            var html = '<!DOCTYPE html><html><head><title>KOT ' + stName + '</title><style>' +
+                '@page{margin:0; size:' + mm + 'mm auto;} body{font-family:"Courier New",monospace;width:' + widthMM + 'mm;margin:2mm auto;font-size:12px;color:#000;}' +
+                'h2{text-align:center;margin:2px 0;font-size:15px;} .b{border-top:1px dashed #000;margin:4px 0;} .big{font-size:14px;font-weight:bold;}' +
+                '</style></head><body><h2>' + stName.toUpperCase() + ' TICKET</h2><div class="b"></div>' +
+                '<div class="big">Table: ' + (orderData.tableId || 'Takeaway') + '</div>' +
+                '<div>Time: ' + new Date(orderData.time || Date.now()).toLocaleTimeString() + '</div>' +
+                (orderData.waiterName ? '<div>Waiter: ' + orderData.waiterName + '</div>' : '') +
+                '<div class="b"></div>';
+            items.forEach(function(it) {
+                html += '<div class="big">' + it.qty + ' x ' + it.name + '</div>';
+                if (it.modifiers && it.modifiers.length) html += '<div>+ ' + it.modifiers.join(', ') + '</div>';
+                if (it.note) html += '<div style="color:#000;font-weight:bold;">NOTE: ' + it.note + '</div>';
+            });
+            html += '<div class="b"></div><div>' + (orderData.orderType || '') + ' — NEW ORDER</div></body></html>';
+            printWindow.document.open(); printWindow.document.write(html); printWindow.document.close();
+            printWindow.focus();
+            setTimeout(function(){ printWindow.print(); setTimeout(function(){ printWindow.close(); }, 600); }, 400);
+        }
+    }
+}
+  
   // Register the Service Worker for Offline PWA capabilities
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -6355,8 +6480,9 @@ async function sendWaiterOrderToKitchen() {
             if (error) throw error;
         }
 
-        alert('✅ Order sent to Kitchen for ' + tableName + '!');
-        if (typeof printKOT === 'function') printKOT(orderData);
+      alert('✅ Order sent to Kitchen for ' + tableName + '!');
+        // 🧾 Ticket system: digital always done; paper depends on owner's setting
+        kotHandleAfterSend(orderData);
 
         cart = [];
         currentTableName = '';
