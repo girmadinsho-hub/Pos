@@ -932,7 +932,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <pre id="receiptContent" style="white-space:pre-wrap; font-size:14px;"></pre>
 			
           <div class="flex-row" style="margin-top:10px; flex-wrap:wrap; gap:6px;">
-            <button class="btn btn-primary" onclick="printReceiptPOS()" style="flex:1; min-width:120px;">🖨️ Print</button>
+            <button class="btn btn-primary" onclick="printSmart()" style="flex:1; min-width:120px;">🖨️ Print</button>
             <button class="btn btn-success" onclick="sendWhatsAppReceipt()" style="flex:1; min-width:120px; background:#25D366; color:white; border:none;">💬 WhatsApp</button>
             <button class="btn btn-outline" onclick="closeReceiptModal()" style="flex:1; min-width:100px;">Close</button>
         </div>
@@ -1132,6 +1132,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <button class="btn btn-outline" id="changePinBtn" onclick="openChangePinModal()" style="display:none; margin-top:10px;">🔐 Change My PIN</button>
         
         <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+             <button class="btn btn-outline" onclick="SS_PRINT.method=null; document.getElementById('settingsModal').classList.remove('active'); prOpenChooser();" style="width:100%; margin-top:8px;">🖨️ Printer Settings</button>
             <button class="btn btn-primary" onclick="document.getElementById('settingsModal').classList.remove('active')" style="width:100%;">Close</button>
 					   <button class="btn btn-danger" onclick="unlinkDevice()" style="margin-top:15px; width:100%;">🔗 Unlink Device (Switch Shop)</button>
         </div>
@@ -1279,6 +1280,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 <script src="sheet.js"></script>			 
 <script src="shared.js"></script>
 	<script src="ssauth.js"></script>
+  <script src="ssprint.js"></script>
 <script>
   
 		// ===== GLOBAL UNIT CONVERSION ENGINE =====
@@ -3450,6 +3452,11 @@ async function completePayment() {
     receipt += (window.shopBranding && window.shopBranding.receiptFooter) ? window.shopBranding.receiptFooter + '\n' : 'Thanks for coming!\n';
     
     document.getElementById('receiptContent').textContent = receipt;
+      window._lastSaleForPrint = { brand: brand, items: items, subtotal: subtotal, discount: discount,
+        tax: tax, taxRate: (parseFloat(document.getElementById('taxRate').value) || 0),
+        total: total, payments: payments, splitMode: splitMode, invoiceNo: invoiceNo,
+        cashier: (currentCashier ? currentCashier.name : ''), orderType: currentOrderType,
+        dateStr: dateStr, timeStr: timeStr };
     document.getElementById('receiptModal').classList.add('active');
 	    playAlert();
        ssChime();                             // ← ADD THIS LINE
