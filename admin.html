@@ -1,4 +1,4 @@
-	<!DOCTYPE html>
+<!DOCTYPE html>
 <head>
 	
     <meta charset="UTF-8">
@@ -2487,6 +2487,18 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
                 <option value="retail">Retail / Supermarket (Simple)</option>
                 <option value="cafe">Cafe / Restaurant (Advanced)</option>
             </select>
+
+                      <!-- 🖨️ KITCHEN TICKET MODE -->
+            <label style="font-size:12px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">🧾 Kitchen Order Tickets (when waiter sends order)</label>
+            <select class="form-select" id="settingKotMode" style="margin-bottom:15px;">
+                <option value="digital">🖥️ Digital only — Kitchen app on tablet/phone (no paper)</option>
+                <option value="auto">🖨️ Print paper ticket — always (for kitchens without tablet)</option>
+                <option value="ask">🤔 Ask waiter every order — show both buttons</option>
+            </select>
+            <p style="font-size:11px; color:#64748b; margin-top:-10px; margin-bottom:15px;">
+                Digital ticket ALWAYS reaches the Kitchen app — paper is optional extra.
+                Paper printing also works offline (Bluetooth printer, battery powered).
+            </p>
 
             <!-- NEW: TAX CONFIGURATION -->
             <label style="font-size:12px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">🧾 Tax / VAT Configuration</label>
@@ -9225,6 +9237,8 @@ async function savePosSettings() {
         bulk_pricing: document.getElementById('settingBulkPricing').checked,
         enable_discount: document.getElementById('settingEnableDiscount').checked
     };
+      var kotEl = document.getElementById('settingKotMode');
+    if (kotEl) payload.kot_print_mode = kotEl.value;
 
     try {
         if (supabaseClient) {
@@ -9250,13 +9264,17 @@ async function loadPosSettings() {
     var shopType = data.shop_type || 'retail';
     
     posSettings.shopType = shopType;
+    posSettings.kotPrintMode = data.kot_print_mode || 'digital';
+    var kotSel = document.getElementById('settingKotMode');
+    if (kotSel) kotSel.value = posSettings.kotPrintMode;
     posSettings.enableTax = data.enable_tax !== false;
     posSettings.taxName = data.tax_name || 'Tax';
     posSettings.taxRate = data.tax_rate || 0;
     posSettings.negotiatePrice = data.negotiate_price !== false;
     posSettings.bulkPricing = data.bulk_pricing !== false;
     posSettings.enableDiscount = data.enable_discount !== false;
-
+  
+    posSettings.kotPrintMode = data.kot_print_mode || 'digital';
     var settingShopType = document.getElementById('settingShopType');
     if (settingShopType) settingShopType.value = shopType;
     
