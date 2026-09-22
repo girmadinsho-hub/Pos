@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Error Finder</title>
+<style>
+body{font-family:sans-serif;background:#0f172a;color:#e2e8f0;padding:20px;max-width:500px;margin:0 auto}
+button{width:100%;padding:16px;font-size:18px;font-weight:bold;border:none;border-radius:10px;background:#10b981;color:#fff;margin-top:10px}
+.row{padding:12px;border-radius:8px;margin-top:8px;font-size:13px;word-break:break-word}
+.pass{background:#064e3b;border:1px solid #10b981}
+.fail{background:#7f1d1d;border:1px solid #ef4444}
+</style></head>
+<body>
+<h2>🕵️ Admin Error Finder</h2>
+<p style="font-size:12px;color:#94a3b8;">Loads your admin.html fresh from GitHub and catches the JavaScript error + its line number.</p>
+<button onclick="findError()">▶ FIND THE ERROR</button>
+<div id="out"></div>
+<script>
+function show(t,c){document.getElementById('out').innerHTML+='<div class="row '+c+'">'+t+'</div>';}
+
+async function findError(){
+  document.getElementById('out').innerHTML='';
+  show('Downloading admin.html fresh from GitHub...','');
+  try {
+    var res = await fetch('admin.html?v=' + Date.now());   // bust cache
+    var code = await res.text();
+    show('Downloaded: ' + code.length + ' characters ✅','pass');
+
+    // Count braces — the #1 cause of your error type
+    var opens = (code.match(/{/g) || []).length;
+    var closes = (code.match(/}/g) || []).length;
+    show('Brace count: { = ' + opens + ' | } = ' + closes + (opens === closes ? ' — BALANCED ✅' : ' — MISMATCH ❌ (difference: ' + (opens - closes) + ')'), opens === closes ? 'pass' : 'fail');
+
+    // Find the error by executing in a sandboxed check
+    try {
+      new Function(code.replace(/<script[^>]*>/g,'').replace(/<\/script>/g,''));
+      // ^ parses the whole thing without running it — throws on syntax errors
+      show('✅ JAVASCRIPT SYNTAX: NO ERRORS FOUND!','pass');
+      show('If admin still fails, the problem is elsewhere (e.g., missing file). Check ssperf.js exists on GitHub.','pass');
+    } catch(e) {
+      show('❌ SYNTAX ERROR FOUND:','fail');
+      show('<b>' + e.message + '</b>','fail');
+      // Try to extract line number
+      var m = String(e.message).match(/<anonymous>:(\d+)/) || String(e.stack||'').match(/:(\d+):\d+/);
+      if (m) {
+        var lineNum = parseInt(m[1]);
+        show('📍 Around line: <b>' + lineNum + '</b> (in the combined script)','info');
+        // Show surrounding code
+        var lines = code.split('\n');
+        var from = Math.max(0, lineNum - 4);
+        var to = Math.min(lines.length, lineNum + 3);
+        var snippet = '';
+        for (var i = from; i < to; i++) {
+          snippet += (i+1 === lineNum ? '👉 ' : '   ') + (i+1) + ': ' + lines[i].substring(0,120) + '\n';
+        }
+        show('<pre style="white-space:pre-wrap;font-size:11px;background:#1e293b;padding:8px;border-radius:6px;">' + snippet.replace(/</g,'&lt;') + '</pre>','');
+      }
+    }
+  } catch(e) {
+    show('❌ Could not download admin.html: ' + e.message,'fail');
+  }
+}
+</script></body></html>
