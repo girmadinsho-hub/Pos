@@ -11104,6 +11104,102 @@ async function changeAppPin() {
         alert("❌ PIN must be exactly 4 digits.");
     }
 }
+  // ═══ SHOP PICKER — for owners with multiple shops on a fresh device ═══
+function ssShowShopPicker(shops) {
+    var loadingScreen = document.getElementById('loadingScreen');
+    var loginScreen = document.getElementById('loginScreen');
+    if (loadingScreen) loadingScreen.style.display = 'none';
+    if (loginScreen) loginScreen.style.display = 'none';
+
+    var old = document.getElementById('ssShopPicker'); if (old) old.remove();
+    var m = document.createElement('div');
+    m.id = 'ssShopPicker';
+    m.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e3a8a);z-index:10005;display:flex;align-items:center;justify-content:center;padding:20px;';
+    var html = '<div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:380px;text-align:center;">' +
+        '<div style="font-size:36px;">🏪</div><h3 style="margin:6px 0;color:#1e293b;">Choose Your Shop</h3>' +
+        '<p style="font-size:12px;color:#64748b;margin-bottom:14px;">This account owns several shops.<br>Which one is this device for?</p>';
+    shops.forEach(function(s) {
+        html += '<button onclick="ssPickShop(\'' + s.shop_id + '\')" style="display:block;width:100%;padding:14px;margin-bottom:8px;border:2px solid #e2e8f0;border-radius:12px;background:#f8fafc;font-size:15px;font-weight:bold;color:#1e293b;cursor:pointer;">' + (s.name || s.shop_id) + '<br><small style="font-weight:400;color:#64748b;">' + s.shop_id + '</small></button>';
+    });
+    html += '<button onclick="supabaseClient.auth.signOut()" style="width:100%;padding:10px;border:none;border-radius:10px;background:#ef4444;color:#fff;font-weight:bold;cursor:pointer;margin-top:6px;">Logout</button></div>';
+    m.innerHTML = html;
+    document.body.appendChild(m);
+}
+  // ═══ SETUP RECOVERY — account without a shop completes setup here ═══
+function ssShowSetupRecovery(email) {
+    var loadingScreen = document.getElementById('loadingScreen');
+    var loginScreen = document.getElementById('loginScreen');
+    if (loadingScreen) loadingScreen.style.display = 'none';
+    if (loginScreen) loginScreen.style.display = 'none';
+
+    var old = document.getElementById('ssSetupRecovery'); if (old) old.remove();
+    var m = document.createElement('div');
+    m.id = 'ssSetupRecovery';
+    m.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e3a8a);z-index:10005;display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+    m.innerHTML = '<div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:380px;">' +
+        '<div style="text-align:center;font-size:36px;">🛟</div>' +
+        '<h3 style="text-align:center;margin:6px 0;color:#1e293b;">Finish Your Setup</h3>' +
+        '<p style="font-size:12px;color:#64748b;text-align:center;">Your account exists but has no shop yet. Let\'s create it now — it takes one minute.</p>' +
+        '<input type="text" id="recShopName" class="form-input" placeholder="Shop Name *" style="margin-top:10px;">' +
+        '<input type="text" id="recShopId" class="form-input" placeholder="Shop ID (auto from name)" >' +
+        '<input type="tel" id="recPhone" class="form-input" placeholder="Phone (optional)">' +
+        '<button onclick="ssCompleteSetup()" style="width:100%;padding:14px;margin-top:8px;border:none;border-radius:12px;background:#10b981;color:#fff;font-size:16px;font-weight:bold;cursor:pointer;">✅ Create My Shop</button>' +
+        '<button onclick="supabaseClient.auth.signOut()" style="width:100%;padding:10px;margin-top:8px;border:none;border-radius:10px;background:#ef4444;color:#fff;font-weight:bold;cursor:pointer;">Logout</button>' +
+        '</div>';
+    document.body.appendChild(m);
+    document.getElementById('recShopName').addEventListener('input', function() {
+        if (!window._recTouched) document.getElementById('recShopId').value = this.value.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
+    });
+    document.getElementById('recShopId').addEventListener('input', function(){ window._recTouched = true; });
+}
+
+async function ssCompleteSetup() {
+    var name = document.getElementById('recShopName').value.trim();
+    var sid = document.getElementById('recShopId').value.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
+    var phone = document.getElementById('recPhone').value.trim();
+    if (!name) { alert('Please enter your shop name.'); return; }
+    if (!sid) sid = name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
+    if (sid.length < 3) { alert('Shop ID must be at least 3 characters.'); return; }
+
+    // Find a free ID (name, name2, name3...)
+    var finalId = sid;
+    try {
+        for (var attempt = 0; attempt < 30; attempt++) {
+            var tryId = attempt === 0 ? sid : sid + attempt;
+            const { data: avail } = await supabaseClient.rpc('check_shop_id_available', { p_shop_id: tryId });
+            if (avail) { finalId = tryId; break; }
+        }
+    } catch(e) {}
+
+    var trialDays = 30;
+    try {
+        const { data: gs } = await supabaseClient.from('global_settings').select('default_trial_days').eq('id', 'globalConfig').maybeSingle();
+        if (gs && gs.default_trial_days > 0) trialDays = gs.default_trial_days;
+    } catch(e) {}
+
+    try {
+        await supabaseClient.from('shops').insert([{
+            shop_id: finalId, name: name, phone: phone, owner_email: (await supabaseClient.auth.getUser()).data.user.email,
+            plan: 'trial', active: true,
+            trial_expires: new Date(Date.now() + trialDays * 86400000).toISOString(),
+            registered_at: new Date().toISOString()
+        }]);
+        await supabaseClient.from('settings').insert([{ shop_id: finalId, name: name, currency: 'Br ' }]);
+        try { await supabaseClient.auth.updateUser({ data: { shopId: finalId, shopName: name } }); } catch(e) {}
+        localStorage.setItem('shopId', finalId);
+
+        alert('🎉 Your shop is ready!\n\nShop ID: ' + finalId);
+        location.reload();
+    } catch(e) {
+        alert('❌ Could not create shop: ' + e.message);
+    }
+}
+function ssPickShop(shopId) {
+    localStorage.setItem('shopId', shopId);
+    var m = document.getElementById('ssShopPicker'); if (m) m.remove();
+    location.reload(); // restart flow with the chosen shop
+}
+  
 
 // ===== SUPABASE AUTH LISTENER (WITH AUTO-REPAIR) =====
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
@@ -11130,13 +11226,38 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (session && session.user) {
         var user = session.user;
         
-        // 1. Fetch User Profile / Shop ID (From Supabase Auth Metadata or Local Storage)
-        let shopId = user.user_metadata?.shopId || localStorage.getItem('shopId') || 'default';
-        
-        // Save Shop ID to memory ONLY IF it's not already saved
-        if (!localStorage.getItem('shopId') && shopId !== 'default') {
-            localStorage.setItem('shopId', shopId);
+           // 1. Resolve Shop ID — metadata → localStorage → auto-detect from owned shops
+        let shopId = user.user_metadata?.shopId || localStorage.getItem('shopId') || '';
+
+        // 🔍 Auto-detect: if no shop on this device, find the shops this email owns
+        if (!shopId || shopId === 'default')
+                // 🛟 RECOVERY: account exists but has NO shop → guided completion
+        if (shopId === 'default') {
+            try {
+                const { data: owned } = await supabaseClient.from('shops')
+                    .select('shop_id').eq('owner_email', user.email);
+                if (!owned || owned.length === 0) {
+                    ssShowSetupRecovery(user.email);
+                    return;
+                }
+            } catch (e) {}
         }
+        {
+            try {
+                const { data: myShops } = await supabaseClient.from('shops')
+                    .select('shop_id, name').eq('owner_email', user.email).eq('active', true);
+                if (myShops && myShops.length === 1) {
+                    // Exactly one shop → auto-select it
+                    shopId = myShops[0].shop_id;
+                    localStorage.setItem('shopId', shopId);
+                } else if (myShops && myShops.length > 1) {
+                    // Multiple shops → let the user pick (once per device)
+                    ssShowShopPicker(myShops);
+                    return; // stop here — picker will continue the flow
+                }
+            } catch (e) { console.warn('Shop auto-detect failed:', e.message); }
+        }
+        if (!shopId) shopId = 'default';
 
         // 2. Check Owner Bypass
         var isOwner = false;
