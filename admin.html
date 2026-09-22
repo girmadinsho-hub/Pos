@@ -11201,16 +11201,9 @@ function ssPickShop(shopId) {
 }
   
 
-// ===== SUPABASE AUTH LISTENER (WITH AUTO-REPAIR) =====
+// ═══ AUTH LISTENER — master version, all flows in correct order ═══
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
     var loadingScreen = document.getElementById('loadingScreen');
-      // 🔑 PASSWORD RECOVERY LINK — show reset modal, skip normal login routing
-    if (event === 'PASSWORD_RECOVERY') {
-        if (loadingScreen) loadingScreen.style.display = 'none';
-        var ls = document.getElementById('loginScreen'); if (ls) ls.style.display = 'none';
-        var rm = document.getElementById('newPasswordModal'); if (rm) rm.classList.add('active');
-        return;
-    }
     var loginScreen = document.getElementById('loginScreen');
     var mainApp = document.getElementById('mainApp');
     var lockoutScreen = document.getElementById('lockoutScreen');
@@ -11223,128 +11216,124 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
     if (lockoutScreen) lockoutScreen.style.display = 'none';
     if (appPinScreen) appPinScreen.style.display = 'none';
 
+    // 🔑 1. PASSWORD RECOVERY — show reset modal
+    if (event === 'PASSWORD_RECOVERY') {
+        var ls = document.getElementById('loginScreen'); if (ls) ls.style.display = 'none';
+        var rm = document.getElementById('newPasswordModal'); if (rm) rm.classList.add('active');
+        return;
+    }
+
     if (session && session.user) {
         var user = session.user;
-        
-           // 1. Resolve Shop ID — metadata → localStorage → auto-detect from owned shops
+
+        // 🔍 2. RESOLVE SHOP ID: metadata → this device → my owned shops
         let shopId = user.user_metadata?.shopId || localStorage.getItem('shopId') || '';
 
-        // 🔍 Auto-detect: if no shop on this device, find the shops this email owns
-        if (!shopId || shopId === 'default')
-                // 🛟 RECOVERY: account exists but has NO shop → guided completion
-        if (shopId === 'default') {
-            try {
-                const { data: owned } = await supabaseClient.from('shops')
-                    .select('shop_id').eq('owner_email', user.email);
-                if (!owned || owned.length === 0) {
-                    ssShowSetupRecovery(user.email);
-                    return;
-                }
-            } catch (e) {}
-        }
-        {
+        if (!shopId || shopId === 'default') {
             try {
                 const { data: myShops } = await supabaseClient.from('shops')
                     .select('shop_id, name').eq('owner_email', user.email).eq('active', true);
                 if (myShops && myShops.length === 1) {
-                    // Exactly one shop → auto-select it
-                    shopId = myShops[0].shop_id;
+                    shopId = myShops[0].shop_id;              // exactly ONE shop → silent select
                     localStorage.setItem('shopId', shopId);
                 } else if (myShops && myShops.length > 1) {
-                    // Multiple shops → let the user pick (once per device)
-                    ssShowShopPicker(myShops);
-                    return; // stop here — picker will continue the flow
+                    ssShowShopPicker(myShops);                 // SEVERAL shops → picker
+                    return;
                 }
+                // 0 shops → continue to recovery below
             } catch (e) { console.warn('Shop auto-detect failed:', e.message); }
         }
         if (!shopId) shopId = 'default';
 
-        // 2. Check Owner Bypass
+        // 🛟 3. RECOVERY: account exists but has NO shop at all → guided setup
+        if (shopId === 'default') {
+            var hasAnyShop = false;
+            try {
+                const { data: owned } = await supabaseClient.from('shops')
+                    .select('shop_id').eq('owner_email', user.email);
+                hasAnyShop = !!(owned && owned.length > 0);
+            } catch (e) {}
+            if (!hasAnyShop) { ssShowSetupRecovery(user.email); return; }
+        }
+
+        // 4. OWNER BYPASS (master admin)
         var isOwner = false;
         try {
             const { data: mu } = await supabaseClient.from('master_users').select('role').eq('email', user.email).maybeSingle();
             isOwner = !!(mu && mu.role === 'master');
         } catch(e) { console.warn('Owner check failed', e); }
-               // 3. Check License (Using Local Storage to avoid Firebase dependency)
+
+        // 5. LICENSE CHECK (local, fast)
         if (!isOwner) {
             try {
                 var licStr = localStorage.getItem('smartshop_license');
                 if (licStr) {
                     var lic = JSON.parse(licStr);
-                    // If license is expired, show lockout screen and STOP.
                     if (lic.expiryDate && new Date(lic.expiryDate) < new Date()) {
-                        if (loadingScreen) loadingScreen.style.display = 'none';
                         if (lockoutScreen) lockoutScreen.style.display = 'flex';
-                        // 📞 Show Master-controlled payment/support phone
                         try {
                             await loadSupportContactsUniversal();
                             var lp = document.getElementById('lockoutPayPhone');
                             if (lp) lp.textContent = window.SUPPORT.phone;
                         } catch(e) {}
-                        return; // Stop here. Do not open app.
+                        return;
                     }
                 }
-            } catch (e) {
-                console.error("License check failed.", e);
-            }
-         }
-			
-			            // 🛑 TRIAL EXPIRED? Show PLAN PICKER (not just block!)
-            try {
-                const { data: shopRow } = await supabaseClient.from('shops')
-                    .select('*').eq('shop_id', getShopId()).maybeSingle();
-                window.__currentShopRow = shopRow;
+            } catch (e) { console.error('License check failed.', e); }
+        }
 
-                var trialExpired = shopRow && shopRow.plan === 'trial' &&
-                    shopRow.trial_expires && new Date(shopRow.trial_expires) < new Date();
-                var hardBlocked = shopRow && shopRow.blocked;
+        // 6. TRIAL EXPIRED / BLOCKED → PLAN PICKER
+        try {
+            const { data: shopRow } = await supabaseClient.from('shops')
+                .select('*').eq('shop_id', getShopId()).maybeSingle();
+            window.__currentShopRow = shopRow;
 
-                if (trialExpired || hardBlocked) {
-                    var picker = document.getElementById('planPicker');
-                    if (!picker) {
-                        picker = document.createElement('div');
-                        picker.id = 'planPicker';
-                        picker.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e3a8a);z-index:99999;overflow-y:auto;color:white;padding:20px;';
-                        document.body.appendChild(picker);
-                    }
+            var trialExpired = shopRow && shopRow.plan === 'trial' &&
+                shopRow.trial_expires && new Date(shopRow.trial_expires) < new Date();
+            var hardBlocked = shopRow && shopRow.blocked;
 
-                    // Load plans from database
-									 await loadSupportContactsUniversal();
-                    const { data: plans } = await supabaseClient.from('plans').select('*').eq('active', true);
-                    var plansHtml = '';
-                    (plans || []).forEach(function(pl) {
-                        plansHtml += '<div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:16px;margin-bottom:10px;">' +
-                            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-                            '<div><b style="font-size:16px;">' + pl.name + '</b> <small style="opacity:.6;">(' + pl.line + ')</small><br>' +
-                            '<small style="opacity:.7;">' + (pl.max_products < 999999 ? pl.max_products + ' products' : 'Unlimited') + ' · ' + (pl.max_cashiers < 999 ? pl.max_cashiers + ' staff' : 'Unlimited') + '</small></div>' +
-                            '<div style="text-align:right;"><b style="color:#fbbf24;font-size:18px;">' + (pl.price_monthly > 0 ? pl.price_monthly + ' Br/mo' : 'Call us') + '</b></div></div>' +
-                            '<a href="https://wa.me/' + window.SUPPORT.whatsapp + '?text=' + encodeURIComponent('Hello! I want the ' + pl.name + ' plan. My Shop ID: ' + getShopId()) + '" target="_blank" style="display:block;margin-top:10px;padding:10px;background:#25D366;color:white;text-align:center;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">💬 Choose ' + pl.name + ' (WhatsApp)</a>' +
-                            '</div>';
-                    });
+            if (trialExpired || hardBlocked) {
+                var picker = document.getElementById('planPicker');
+                if (!picker) {
+                    picker = document.createElement('div');
+                    picker.id = 'planPicker';
+                    picker.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e3a8a);z-index:99999;overflow-y:auto;color:white;padding:20px;';
+                    document.body.appendChild(picker);
+                }
 
-                    picker.innerHTML =
-                        '<div style="max-width:420px;margin:0 auto;text-align:center;padding-top:20px;">' +
-                        '<div style="font-size:50px;margin-bottom:10px;">' + (hardBlocked ? '⛔' : '⏰') + '</div>' +
-                        '<h2 style="margin-bottom:5px;">' + (hardBlocked ? 'Service Suspended' : 'Your Trial Has Ended') + '</h2>' +
-                        '<p style="color:#94a3b8;font-size:14px;margin-bottom:20px;">' + (hardBlocked ? 'Contact your provider to restore service.' : 'Thank you for trying SmartShop Pro!<br><b>Choose your plan to continue:</b>') + '</p>' +
-                        plansHtml +
-                        '<div style="margin-top:15px;padding:12px;background:rgba(255,255,255,.1);border-radius:10px;font-size:12px;color:#cbd5e1;">' +
-                        'After payment, you receive a <b>License Key</b>.<br>Activate it: Admin → License → Activate.</div>' +
-                        '<button onclick="supabaseClient.auth.signOut().then(()=>location.reload())" style="margin-top:15px;padding:10px 30px;border:none;border-radius:8px;background:rgba(255,255,255,.15);color:white;cursor:pointer;">Logout</button>' +
+                await loadSupportContactsUniversal();
+                const { data: plans } = await supabaseClient.from('plans').select('*').eq('active', true);
+                var plansHtml = '';
+                (plans || []).forEach(function(pl) {
+                    plansHtml += '<div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:16px;margin-bottom:10px;">' +
+                        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+                        '<div><b style="font-size:16px;">' + pl.name + '</b> <small style="opacity:.6;">(' + pl.line + ')</small><br>' +
+                        '<small style="opacity:.7;">' + (pl.max_products < 999999 ? pl.max_products + ' products' : 'Unlimited') + ' · ' + (pl.max_cashiers < 999 ? pl.max_cashiers + ' staff' : 'Unlimited') + '</small></div>' +
+                        '<div style="text-align:right;"><b style="color:#fbbf24;font-size:18px;">' + (pl.price_monthly > 0 ? pl.price_monthly + ' Br/mo' : 'Call us') + '</b></div></div>' +
+                        '<a href="https://wa.me/' + window.SUPPORT.whatsapp + '?text=' + encodeURIComponent('Hello! I want the ' + pl.name + ' plan. My Shop ID: ' + getShopId()) + '" target="_blank" style="display:block;margin-top:10px;padding:10px;background:#25D366;color:white;text-align:center;border-radius:8px;text-decoration:none;font-weight:bold;font-size:13px;">💬 Choose ' + pl.name + ' (WhatsApp)</a>' +
                         '</div>';
-                    picker.style.display = 'block';
-                    return; // STOP — do not open the app
-                }
-            } catch(e) { console.warn('Trial check failed', e); }
+                });
 
-        // 4. SUCCESS! Open the App
+                picker.innerHTML =
+                    '<div style="max-width:420px;margin:0 auto;text-align:center;padding-top:20px;">' +
+                    '<div style="font-size:50px;margin-bottom:10px;">' + (hardBlocked ? '⛔' : '⏰') + '</div>' +
+                    '<h2 style="margin-bottom:5px;">' + (hardBlocked ? 'Service Suspended' : 'Your Trial Has Ended') + '</h2>' +
+                    '<p style="color:#94a3b8;font-size:14px;margin-bottom:20px;">' + (hardBlocked ? 'Contact your provider to restore service.' : 'Thank you for trying SmartShop Pro!<br><b>Choose your plan to continue:</b>') + '</p>' +
+                    plansHtml +
+                    '<div style="margin-top:15px;padding:12px;background:rgba(255,255,255,.1);border-radius:10px;font-size:12px;color:#cbd5e1;">' +
+                    'After payment, you receive a <b>License Key</b>.<br>Activate it: Admin → License → Activate.</div>' +
+                    '<button onclick="supabaseClient.auth.signOut().then(()=>location.reload())" style="margin-top:15px;padding:10px 30px;border:none;border-radius:8px;background:rgba(255,255,255,.15);color:white;cursor:pointer;">Logout</button>' +
+                    '</div>';
+                picker.style.display = 'block';
+                return;
+            }
+        } catch(e) { console.warn('Trial check failed', e); }
+
+        // 7. SUCCESS → open the app
         if (loadingScreen) loadingScreen.style.display = 'none';
-        
-        // Check if App PIN is set up
         if (typeof checkAppPinStatus === 'function') {
             checkAppPinStatus();
         } else {
-            // Fallback if PIN system is missing
             if (mainApp) mainApp.style.display = 'block';
             if (typeof init === 'function') init();
         }
@@ -11360,11 +11349,10 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
         var passInput = document.getElementById('loginPass');
         if (emailInput) emailInput.value = '';
         if (passInput) passInput.value = '';
-        
+
         if (typeof checkDeviceLock === 'function') checkDeviceLock();
     }
 });
-
 	
 // Get yesterday's total revenue
 async function getYesterdayRevenue() {
