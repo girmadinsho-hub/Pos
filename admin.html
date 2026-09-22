@@ -1,5 +1,6 @@
-<!DOCTYPE html>
-<head>
+	<!DOCTYPE html> 
+       <html>
+       <head>
 	
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -1569,6 +1570,9 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
             <div id="detailedSalesExcelContainer"></div>
             <div id="detailedSalesListContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
             <div id="detailedSalesGridContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
+             <div id="detailedLoadMoreBtn" style="text-align:center; display:none; padding:8px;">
+                <button class="btn btn-primary btn-sm" onclick="loadMoreDetailedPage()">⬇ Load 50 More Sales</button>
+            </div>
         </div>
     </div>
 </div>
@@ -3268,6 +3272,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 <script src="sheet.js"></script>			 
 <script src="shared.js"></script>
 <script src="ssauth.js"></script>	 
+<script src="ssperf.js"></script>
 <script src="advanced.js"></script>
 <script src="smartcom.js"></script>
 			 
@@ -6319,21 +6324,117 @@ function ssSplitPaymentBuckets(sale) {
     }
     return b;
 }
+
+  
 // Filtered detailed sales
-function getFilteredDetailedSales() {
-    var filtered = salesCache.slice();
-    if (detailedPaymentFilter) filtered = filtered.filter(function(s) { return s.paymentMethod === detailedPaymentFilter; });
+  // ═══ DETAILED SALES — PAGINATED (Package 4) ═══
+function ssUpdateDetailedLoadMoreBtn() {
+    var btn = document.getElementById('detailedLoadMoreBtn');
+    if (btn) btn.style.display = SS_PERF.detailedHasMore ? 'block' : 'none';
+}
+
+async function getFilteredDetailedSales() {
+    // Use already-loaded rows; fetch first page only if cache is empty
+    var rows = (SS_PERF.detailedCache.length > 0)
+        ? SS_PERF.detailedCache
+        : await ssFetchDetailedPage(false);
+    ssUpdateDetailedLoadMoreBtn();
+    var filtered = rows;
+    if (detailedPaymentFilter) filtered = filtered.filter(function(s){ return s.paymentMethod === detailedPaymentFilter; });
+    if (detailedCashierFilter) filtered = filtered.filter(function(s){ return (s.cashierName || '') === detailedCashierFilter; });
     if (detailedShiftFilter) {
-        filtered = filtered.filter(function(s) {
+        filtered = filtered.filter(function(s){
             var hour = new Date(s.time).getHours();
             var shift = hour >= 6 && hour < 12 ? '☀️ Morning' : (hour >= 12 && hour < 18 ? '🌤 Afternoon' : '🌙 Evening');
             return shift === detailedShiftFilter;
         });
     }
-    if (detailedCashierFilter) filtered = filtered.filter(function(s) { return (s.cashierName||'') === detailedCashierFilter; });
-    return filtered.sort(function(a,b){ return new Date(b.time) - new Date(a.time); });
+    return filtered;
 }
 
+async function loadMoreDetailedPage() {
+    try {
+        await ssFetchDetailedPage(true);
+        ssUpdateDetailedLoadMoreBtn();
+        if (currentDetailedView === 'excel' && detailedSalesTable) detailedSalesTable.setData(SS_PERF.detailedCache);
+        else if (currentDetailedView === 'list') buildDetailedListView();
+        else buildDetailedGridView();
+    } catch(e) { alert('Load more failed: ' + e.message); }
+}
+
+async function buildDetailedListView() {
+    var data = await getFilteredDetailedSales();
+    var mapped = data.map(function(s) {
+        var itemsStr = (s.items || []).map(function(i){ return i.name + ' x' + i.qty; }).join(', ');
+        return {
+            label: formatDate(s.time) + ' ' + new Date(s.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),
+            detail: 'Payment: ' + s.paymentMethod + ' | Cashier: ' + (s.cashierName || 'Unknown') + ' | Items: ' + itemsStr,
+            right: appCurrencySymbol + (s.total || 0).toFixed(2)
+        };
+    });
+    renderList('detailedSalesListContainer', mapped, detailedListPage, PER_PAGE_LIST, 'loadMoreDetailedList');
+}
+
+async function buildDetailedGridView() {
+    var data = await getFilteredDetailedSales();
+    var mapped = data.map(function(s) {
+        var itemsStr = (s.items || []).map(function(i){ return i.name + ' x' + i.qty; }).join(', ');
+        return {
+            label: formatDate(s.time) + ' ' + new Date(s.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),
+            detail: 'Payment: ' + s.paymentMethod + ' | Cashier: ' + (s.cashierName || 'Unknown') + ' | Items: ' + itemsStr,
+            right: appCurrencySymbol + (s.total || 0).toFixed(2)
+        };
+    });
+    renderGrid('detailedSalesGridContainer', mapped, detailedGridPage, PER_PAGE_GRID, 'loadMoreDetailedGrid');
+}
+
+async function initDetailedExcelTable() {
+    var data = await getFilteredDetailedSales();
+    var mapped = data.map(function(s) {
+        return {
+            date: s.time, time: s.time,
+            paymentMethod: s.paymentMethod,
+            cashierName: s.cashierName || 'Unknown',
+            subtotal: toNum(s.subtotal), discount: toNum(s.discount),
+            tax: toNum(s.tax), total: toNum(s.total),
+            items: s.items || [], invoiceNo: s.invoiceNo || '',
+            shift: (function() {
+                var hour = new Date(s.time).getHours();
+                return hour >= 6 && hour < 12 ? '☀️ Morning' : (hour >= 12 && hour < 18 ? '🌤 Afternoon' : '🌙 Evening');
+            })()
+        };
+    });
+    if (detailedSalesTable) { detailedSalesTable.setData(mapped); return; }
+    detailedSalesTable = new ModernSheet('detailedSalesExcelContainer', {
+        data: mapped,
+        columns: [
+            { title: '#', width:'40px', render: function(item,html,idx){ return idx + 1; } },
+            { title: 'Date', width:'90px', render: function(item,html){ return html ? formatDate(item.date) : item.date; } },
+            { title: 'Time', width:'70px', render: function(item,html){ return html ? new Date(item.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : item.time; } },
+            { title: 'Invoice', field:'invoiceNo', width:'80px' },
+            { title: 'Payment', field:'paymentMethod', width:'70px' },
+            { title: 'Cashier', field:'cashierName', width:'100px' },
+            { title: 'Subtotal', field:'subtotal', align:'right', render: function(item,html){ return html ? appCurrencySymbol + toNum(item.subtotal).toFixed(2) : toNum(item.subtotal); } },
+            { title: 'Discount', field:'discount', align:'right', render: function(item,html){ return html ? appCurrencySymbol + toNum(item.discount).toFixed(2) : toNum(item.discount); } },
+            { title: '🧾 Tax', field:'tax', align:'right', render: function(item,html){ return html ? appCurrencySymbol + toNum(item.tax).toFixed(2) : toNum(item.tax); } },
+            { title: '💰 Total', field:'total', align:'right', render: function(item,html){ return html ? appCurrencySymbol + toNum(item.total).toFixed(2) : toNum(item.total); }, total:true, totalValue: function(i){ return toNum(i.total); }, totalFormat: moneySum },
+            { title: 'Items', width:'200px', render: function(item,html) {
+                if (!item.items || !item.items.length) return '';
+                var str = item.items.map(function(i){ return i.name + ' x' + i.qty; }).join(', ');
+                return html ? '<span style="font-size:11px;">' + sanitize(str) + '</span>' : str;
+              }
+            }
+        ],
+        emptyMessage: 'No sales',
+        showSearch: false,
+        showFontSlider: true
+    });
+}
+
+async function getFilteredDetailedSales() {
+    // 🚀 Paginated mode (Package 4): loads 50 at a time from server
+    return await ssFetchDetailedPage(false);
+}
 // Cashier dropdown
 function updateCashierDropdown() {
     var select = document.getElementById('detailedSalesCashierFilter');
@@ -6663,52 +6764,6 @@ function initYearlyExcelTable() {
     });
 }
 
-function initDetailedExcelTable() {
-    var filtered = getFilteredDetailedSales();
-    var data = filtered.map(function(s) {
-        return {
-            date: s.time,
-            time: s.time,
-            paymentMethod: s.paymentMethod,
-            cashierName: s.cashierName || 'Unknown',
-            subtotal: toNum(s.subtotal),
-            discount: toNum(s.discount),
-            tax: toNum(s.tax),
-            total: toNum(s.total),
-            items: s.items || [],
-            invoiceNo: s.invoiceNo || '',
-            shift: (function() {
-                var hour = new Date(s.time).getHours();
-                return hour >= 6 && hour < 12 ? '☀️ Morning' : (hour >= 12 && hour < 18 ? '🌤 Afternoon' : '🌙 Evening');
-            })()
-        };
-    });
-    if (detailedSalesTable) { detailedSalesTable.setData(data); return; }
-    detailedSalesTable = new ModernSheet('detailedSalesExcelContainer', {
-        data: data,
-        columns: [
-            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
-            { title: 'Date', width:'90px', render: function(item,html){ return html ? formatDate(item.date) : item.date; } },
-            { title: 'Time', width:'70px', render: function(item,html){ return html ? new Date(item.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}) : item.time; } },
-            { title: 'Invoice', field:'invoiceNo', width:'80px' },
-            { title: 'Payment', field:'paymentMethod', width:'70px' },
-            { title: 'Cashier', field:'cashierName', width:'100px' },
-            { title: 'Subtotal', field:'subtotal', align:'right', render: function(item,html){ return html ? appCurrencySymbol + toNum(item.subtotal).toFixed(2) : toNum(item.subtotal); } },
-            { title: 'Discount', field:'discount', align:'right', render: function(item,html){ return html ? appCurrencySymbol + toNum(item.discount).toFixed(2) : toNum(item.discount); } },
-            { title: '🧾 Tax', field:'tax', align:'right', render: function(item,html){ return html ? appCurrencySymbol + toNum(item.tax).toFixed(2) : toNum(item.tax); } },
-            { title: '💰 Total', field:'total', align:'right', render: function(item,html){ return html ? appCurrencySymbol + toNum(item.total).toFixed(2) : toNum(item.total); }, total:true, totalValue: function(i){ return toNum(i.total); }, totalFormat: moneySum },
-            { title: 'Items', width:'200px', render: function(item,html) {
-                if (!item.items || !item.items.length) return '';
-                var str = item.items.map(function(i){ return i.name+' x'+i.qty; }).join(', ');
-                return html ? '<span style="font-size:11px;">'+sanitize(str)+'</span>' : str;
-              }
-            }
-        ],
-        emptyMessage: 'No sales',
-        showSearch: false,
-        showFontSlider: true
-    });
-}
 
 function loadMoreList(containerId, data, pageVar, perPage, loadMoreFunc) {
     var container = document.getElementById(containerId);
@@ -6783,17 +6838,6 @@ function buildYearlyListView() {
 }
 function loadMoreYearlyList() { yearlyListPage++; buildYearlyListView(); }
 
-function buildDetailedListView() {
-    var data = getFilteredDetailedSales().map(function(s) {
-        var itemsStr = (s.items||[]).map(function(i){ return i.name+' x'+i.qty; }).join(', ');
-                return {
-            label: formatDate(s.time) + ' ' + new Date(s.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
-            detail: 'Payment: ' + s.paymentMethod + ' | Cashier: ' + (s.cashierName||'Unknown') + ' | Items: ' + itemsStr,
-            right: fmtMoney(s.total || 0)
-        };
-    });
-    renderList('detailedSalesListContainer', data, detailedListPage, PER_PAGE_LIST, 'loadMoreDetailedList');
-}
 function loadMoreDetailedList() { detailedListPage++; buildDetailedListView(); }
 
 
@@ -6868,17 +6912,6 @@ function buildYearlyGridView() {
 }
 function loadMoreYearlyGrid() { yearlyGridPage++; buildYearlyGridView(); }
 
-function buildDetailedGridView() {
-    var data = getFilteredDetailedSales().map(function(s) {
-        var itemsStr = (s.items||[]).map(function(i){ return i.name+' x'+i.qty; }).join(', ');
-        return {
-            label: formatDate(s.time) + ' ' + new Date(s.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
-            detail: 'Payment: ' + s.paymentMethod + ' | Cashier: ' + (s.cashierName||'Unknown') + ' | Items: ' + itemsStr,
-            right: appCurrencySymbol + toNum(s.total).toFixed(2)
-        };
-    });
-    renderGrid('detailedSalesGridContainer', data, detailedGridPage, PER_PAGE_GRID, 'loadMoreDetailedGrid');
-}
 function loadMoreDetailedGrid() { detailedGridPage++; buildDetailedGridView(); }
 
 // ===== TODAY'S ITEM SALES SUMMARY (SCROLLABLE + INFINITE) =====
@@ -6918,18 +6951,6 @@ function buildItemSummary(pageOverride) {
     container.style.maxHeight = '50vh';
     container.style.overflowY = 'auto';
 }
-
-// ===== INIT =====
-function initSalesTables() {
-    updateCashierDropdown();
-    switchSalesView('daily', 'excel');
-    switchSalesView('weekly', 'excel');
-    switchSalesView('monthly', 'excel');
-    switchSalesView('yearly', 'excel');
-    switchSalesView('detailed', 'excel');
-    buildItemSummary(1);
-}
-
 
 
 function loadMoreList(containerId, data, pageVar, perPage, loadMoreFunc) {
@@ -7014,17 +7035,6 @@ function loadMoreMonthlyList() {
 }
 
 // Detailed List (with date+time)
-function buildDetailedListView() {
-    var data = getFilteredDetailedSales().map(function(s) {
-        var itemsStr = (s.items||[]).map(function(i){ return i.name+' x'+i.qty; }).join(', ');
-        return {
-            label: formatDate(s.time) + ' ' + new Date(s.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
-            detail: 'Payment: ' + s.paymentMethod + ' | Cashier: ' + (s.cashierName||'Unknown') + ' | Items: ' + itemsStr,
-            right: appCurrencySymbol + ' ' + (s.total||0).toFixed(2)
-};
-    });
-    renderList('detailedSalesListContainer', data, detailedListPage, PER_PAGE_LIST, 'loadMoreDetailedList');
-}
 
 
 
@@ -7180,17 +7190,6 @@ function loadMoreMonthlyGrid() {
 }
 
 // Detailed Grid
-function buildDetailedGridView() {
-    var data = getFilteredDetailedSales().map(function(s) {
-        var itemsStr = (s.items||[]).map(function(i){ return i.name+' x'+i.qty; }).join(', ');
-        return {
-            label: formatDate(s.time) + ' ' + new Date(s.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
-            detail: 'Payment: ' + s.paymentMethod + ' | Cashier: ' + (s.cashierName||'Unknown') + ' | Items: ' + itemsStr,
-            right: appCurrencySymbol + (s.total||0).toFixed(2)
-        };
-    });
-    renderGrid('detailedSalesGridContainer', data, detailedGridPage, PER_PAGE_GRID, 'loadMoreDetailedGrid');
-}
 function loadMoreDetailedGrid() {
     detailedGridPage++;
     var data = getFilteredDetailedSales().map(function(s) {
@@ -7205,12 +7204,38 @@ function loadMoreDetailedGrid() {
 }
 
 // ===== INITIALIZE ALL SALES VIEWS ON TAB LOAD =====
-function initSalesTables() {
-    updateCashierDropdown();
-    switchSalesView('daily', 'excel');
-    switchSalesView('weekly', 'excel');
-    switchSalesView('monthly', 'excel');
-    switchSalesView('detailed', 'excel');
+async function initSalesTables() {
+    updateCashierDropdownSafe();
+    try {
+        var daily = await ssFetchDailySummary(null, null);
+        window._ssDailyAll = daily;
+        var today = new Date(); today.setHours(0,0,0,0);
+        var last30 = new Date(Date.now() - 30 * 86400000);
+
+        // Daily view (30 days)
+        var dailyRows = daily.filter(function(d){ return new Date(d.date) >= last30; });
+        if (dailySalesTable) dailySalesTable.setData(dailyRows);
+        else { /* initialized lazily below */ }
+
+        // Weekly / Monthly / Yearly grouped locally from daily rows
+        if (weeklySalesTable) weeklySalesTable.setData(ssGroupDaily(daily, 'week'));
+        if (monthlySalesTable) monthlySalesTable.setData(ssGroupDaily(daily, 'month'));
+        if (window.yearlySalesTable) window.yearlySalesTable.setData(ssGroupDaily(daily, 'year'));
+    } catch(e) { console.warn('Summary load failed:', e.message); }
+
+    // Lazy-init any missing tables (first open)
+    if (!dailySalesTable) { try { switchSalesView('daily', 'excel'); } catch(e){} }
+    if (!weeklySalesTable) { try { switchSalesView('weekly', 'excel'); } catch(e){} }
+    if (!monthlySalesTable) { try { switchSalesView('monthly', 'excel'); } catch(e){} }
+    if (!window.yearlySalesTable) { try { switchSalesView('yearly', 'excel'); } catch(e){} }
+
+    buildItemSummary(1);
+    initItemDetailView();
+   SS_PERF.detailedCache = [];   // fresh detailed list on each tab open
+}
+
+function updateCashierDropdownSafe() {
+    try { if (typeof updateCashierDropdown === 'function') updateCashierDropdown(); } catch(e) {}
 }
 
 // ===== PHASE 1C: DEVICE MANAGER (ADMIN) =====
@@ -8031,17 +8056,44 @@ function loadDashboard(period, btn) {
     else if (period === 'weekly') { start = new Date(now.getTime() - 7*86400000); }
     else if (period === 'monthly') { start = new Date(now.getTime() - 30*86400000); }
 
-    var sales = salesCache.filter(function(s) { return s.time >= start.toISOString(); });
+    var sales = await ssFetchDailySummary(start, null).then(function(rows){
+        return rows.map(function(d){ return { time: d.date + 'T12:00:00', total: d.total, profit: 0, paymentMethod: '', count: d.count, pay: d }; });
+    }).catch(function(){ return []; });
+
+        var kpiProfit = 0, kpiCreditDue = 0;
+    try {
+        var pq = supabaseClient.from('sales').select('profit, total, payment_method, paid_at').eq('shop_id', getShopId()).eq('voided', false).gte('time', start.toISOString());
+        var pr = await pq;
+        if (pr.data) pr.data.forEach(function(s){ kpiProfit += Number(s.profit||0); if (s.payment_method === 'credit' && !s.paid_at) kpiCreditDue += Number(s.total||0); });
+    } catch(e) {}
+  
+  
     var losses = lossesCache.filter(function(l) { return l.time >= start.toISOString(); });
     var expenses = expensesCache.filter(function(e) { return e.date >= start.toISOString().slice(0,10); });
 
     var revenue = 0, grossProfit = 0, creditDue = 0, totalLosses = 0, totalExpenses = 0;
     var pay = { cash:0, card:0, mobile:0, credit:0 };
+        // 🚀 Package 4: KPIs from server rows + profit/credit mini-query
     sales.forEach(function(s) {
-        revenue += s.total||0; grossProfit += s.profit||0;
-        if (s.paymentMethod==='credit' && !s.paidAt) creditDue += s.total||0;
-        pay[s.paymentMethod] = (pay[s.paymentMethod]||0) + (s.total||0);
+        revenue += s.total||0;
+        pay.cash += (s.pay ? s.pay.cash : 0) || 0;
+        pay.card += (s.pay ? s.pay.card : 0) || 0;
+        pay.mobile += (s.pay ? s.pay.mobile : 0) || 0;
+        pay.credit += (s.pay ? s.pay.credit : 0) || 0;
     });
+    var kpiProfit = 0, kpiCreditDue = 0;
+    try {
+        var pr = await supabaseClient.from('sales')
+            .select('profit, total, payment_method, paid_at')
+            .eq('shop_id', getShopId()).eq('voided', false)
+            .gte('time', start.toISOString());
+        if (pr.data) pr.data.forEach(function(s){
+            kpiProfit += Number(s.profit||0);
+            if (s.payment_method === 'credit' && !s.paid_at) kpiCreditDue += Number(s.total||0);
+        });
+    } catch(e) {}
+    grossProfit = kpiProfit;
+    creditDue = kpiCreditDue;
     losses.forEach(function(l) { totalLosses += l.totalLoss||0; });
     expenses.forEach(function(e) { totalExpenses += e.amount||0; });
 
@@ -8549,14 +8601,10 @@ async function loadAllCaches() {
 	  if (typeof renderStockAlertCenter === 'function') renderStockAlertCenter();
       }
 
-      // 2. LOAD SALES
-     const { data: sals } = await supabaseClient.from('sales').select('*').eq('shop_id', sid).eq('voided', false).order('time', { ascending: false });
-     	if (sals) {
-          salesCache = sals.map(function(s) {
-               return { id: s.id, shopId: s.shop_id, cashierId: s.cashier_id, cashierName: s.cashier_name, time: s.time, total: s.total, profit: s.profit, subtotal: s.subtotal || 0, discount: s.discount || 0, tax: s.tax || 0, payments: s.payments || [], paymentMethod: s.payment_method, items: s.items, customerName: s.customer_name, customerPhone: s.customer_phone, shiftId: s.shift_id, note: s.note, invoiceNo: s.invoice_no, orderType: s.order_type, paidAt: s.paid_at };
-					});
-          try { if (typeof initSalesTables === 'function') initSalesTables(); } catch(e) { console.warn('Sales refresh failed:', e); }      }
-
+          // 2. SALES — 🚀 NO LONGER DOWNLOADING FULL HISTORY (Package 4)
+      // Summaries & details now come from ssperf.js (server-side + paginated).
+      // salesCache stays as a small local buffer for detailed lists only.
+      salesCache = [];
       // 3. LOAD LOSSES
       const { data: lss } = await supabaseClient.from('losses').select('*').eq('shop_id', sid).order('time', { ascending: false });
       if (lss) {
@@ -12237,6 +12285,4 @@ window.addEventListener('offline', () => {
     });
 })();
 </script>
-       
-</body>
-</html>
+</body></html>
