@@ -3143,11 +3143,10 @@ function clearCart(){
     if (cartTitle) cartTitle.innerText = 'CART';
     updateCart(); 
 }
-		function updateCart(){
+function updateCart(){
     document.getElementById('cartCount').textContent=cart.reduce((s,i)=>s+i.qty,0);
     let subtotal=cart.reduce((s,i)=>s+(i.price*i.qty),0);
     
-    // Updated to use fmtMoney
     document.getElementById('subtotal').textContent=fmtMoney(subtotal);
     
     const discP=parseFloat(document.getElementById('discountPercent').value)||0;
@@ -3157,7 +3156,6 @@ function clearCart(){
     else if(discP>0)discount=subtotal*discP/100;
     const discRow=document.getElementById('discountDisplayRow');
     
-    // Updated to use fmtMoney
     if(discount>0){discRow.style.display='flex';document.getElementById('discountDisplay').textContent='-'+fmtMoney(discount);}else{discRow.style.display='none';}
     
     const afterDisc=subtotal-discount;
@@ -3168,13 +3166,12 @@ function clearCart(){
         tax=afterDisc*(parseFloat(document.getElementById('taxRate').value)||0)/100;
     }
     
-    // Updated to use fmtMoney
     document.getElementById('tax').textContent=fmtMoney(tax);
     
     const total=afterDisc+tax;
     document.getElementById('total').textContent=fmtMoney(total);
     
-    // Updated the 'Br' inside the cart item details to use fmtMoney + added Modifiers & Notes
+    // Build cart HTML — all strings constructed BEFORE the template (safe pattern)
     document.getElementById('cartItems').innerHTML=cart.map((i,idx)=>{
         var prod = products.find(p=>p.id===i.id);
         var prodPrice = prod ? prod.price : 0;
@@ -3183,34 +3180,40 @@ function clearCart(){
         const negotiated = prod ? (i.price !== bulkPrice && posSettings.negotiatePrice) : false;
         const bulk = prod ? (posSettings.bulkPricing && i.qty > 1 && i.price < prodPrice) : false;
         
-        // NEW: Create the HTML for Modifiers and Notes if they exist
         var modsHtml = (i.modifiers && i.modifiers.length > 0) ? '<div style="font-size:11px; color:#f59e0b; margin-top:2px; font-weight:600;">➕ ' + i.modifiers.join(', ') + '</div>' : '';
         var noteHtml = i.note ? '<div style="font-size:11px; color:#ef4444; margin-top:2px; font-weight:600;">📝 ' + sanitize(i.note) + '</div>' : '';
         
-        return `<div class="cart-item">
-            <div class="cart-info">
-                <div class="cart-name">${i.name}${negotiated?'<span style="background:#fff3e0;color:#e65100;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:5px;">✏️</span>':''}${bulk?'<span style="background:#e8f5e9;color:#2e7d32;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:5px;">📦</span>':''}</div>
-                <div class="cart-detail">${fmtMoney(i.price)} × ${i.qty}${i.unit?' '+i.unit:''} = ${fmtMoney(i.price*i.qty)}</div>
-                ${modsHtml}
-                ${noteHtml}
-            </div>
-
-                      <div class="qty-control">
-                ${isCartLocked ? 
-                    `<span style="font-weight:bold; padding:0 10px;">Qty: ${i.qty}</span>` 
-                    : 
-                    `<button class="qty-btn" onclick="updateCartQty(${idx},${i.qty-1})">−</button>
-                     <span class="qty-input">${i.qty}</span>
-                     <button class="qty-btn" onclick="updateCartQty(${idx},${i.qty+1})">+</button> 
-                     ${(currentCashier.position !== 'Cashier') ? '<button class="btn-edit-price" onclick="editCartPrice(' + idx + ')">✏️</button>' : ''}`
-                }
-            </div>
-						
-        </div>`;
+        var negotiatedBadge = negotiated ? '<span style="background:#fff3e0;color:#e65100;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:5px;">✏️</span>' : '';
+        var bulkBadge = bulk ? '<span style="background:#e8f5e9;color:#2e7d32;font-size:9px;padding:1px 5px;border-radius:4px;margin-left:5px;">📦</span>' : '';
+        
+        var itemDetail = fmtMoney(i.price) + ' × ' + i.qty + (i.unit ? ' ' + i.unit : '') + ' = ' + fmtMoney(i.price * i.qty);
+        
+        // 🔐 PRICE EDIT PERMISSION — Manager/Owner only
+        var canEditPrice = currentCashier && (currentCashier.position === 'Manager' || currentCashier.position === 'Owner');
+        var editPriceBtn = (canEditPrice && !isCartLocked)
+            ? '<button class="btn-edit-price" onclick="editCartPrice(' + idx + ')">✏️</button>'
+            : '';
+        
+        var minusBtn = '<button class="qty-btn" onclick="updateCartQty(' + idx + ',' + (i.qty - 1) + ')">−</button>';
+        var plusBtn = '<button class="qty-btn" onclick="updateCartQty(' + idx + ',' + (i.qty + 1) + ')">+</button>';
+        var qtyText = '<span class="qty-input">' + i.qty + '</span>';
+        var lockedText = '<span style="font-weight:bold; padding:0 10px;">Qty: ' + i.qty + '</span>';
+        var qtyControl = isCartLocked ? lockedText : (minusBtn + qtyText + plusBtn + editPriceBtn);
+        
+        var rowHtml = '<div class="cart-item">' +
+            '<div class="cart-info">' +
+                '<div class="cart-name">' + i.name + negotiatedBadge + bulkBadge + '</div>' +
+                '<div class="cart-detail">' + itemDetail + '</div>' +
+                modsHtml +
+                noteHtml +
+            '</div>' +
+            '<div class="qty-control">' + qtyControl + '</div>' +
+        '</div>';
+        
+        return rowHtml;
     }).join('');
     updateCustomerDisplay();
 }
-
 function toggleTax(){updateCart();}
 
 // ===== CUSTOMER DISPLAY =====
