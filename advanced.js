@@ -1046,9 +1046,8 @@ function goToDeviceLinkCenter() {
         }
     }, 300);
 }
-
-function dismissSetupCard() {
-    if (confirm('Hide this setup guide? You can always find the Device Link Center in Settings.')) {
+async function dismissSetupCard() {
+    if (await confirm('Hide this setup guide? You can always find the Device Link Center in Settings.')) {
         localStorage.setItem('hideSetupCard', '1');
         var card = document.getElementById('setupWelcomeCard');
         if (card) card.style.display = 'none';
@@ -1611,41 +1610,41 @@ async function toggleMenuAvailability(prodId) {
         alert('❌ Error: ' + e.message);
     }
 }
-
-
-// ===== UPDATE STAFF POSITIONS BASED ON SHOP TYPE =====
-function updateStaffPositions() {
+// ===== UPDATE STAFF POSITIONS — reads REAL shop type from database =====
+async function updateStaffPositions() {
     var empPosSelect = document.getElementById('empPosition');
-    if (!empPosSelect) return; // Stop if dropdown isn't on the screen
-    
-    var shopType = posSettings.shopType || 'retail';
-    
+    if (!empPosSelect) return;
+
+    // 🔑 FIX: fetch the actual shop type (was defaulting to 'retail' in memory)
+    var shopType = 'retail';
+    try {
+        const { data } = await supabaseClient.from('settings')
+            .select('shop_type').eq('shop_id', getShopId()).maybeSingle();
+        if (data && data.shop_type) shopType = data.shop_type;
+    } catch (e) {}
+
     if (shopType === 'cafe') {
-        empPosSelect.innerHTML = `
-            <option value="Cashier">Cashier</option>
-            <option value="Waiter">Waiter</option>
-            <option value="Chef">Chef / Kitchen Staff</option>
-            <option value="Manager">Manager</option>
-            <option value="Owner">Owner</option>
-            <option value="Guard">Guard</option>
-            <option value="Cleaner">Cleaner</option>
-            <option value="Other">Other</option>
-        `;
+        empPosSelect.innerHTML =
+            '<option value="Cashier">Cashier</option>' +
+            '<option value="Waiter">Waiter</option>' +
+            '<option value="Chef">Chef / Kitchen Staff</option>' +
+            '<option value="Manager">Manager</option>' +
+            '<option value="Owner">Owner</option>' +
+            '<option value="Guard">Guard</option>' +
+            '<option value="Cleaner">Cleaner</option>' +
+            '<option value="Other">Other</option>';
     } else {
-        // RETAIL MODE: No Waiters or Chefs!
-        empPosSelect.innerHTML = `
-            <option value="Cashier">Cashier</option>
-            <option value="Manager">Manager</option>
-            <option value="Owner">Owner</option>
-            <option value="Guard">Guard</option>
-            <option value="Cleaner">Cleaner</option>
-            <option value="Laborer">Laborer</option>
-            <option value="Other">Other</option>
-        `;
+        // RETAIL: no Waiters or Chefs
+        empPosSelect.innerHTML =
+            '<option value="Cashier">Cashier</option>' +
+            '<option value="Manager">Manager</option>' +
+            '<option value="Owner">Owner</option>' +
+            '<option value="Guard">Guard</option>' +
+            '<option value="Cleaner">Cleaner</option>' +
+            '<option value="Laborer">Laborer</option>' +
+            '<option value="Other">Other</option>';
     }
 }
-
-
 
 // ===== UNIFIED STAFF MANAGEMENT MODULE (BULLETPROOF) =====
 
