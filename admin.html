@@ -1,8 +1,7 @@
 	<!DOCTYPE html> 
        <html>
        <head>
-		   
-	<script>window.onerror=function(m,s,l){document.body.innerHTML='<div style="background:#7f1d1d;color:#fff;padding:20px;font-family:monospace;font-size:13px;"><h2>❌ Error found</h2><b>'+m+'</b><br>Line: '+l+'<br>File: '+s+'</div>';};</script>
+	
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
@@ -8017,11 +8016,10 @@ var salesChartInstance = null;
 var paymentChartInstance = null;
 
 
-
-function loadDashboard(period, btn) {
+async function loadDashboard(period, btn) {
     currentPeriod = period;
     
-          // NEW: Smart Setup Wizard Logic
+    // NEW: Smart Setup Wizard Logic
     var wizardCard = document.getElementById('setupWizardCard');
     if (wizardCard) {
         if (localStorage.getItem('hideSetupCard') === '1') {
@@ -8034,12 +8032,9 @@ function loadDashboard(period, btn) {
             
             if (currentShop && currentShop !== 'default' && currentShop !== '') {
                 if (wizardId) wizardId.textContent = currentShop;
-                
-                // Automatically build the POS link for them!
                 var path = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
                 var baseURL = window.location.origin + path;
                 var posUrl = baseURL + 'pos.html?shop=' + currentShop;
-                
                 if (wizardLink) wizardLink.textContent = posUrl;
             } else {
                 if (wizardId) { wizardId.textContent = 'No Shop ID Found'; wizardId.style.color = '#ef4444'; }
@@ -8057,31 +8052,28 @@ function loadDashboard(period, btn) {
     else if (period === 'weekly') { start = new Date(now.getTime() - 7*86400000); }
     else if (period === 'monthly') { start = new Date(now.getTime() - 30*86400000); }
 
-    var sales = await ssFetchDailySummary(start, null).then(function(rows){
-        return rows.map(function(d){ return { time: d.date + 'T12:00:00', total: d.total, profit: 0, paymentMethod: '', count: d.count, pay: d }; });
-    }).catch(function(){ return []; });
-
-        var kpiProfit = 0, kpiCreditDue = 0;
+    // 🚀 Package 4: daily summary rows from the SERVER (split-payment aware)
+    var sales = [];
     try {
-        var pq = supabaseClient.from('sales').select('profit, total, payment_method, paid_at').eq('shop_id', getShopId()).eq('voided', false).gte('time', start.toISOString());
-        var pr = await pq;
-        if (pr.data) pr.data.forEach(function(s){ kpiProfit += Number(s.profit||0); if (s.payment_method === 'credit' && !s.paid_at) kpiCreditDue += Number(s.total||0); });
-    } catch(e) {}
-  
-  
+        var rows = await ssFetchDailySummary(start, null);
+        sales = rows.map(function(d){ return { time: d.date + 'T12:00:00', total: d.total, count: d.count, pay: d }; });
+    } catch(e) { console.warn('Summary fetch failed:', e.message); }
+
     var losses = lossesCache.filter(function(l) { return l.time >= start.toISOString(); });
     var expenses = expensesCache.filter(function(e) { return e.date >= start.toISOString().slice(0,10); });
 
     var revenue = 0, grossProfit = 0, creditDue = 0, totalLosses = 0, totalExpenses = 0;
     var pay = { cash:0, card:0, mobile:0, credit:0 };
-        // 🚀 Package 4: KPIs from server rows + profit/credit mini-query
+
     sales.forEach(function(s) {
-        revenue += s.total||0;
+        revenue += s.total || 0;
         pay.cash += (s.pay ? s.pay.cash : 0) || 0;
         pay.card += (s.pay ? s.pay.card : 0) || 0;
         pay.mobile += (s.pay ? s.pay.mobile : 0) || 0;
         pay.credit += (s.pay ? s.pay.credit : 0) || 0;
     });
+
+    // 🚀 Package 4: profit + unpaid credit from a small targeted query
     var kpiProfit = 0, kpiCreditDue = 0;
     try {
         var pr = await supabaseClient.from('sales')
@@ -8089,14 +8081,15 @@ function loadDashboard(period, btn) {
             .eq('shop_id', getShopId()).eq('voided', false)
             .gte('time', start.toISOString());
         if (pr.data) pr.data.forEach(function(s){
-            kpiProfit += Number(s.profit||0);
-            if (s.payment_method === 'credit' && !s.paid_at) kpiCreditDue += Number(s.total||0);
+            kpiProfit += Number(s.profit || 0);
+            if (s.payment_method === 'credit' && !s.paid_at) kpiCreditDue += Number(s.total || 0);
         });
-    } catch(e) {}
+    } catch(e) { console.warn('KPI query failed:', e.message); }
     grossProfit = kpiProfit;
     creditDue = kpiCreditDue;
-    losses.forEach(function(l) { totalLosses += l.totalLoss||0; });
-    expenses.forEach(function(e) { totalExpenses += e.amount||0; });
+
+    losses.forEach(function(l) { totalLosses += l.totalLoss || 0; });
+    expenses.forEach(function(e) { totalExpenses += e.amount || 0; });
 
     var netProfit = grossProfit - totalLosses - totalExpenses;
     
@@ -8106,11 +8099,11 @@ function loadDashboard(period, btn) {
     setText('statNetProfit', fmtMoney(netProfit));
     setText('statCreditDue', fmtMoney(creditDue));
     setText('statRevenueSub', sales.length + ' sales');
-    setText('statProfitSub', ((revenue>0?(grossProfit/revenue*100):0)).toFixed(1) + '% margin');
+    setText('statProfitSub', ((revenue > 0 ? (grossProfit / revenue * 100) : 0)).toFixed(1) + '% margin');
     setText('statExpensesSub', expenses.length + ' expenses');
-    setText('statNetSub', netProfit>=0?'👍 Healthy':'👎 Loss');
+    setText('statNetSub', netProfit >= 0 ? '👍 Healthy' : '👎 Loss');
 
-    // ---------- NEW: Today vs Yesterday comparison ----------
+    // Today vs Yesterday comparison
     getYesterdayRevenue().then(function(yesterdayRev) {
         var el = document.getElementById('statRevenueCompare');
         if (el) {
@@ -8118,14 +8111,14 @@ function loadDashboard(period, btn) {
                 var change = ((revenue - yesterdayRev) / yesterdayRev) * 100;
                 var arrow = change >= 0 ? '▲' : '▼';
                 var color = change >= 0 ? '#10b981' : '#ef4444';
-                el.innerHTML = `<span style="color:${color}; font-size:12px;">${arrow} ${Math.abs(change).toFixed(1)}% vs yesterday</span>`;
+                el.innerHTML = '<span style="color:' + color + '; font-size:12px;">' + arrow + ' ' + Math.abs(change).toFixed(1) + '% vs yesterday</span>';
             } else {
                 el.textContent = 'No data yesterday';
             }
         }
     });
 
-    // ---------- NEW: Licence expiry warning ----------
+    // Licence expiry warning
     var lic = getLicense();
     if (lic) {
         var daysLeft = Math.ceil((new Date(lic.expiryDate) - new Date()) / 86400000);
@@ -8143,21 +8136,21 @@ function loadDashboard(period, btn) {
    
     var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var salaryDueCount = 0;
-    employeesCache.filter(function(e){return e.status==='active';}).forEach(function(emp){
+    employeesCache.filter(function(e){ return e.status === 'active'; }).forEach(function(emp){
         var next = null;
-        if (emp.lastPaid) { next = new Date(emp.lastPaid); if (emp.paymentAgreement==='daily') next.setDate(next.getDate()+1); else if (emp.paymentAgreement==='weekly') next.setDate(next.getDate()+7); else next.setMonth(next.getMonth()+1); }
-        else if (emp.startDate) { next = new Date(emp.startDate); if (emp.paymentAgreement==='daily') next.setDate(next.getDate()+1); else if (emp.paymentAgreement==='weekly') next.setDate(next.getDate()+7); else next.setMonth(next.getMonth()+1); }
+        if (emp.lastPaid) { next = new Date(emp.lastPaid); if (emp.paymentAgreement === 'daily') next.setDate(next.getDate()+1); else if (emp.paymentAgreement === 'weekly') next.setDate(next.getDate()+7); else next.setMonth(next.getMonth()+1); }
+        else if (emp.startDate) { next = new Date(emp.startDate); if (emp.paymentAgreement === 'daily') next.setDate(next.getDate()+1); else if (emp.paymentAgreement === 'weekly') next.setDate(next.getDate()+7); else next.setMonth(next.getMonth()+1); }
         if (next && next <= today) salaryDueCount++;
     });
     setText('statSalaryAlerts', salaryDueCount);
 
-    var openLoans = loans.filter(function(l) { return l.status==='open'; }).length;
+    var openLoans = loans.filter(function(l) { return l.status === 'open'; }).length;
     setText('statOpenLoans', openLoans);
 
-    // Bar chart (existing)
+    // Bar chart (7 days)
     var days = [];
-    for (var i=6; i>=0; i--) { var d = new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0); days.push({date:d, label:d.toLocaleDateString('en-US',{weekday:'short'}), total:0}); }
-    sales.forEach(function(s) { var sd = new Date(s.time); sd.setHours(0,0,0,0); var day = days.find(function(dd){ return dd.date.getTime()===sd.getTime(); }); if (day) day.total += s.total||0; });
+    for (var i = 6; i >= 0; i--) { var d = new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0); days.push({date:d, label:d.toLocaleDateString('en-US',{weekday:'short'}), total:0}); }
+    sales.forEach(function(s) { var sd = new Date(s.time); sd.setHours(0,0,0,0); var day = days.find(function(dd){ return dd.date.getTime() === sd.getTime(); }); if (day) day.total += s.total || 0; });
 
     var ctx = document.getElementById('salesChart');
     if (ctx) { if (salesChartInstance) salesChartInstance.destroy(); salesChartInstance = new Chart(ctx, { type:'bar', data:{ labels:days.map(function(d){return d.label;}), datasets:[{label:'Revenue',data:days.map(function(d){return d.total;}),backgroundColor:'#3b82f6',borderRadius:8}] }, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}} }); }
@@ -8165,30 +8158,34 @@ function loadDashboard(period, btn) {
     var payCtx = document.getElementById('paymentChart');
     if (payCtx) { if (paymentChartInstance) paymentChartInstance.destroy(); paymentChartInstance = new Chart(payCtx, { type:'doughnut', data:{ labels:['Cash','Card','Mobile','Credit'], datasets:[{data:[pay.cash,pay.card,pay.mobile,pay.credit],backgroundColor:['#10b981','#3b82f6','#f59e0b','#ef4444'],borderWidth:0}] }, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}} }); }
 
-    // Recent sales list
-    var recent = sales.slice().sort(function(a,b){return new Date(b.time)-new Date(a.time);}).slice(0,10);
-    var recentHTML = recent.map(function(s){ var items = (s.items||[]).map(function(i){return i.name+'×'+i.qty;}).join(', '); return '<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;"><b>'+new Date(s.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</b> '+sanitize(items||'Sale')+' – <b>Br '+(s.total||0).toFixed(2)+'</b> ('+s.paymentMethod+')</div>'; }).join('');
-    setHTML('recentSalesList', recentHTML||'No sales yet.');
+    // Recent sales list (from summary rows)
+    var recent = sales.slice(0, 10);
+    var recentHTML = recent.map(function(s){ return '<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;"><b>' + s.time.slice(0,10) + '</b> — ' + (s.count || 1) + ' sale(s) <b>Br ' + (s.total || 0).toFixed(2) + '</b></div>'; }).join('');
+    setHTML('recentSalesList', recentHTML || 'No sales yet.');
 
-    // Cashier breakdown
-    var cashierMap = {};
-    sales.forEach(function(s) { var name = s.cashierName||'Unknown'; if (!cashierMap[name]) cashierMap[name]={name:name,total:0,count:0}; cashierMap[name].total += s.total||0; cashierMap[name].count++; });
-    var cashierArr = Object.values(cashierMap).sort(function(a,b){return b.total-a.total;});
-    var cashierHTML = cashierArr.map(function(c){ return '<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;"><span>👤 '+sanitize(c.name)+' ('+c.count+')</span><b>Br '+c.total.toFixed(2)+'</b></div>'; }).join('');
-    setHTML('salesBreakdown', cashierHTML||'No sales yet.');
+    // Cashier breakdown (small targeted query — no full history)
+    var cashierHTML = '';
+    try {
+        var cr = await supabaseClient.from('sales')
+            .select('cashier_name, total')
+            .eq('shop_id', getShopId()).eq('voided', false)
+            .gte('time', start.toISOString());
+        if (cr.data && cr.data.length) {
+            var cashierMap = {};
+            cr.data.forEach(function(s) { var name = s.cashier_name || 'Unknown'; if (!cashierMap[name]) cashierMap[name] = {name:name, total:0, count:0}; cashierMap[name].total += Number(s.total || 0); cashierMap[name].count++; });
+            var cashierArr = Object.values(cashierMap).sort(function(a,b){ return b.total - a.total; });
+            cashierHTML = cashierArr.map(function(c){ return '<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;"><span>👤 ' + sanitize(c.name) + ' (' + c.count + ')</span><b>Br ' + c.total.toFixed(2) + '</b></div>'; }).join('');
+        }
+    } catch(e) {}
+    setHTML('salesBreakdown', cashierHTML || 'No sales yet.');
 
-    // ---------- NEW: 7‑day sparkline ----------
+    // 7-day sparkline (from summary rows — fast!)
     var dailyTotals = [];
-    for (var i = 6; i >= 0; i--) {
-        var d = new Date();
-        d.setDate(d.getDate() - i);
-        d.setHours(0,0,0,0);
-        var dayTotal = 0;
-        sales.forEach(function(s) {
-            var sd = new Date(s.time);
-            if (sd >= d && sd < new Date(d.getTime() + 86400000)) dayTotal += s.total || 0;
-        });
-        dailyTotals.push(dayTotal);
+    for (var j = 6; j >= 0; j--) {
+        var dd = new Date(); dd.setDate(dd.getDate() - j); dd.setHours(0,0,0,0);
+        var key = dd.toISOString().slice(0, 10);
+        var dayRow = sales.find(function(s){ return s.time.slice(0, 10) === key; });
+        dailyTotals.push(dayRow ? (dayRow.total || 0) : 0);
     }
     drawSparkline(dailyTotals);
 
@@ -8197,9 +8194,9 @@ function loadDashboard(period, btn) {
     loadActiveTables();
     loadKitchenAnalytics();
     loadExpiryAlerts();
-       loadExpenseChart();
-      loadPeakHours();
-      loadSmartForecast();
+    loadExpenseChart();
+    loadPeakHours();
+    loadSmartForecast();
 }
 
 
