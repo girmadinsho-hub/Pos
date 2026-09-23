@@ -1177,7 +1177,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
             <div style="display:flex; gap:8px; align-items:center;">
                 <input type="text" class="form-input" id="prodImageUrl" placeholder="Image URL or Upload" style="flex:1; margin-bottom:0;">
                 <button type="button" class="btn btn-sm btn-primary" onclick="document.getElementById('prodImageFile').click()" style="width:auto; margin:0; padding:10px 12px; white-space:nowrap;">📁 Upload</button>
-                <input type="file" id="prodImageFile" accept="image/*" style="display:none" onchange="uploadImage(this, 'prodImageUrl')">
+                <input type="file" id="prodImageFile" accept="image/*" style="display:none" onchange="ssUploadProductImage(this, 'prodImageUrl')">
             </div>
             <!-- Barcode -->
             <label style="font-size:12px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">🏷️ Barcode</label>
@@ -2637,8 +2637,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
             
             <!-- OPTION 2: From Phone Gallery -->
             <label style="font-size:11px; color:#64748b; display:block; margin-bottom:5px;">Or Upload from Phone:</label>
-            <input type="file" class="form-input" id="menuBannerUpload" accept="image/*" style="padding:5px; margin-bottom:10px;" onchange="previewBannerImage(this)">
-            
+            <input type="file" class="form-input" id="menuBannerUpload" accept="image/*" style="padding:5px; margin-bottom:10px;" onchange="ssUploadBanner(this)">
             <img id="menuBannerPreview" src="" style="width:100%; max-height:150px; object-fit:cover; border-radius:8px; margin-bottom:10px; display:none;">
             <input type="hidden" id="menuBannerUrl">
             <button class="btn btn-outline btn-sm" onclick="removeBannerImage()" style="margin-bottom:15px; display:none;" id="removeBannerBtn">🗑️ Remove Image</button>
@@ -3273,6 +3272,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 <script src="shared.js"></script>
 <script src="ssauth.js"></script>	 
 <script src="ssperf.js"></script>
+<script src="ssupload.js"></script>
 <script src="advanced.js"></script>
 <script src="smartcom.js"></script>
 			 
@@ -12082,7 +12082,21 @@ window.sendAdminChat = async function() {
         input.value = text; 
     }
 };
-
+  
+// Banner upload → storage (with live preview)
+async function ssUploadBanner(input) {
+    if (!input.files || !input.files[0]) return;
+    // Show preview immediately
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('menuBannerPreview').src = e.target.result;
+        document.getElementById('menuBannerPreview').style.display = 'block';
+        document.getElementById('removeBannerBtn').style.display = 'inline-block';
+    };
+    reader.readAsDataURL(input.files[0]);
+    // Upload to storage → put URL in the hidden field
+    await ssUploadProductImage(input, 'menuBannerUrl');
+}
 
 // ===== DASHBOARD EXPENSE BREAKDOWN CHART (SUPABASE) =====
 var expenseChartInstance = null;
