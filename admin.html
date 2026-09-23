@@ -6477,50 +6477,15 @@ function addSaleToMap(sale, map, key, dateField, dateVal) {
     m.count++;
 }
 
+// ═══ Package 4: summaries read from server rows (window._ssDailyAll) ═══
 function getDailySummary() {
-    var map = {};
-    salesCache.forEach(function(s) {
-        var d = new Date(s.time);
-        var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-        addSaleToMap(s, map, key, 'date', new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString());
-    });
-    return Object.values(map).sort(function(a,b) { return new Date(b.date) - new Date(a.date); });
+    var rows = window._ssDailyAll || [];
+    var last30 = Date.now() - 30 * 86400000;
+    return rows.filter(function(d){ return new Date(d.date).getTime() >= last30; });
 }
-
-function getWeeklySummary() {
-    var map = {};
-    salesCache.forEach(function(s) {
-        var d = new Date(s.time);
-        var day = d.getDay();
-        var diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        var start = new Date(d.getFullYear(), d.getMonth(), diff);
-        start.setHours(0,0,0,0);
-        var key = start.toISOString();
-        addSaleToMap(s, map, key, 'weekStart', start.toISOString());
-    });
-    return Object.values(map).sort(function(a,b) { return new Date(b.weekStart) - new Date(a.weekStart); });
-}
-
-function getMonthlySummary() {
-    var map = {};
-    salesCache.forEach(function(s) {
-        var d = new Date(s.time);
-        var key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
-        addSaleToMap(s, map, key, 'month', key);
-    });
-    return Object.values(map).sort(function(a,b) { return b.month.localeCompare(a.month); });
-}
-
-function getYearlySummary() {
-    var map = {};
-    salesCache.forEach(function(s) {
-        var d = new Date(s.time);
-        var key = d.getFullYear().toString();
-        addSaleToMap(s, map, key, 'year', key);
-    });
-    return Object.values(map).sort(function(a,b) { return b.year - a.year; });
-}
-
+function getWeeklySummary()   { return ssGroupDaily(window._ssDailyAll || [], 'week'); }
+function getMonthlySummary()  { return ssGroupDaily(window._ssDailyAll || [], 'month'); }
+function getYearlySummary()   { return ssGroupDaily(window._ssDailyAll || [], 'year'); }
 // ===== SWITCH SALES VIEW =====
 function switchSalesView(type, view) {
     var btns = document.querySelectorAll('.' + type + '-view-btn');
@@ -8098,8 +8063,9 @@ async function loadDashboard(period, btn) {
     setText('statExpenses', fmtMoney(totalExpenses));
     setText('statNetProfit', fmtMoney(netProfit));
     setText('statCreditDue', fmtMoney(creditDue));
-    setText('statRevenueSub', sales.length + ' sales');
-    setText('statProfitSub', ((revenue > 0 ? (grossProfit / revenue * 100) : 0)).toFixed(1) + '% margin');
+    var txCount = 0; sales.forEach(function(s){ txCount += (s.count || 0); });
+    setText('statRevenueSub', txCount + ' sales');
+  setText('statProfitSub', ((revenue > 0 ? (grossProfit / revenue * 100) : 0)).toFixed(1) + '% margin');
     setText('statExpensesSub', expenses.length + ' expenses');
     setText('statNetSub', netProfit >= 0 ? '👍 Healthy' : '👎 Loss');
 
@@ -8158,11 +8124,22 @@ async function loadDashboard(period, btn) {
     var payCtx = document.getElementById('paymentChart');
     if (payCtx) { if (paymentChartInstance) paymentChartInstance.destroy(); paymentChartInstance = new Chart(payCtx, { type:'doughnut', data:{ labels:['Cash','Card','Mobile','Credit'], datasets:[{data:[pay.cash,pay.card,pay.mobile,pay.credit],backgroundColor:['#10b981','#3b82f6','#f59e0b','#ef4444'],borderWidth:0}] }, options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom'}}} }); }
 
-    // Recent sales list (from summary rows)
-    var recent = sales.slice(0, 10);
-    var recentHTML = recent.map(function(s){ return '<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;"><b>' + s.time.slice(0,10) + '</b> — ' + (s.count || 1) + ' sale(s) <b>Br ' + (s.total || 0).toFixed(2) + '</b></div>'; }).join('');
+      // Recent sales list — individual sales (today only, small fast query)
+    var recentHTML = '';
+    try {
+        var rr = await supabaseClient.from('sales')
+            .select('time, total, payment_method, items, cashier_name')
+            .eq('shop_id', getShopId()).eq('voided', false)
+            .gte('time', start.toISOString())
+            .order('time', { ascending: false }).limit(10);
+        if (rr.data && rr.data.length) {
+            recentHTML = rr.data.map(function(s){
+                var items = (s.items || []).map(function(i){ return i.name + '×' + i.qty; }).join(', ');
+                return '<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;"><b>' + new Date(s.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '</b> ' + sanitize(items || 'Sale') + ' – <b>' + fmtMoney(s.total) + '</b> (' + (s.payment_method || '') + ')</div>';
+            }).join('');
+        }
+    } catch(e) {}
     setHTML('recentSalesList', recentHTML || 'No sales yet.');
-
     // Cashier breakdown (small targeted query — no full history)
     var cashierHTML = '';
     try {
@@ -8576,7 +8553,7 @@ function importProducts() {
   input.click();
 }
 
-async function loadAllCaches() {
+	async function loadAllCaches() {
   var sid = getShopId();
   if (!supabaseClient) return;
   
@@ -8590,19 +8567,17 @@ async function loadAllCaches() {
               bulkQty1: p.bulk_qty_1 || 0, bulkPrice1: p.bulk_price_1 || 0,
               bulkQty2: p.bulk_qty_2 || 0, bulkPrice2: p.bulk_price_2 || 0,
               bulkQty3: p.bulk_qty_3 || 0, bulkPrice3: p.bulk_price_3 || 0 };
-	
-						});
+          });
           if (productTable) productTable.setData(products); 
           if (stockTable) stockTable.setData(products); 
           populateFilters();
           if (typeof filterProductView === 'function') filterProductView(); 
-	  if (typeof renderStockAlertCenter === 'function') renderStockAlertCenter();
+      if (typeof renderStockAlertCenter === 'function') renderStockAlertCenter();
       }
 
-          // 2. SALES — 🚀 NO LONGER DOWNLOADING FULL HISTORY (Package 4)
-      // Summaries & details now come from ssperf.js (server-side + paginated).
-      // salesCache stays as a small local buffer for detailed lists only.
+      // 2. SALES — 🚀 Package 4: no full history. Summaries via ssperf.js.
       salesCache = [];
+
       // 3. LOAD LOSSES
       const { data: lss } = await supabaseClient.from('losses').select('*').eq('shop_id', sid).order('time', { ascending: false });
       if (lss) {
@@ -8683,23 +8658,11 @@ async function loadAllCaches() {
       console.error("Cache loading error:", e.message);
   }
 }
-	
-
-
-
-
-
-
-
-	
 
 
 // ===== STAFF LIST VIEW MANAGEMENT =====
 var currentStaffView = 'excel';
 var staffListPage = 1, staffGridPage = 1;
-
-
-
 
 function buildStaffListView() {
     var data = getActiveStaff().map(function(emp) {
