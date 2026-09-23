@@ -1,4 +1,4 @@
-	<!DOCTYPE html> 
+<!DOCTYPE html> 
        <html>
        <head>
 	
@@ -6542,36 +6542,78 @@ function getShiftName(timeStr) {
     return hour >= 6 && hour < 12 ? 'Morning' : (hour >= 12 && hour < 18 ? 'Afternoon' : 'Evening');
 }
 
-// Build the flattened item list from salesCache
-function getItemDetailData() {
+// ═══ SALES ITEM DETAIL (Package 4 — paginated) ═══
+async function getItemDetailData() {
+    var rows = (SS_PERF.detailedCache.length > 0) ? SS_PERF.detailedCache : await ssFetchDetailedPage(false);
+    ssUpdateDetailedLoadMoreBtn();
+
     var shiftFilter = document.getElementById('itemDetailShiftFilter')?.value || '';
     var cashierFilter = document.getElementById('itemDetailCashierFilter')?.value || '';
 
-    var rows = [];
-    salesCache.forEach(function(sale) {
-        var shift = getShiftName(sale.time);
+    var out = [];
+    rows.forEach(function(sale) {
+        var hour = new Date(sale.time).getHours();
+        var shift = hour >= 6 && hour < 12 ? 'Morning' : (hour >= 12 && hour < 18 ? 'Afternoon' : 'Evening');
         var cashier = sale.cashierName || 'Unknown';
         if (shiftFilter && shift !== shiftFilter) return;
         if (cashierFilter && cashier !== cashierFilter) return;
 
         (sale.items || []).forEach(function(item) {
-            rows.push({
-                date: sale.time,
-                shift: shift,
-                cashier: cashier,
+            out.push({
+                date: sale.time, shift: shift, cashier: cashier,
                 paymentMethod: sale.paymentMethod || 'cash',
-                itemName: item.name,
-                qty: item.qty || 0,
+                itemName: item.name, qty: item.qty || 0,
                 unitPrice: item.price || 0,
                 total: (item.price || 0) * (item.qty || 0)
             });
         });
     });
-    // Sort by date desc
-    rows.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
-    return rows;
+    out.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+    return out;
 }
 
+async function buildItemDetailView(pageOverride) {
+    if (pageOverride) itemDetailPage = pageOverride;
+    var data = await getItemDetailData();
+    var totalPages = Math.ceil(data.length / ITEM_DETAIL_PER_PAGE);
+    if (itemDetailPage > totalPages) itemDetailPage = totalPages;
+    var start = (itemDetailPage - 1) * ITEM_DETAIL_PER_PAGE;
+    var pageItems = data.slice(start, start + ITEM_DETAIL_PER_PAGE);
+
+    var container = document.getElementById('salesItemDetailContainer');
+    var loadMoreBtn = document.getElementById('itemDetailLoadMore');
+
+    var html = '<table class="excel-table" style="width:100%"><thead><tr>' +
+        '<th>Date</th><th>Shift</th><th>Cashier</th><th>Item</th><th>Qty</th><th>Unit Price</th><th>Total</th><th>Payment</th></tr></thead><tbody>';
+
+    if (pageItems.length === 0) {
+        html += '<tr class="empty-row"><td colspan="8">No items found for the selected filters.</td></tr>';
+    } else {
+        pageItems.forEach(function(row) {
+            html += '<tr>' +
+                '<td>' + formatDate(row.date) + '</td>' +
+                '<td>' + row.shift + '</td>' +
+                '<td>' + sanitize(row.cashier) + '</td>' +
+                '<td>' + sanitize(row.itemName) + '</td>' +
+                '<td>' + row.qty + '</td>' +
+                '<td>' + fmtMoney(row.unitPrice) + '</td>' +
+                '<td>' + fmtMoney(row.total) + '</td>' +
+                '<td>' + row.paymentMethod + '</td></tr>';
+        });
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+    loadMoreBtn.style.display = (itemDetailPage < totalPages) ? 'block' : 'none';
+}
+
+function populateItemDetailCashierDropdown() {
+    var select = document.getElementById('itemDetailCashierFilter');
+    if (!select) return;
+    var cashiers = [];
+    SS_PERF.detailedCache.forEach(function(s) { var c = s.cashierName || 'Unknown'; if (cashiers.indexOf(c) === -1) cashiers.push(c); });
+    select.innerHTML = '<option value="">All Cashiers</option>' +
+        cashiers.map(function(c){ return '<option value="' + c + '">' + c + '</option>'; }).join('');
+}
 // Render the current page of item detail
 function buildItemDetailView(pageOverride) {
     if (pageOverride) itemDetailPage = pageOverride;
@@ -6882,17 +6924,24 @@ function loadMoreDetailedGrid() { detailedGridPage++; buildDetailedGridView(); }
 // ===== TODAY'S ITEM SALES SUMMARY (SCROLLABLE + INFINITE) =====
 var itemSummaryPage = 1, ITEM_PER_PAGE = 15;
 
-function buildItemSummary(pageOverride) {
+// ═══ TODAY'S ITEM SALES SUMMARY (server query — Package 4) ═══
+async function buildItemSummary(pageOverride) {
     if (pageOverride) itemSummaryPage = pageOverride;
-    var today = new Date();
-    today.setHours(0,0,0,0);
-    var todaySales = salesCache.filter(function(s) { return new Date(s.time) >= today; });
+    var today = new Date(); today.setHours(0,0,0,0);
+    var todaySales = [];
+    try {
+        const { data } = await supabaseClient.from('sales')
+            .select('items, cashier_name').eq('shop_id', getShopId())
+            .eq('voided', false).gte('time', today.toISOString());
+        todaySales = data || [];
+    } catch(e) { console.warn('Item summary query failed:', e.message); }
+
     var itemMap = {};
     todaySales.forEach(function(s) {
-        (s.items||[]).forEach(function(i) {
-            if (!itemMap[i.name]) itemMap[i.name] = { qty:0, cashiers: {} };
+        (s.items || []).forEach(function(i) {
+            if (!itemMap[i.name]) itemMap[i.name] = { qty: 0, cashiers: {} };
             itemMap[i.name].qty += i.qty || 0;
-            var cashier = s.cashierName || 'Unknown';
+            var cashier = s.cashier_name || 'Unknown';
             itemMap[i.name].cashiers[cashier] = (itemMap[i.name].cashiers[cashier] || 0) + (i.qty || 0);
         });
     });
@@ -6902,12 +6951,13 @@ function buildItemSummary(pageOverride) {
     var start = (itemSummaryPage-1)*ITEM_PER_PAGE;
     var pageItems = sorted.slice(start, start+ITEM_PER_PAGE);
     var container = document.getElementById('todayItemSummary');
+    if (!container) return;
     var html = pageItems.map(function(entry) {
         var name = entry[0], data = entry[1];
         var cashierStr = Object.entries(data.cashiers).map(function(c) { return c[0] + ': ' + c[1]; }).join(', ');
         return '<div style="display:flex; justify-content:space-between; padding:4px 0; border-bottom:1px solid #f0e6dc;">' +
-            '<span><b>' + data.qty + '</b> x ' + name + '</span>' +
-            '<span style="font-size:11px; color:#8d6e63;">' + cashierStr + '</span></div>';
+            '<span><b>' + data.qty + '</b> x ' + sanitize(name) + '</span>' +
+            '<span style="font-size:11px; color:#8d6e63;">' + sanitize(cashierStr) + '</span></div>';
     }).join('') || '<p style="color:#94a3b8;">No sales today.</p>';
     if (itemSummaryPage < totalPages) {
         html += '<div style="text-align:center;padding:10px;"><button class="btn btn-primary btn-sm" onclick="buildItemSummary(' + (itemSummaryPage+1) + ')">⬇ Load More (' + (totalPages - itemSummaryPage) + ' pages left)</button></div>';
@@ -6916,7 +6966,6 @@ function buildItemSummary(pageOverride) {
     container.style.maxHeight = '50vh';
     container.style.overflowY = 'auto';
 }
-
 
 function loadMoreList(containerId, data, pageVar, perPage, loadMoreFunc) {
     var container = document.getElementById(containerId);
@@ -8099,7 +8148,14 @@ async function loadDashboard(period, btn) {
         }
     }
     var lowStockCount = products.filter(function(p) { return !p.isVirtual && p.stock < (p.reorderLevel || 5); }).length;
-   
+  
+    setText('statLowStock', lowStockCount);
+      // 🕐 Wait for caches if they're still loading (dashboard draws before loadAllCaches finishes)
+    var waitTries = 0;
+    while ((employeesCache.length === 0 || loans.length === 0) && waitTries < 20) {
+        await new Promise(function(r){ setTimeout(r, 250); });
+        waitTries++;
+    }
     var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var salaryDueCount = 0;
     employeesCache.filter(function(e){ return e.status === 'active'; }).forEach(function(emp){
