@@ -634,6 +634,38 @@ body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
     </div>
 </div>
 
+<!-- 📖 Salary Ledger Modal -->
+<div class="modal" id="salaryLedgerModal">
+    <div class="modal-content" style="max-width:600px; max-height:85vh; overflow-y:auto;">
+        <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>📖 Salary Ledger: <span id="ledgerEmpName" style="color:#2563eb;"></span></span>
+            <button onclick="document.getElementById('salaryLedgerModal').classList.remove('active')" style="background:none;border:none;font-size:24px;cursor:pointer;color:#64748b;">✖</button>
+        </div>
+        <div style="display:flex; gap:10px; margin-bottom:12px; text-align:center;">
+            <div style="flex:1;background:#ecfdf5;padding:10px;border-radius:10px;"><b id="ledgerTotalEarned" style="font-size:16px;color:#059669;">0</b><br><small style="color:#64748b;">Total Earned</small></div>
+            <div style="flex:1;background:#eff6ff;padding:10px;border-radius:10px;"><b id="ledgerTotalPaid" style="font-size:16px;color:#2563eb;">0</b><br><small style="color:#64748b;">Total Paid</small></div>
+            <div style="flex:1;background:#fff7ed;padding:10px;border-radius:10px;"><b id="ledgerBalance" style="font-size:16px;color:#ea580c;">0</b><br><small style="color:#64748b;">Still Owed</small></div>
+        </div>
+        <div id="ledgerList" style="max-height:50vh; overflow-y:auto;"></div>
+    </div>
+</div>
+
+<!-- ➖ Advance Modal -->
+<div class="modal" id="advanceModal">
+    <div class="modal-content" style="max-width:400px;">
+        <div class="card-title">➖ Salary Advance</div>
+        <p id="advanceEmpInfo" style="font-size:13px; color:#64748b;"></p>
+        <label>Amount (max = 1 month salary)</label>
+        <input type="number" class="form-input" id="advanceAmount" min="1" step="0.01">
+        <label>Note (optional)</label>
+        <input type="text" class="form-input" id="advanceNote" placeholder="e.g., family emergency">
+        <div class="flex-row" style="margin-top:10px;">
+            <button class="btn btn-success" onclick="confirmAdvance()">✅ Give Advance</button>
+            <button class="btn btn-outline" onclick="document.getElementById('advanceModal').classList.remove('active')">Cancel</button>
+        </div>
+    </div>
+</div>
+       
 			 
 <!-- Registration Modal (Hidden by default) -->
 <div class="modal" id="registerModal">
@@ -2820,6 +2852,10 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
                     <option value="daily">Daily</option>
                 </select>
             </div>
+                   <select class="form-select" id="empPaySchedule" title="When salary is due">
+                        <option value="end">📅 Paid at end of month/week</option>
+                        <option value="completion">🔁 Paid after completing period</option>
+                    </select>
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
@@ -3552,7 +3588,239 @@ function getUnpaidSalaryInfo(employee) {
         partialDays: partialDays   // e.g., "15 days into next month — not due yet"
     };
 }
-// ===== SIDEBAR & TABS LOGIC =====
+  // ═══ LEDGER VIEWER (like product bin card) ═══
+async function openSalaryLedger(empId) {
+    var emp = employeesCache.find(e => e.id === empId);
+    if (!emp) return;
+    await ssSyncEarnings(emp);           // up-to-date earnings first
+    var entries = ssLedgerFor(empId);
+    document.getElementById('ledgerEmpName').textContent = emp.name;
+
+    var earned = 0, paid = 0;
+    entries.forEach(function(e){
+        if (e.entry_type === 'earned') earned += Number(e.amount);
+        else paid += Math.abs(Number(e.amount));
+    });
+    var bal = ssLedgerBalance(empId);
+    document.getElementById('ledgerTotalEarned').textContent = fmtMoney(earned);
+    document.getElementById('ledgerTotalPaid').textContent = fmtMoney(paid);
+    document.getElementById('ledgerBalance').textContent = fmtMoney(bal);
+
+    var html = '<table class="excel-table" style="width:100%; font-size:12px;"><thead><tr>' +
+        '<th>Date</th><th>Type</th><th>Period</th><th style="text-align:right;">Amount</th><th style="text-align:right;">Balance</th></tr></thead><tbody>';
+    var run = 0;
+    entries.forEach(function(e) {
+        run += Number(e.amount);
+        var color = e.entry_type === 'earned' ? '#10b981' : '#2563eb';
+        var icon = e.entry_type === 'earned' ? '📈 Earned' : (e.entry_type === 'advance' ? '➖ Advance' : (e.entry_type === 'adjust' ? '⚖️ Adjust' : '💵 Paid'));
+        var period = e.period_start ? (ssDateShort(e.period_start) + ' → ' + ssDateShort(e.period_end)) : '—';
+        html += '<tr><td>' + formatDate(e.created_at) + '</td><td>' + icon + '</td><td style="font-size:11px;color:#64748b;">' + period + '</td>' +
+            '<td style="text-align:right; color:' + color + '; font-weight:bold;">' + (Number(e.amount) >= 0 ? '+' : '') + fmtMoney(e.amount) + '</td>' +
+            '<td style="text-align:right; font-weight:bold;">' + fmtMoney(run) + '</td></tr>';
+    });
+    if (!entries.length) html += '<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px;">No entries yet.</td></tr>';
+    html += '</tbody></table>';
+    document.getElementById('ledgerList').innerHTML = html;
+    document.getElementById('salaryLedgerModal').classList.add('active');
+}
+function ssDateShort(ds) { return ds ? String(ds).slice(5, 10).replace('-', '/') : ''; }
+
+// ═══ PAY (full or partial — asks amount, defaults to balance) ═══
+async function paySalary(empId) {
+    var emp = employeesCache.find(e => e.id === empId);
+    if (!emp) { alert('Employee not found'); return; }
+    await ssSyncEarnings(emp);
+    var bal = ssLedgerBalance(empId);
+
+    if (bal <= 0) { alert('ℹ️ ' + emp.name + ': nothing owed. Balance: ' + fmtMoney(bal)); return; }
+
+    var amountStr = await prompt('Pay ' + emp.name + '\n\nBalance owed: ' + fmtMoney(bal) + '\n\nEnter amount to pay (full or partial):', bal.toFixed(2));
+    if (amountStr === null) return;
+    var amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount <= 0) { alert('Invalid amount.'); return; }
+    if (amount > bal) { alert('That is more than owed (' + fmtMoney(bal) + '). Paying extra would overpay — use Adjust instead (coming).'); return; }
+
+    if (!await confirm('Pay ' + fmtMoney(amount) + ' to ' + emp.name + '?\n' + (amount < bal ? '⚠️ PARTIAL — remaining balance will be ' + fmtMoney(bal - amount) : 'Full payment — balance becomes 0'))) return;
+
+    try {
+        // 1. Ledger entry
+        const { error: lErr } = await supabaseClient.from('salary_ledger').insert([{
+            shop_id: getShopId(), employee_id: empId, entry_type: 'paid',
+            amount: -amount, note: 'Salary payment', created_by: 'Admin', created_at: new Date().toISOString()
+        }]);
+        if (lErr) throw lErr;
+        // 2. Keep expense record (your accounting reports use it)
+        await supabaseClient.from('expenses').insert([{
+            type: 'salary', employee_id: empId, name: 'Salary: ' + emp.name,
+            amount: amount, date: new Date().toISOString().slice(0,10), shop_id: getShopId()
+        }]);
+        // 3. Update employee last paid
+        await ssById(supabaseClient.from('employees').update({ last_paid: new Date().toISOString() }), empId);
+        emp.lastPaid = new Date().toISOString();
+
+        await ssLoadLedger(true);
+        alert('✅ Paid ' + fmtMoney(amount) + '. New balance: ' + fmtMoney(ssLedgerBalance(empId)));
+        if (typeof switchStaffView === 'function') switchStaffView(currentStaffView);
+        if (typeof loadSalaryAlerts === 'function') loadSalaryAlerts();
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+// ═══ ADVANCE (owner-only, max 1 month salary) ═══
+var _advanceEmpId = null;
+async function openAdvanceModal(empId) {
+    var emp = employeesCache.find(e => e.id === empId);
+    if (!emp) return;
+    await ssSyncEarnings(emp);
+    _advanceEmpId = empId;
+    var bal = ssLedgerBalance(empId);
+    var maxAdv = Math.max(0, (emp.salary || 0) - bal);
+    document.getElementById('advanceEmpInfo').innerHTML =
+        '👤 <b>' + sanitize(emp.name) + '</b><br>Current balance owed: <b>' + fmtMoney(bal) + '</b><br>Max advance now: <b>' + fmtMoney(maxAdv) + '</b> (1 month salary limit)';
+    document.getElementById('advanceAmount').value = '';
+    document.getElementById('advanceAmount').max = maxAdv;
+    document.getElementById('advanceNote').value = '';
+    document.getElementById('advanceModal').classList.add('active');
+}
+async function confirmAdvance() {
+    var emp = employeesCache.find(e => e.id === _advanceEmpId);
+    if (!emp) return;
+    var amount = parseFloat(document.getElementById('advanceAmount').value);
+    var note = document.getElementById('advanceNote').value.trim();
+    if (isNaN(amount) || amount <= 0) { alert('Enter a valid amount.'); return; }
+    var bal = ssLedgerBalance(_advanceEmpId);
+    if (amount + bal > (emp.salary || 0)) { alert('❌ Over limit.\nAdvance + balance owed cannot exceed 1 month salary (' + fmtMoney(emp.salary || 0) + ').'); return; }
+
+    try {
+        const { error } = await supabaseClient.from('salary_ledger').insert([{
+            shop_id: getShopId(), employee_id: _advanceEmpId, entry_type: 'advance',
+            amount: -amount, note: note || 'Salary advance', created_by: 'Admin', created_at: new Date().toISOString()
+        }]);
+        if (error) throw error;
+        await supabaseClient.from('expenses').insert([{
+            type: 'salary', employee_id: _advanceEmpId, name: 'Advance: ' + emp.name,
+            amount: amount, date: new Date().toISOString().slice(0,10), shop_id: getShopId()
+        }]);
+        await ssLoadLedger(true);
+        document.getElementById('advanceModal').classList.remove('active');
+        alert('✅ Advance of ' + fmtMoney(amount) + ' recorded.\nIt reduces the next salary payment.');
+        if (typeof switchStaffView === 'function') switchStaffView(currentStaffView);
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+  // ══════════════════════════════════════════════════════════════
+//  💰 PAYROLL ENGINE — ledger-based (schedules, advances, partials)
+// ══════════════════════════════════════════════════════════════
+var SS_LEDGER = { cache: [] };
+
+async function ssLoadLedger(force) {
+    if (SS_LEDGER.cache.length > 0 && !force) return SS_LEDGER.cache;
+    const { data, error } = await supabaseClient.from('salary_ledger')
+        .select('*').eq('shop_id', getShopId()).order('created_at', { ascending: true });
+    if (error) { console.warn('Ledger load failed:', error.message); return []; }
+    SS_LEDGER.cache = data || [];
+    return SS_LEDGER.cache;
+}
+function ssLedgerFor(empId) { return SS_LEDGER.cache.filter(function(l){ return l.employee_id === empId; }); }
+
+// Auto-generate EARNED entries up to today, per schedule mode
+async function ssSyncEarnings(emp) {
+    await ssLoadLedger();
+    var entries = ssLedgerFor(emp.id);
+    var lastEarnedEnd = null;
+    entries.forEach(function(e){
+        if (e.entry_type === 'earned' && e.period_end && (!lastEarnedEnd || e.period_end > lastEarnedEnd)) lastEarnedEnd = e.period_end;
+    });
+
+    var agreement = emp.paymentAgreement || 'monthly';
+    var schedule = emp.paySchedule || 'end';
+    var today = new Date(); today.setHours(0,0,0,0);
+    var toInsert = [];
+
+    if (agreement === 'daily') {
+        // Daily staff: earn per worked day (both modes are daily — end-of-day)
+        var cur = new Date(emp.startDate ? new Date(emp.startDate) : new Date());
+        cur.setHours(0,0,0,0);
+        if (lastEarnedEnd) { cur = new Date(lastEarnedEnd + 'T00:00:00'); cur.setDate(cur.getDate() + 1); }
+        var daily = (emp.salary || 0);
+        while (cur <= today) {
+            toInsert.push({ employee_id: emp.id, entry_type: 'earned',
+                period_start: ssDateStr(cur), period_end: ssDateStr(cur), amount: daily });
+            cur.setDate(cur.getDate() + 1);
+        }
+    } else if (agreement === 'weekly') {
+        // Weekly: periods end on SATURDAY (end mode) or 7 days from start (completion mode)
+        var startW = new Date(emp.startDate ? new Date(emp.startDate) : new Date());
+        startW.setHours(0,0,0,0);
+        var cursor = new Date(startW);
+        if (lastEarnedEnd) { cursor = new Date(lastEarnedEnd + 'T00:00:00'); cursor.setDate(cursor.getDate() + 1); }
+        while (true) {
+            var periodEnd;
+            if (schedule === 'end') {
+                periodEnd = new Date(cursor);
+                var dow = periodEnd.getDay();              // 0=Sun..6=Sat
+                periodEnd.setDate(periodEnd.getDate() + (6 - dow));  // next Saturday
+            } else {
+                periodEnd = new Date(cursor); periodEnd.setDate(periodEnd.getDate() + 6);
+            }
+            if (periodEnd > today) break;
+            toInsert.push({ employee_id: emp.id, entry_type: 'earned',
+                period_start: ssDateStr(cursor), period_end: ssDateStr(periodEnd), amount: emp.salary || 0 });
+            cursor = new Date(periodEnd); cursor.setDate(cursor.getDate() + 1);
+        }
+    } else {
+        // Monthly: END MODE → calendar month (pro-rated first month). COMPLETION → anniversary months.
+        var startM = new Date(emp.startDate ? new Date(emp.startDate) : new Date());
+        startM.setHours(0,0,0,0);
+        var c = new Date(startM);
+        if (lastEarnedEnd) { c = new Date(lastEarnedEnd + 'T00:00:00'); c.setDate(c.getDate() + 1); }
+        while (true) {
+            var pEnd;
+            if (schedule === 'end') {
+                pEnd = new Date(c.getFullYear(), c.getMonth() + 1, 0);   // last day of c's month
+            } else {
+                pEnd = new Date(c); pEnd.setMonth(pEnd.getMonth() + 1); pEnd.setDate(pEnd.getDate() - 1);
+            }
+            if (pEnd > today) break;
+            var amount = emp.salary || 0;
+            if (schedule === 'end') {
+                // Pro-rate first partial month (by days)
+                var dim = new Date(c.getFullYear(), c.getMonth() + 1, 0).getDate();
+                var days = Math.floor((pEnd - c) / 86400000) + 1;
+                if (days < dim) amount = Math.round(((emp.salary || 0) * days / dim) * 100) / 100;
+            }
+            toInsert.push({ employee_id: emp.id, entry_type: 'earned',
+                period_start: ssDateStr(c), period_end: ssDateStr(pEnd), amount: amount });
+            c = new Date(pEnd); c.setDate(c.getDate() + 1);
+        }
+    }
+
+    if (toInsert.length > 0) {
+        const { error } = await supabaseClient.from('salary_ledger').insert(
+            toInsert.map(function(t){ return Object.assign({ shop_id: getShopId(), created_by: 'auto', created_at: new Date().toISOString() }, t); })
+        );
+        if (!error) SS_LEDGER.cache = SS_LEDGER.cache.concat(toInsert);
+    }
+    return toInsert.length;
+}
+
+// 💵 Balance = what the company still owes (earned − paid − advances)
+function ssLedgerBalance(empId) {
+    var bal = 0;
+    ssLedgerFor(empId).forEach(function(e){ bal += Number(e.amount); });
+    return Math.round(bal * 100) / 100;   // earned=+, paid/advance=−
+}
+
+// 🎯 Sync all staff, then refresh UI
+async function ssSyncAllEarnings() {
+    await ssLoadLedger(true);
+    var n = 0;
+    for (var i = 0; i < employeesCache.length; i++) {
+        if (employeesCache[i].status === 'active') n += await ssSyncEarnings(employeesCache[i]);
+    }
+    return n;
+}
+  
+  // ===== SIDEBAR & TABS LOGIC =====
 function toggleSidebar() { 
     document.getElementById('sidebar').classList.toggle('open'); 
     document.getElementById('sidebarOverlay').classList.toggle('show'); 
@@ -8632,12 +8900,12 @@ function importProducts() {
           if (payrollTable) payrollTable.setData(expensesCache.filter(function(e) { return e.type==='salary'; }).map(function(e) { return { employeeName: e.name.replace('Salary: ',''), amount: e.amount, date: e.date }; })); 
           document.getElementById('expTotal').textContent = 'Total: ' + appCurrencySymbol + expensesCache.reduce(function(sum,e) { return sum + (e.amount||0); }, 0).toFixed(2); 
       }
-
       // 5. LOAD EMPLOYEES
       const { data: emps } = await supabaseClient.from('employees').select('*').eq('shop_id', sid);
       if (emps) {
           employeesCache = emps.map(function(e) {
-              return { id: e.firebase_id || e.id, shopId: e.shop_id, name: e.name, position: e.position, salary: e.salary, status: e.status, paymentAgreement: e.payment_agreement, tip: e.tip, bonus: e.bonus, penalty: e.penalty, overtime: e.overtime, phone: e.phone, address: e.address, startDate: e.start_date, accountNo: e.account_no, pinLocked: e.pin_locked, lastPaid: e.last_paid };
+              return { id: e.firebase_id || e.id, shopId: e.shop_id, name: e.name, position: e.position, salary: e.salary, status: e.status,
+                paymentAgreement: e.payment_agreement, tip: e.tip, bonus: e.bonus, penalty: e.penalty, overtime: e.overtime, phone: e.phone, address: e.address, startDate: e.start_date, accountNo: e.account_no, pinLocked: e.pin_locked, lastPaid: e.last_paid, paySchedule: e.pay_schedule || 'end' };
           });
           if (window.staffTable) window.staffTable.setData(employeesCache); 
           if (typeof loadSalaryAlerts === 'function') loadSalaryAlerts(); 
@@ -9125,22 +9393,18 @@ function initNotebook() {
 }
 
 // ═══ SALARY ALERTS — unified calculator drives the dashboard ═══
-function loadSalaryAlerts() {
-    var dueCount = 0;
-    var html = '';
-    employeesCache.filter(function(e) { return e.status === 'active'; }).forEach(function(emp) {
-        var info = getUnpaidSalaryInfo(emp);
-        if (info.unpaidPeriods > 0) {
-            dueCount++;
-            var unit = info.agreement === 'daily' ? 'day(s)' : (info.agreement === 'weekly' ? 'week(s)' : 'month(s)');
-            html += '⚠️ ' + sanitize(emp.name) + ': ' + info.unpaidPeriods + ' ' + unit + ' = ' + fmtMoney(info.totalDue) + '<br>';
-        }
+async function loadSalaryAlerts() {
+    if (employeesCache.length === 0) { setText('statSalaryAlerts', 0); return; }
+    await ssSyncAllEarnings();
+    var dueCount = 0, html = '';
+    employeesCache.filter(function(e){ return e.status === 'active'; }).forEach(function(emp) {
+        var bal = ssLedgerBalance(emp.id);
+        if (bal > 0) { dueCount++; html += '⚠️ ' + sanitize(emp.name) + ': owes ' + fmtMoney(bal) + '<br>'; }
     });
     var el = document.getElementById('salaryAlerts');
-    if (el) el.innerHTML = html || '✅ No pending salary payments.';
+    if (el) el.innerHTML = html || '✅ All salaries settled.';
     setText('statSalaryAlerts', dueCount);
-}
-  
+}  
 async function removeLicense() {
     // 1. MUST use 'await' for custom prompt!
     var reason = await prompt(
@@ -12197,6 +12461,7 @@ async function submitNewEmployeeFinal() {
                 position: position,
                 salary: salary,
                 payment_agreement: schedule,
+                pay_schedule: document.getElementById('empPaySchedule') ? document.getElementById('empPaySchedule').value : 'end',
                 tip: tip,
                 bonus: bonus,
                 penalty: penalty,
@@ -12219,6 +12484,7 @@ async function submitNewEmployeeFinal() {
             position: position,
             salary: salary,
             paymentAgreement: schedule,
+            paySchedule: document.getElementById('empPaySchedule') ? document.getElementById('empPaySchedule').value : 'end',
             tip: tip, bonus: bonus, penalty: penalty, overtime: overtime,
             phone: phone, address: address, startDate: startDate, accountNo: accountNo,
             status: 'active',
