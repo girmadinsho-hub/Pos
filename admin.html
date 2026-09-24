@@ -3473,52 +3473,85 @@ function isCurrentPeriodPaid(employee) {
     });
 }
 
+// ═══ UNPAID SALARY CALCULATOR v2 (complete-periods rule) ═══
+// Daily: every unpaid day counts.
+// Weekly: complete 7-day periods count.
+// Monthly: a month completes on the ANNIVERSARY of the start date.
+//          (start Jan 15 → Feb 15 = 1 month, Mar 15 = 2 months...)
+//          Partial months WAIT until their anniversary (your 15-day rule).
+function ssDateStr(d) {
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
 function getUnpaidSalaryInfo(employee) {
-    var periods = getSalaryPeriodDates(employee);
-    var agreement = periods.agreement;
-    var startDate = new Date(Math.max(periods.startDate.getTime(), periods.lastPaid ? periods.lastPaid.getTime() + 86400000 : periods.startDate.getTime()));
     var today = new Date(); today.setHours(0,0,0,0);
+    var startDate = employee.startDate ? new Date(employee.startDate) : new Date();
+    startDate.setHours(0,0,0,0);
+
+    // Effective "paid up to" date: last_paid, or latest salary expense (older records)
+    var paidUntil = null;
+    if (employee.lastPaid) { paidUntil = new Date(employee.lastPaid); paidUntil.setHours(0,0,0,0); }
+    else {
+        var latestExp = null;
+        expensesCache.forEach(function(e) {
+            if (e.type === 'salary' && e.employeeId === employee.id) {
+                if (!latestExp || e.date > latestExp) latestExp = e.date;
+            }
+        });
+        if (latestExp) paidUntil = new Date(latestExp + 'T00:00:00');
+    }
+
+    // Salary counting starts the day AFTER we're paid up to (or at start date)
+    var from = new Date(startDate);
+    if (paidUntil && paidUntil >= from) { from = new Date(paidUntil); from.setDate(from.getDate() + 1); }
+    if (from > today) return { unpaidPeriods: 0, totalDue: 0, agreement: employee.paymentAgreement || 'monthly', partialDays: 0 };
+
+    var agreement = employee.paymentAgreement || 'monthly';
     var unpaidPeriods = 0;
 
     if (agreement === 'daily') {
-        var current = new Date(startDate);
-        while (current <= today) {
-            var dayStr = current.toISOString().slice(0,10);
-            var alreadyPaid = expensesCache.some(function(e) {
+        var cur = new Date(from);
+        while (cur <= today) {
+            var dayStr = ssDateStr(cur);
+            var paid = expensesCache.some(function(e) {
                 return e.type === 'salary' && e.employeeId === employee.id && e.date === dayStr;
             });
-            if (!alreadyPaid && current >= periods.startDate) unpaidPeriods++;
-            current.setDate(current.getDate() + 1);
+            if (!paid) unpaidPeriods++;
+            cur.setDate(cur.getDate() + 1);
         }
     } else if (agreement === 'weekly') {
-        var current = new Date(startDate);
-        while (current <= today) {
-            var weekEnd = new Date(current.getTime() + 6*86400000);
-            var alreadyPaid = expensesCache.some(function(e) {
-                return e.type === 'salary' && e.employeeId === employee.id &&
-                       e.date >= current.toISOString().slice(0,10) && e.date <= weekEnd.toISOString().slice(0,10);
-            });
-            if (!alreadyPaid && current >= periods.startDate) unpaidPeriods++;
-            current.setDate(current.getDate() + 7);
-        }
-    } else { // monthly
-        var current = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-        while (current <= today) {
-            var monthStartStr = current.toISOString().slice(0,7);
-            var alreadyPaid = expensesCache.some(function(e) {
-                return e.type === 'salary' && e.employeeId === employee.id && e.date.startsWith(monthStartStr);
-            });
-            if (!alreadyPaid && current >= periods.startDate) unpaidPeriods++;
-            current.setMonth(current.getMonth() + 1);
+        var daysElapsed = Math.floor((today - from) / 86400000) + 1;
+        unpaidPeriods = Math.floor(daysElapsed / 7);   // complete weeks only
+    } else {
+        // MONTHLY — count completed anniversaries
+        var probe = new Date(from);
+        while (true) {
+            var next = new Date(probe);
+            next.setMonth(next.getMonth() + 1);
+            if (next <= today) { unpaidPeriods++; probe = next; }
+            else break;
         }
     }
+
+    // Days sitting in the CURRENT incomplete period (waiting for their anniversary)
+    var partialDays = 0;
+    if (agreement === 'monthly' || agreement === 'weekly') {
+        var periodLen = (agreement === 'monthly') ? 0 : 7;
+        if (agreement === 'weekly') {
+            partialDays = Math.floor((today - from) / 86400000) + 1 - (unpaidPeriods * 7);
+        } else {
+            partialDays = Math.floor((today - probe) / 86400000); // days since last anniversary
+            if (partialDays < 0) partialDays = 0;
+        }
+    }
+
     return {
         unpaidPeriods: unpaidPeriods,
         totalDue: unpaidPeriods * (employee.salary || 0),
-        agreement: agreement
+        agreement: agreement,
+        partialDays: partialDays   // e.g., "15 days into next month — not due yet"
     };
 }
-
 // ===== SIDEBAR & TABS LOGIC =====
 function toggleSidebar() { 
     document.getElementById('sidebar').classList.toggle('open'); 
@@ -5275,82 +5308,63 @@ function editEmployee(empId) {
 
 // 5. PAY SALARY
 function getPaymentStatus(emp) {
-    var now = new Date();
-    var start = emp.lastPaid ? new Date(emp.lastPaid) : (emp.startDate ? new Date(emp.startDate) : now);
-    var end;
-    
-    if (emp.paymentAgreement === 'daily') {
-        end = new Date(start);
-        end.setDate(end.getDate() + 1); 
-    } else if (emp.paymentAgreement === 'weekly') {
-        end = new Date(start);
-        end.setDate(end.getDate() + 7); 
-    } else {
-        var calSys = localStorage.getItem('calendarSystem') || 'gregorian';
-        if (calSys === 'ethiopian') {
-            end = new Date(start);
-            end.setDate(end.getDate() + 30); 
-        } else {
-            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        }
-        end.setHours(23, 59, 59, 999);
+    var info = getUnpaidSalaryInfo(emp);
+    if (info.unpaidPeriods > 0) {
+        var unit = info.agreement === 'daily' ? 'day(s)' : (info.agreement === 'weekly' ? 'week(s)' : 'month(s)');
+        return { text: '💰 Pay ' + info.unpaidPeriods + ' ' + unit, canPay: true, remaining: 0 };
     }
-
-    var diffMs = end - now;
-    var remainingDays = Math.ceil(diffMs / 86400000);
-
-    if (emp.lastPaid) {
-        var lastPaidDate = new Date(emp.lastPaid);
-        if (lastPaidDate >= start && lastPaidDate <= end) {
-            return { text: '✅ Paid', canPay: false, remaining: 0 };
-        }
+    if (info.partialDays > 0 && info.agreement !== 'daily') {
+        return { text: '⏳ ' + info.partialDays + ' day(s) into next period', canPay: false, remaining: 0 };
     }
-
-    if (remainingDays > 0) {
-        return { text: '⏳ ' + remainingDays + ' day(s) left', canPay: false, remaining: remainingDays };
-    } else {
-        return { text: '💰 Pay Today', canPay: true, remaining: 0 };
-    }
+    return { text: '✅ Up to date', canPay: false, remaining: 0 };
 }
-
+  
+// ═══ PAY SALARY v2 — pays all accumulated periods at once ═══
+// Daily staff × 7 days = salary × 7. Monthly × 3 months = salary × 3.
+// Extras (tip/bonus/overtime/penalty) apply ONCE — they're current adjustments.
 async function paySalary(empId) {
     var emp = employeesCache.find(e => e.id === empId);
     if (!emp) { alert('Employee not found'); return; }
 
-    var status = getPaymentStatus(emp);
-    if (!status.canPay) {
-        if (status.text.includes('Paid')) { alert('✅ This employee has already been paid for the current period.'); }
-        else { alert('⏳ Payment period has not ended yet.\n' + status.text); }
+    var info = getUnpaidSalaryInfo(emp);
+    var periods = info.unpaidPeriods;
+    var unit = info.agreement === 'daily' ? 'day(s)' : (info.agreement === 'weekly' ? 'week(s)' : 'month(s)');
+
+    if (periods <= 0) {
+        alert('ℹ️ ' + emp.name + ': nothing due yet.\n' + getPaymentStatus(emp).text);
         return;
     }
 
-    var fullSalary = emp.salary + (emp.tip||0) + (emp.bonus||0) + (emp.overtime||0) - (emp.penalty||0);
-    
-    if (!await confirm('Pay ' + emp.name + ' ' + appCurrencySymbol + fullSalary.toFixed(2) + ' for this period?')) return;
-    
+    var extras = (emp.tip || 0) + (emp.bonus || 0) + (emp.overtime || 0) - (emp.penalty || 0);
+    var baseTotal = periods * (emp.salary || 0);
+    var grandTotal = baseTotal + extras;
+
+    var ok = await confirm('Pay ' + emp.name + '?\n\n' +
+        periods + ' unpaid ' + unit + ' × ' + fmtMoney(emp.salary || 0) + ' = ' + fmtMoney(baseTotal) +
+        (extras !== 0 ? '\nExtras (tip/bonus/overtime/penalty): ' + fmtMoney(extras) : '') +
+        '\n\nTOTAL: ' + fmtMoney(grandTotal));
+    if (!ok) return;
+
     try {
-        // 1. Record Expense
         const { error: expError } = await supabaseClient.from('expenses').insert([{
-            type: 'salary', employee_id: emp.id, name: 'Salary: ' + emp.name,
-            amount: fullSalary, date: new Date().toISOString().slice(0,10), shop_id: getShopId()
+            type: 'salary', employee_id: emp.id,
+            name: 'Salary: ' + emp.name + ' (' + periods + ' ' + unit + ')',
+            amount: grandTotal, date: new Date().toISOString().slice(0, 10), shop_id: getShopId()
         }]);
         if (expError) throw expError;
-        
-        // 2. Update Employee Last Paid
-                const { error: empError } = await ssById(
+
+        const { error: empError } = await ssById(
             supabaseClient.from('employees').update({ last_paid: new Date().toISOString() }),
             emp.id
         );
         if (empError) throw empError;
-        
-        // 3. Update local cache
+
         emp.lastPaid = new Date().toISOString();
-        
-        await alert('✅ Payment recorded!');
-        switchStaffView(currentStaffView);
+        alert('✅ Paid ' + fmtMoney(grandTotal) + ' for ' + periods + ' ' + unit + '.' +
+              (info.partialDays > 0 && info.agreement !== 'daily' ? '\n\n(Note: ' + info.partialDays + ' day(s) already counting toward the next period.)' : ''));
+        if (typeof switchStaffView === 'function') switchStaffView(currentStaffView);
     } catch(e) { alert('❌ ' + e.message); }
 }
-
 
 // 8. PAYROLL SUMMARY
 function buildPayrollSummary() {
@@ -9110,29 +9124,23 @@ function initNotebook() {
     loadNotes();
 }
 
+// ═══ SALARY ALERTS — unified calculator drives the dashboard ═══
 function loadSalaryAlerts() {
-    var today = new Date(); today.setHours(0,0,0,0);
+    var dueCount = 0;
     var html = '';
-    employeesCache.filter(function(e) { return e.status==='active'; }).forEach(function(emp) {
-        var next = null;
-        if (emp.lastPaid) {
-            next = new Date(emp.lastPaid);
-            if (emp.paymentAgreement === 'daily') next.setDate(next.getDate()+1);
-            else if (emp.paymentAgreement === 'weekly') next.setDate(next.getDate()+7);
-            else next.setMonth(next.getMonth()+1);
-        } else if (emp.startDate) {
-            next = new Date(emp.startDate);
-            if (emp.paymentAgreement === 'daily') next.setDate(next.getDate()+1);
-            else if (emp.paymentAgreement === 'weekly') next.setDate(next.getDate()+7);
-            else next.setMonth(next.getMonth()+1);
+    employeesCache.filter(function(e) { return e.status === 'active'; }).forEach(function(emp) {
+        var info = getUnpaidSalaryInfo(emp);
+        if (info.unpaidPeriods > 0) {
+            dueCount++;
+            var unit = info.agreement === 'daily' ? 'day(s)' : (info.agreement === 'weekly' ? 'week(s)' : 'month(s)');
+            html += '⚠️ ' + sanitize(emp.name) + ': ' + info.unpaidPeriods + ' ' + unit + ' = ' + fmtMoney(info.totalDue) + '<br>';
         }
-        if (next && next <= today) html += '⚠️ Pay ' + emp.name + ' Br ' + emp.salary.toFixed(2) + '<br>';
     });
     var el = document.getElementById('salaryAlerts');
     if (el) el.innerHTML = html || '✅ No pending salary payments.';
+    setText('statSalaryAlerts', dueCount);
 }
-
-
+  
 async function removeLicense() {
     // 1. MUST use 'await' for custom prompt!
     var reason = await prompt(
