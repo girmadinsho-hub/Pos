@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+	<!DOCTYPE html> 
        <html>
        <head>
 	
@@ -6615,60 +6615,12 @@ function populateItemDetailCashierDropdown() {
         cashiers.map(function(c){ return '<option value="' + c + '">' + c + '</option>'; }).join('');
 }
 // Render the current page of item detail
-function buildItemDetailView(pageOverride) {
-    if (pageOverride) itemDetailPage = pageOverride;
-    var data = getItemDetailData();
-    var totalPages = Math.ceil(data.length / ITEM_DETAIL_PER_PAGE);
-    if (itemDetailPage > totalPages) itemDetailPage = totalPages;
-    var start = (itemDetailPage - 1) * ITEM_DETAIL_PER_PAGE;
-    var pageItems = data.slice(start, start + ITEM_DETAIL_PER_PAGE);
-
-    var container = document.getElementById('salesItemDetailContainer');
-    var loadMoreBtn = document.getElementById('itemDetailLoadMore');
-
-    // Build table
-    var html = '<table class="excel-table" style="width:100%"><thead><tr>' +
-        '<th>Date</th><th>Shift</th><th>Cashier</th><th>Item</th><th>Qty</th><th>Unit Price</th><th>Total</th><th>Payment</th></tr></thead><tbody>';
-
-    if (pageItems.length === 0) {
-        html += '<tr class="empty-row"><td colspan="8">No items found for the selected filters.</td></tr>';
-    } else {
-        pageItems.forEach(function(row) {
-            html += '<tr>' +
-                '<td>' + formatDate(row.date) + '</td>' +
-                '<td>' + row.shift + '</td>' +
-                '<td>' + row.cashier + '</td>' +
-                '<td>' + sanitize(row.itemName) + '</td>' +
-                '<td>' + row.qty + '</td>' +
-                '<td>Br ' + row.unitPrice.toFixed(2) + '</td>' +
-                '<td>Br ' + row.total.toFixed(2) + '</td>' +
-                '<td>' + row.paymentMethod + '</td>' +
-                '</tr>';
-        });
-    }
-    html += '</tbody></table>';
-
-    container.innerHTML = html;
-    loadMoreBtn.style.display = (itemDetailPage < totalPages) ? 'block' : 'none';
-}
 
 function loadMoreItemDetail() {
     itemDetailPage++;
     buildItemDetailView();
 }
 
-// Populate cashier dropdown for item detail (called once on tab init)
-function populateItemDetailCashierDropdown() {
-    var select = document.getElementById('itemDetailCashierFilter');
-    if (!select) return;
-    var cashiers = [];
-    salesCache.forEach(function(s) { cashiers.push(s.cashierName || 'Unknown'); });
-    cashiers = cashiers.filter(function(v, i, a) { return a.indexOf(v) === i; });
-    select.innerHTML = '<option value="">All Cashiers</option>';
-    cashiers.forEach(function(c) {
-        select.innerHTML += '<option value="' + c + '">' + c + '</option>';
-    });
-}
 
 // Initialize the item detail view when Sales tab is opened
 function initItemDetailView() {
@@ -12400,15 +12352,9 @@ window.addEventListener('offline', () => {
 
 
 	
-</script>
+</script>hhhhhh2
 
-			 
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('Service Worker registered.'))
-        .catch(err => console.log('SW registration failed: ', err));
+			 @ console.log('SW registration failed: ', err));
     });
   }
 </script>
