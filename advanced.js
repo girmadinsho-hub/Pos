@@ -1594,18 +1594,49 @@ async function uploadImage(inputElement, targetInputId) {
     }
 }
 
-// ===== QUICK TOGGLE MENU AVAILABILITY =====
+// ═══ MENU VISIBILITY TOGGLE — robust (works even if cache lookup misses) ═══
 async function toggleMenuAvailability(prodId) {
+    if (!prodId) return;
     var p = products.find(x => x.id === prodId);
-    if(!p) return;
-    
-    var newVal = p.isAvailableOnMenu === false ? true : false;
-    
+
+    // Current state: from cache if found, otherwise ask the database
+    var newVal;
+    if (p) {
+        newVal = (p.isAvailableOnMenu === false);   // hidden → show it; shown → hide it
+    } else {
+        try {
+            const { data: row, error } = await supabaseClient.from('products')
+                .select('is_available_on_menu').eq('firebase_id', prodId).maybeSingle();
+            if (error) throw error;
+            if (!row) { alert('❌ Product not found in database.'); return; }
+            newVal = (row.is_available_on_menu === false);
+        } catch(e) { alert('❌ Could not read product: ' + e.message); return; }
+    }
+
+    if (!await confirm(newVal
+        ? '👁️ Show "' + (p ? p.name : 'this product') + '" on the customer QR menu?'
+        : '🚫 Hide "' + (p ? p.name : 'this product') + '" from the customer QR menu?')) return;
+
     try {
-               await supabaseClient.from('products').update({ is_available_on_menu: newVal }).eq('firebase_id', prodId);
-        // Refresh table
+        // 1. Update the database
+        const { error } = await supabaseClient.from('products')
+            .update({ is_available_on_menu: newVal })
+            .eq('firebase_id', prodId);
+        if (error) throw error;
+
+        // 2. 🔑 Update local cache (so the button icon flips immediately)
+        if (p) p.isAvailableOnMenu = newVal;
+        else {
+            // Cache missed earlier → reload products quietly to include it
+            try { if (typeof loadAllCaches === 'function') loadAllCaches(); } catch(e) {}
+        }
+
+        // 3. 🔑 Refresh the table so the icon changes NOW
         if (typeof filterProductView === 'function') filterProductView();
-        alert(newVal ? '✅ Product is now VISIBLE on the Menu.' : '🚫 Product is now HIDDEN from the Menu.');
+        if (window.productTable) window.productTable.setData(products);
+
+        alert(newVal ? '✅ Product is now VISIBLE on the customer menu.'
+                     : '🚫 Product is now HIDDEN from the customer menu.');
     } catch(e) {
         alert('❌ Error: ' + e.message);
     }
