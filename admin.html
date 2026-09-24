@@ -4250,8 +4250,8 @@ async function saveEditedCredit() {
 
 // ═══ DELETE/CLOSE CREDIT (Package 4: proper cache refresh) ═══
 async function deleteCredit(saleId) {
-    showConfirm('Close this credit?\n\n• The sale STAYS in your records as income.\n• Stock is NOT changed — the customer already took the items.\n• Use Void (in POS) only if the whole sale was a mistake.',
-        'Close Credit', async function(ok) {
+       showConfirm('Mark this credit as fully paid?\n\nIt will be removed from this list. The sale stays in your Sales records.',
+        'Settle Credit', async function(ok) {
         if (!ok) return;
 
         try {
@@ -7395,18 +7395,11 @@ function updateExpenseTotal() {
 }
 
 
-
-
-
-
-	
-	
 // ===== CREDITS =====
   
 	// ═══ CREDITS — server query (Package 4: salesCache no longer holds history) ═══
 var _creditsCache = null;
 async function getAllCredits() {
-    // Serve from cache if already loaded this session
     if (_creditsCache) return _creditsCache;
     try {
         const { data, error } = await supabaseClient.from('sales')
@@ -7414,6 +7407,7 @@ async function getAllCredits() {
             .eq('shop_id', getShopId())
             .eq('voided', false)
             .eq('payment_method', 'credit')
+            .is('paid_at', null)          // 🔑 UNPAID ONLY — the fix!
             .order('time', { ascending: false });
         if (error) throw error;
         _creditsCache = (data || []).map(function(s) {
@@ -7427,7 +7421,8 @@ async function getAllCredits() {
     }
     return _creditsCache;
 }
-function ssRefreshCreditsCache() { _creditsCache = null; }
+  
+  function ssRefreshCreditsCache() { _creditsCache = null; }
 	// ═══ SETTLE CREDIT (fresh redraw after settling) ═══
 async function settleCredit(saleId) {
     showConfirm('Mark this credit as fully paid?', 'Settle Credit', async function(ok) {
