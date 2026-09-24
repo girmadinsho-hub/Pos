@@ -1,4 +1,4 @@
-	<!DOCTYPE html> 
+<!DOCTYPE html> 
        <html>
        <head>
 	
@@ -4147,11 +4147,12 @@ async function buildCreditGridView() {
     });
     renderGrid('creditGridContainer', data, creditGridPage, 12, 'loadMoreCreditGrid');
 }
-
-function initCreditExcelTable() {
-    if (window.creditTable) return;
+// ═══ CREDIT EXCEL TABLE (async, server data) ═══
+async function initCreditExcelTable() {
+    if (window.creditTable) { window.creditTable.setData(await getAllCredits()); return; }
+    var credits = await getAllCredits();
     window.creditTable = new ModernSheet('creditExcelContainer', {
-        data: getAllCredits(),
+        data: credits,
         columns: [
             { title: '#', width: '40px', render: function(item, html, idx) { return idx + 1; } },
             { title: 'Customer', width: '120px', render: function(item, html) { return html ? sanitize(item.customerName || 'Unknown') : (item.customerName || 'Unknown'); } },
@@ -4174,8 +4175,7 @@ function initCreditExcelTable() {
             }, filterable: false }
         ],
         emptyMessage: 'No credit sales',
-        showSearch: false,
-       // showFontSlider: false
+        showSearch: false
     });
 }
 
@@ -4208,10 +4208,12 @@ function loadMoreCreditGrid() {
 }
 
 var currentEditCreditId = null;
+var currentEditCreditId = null;
 
-function editCredit(saleId) {
-    var sale = salesCache.find(function(s) { return s.id === saleId; });
-    if (!sale) return;
+async function editCredit(saleId) {
+    var credits = await getAllCredits();
+    var sale = credits.find(function(s) { return s.id === saleId; });
+    if (!sale) { alert('Credit record not found.'); return; }
     
     currentEditCreditId = saleId;
     document.getElementById('editCreditName').value = sale.customerName || '';
