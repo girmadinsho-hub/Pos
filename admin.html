@@ -7945,25 +7945,39 @@ function getReportPeriodStart() {
 }
 
 // Update overview cards
-function updateReportOverview() {
+// ═══ REPORT OVERVIEW (server-based) ═══
+async function updateReportOverview() {
     var start = getReportPeriodStart();
-    var sales = salesCache.filter(function(s) { return s.time >= start.toISOString(); });
-    var losses = lossesCache.filter(function(l) { return l.time >= start.toISOString(); });
-    var expenses = expensesCache.filter(function(e) { return e.date >= start.toISOString().slice(0,10); });
 
-    var rev=0, gp=0, cr=0, tl=0, te=0;
-    sales.forEach(function(s) { rev += s.total||0; gp += s.profit||0; if (s.paymentMethod==='credit' && !s.paidAt) cr += s.total||0; });
-    losses.forEach(function(l) { tl += l.totalLoss||0; });
-    expenses.forEach(function(e) { te += e.amount||0; });
+    var revenue = 0;
+    try {
+        var daily = await ssFetchDailySummary(start, null);
+        daily.forEach(function(d){ revenue += d.total; });
+    } catch(e) {}
 
-    document.getElementById('repRevenue').textContent = appCurrencySymbol +rev.toFixed(2);
-    document.getElementById('repGrossProfit').textContent = appCurrencySymbol +gp.toFixed(2);
-    document.getElementById('repLosses').textContent = appCurrencySymbol +tl.toFixed(2);
-    document.getElementById('repExpenses').textContent = appCurrencySymbol +te.toFixed(2);
-    document.getElementById('repNetProfit').textContent = appCurrencySymbol +(gp-tl-te).toFixed(2);
-    document.getElementById('repCreditDue').textContent = appCurrencySymbol +cr.toFixed(2);
+    var grossProfit = 0, creditDue = 0;
+    try {
+        var pr = await supabaseClient.from('sales')
+            .select('profit, total, payment_method, paid_at')
+            .eq('shop_id', getShopId()).eq('voided', false)
+            .gte('time', start.toISOString());
+        if (pr.data) pr.data.forEach(function(s){
+            grossProfit += Number(s.profit || 0);
+            if (s.payment_method === 'credit' && !s.paid_at) creditDue += Number(s.total || 0);
+        });
+    } catch(e) {}
+
+    var tl = 0, te = 0;
+    lossesCache.forEach(function(l) { if (l.time >= start.toISOString()) tl += l.totalLoss || 0; });
+    expensesCache.forEach(function(e) { if (e.date >= start.toISOString().slice(0,10)) te += e.amount || 0; });
+
+    document.getElementById('repRevenue').textContent = fmtMoney(revenue);
+    document.getElementById('repGrossProfit').textContent = fmtMoney(grossProfit);
+    document.getElementById('repLosses').textContent = fmtMoney(tl);
+    document.getElementById('repExpenses').textContent = fmtMoney(te);
+    document.getElementById('repNetProfit').textContent = fmtMoney(grossProfit - tl - te);
+    document.getElementById('repCreditDue').textContent = fmtMoney(creditDue);
 }
-
 // Period change handler
 function loadReports(period, btn) {
     currentReportPeriod = period;
@@ -7982,21 +7996,6 @@ function loadReports(period, btn) {
 }
 
 // ===== SALES REPORT =====
-function getSalesReportData() {
-    var start = getReportPeriodStart();
-    var sales = salesCache.filter(function(s) { return s.time >= start.toISOString(); });
-    var map = {};
-    sales.forEach(function(s) {
-        var d = new Date(s.time);
-        var key = d.toDateString();
-        if (!map[key]) map[key] = { date: d.toISOString(), cash: 0, card: 0, mobile: 0, credit: 0, total: 0 };
-        var b = ssSplitPaymentBuckets(s);
-        map[key].cash += b.cash; map[key].card += b.card;
-        map[key].mobile += b.mobile; map[key].credit += b.credit;
-        map[key].total += toNum(s.total);
-    });
-    return Object.values(map).sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
-}
 function switchSalesReportView(view) {
     currentSalesRepView = view;
     var btns = document.querySelectorAll('.salesrep-view-btn');
@@ -8015,10 +8014,139 @@ function switchSalesReportView(view) {
     }
 }
 
-function initSalesReportExcel() {
-    if (window.salesRepTable) return;
+function loadMoreSalesRepList() {
+    salesRepListPage++;
+    var data = getSalesReportData().map(function(d){ return { label: formatDate(d.date), detail: 'Cash: Br '+d.cash.toFixed(2)+' | Card: Br '+d.card.toFixed(2)+' | Mobile: Br '+d.mobile.toFixed(2)+' | Credit: Br '+d.credit.toFixed(2), right: 'Total: Br '+d.total.toFixed(2) }; });
+    loadMoreList('salesReportListContainer', data, salesRepListPage, 20, 'loadMoreSalesRepList');
+}
+function loadMoreSalesRepGrid() {
+    salesRepGridPage++;
+    var data = getSalesReportData().map(function(d){ return { label: formatDate(d.date), detail: 'Cash: Br '+d.cash.toFixed(2)+' | Card: Br '+d.card.toFixed(2)+' | Mobile: Br '+d.mobile.toFixed(2)+' | Credit: Br '+d.credit.toFixed(2), right: appCurrencySymbol +d.total.toFixed(2) }; });
+    loadMoreGrid('salesReportGridContainer', data, salesRepGridPage, 12, 'loadMoreSalesRepGrid');
+}
+
+// ═══ TOP PRODUCTS (server query on items) ═══
+async function getTopProductsData() {
+    var start = getReportPeriodStart();
+    try {
+        const { data, error } = await supabaseClient.from('sales')
+            .select('items')
+            .eq('shop_id', getShopId()).eq('voided', false)
+            .gte('time', start.toISOString());
+        if (error) throw error;
+        var map = {};
+        (data || []).forEach(function(s) {
+            (s.items || []).forEach(function(i) {
+                if (!map[i.name]) map[i.name] = { name: i.name, qty: 0, revenue: 0 };
+                map[i.name].qty += i.qty || 0;
+                map[i.name].revenue += (i.price || 0) * (i.qty || 0);
+            });
+        });
+        return Object.values(map).sort(function(a, b) { return b.revenue - a.revenue; });
+    } catch(e) { return []; }
+}
+
+async function initTopProductsExcel() {
+    var data = await getTopProductsData();
+    if (window.topProdTable) { window.topProdTable.setData(data); return; }
+    window.topProdTable = new ModernSheet('topProductsExcelContainer', {
+        data: data,
+        columns: [
+            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
+            { title: 'Product', field:'name', render: function(item,html){ return html?sanitize(item.name):item.name; } },
+            { title: 'Qty Sold', field:'qty', align:'center' },
+            { title: 'Revenue', field:'revenue', align:'right', render: function(item,html){ return html?fmtMoney(item.revenue):item.revenue; }, total:true, totalValue:function(i){ return i.revenue; }, totalFormat:function(s){ return fmtMoney(s); } }
+        ],
+        emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true
+    });
+}
+
+async function buildTopProductsList() {
+    var data = await getTopProductsData();
+    var mapped = data.map(function(p){ return { label: sanitize(p.name), detail: 'Sold: ' + p.qty, right: fmtMoney(p.revenue) }; });
+    renderList('topProductsListContainer', mapped, topProdListPage, 20, 'loadMoreTopProdList');
+}
+
+async function buildTopProductsGrid() {
+    var data = await getTopProductsData();
+    var mapped = data.map(function(p){ return { label: sanitize(p.name), detail: 'Sold: ' + p.qty, right: fmtMoney(p.revenue) }; });
+    renderGrid('topProductsGridContainer', mapped, topProdGridPage, 12, 'loadMoreTopProdGrid');
+}
+  // ═══ CASHIER PERFORMANCE (server query, split-payment aware) ═══
+async function getCashierReportData() {
+    var start = getReportPeriodStart();
+    try {
+        const { data, error } = await supabaseClient.from('sales')
+            .select('cashier_name, total, payment_method, payments')
+            .eq('shop_id', getShopId()).eq('voided', false)
+            .gte('time', start.toISOString());
+        if (error) throw error;
+        var map = {};
+        (data || []).forEach(function(s) {
+            var name = s.cashier_name || 'Unknown';
+            if (!map[name]) map[name] = { name: name, cash: 0, card: 0, mobile: 0, credit: 0, total: 0 };
+            var b = ssSplitPaymentBuckets({ paymentMethod: s.payment_method, payments: s.payments, total: Number(s.total || 0) });
+            map[name].cash += b.cash; map[name].card += b.card;
+            map[name].mobile += b.mobile; map[name].credit += b.credit;
+            map[name].total += Number(s.total || 0);
+        });
+        return Object.values(map).sort(function(a, b) { return b.total - a.total; });
+    } catch(e) { console.warn('Cashier report failed:', e.message); return []; }
+}
+
+async function initCashierReportExcel() {
+    var data = await getCashierReportData();
+    if (window.cashierRepTable) { window.cashierRepTable.setData(data); return; }
+    window.cashierRepTable = new ModernSheet('cashierReportExcelContainer', {
+        data: data,
+        columns: [
+            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
+            { title: 'Cashier', field:'name' },
+            { title: '💵 Cash', field:'cash', align:'right', render: function(item,html){ return html?fmtMoney(item.cash):item.cash; } },
+            { title: '💳 Card', field:'card', align:'right', render: function(item,html){ return html?fmtMoney(item.card):item.card; } },
+            { title: '📱 Mobile', field:'mobile', align:'right', render: function(item,html){ return html?fmtMoney(item.mobile):item.mobile; } },
+            { title: '📝 Credit', field:'credit', align:'right', render: function(item,html){ return html?fmtMoney(item.credit):item.credit; } },
+            { title: 'Total', field:'total', align:'right', render: function(item,html){ return html?fmtMoney(item.total):item.total; }, total:true, totalValue:function(i){ return i.total; }, totalFormat:function(s){ return fmtMoney(s); } }
+        ],
+        emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true
+    });
+}
+
+async function buildCashierReportList() {
+    var data = await getCashierReportData();
+    var mapped = data.map(function(c){
+        return { label: c.name,
+                 detail: 'Cash: ' + fmtMoney(c.cash) + ' | Card: ' + fmtMoney(c.card) + ' | Mobile: ' + fmtMoney(c.mobile) + ' | Credit: ' + fmtMoney(c.credit),
+                 right: fmtMoney(c.total) };
+    });
+    renderList('cashierReportListContainer', mapped, cashierRepListPage, 20, 'loadMoreCashierRepList');
+}
+
+async function buildCashierReportGrid() {
+    var data = await getCashierReportData();
+    var mapped = data.map(function(c){
+        return { label: c.name,
+                 detail: 'Cash: ' + fmtMoney(c.cash) + ' | Card: ' + fmtMoney(c.card) + ' | Mobile: ' + fmtMoney(c.mobile) + ' | Credit: ' + fmtMoney(c.credit),
+                 right: fmtMoney(c.total) };
+    });
+    renderGrid('cashierReportGridContainer', mapped, cashierRepGridPage, 12, 'loadMoreCashierRepGrid');
+}
+// ═══ SALES REPORT (server-based) ═══
+async function getSalesReportData() {
+    var start = getReportPeriodStart();
+    try {
+        var daily = await ssFetchDailySummary(start, null);
+        return daily.map(function(d){
+            return { date: d.date, cash: d.cash, card: d.card, mobile: d.mobile, credit: d.credit, total: d.total };
+        });
+    } catch(e) { return []; }
+}
+
+async function initSalesReportExcel() {
+    var data = await getSalesReportData();
+    if (window.salesRepTable) { window.salesRepTable.setData(data); return; }
     window.salesRepTable = new ModernSheet('salesReportExcelContainer', {
-        data: getSalesReportData(),
+        data: data,
         columns: [
             { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
             { title: 'Date', width:'100px', render: function(item,html){ return html?formatDate(item.date):item.date; } },
@@ -8031,47 +8159,27 @@ function initSalesReportExcel() {
         emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true
     });
 }
-function buildSalesReportList() {
-    var data = getSalesReportData().map(function(d){
-        return {
-            label: formatDate(d.date),
-            detail: 'Cash: Br '+d.cash.toFixed(2)+' | Card: Br '+d.card.toFixed(2)+' | Mobile: Br '+d.mobile.toFixed(2)+' | Credit: Br '+d.credit.toFixed(2),
-            right: 'Total: Br '+d.total.toFixed(2)
-        };
+
+async function buildSalesReportList() {
+    var data = await getSalesReportData();
+    var mapped = data.map(function(d){
+        return { label: formatDate(d.date),
+                 detail: 'Cash: ' + fmtMoney(d.cash) + ' | Card: ' + fmtMoney(d.card) + ' | Mobile: ' + fmtMoney(d.mobile) + ' | Credit: ' + fmtMoney(d.credit),
+                 right: fmtMoney(d.total) };
     });
-    renderList('salesReportListContainer', data, salesRepListPage, 20, 'loadMoreSalesRepList');
-}
-function loadMoreSalesRepList() {
-    salesRepListPage++;
-    var data = getSalesReportData().map(function(d){ return { label: formatDate(d.date), detail: 'Cash: Br '+d.cash.toFixed(2)+' | Card: Br '+d.card.toFixed(2)+' | Mobile: Br '+d.mobile.toFixed(2)+' | Credit: Br '+d.credit.toFixed(2), right: 'Total: Br '+d.total.toFixed(2) }; });
-    loadMoreList('salesReportListContainer', data, salesRepListPage, 20, 'loadMoreSalesRepList');
-}
-function buildSalesReportGrid() {
-    var data = getSalesReportData().map(function(d){ return { label: formatDate(d.date), detail: 'Cash: Br '+d.cash.toFixed(2)+' | Card: Br '+d.card.toFixed(2)+' | Mobile: Br '+d.mobile.toFixed(2)+' | Credit: Br '+d.credit.toFixed(2), right: appCurrencySymbol +d.total.toFixed(2) }; });
-    renderGrid('salesReportGridContainer', data, salesRepGridPage, 12, 'loadMoreSalesRepGrid');
-}
-function loadMoreSalesRepGrid() {
-    salesRepGridPage++;
-    var data = getSalesReportData().map(function(d){ return { label: formatDate(d.date), detail: 'Cash: Br '+d.cash.toFixed(2)+' | Card: Br '+d.card.toFixed(2)+' | Mobile: Br '+d.mobile.toFixed(2)+' | Credit: Br '+d.credit.toFixed(2), right: appCurrencySymbol +d.total.toFixed(2) }; });
-    loadMoreGrid('salesReportGridContainer', data, salesRepGridPage, 12, 'loadMoreSalesRepGrid');
+    renderList('salesReportListContainer', mapped, salesRepListPage, 20, 'loadMoreSalesRepList');
 }
 
-
+async function buildSalesReportGrid() {
+    var data = await getSalesReportData();
+    var mapped = data.map(function(d){
+        return { label: formatDate(d.date),
+                 detail: 'Cash: ' + fmtMoney(d.cash) + ' | Card: ' + fmtMoney(d.card) + ' | Mobile: ' + fmtMoney(d.mobile) + ' | Credit: ' + fmtMoney(d.credit),
+                 right: fmtMoney(d.total) };
+    });
+    renderGrid('salesReportGridContainer', mapped, salesRepGridPage, 12, 'loadMoreSalesRepGrid');
+}
 // ===== CASHIER PERFORMANCE =====
-function getCashierReportData() {
-    var start = getReportPeriodStart();
-    var sales = salesCache.filter(function(s) { return s.time >= start.toISOString(); });
-    var map = {};
-    sales.forEach(function(s) {
-        var name = s.cashierName || 'Unknown';
-        if (!map[name]) map[name] = { name: name, cash: 0, card: 0, mobile: 0, credit: 0, total: 0 };
-        var b = ssSplitPaymentBuckets(s);
-        map[name].cash += b.cash; map[name].card += b.card;
-        map[name].mobile += b.mobile; map[name].credit += b.credit;
-        map[name].total += toNum(s.total);
-    });
-    return Object.values(map).sort(function(a, b) { return b.total - a.total; });
-}
 function switchCashierReportView(view) {
     currentCashierRepView = view;
     var btns = document.querySelectorAll('.cashierrep-view-btn');
@@ -8086,49 +8194,11 @@ function switchCashierReportView(view) {
     } else if (view==='list') { cashierRepListPage=1; buildCashierReportList(); }
     else if (view==='grid') { cashierRepGridPage=1; buildCashierReportGrid(); }
 }
-function initCashierReportExcel() {
-    if (window.cashierRepTable) return;
-    window.cashierRepTable = new ModernSheet('cashierReportExcelContainer', {
-        data: getCashierReportData(),
-        columns: [
-            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
-            { title: 'Cashier', field:'name' },
-            { title: '💵 Cash', field:'cash', align:'right', render: function(item,html){ return html?fmtMoney(item.cash):item.cash; } },
-            { title: '💳 Card', field:'card', align:'right', render: function(item,html){ return html?fmtMoney(item.card):item.card; } },
-            { title: '📱 Mobile', field:'mobile', align:'right', render: function(item,html){ return html?fmtMoney(item.mobile):item.mobile; } },
-            { title: '📝 Credit', field:'credit', align:'right', render: function(item,html){ return html?fmtMoney(item.credit):item.credit; } },
-            { title: 'Total', field:'total', align:'right', render: function(item,html){ return html?fmtMoney(item.total):item.total; }, total:true, totalValue:function(i){ return i.total; }, totalFormat:function(s){ return fmtMoney(s); } }
-        ],
-        emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true
-    });
-}
 		
-function buildCashierReportList() {
-    var data = getCashierReportData().map(function(c){ return { label: c.name, detail: 'Cash: Br '+c.cash.toFixed(2)+' | Card: Br '+c.card.toFixed(2)+' | Mobile: Br '+c.mobile.toFixed(2)+' | Credit: Br '+c.credit.toFixed(2), right: 'Total: Br '+c.total.toFixed(2) }; });
-    renderList('cashierReportListContainer', data, cashierRepListPage, 20, 'loadMoreCashierRepList');
-}
 function loadMoreCashierRepList() { cashierRepListPage++; var data = getCashierReportData().map(function(c){ return { label: c.name, detail: 'Cash: Br '+c.cash.toFixed(2)+' | Card: Br '+c.card.toFixed(2)+' | Mobile: Br '+c.mobile.toFixed(2)+' | Credit: Br '+c.credit.toFixed(2), right: 'Total: Br '+c.total.toFixed(2) }; }); loadMoreList('cashierReportListContainer', data, cashierRepListPage, 20, 'loadMoreCashierRepList'); }
-function buildCashierReportGrid() {
-    var data = getCashierReportData().map(function(c){ return { label: c.name, detail: 'Cash: Br '+c.cash.toFixed(2)+' | Card: Br '+c.card.toFixed(2)+' | Mobile: Br '+c.mobile.toFixed(2)+' | Credit: Br '+c.credit.toFixed(2), right: appCurrencySymbol +c.total.toFixed(2) }; });
-    renderGrid('cashierReportGridContainer', data, cashierRepGridPage, 12, 'loadMoreCashierRepGrid');
-}
 function loadMoreCashierRepGrid() { cashierRepGridPage++; var data = getCashierReportData().map(function(c){ return { label: c.name, detail: 'Cash: Br '+c.cash.toFixed(2)+' | Card: Br '+c.card.toFixed(2)+' | Mobile: Br '+c.mobile.toFixed(2)+' | Credit: Br '+c.credit.toFixed(2), right: appCurrencySymbol +c.total.toFixed(2) }; }); loadMoreGrid('cashierReportGridContainer', data, cashierRepGridPage, 12, 'loadMoreCashierRepGrid'); }
 
 // ===== TOP PRODUCTS =====
-function getTopProductsData() {
-    var start = getReportPeriodStart();
-    var sales = salesCache.filter(function(s) { return s.time >= start.toISOString(); });
-    var map = {};
-    sales.forEach(function(s) {
-        (s.items||[]).forEach(function(i) {
-            var name = i.name;
-            if (!map[name]) map[name] = { name: name, qty:0, revenue:0 };
-            map[name].qty += i.qty||0;
-            map[name].revenue += (i.price||0)*(i.qty||0);
-        });
-    });
-    return Object.values(map).sort(function(a,b){ return b.revenue - a.revenue; });
-}
 
 function switchTopProductsView(view) {
     currentTopProdView = view;
@@ -8145,29 +8215,8 @@ function switchTopProductsView(view) {
     else if (view==='grid') { topProdGridPage=1; buildTopProductsGrid(); }
 }
 
-function initTopProductsExcel() {
-    if (window.topProdTable) return;
-    window.topProdTable = new ModernSheet('topProductsExcelContainer', {
-        data: getTopProductsData(),
-        columns: [
-            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
-            { title: 'Product', field:'name' },
-            { title: 'Qty Sold', field:'qty', align:'center' },
-            { title: 'Revenue', field:'revenue', align:'right', render: function(item,html){ return html?fmtMoney(item.revenue):item.revenue; }, total:true, totalValue:function(i){ return i.revenue; }, totalFormat:function(s){ return fmtMoney(s); } }
-        ],
-        emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true
-    });
-}
 									
-function buildTopProductsList() {
-    var data = getTopProductsData().map(function(p){ return { label: p.name, detail: 'Sold: '+p.qty, right: appCurrencySymbol +p.revenue.toFixed(2) }; });
-    renderList('topProductsListContainer', data, topProdListPage, 20, 'loadMoreTopProdList');
-}
 function loadMoreTopProdList() { topProdListPage++; var data = getTopProductsData().map(function(p){ return { label: p.name, detail: 'Sold: '+p.qty, right: appCurrencySymbol +p.revenue.toFixed(2) }; }); loadMoreList('topProductsListContainer', data, topProdListPage, 20, 'loadMoreTopProdList'); }
-function buildTopProductsGrid() {
-    var data = getTopProductsData().map(function(p){ return { label: p.name, detail: 'Sold: '+p.qty, right: appCurrencySymbol +p.revenue.toFixed(2) }; });
-    renderGrid('topProductsGridContainer', data, topProdGridPage, 12, 'loadMoreTopProdGrid');
-}
 function loadMoreTopProdGrid() { topProdGridPage++; var data = getTopProductsData().map(function(p){ return { label: p.name, detail: 'Sold: '+p.qty, right: appCurrencySymbol +p.revenue.toFixed(2) }; }); loadMoreGrid('topProductsGridContainer', data, topProdGridPage, 12, 'loadMoreTopProdGrid'); }
 
 // ===== STAFF SALARY REPORT =====
