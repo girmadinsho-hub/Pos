@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+	<!DOCTYPE html> 
        <html>
        <head>
 	
@@ -4211,8 +4211,10 @@ var currentEditCreditId = null;
 var currentEditCreditId = null;
 
 async function editCredit(saleId) {
+    ssRefreshCreditsCache();
     var credits = await getAllCredits();
-    var sale = credits.find(function(s) { return s.id === saleId; });
+  
+  var sale = credits.find(function(s) { return s.id === saleId; });
     if (!sale) { alert('Credit record not found.'); return; }
     
     currentEditCreditId = saleId;
@@ -4239,49 +4241,47 @@ async function saveEditedCredit() {
         alert('✅ Credit updated');
         document.getElementById('editCreditModal').classList.remove('active');
         currentEditCreditId = null;
-        switchCreditView(currentCreditView);
         ssRefreshCreditsCache();
+        await switchCreditView(currentCreditView);        ssRefreshCreditsCache();
     } catch(e) {
         alert('❌ Error: ' + e.message);
     }
 }
 
+// ═══ DELETE/CLOSE CREDIT (Package 4: proper cache refresh) ═══
 async function deleteCredit(saleId) {
     showConfirm('Close this credit?\n\n• The sale STAYS in your records as income.\n• Stock is NOT changed — the customer already took the items.\n• Use Void (in POS) only if the whole sale was a mistake.',
         'Close Credit', async function(ok) {
         if (!ok) return;
-        var sale = salesCache.find(s => s.id === saleId);
 
         try {
-            // 1. Mark the sale as paid/closed — income stays, stock untouched
+            // 1. Mark the sale as paid/closed in the database
             const { error } = await supabaseClient.from('sales')
                 .update({ paid_at: new Date().toISOString() })
                 .eq('id', saleId);
             if (error) throw error;
 
-            // 2. Update local cache
-            if (sale) sale.paidAt = new Date().toISOString();
+            // 2. 🔑 THE FIX: refresh the credits cache (kill old data)
+            ssRefreshCreditsCache();
 
-            // 3. Audit log (permanent record of who closed it)
+            // 3. Audit log
             try {
                 await supabaseClient.from('audit_logs').insert([{
                     shop_id: getShopId(),
                     action: 'CREDIT_CLOSED',
-                    details: 'Invoice: ' + ((sale && sale.invoiceNo) || saleId) +
-                             ' | Amount: ' + ((sale && sale.total) || 0) +
-                             ' | Closed by Admin — sale kept as income, stock not changed',
+                    details: 'Credit sale ' + saleId + ' closed by Admin — sale kept as income, stock not changed',
                     cashier_name: 'Admin',
                     timestamp: new Date().toISOString()
                 }]);
             } catch (e) {}
 
             alert('✅ Credit closed.\nThe sale remains in your records as income. Stock was not changed.');
-            switchCreditView(currentCreditView);
-                  ssRefreshCreditsCache();
+
+            // 4. Re-render the CURRENT view with fresh data
+            await switchCreditView(currentCreditView);
         } catch(e) { alert('❌ Error: ' + e.message); }
     });
 }
-
 async function addProduct() {
     var safeGet = function(id) { var el = document.getElementById(id); return el ? el.value.trim() : ''; };
     var safeGetNum = function(id) { var el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; };
@@ -7428,22 +7428,22 @@ async function getAllCredits() {
     return _creditsCache;
 }
 function ssRefreshCreditsCache() { _creditsCache = null; }
+	// ═══ SETTLE CREDIT (fresh redraw after settling) ═══
 async function settleCredit(saleId) {
-    showConfirm('Mark this credit as paid?', 'Settle Credit', async function(ok) {
+    showConfirm('Mark this credit as fully paid?', 'Settle Credit', async function(ok) {
         if (!ok) return;
         try {
             const { error } = await supabaseClient.from('sales')
                 .update({ paid_at: new Date().toISOString() })
                 .eq('id', saleId);
             if (error) throw error;
-            
-            alert('✅ Credit settled');
-            switchCreditView(currentCreditView);
-                  ssRefreshCreditsCache();
+
+            ssRefreshCreditsCache();                    // 🔑 fresh data
+            await switchCreditView(currentCreditView);  // 🔑 redraw now
+            alert('✅ Credit settled.');
         } catch(e) { alert('❌ Error: ' + e.message); }
     });
 }
-	
 // ===== LOYALTY VIEW MANAGEMENT =====
 var currentLoyaltyView = 'excel';
 var loyaltyListPage = 1;
