@@ -1698,8 +1698,9 @@ function initStaffExcelTable() {
                     buttons += '<button class="btn-mini" onclick="toggleEmployeeStatus(\''+item.id+'\',\'inactive\')" style="background:#f59e0b; color:white;">🔒 Deactivate</button> ';
                 }
                 
-                buttons += '<button class="btn-mini" onclick="paySalary(\''+item.id+'\')" style="background:#3b82f6;color:white;">💰</button> ';
-                buttons += '<button class="btn-mini delete" onclick="deleteEmployee(\''+item.id+'\')" style="background:#ef4444; color:white;">🗑️</button>';
+                buttons += '<button class="btn-mini" onclick="paySalary(\''+item.id+'\')" style="background:#3b82f6;color:white;" title="Pay salary">💰</button> ';
+                buttons += '<button class="btn-mini" onclick="openAdvanceModal(\''+item.id+'\')" style="background:#f59e0b;color:white;" title="Give advance">➖</button> ';
+                buttons += '<button class="btn-mini" onclick="openSalaryLedger(\''+item.id+'\')" style="background:#8b5cf6;color:white;" title="Salary ledger">📖</button> ';                buttons += '<button class="btn-mini delete" onclick="deleteEmployee(\''+item.id+'\')" style="background:#ef4444; color:white;">🗑️</button>';
                 return buttons;
             }, editable: false, filterable: false }
         ],
