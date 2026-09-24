@@ -3706,7 +3706,22 @@ async function confirmAdvance() {
         if (typeof switchStaffView === 'function') switchStaffView(currentStaffView);
     } catch(e) { alert('❌ ' + e.message); }
 }
-
+// ═══ MASTER PAYROLL REFRESH — one call updates EVERYTHING ═══
+async function ssRefreshAllPayrollViews() {
+    try {
+        await ssSyncAllEarnings();                              // 1. ledger up-to-date
+        if (typeof loadSalaryAlerts === 'function') await loadSalaryAlerts();   // 2. dashboard alerts
+        if (window.staffTable && employeesCache.length) {       // 3. staff table (live column)
+            window.staffTable.setData(employeesCache);
+        }
+        if (typeof switchPayrollView === 'function' && document.getElementById('payrollExcelContainer')) {
+            switchPayrollView(currentPayrollView);              // 4. payroll history
+        }
+        if (typeof loadDashboard === 'function' && document.getElementById('tab0') && document.getElementById('tab0').style.display !== 'none') {
+            loadDashboard(currentPeriod, null);                 // 5. dashboard (if open)
+        }
+    } catch(e) { console.warn('Payroll refresh:', e.message); }
+}
   // ══════════════════════════════════════════════════════════════
 //  💰 PAYROLL ENGINE — ledger-based (schedules, advances, partials)
 // ══════════════════════════════════════════════════════════════
@@ -4085,8 +4100,7 @@ function selectTab(i, el) {
         if (i===0 && typeof loadSalaryAlerts === 'function') loadSalaryAlerts();
         if (i===1 && !productTable && typeof initProductTable === 'function') initProductTable();
         if (i===2 && typeof initSalesTables === 'function') initSalesTables();        if (i===5) { if (typeof filterLossProducts === 'function') filterLossProducts(); if (typeof switchLossView === 'function') switchLossView('excel'); }
-        if (i===6) { if (typeof switchStaffView === 'function') switchStaffView('excel'); if (typeof initPayrollTab === 'function') initPayrollTab(); if (typeof updateStaffPositions === 'function') updateStaffPositions(); }
-        if (i===7 && typeof switchExpenseView === 'function') switchExpenseView('excel');
+        if (i===6) { if (typeof switchStaffView === 'function') switchStaffView('excel'); if (typeof initPayrollTab === 'function') initPayrollTab(); if (typeof updateStaffPositions === 'function') updateStaffPositions(); if (typeof ssRefreshAllPayrollViews === 'function') ssRefreshAllPayrollViews(); }        if (i===7 && typeof switchExpenseView === 'function') switchExpenseView('excel');
         if (i===8 && typeof initReportsTab === 'function') { initReportsTab(); if (typeof switchDailySummaryView === 'function') switchDailySummaryView('excel'); }
         if (i===9) { if (typeof loadSupplierProducts === 'function') loadSupplierProducts(); if (!orderTable && typeof initOrderTable === 'function') initOrderTable(); }
         if (i===10 && typeof switchLoyaltyView === 'function') switchLoyaltyView('excel');
@@ -9022,20 +9036,96 @@ function buildPayrollGridView() {
 }
 function loadMorePayrollGrid() { payrollGridPage++; buildPayrollGridView(); }
 
-async function deletePayroll(id) {
-    if (!await confirm(t('delete') + '?')) return;
+// ═══ PAYROLL EDIT — syncs expenses AND ledger together ═══
+var _editingLedgerId = null;
+
+async function editPayroll(id) {
+    var exp = expensesCache.find(e => e.id === id);
+    if (!exp) return;
+    var newAmount = parseFloat(await prompt(t('amount') + ':', exp.amount));
+    if (isNaN(newAmount)) return;
+    var newDate = await prompt(t('date') + ' (YYYY-MM-DD):', exp.date);
+    if (!newDate) return;
+
+    if (!await confirm('Update payment to ' + fmtMoney(newAmount) + ' on ' + newDate + '?\n\nBoth Payroll History AND the Salary Ledger will be updated.')) return;
+
     try {
-        const { error } = await supabaseClient.from('expenses').delete().eq('id', id);
+        // 1. Update expense
+        const { error } = await ssById(supabaseClient.from('expenses')
+            .update({ amount: newAmount, date: newDate }), id);
         if (error) throw error;
-        
-        expensesCache = expensesCache.filter(e => e.id !== id);
-        alert(t('deleted'));
-        switchPayrollView(currentPayrollView);
-    } catch(e) {
-        alert('❌ Error: ' + e.message);
-    }
+        exp.amount = newAmount; exp.date = newDate;
+
+        // 2. 🔑 Sync the LEDGER — find matching entry (same employee, same original amount, closest date)
+        await ssLoadLedger(true);
+        var ledgerEntry = null;
+        var candidates = SS_LEDGER.cache.filter(function(l){
+            return l.employee_id === exp.employeeId && l.entry_type === 'paid' && Math.abs(Math.abs(Number(l.amount)) - oldAmountIfAny()) < 0.01;
+        });
+        function oldAmountIfAny() { return exp.amount; } // placeholder replaced below
+        // Simpler robust match: same employee, type paid, latest before edit date
+        candidates = SS_LEDGER.cache.filter(function(l){
+            return l.employeeId === exp.employeeId || l.employee_id === exp.employeeId;
+        }).filter(function(l){ return l.entry_type === 'paid'; });
+        // pick the one created nearest to the expense date
+        var expTime = new Date(newDate + 'T12:00:00').getTime();
+        var best = null, bestDiff = Infinity;
+        candidates.forEach(function(l){
+            var d = Math.abs(new Date(l.created_at).getTime() - expTime);
+            if (d < bestDiff) { bestDiff = d; best = l; }
+        });
+        if (best) {
+            await supabaseClient.from('salary_ledger')
+                .update({ amount: -Math.abs(newAmount), note: 'Salary payment (edited)', created_at: new Date(newDate + 'T12:00:00').toISOString() })
+                .eq('id', best.id);
+        } else {
+            // No matching ledger entry (pre-engine payment edited) → create one
+            await supabaseClient.from('salary_ledger').insert([{
+                shop_id: getShopId(), employee_id: exp.employeeId, entry_type: 'paid',
+                amount: -Math.abs(newAmount), note: 'Salary payment (edited)', created_by: 'Admin',
+                created_at: new Date(newDate + 'T12:00:00').toISOString()
+            }]);
+        }
+
+        await ssLoadLedger(true);
+        await ssRefreshAllPayrollViews();
+        alert('✅ Updated in Payroll History and Ledger.\n' + ledgerBalanceLine(exp.employeeId));
+    } catch(e) { alert('❌ Error: ' + e.message); }
 }
 
+async function deletePayroll(id) {
+    if (!await confirm('Delete this salary payment permanently?\n\nThe Ledger will also be corrected (this payment will be removed from it — the staff will owe that money again).')) return;
+    try {
+        var exp = expensesCache.find(e => e.id === id);
+        const { error } = await supabaseClient.from('expenses').delete().eq('id', id);
+        if (error) throw error;
+        expensesCache = expensesCache.filter(e => e.id !== id);
+
+        // 🔑 Remove the matching ledger entry
+        if (exp && exp.employeeId) {
+            await ssLoadLedger(true);
+            var cands = SS_LEDGER.cache.filter(function(l){
+                return l.employee_id === exp.employeeId && l.entry_type === 'paid';
+            });
+            var expTime = new Date(exp.date + 'T12:00:00').getTime();
+            var best = null, bestDiff = Infinity;
+            cands.forEach(function(l){
+                var d = Math.abs(new Date(l.created_at).getTime() - expTime);
+                if (d < bestDiff) { bestDiff = d; best = l; }
+            });
+            if (best) await supabaseClient.from('salary_ledger').delete().eq('id', best.id);
+            await ssLoadLedger(true);
+        }
+
+        await ssRefreshAllPayrollViews();
+        alert('✅ Deleted. ' + (exp ? ledgerBalanceLine(exp.employeeId) : ''));
+    } catch(e) { alert('❌ Error: ' + e.message); }
+}
+
+function ledgerBalanceLine(empId) {
+    var emp = employeesCache.find(e => e.id === empId);
+    return emp ? (emp.name + ' now owes: ' + fmtMoney(ssLedgerBalance(empId))) : '';
+}
 function initPayrollTab() {
     switchPayrollView('excel');
 }
@@ -9497,36 +9587,6 @@ function loadShopsList() {
         alert('❌ Delete failed: ' + e.message);
     }
 }						
-async function editPayroll(id) {
-    var exp = expensesCache.find(e => e.id === id);
-    if (!exp) return;
-    var newAmount = parseFloat(await prompt(t('amount') + ':', exp.amount));
-    if (isNaN(newAmount)) return;
-    var newDate = await prompt(t('date') + ' (YYYY-MM-DD):', exp.date);
-    if (!newDate) return;
-    
-    var empNames = employeesCache.filter(e=>e.status==='active').map(e=>e.id+': '+e.name).join('\n');
-    var newEmpId = await prompt('Enter employee ID (or leave unchanged):\n' + empNames, exp.employeeId || '');
-    var finalEmpId = newEmpId || exp.employeeId;
-    var finalEmpName = exp.name;
-    if (newEmpId && newEmpId !== exp.employeeId) {
-        var newEmp = employeesCache.find(e => e.id === newEmpId);
-        if (newEmp) finalEmpName = 'Salary: ' + newEmp.name;
-    }
-    if (!await confirm(t('update') + '?\n' + finalEmpName + ' – ' + appCurrencySymbol + newAmount.toFixed(2) + ' on ' + newDate)) return;
-    
-    try {
-                const { error } = await ssById(supabaseClient.from('expenses')
-            .update({ amount: newAmount, date: newDate, employee_id: finalEmpId, name: finalEmpName }), id);
-        if (error) throw error;
-        
-        exp.amount = newAmount; exp.date = newDate; exp.employeeId = finalEmpId; exp.name = finalEmpName;
-        alert(t('saved'));
-        switchPayrollView(currentPayrollView);
-    } catch(e) {
-        alert('❌ Error: ' + e.message);
-    }
-}
 	
 async function savePosSettings() {
     var payload = {
