@@ -1806,10 +1806,6 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
     </div>
 </div>
 
-
-
-	
-
     <!-- Expenses -->
    <div id="tab7" class="tab-content" style="display:none">
 
@@ -3518,7 +3514,7 @@ function isCurrentPeriodPaid(employee) {
 function ssDateStr(d) {
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
-async function confirmAdvance() {
+  async function confirmAdvance() {
     var emp = employeesCache.find(e => e.id === _advanceEmpId);
     if (!emp) return;
     var amount = parseFloat(document.getElementById('advanceAmount').value);
@@ -3530,7 +3526,8 @@ async function confirmAdvance() {
     try {
         const { data: expData, error: expErr } = await supabaseClient.from('expenses')
             .insert([{ type: 'salary', employee_id: _advanceEmpId, name: 'Advance: ' + emp.name,
-                       amount: amount, date: new Date().toISOString().slice(0,10), shop_id: getShopId() }])
+                       amount: amount, date: new Date().toISOString().slice(0,10), shop_id: getShopId(),
+                       category: 'Salaries & Wages' }])
             .select('id').single();
         if (expErr) throw expErr;
 
@@ -3541,7 +3538,8 @@ async function confirmAdvance() {
         if (error) throw error;
 
         expensesCache.unshift({ id: expData.id, shopId: getShopId(), name: 'Advance: ' + emp.name,
-            amount: amount, date: new Date().toISOString().slice(0,10), type: 'salary', employeeId: _advanceEmpId });
+            amount: amount, date: new Date().toISOString().slice(0,10), type: 'salary',
+            category: 'Salaries & Wages', employeeId: _advanceEmpId });
 
         document.getElementById('advanceModal').classList.remove('active');
         await ssLoadLedger(true);
@@ -3549,7 +3547,6 @@ async function confirmAdvance() {
         alert('✅ Advance of ' + fmtMoney(amount) + ' recorded.');
     } catch(e) { alert('❌ ' + e.message); }
 }
-  
 async function deletePayroll(id) {
     if (!await confirm('Delete this payment permanently?\n\nThe Ledger is corrected too — that money becomes owed again.')) return;
     try {
@@ -3624,48 +3621,6 @@ async function editPayroll(id) {
     } catch(e) { alert('❌ ' + e.message); }
 }
   
-async function paySalary(empId) {
-    var emp = employeesCache.find(e => e.id === empId);
-    if (!emp) { alert('Employee not found'); return; }
-    await ssSyncEarnings(emp);
-    await ssLoadLedger(true);
-    var bal = ssLedgerBalance(empId);
-
-    if (bal <= 0) { alert('ℹ️ ' + emp.name + ': nothing owed (balance ' + fmtMoney(bal) + ').'); return; }
-
-    var amountStr = await prompt('Pay ' + emp.name + '\n\nOwed: ' + fmtMoney(bal) + '\n\nAmount to pay (full or partial):', bal.toFixed(2));
-    if (amountStr === null) return;
-    var amount = parseFloat(amountStr);
-    if (isNaN(amount) || amount <= 0) { alert('Invalid amount.'); return; }
-    if (amount > bal + 0.01) { alert('More than owed (' + fmtMoney(bal) + ').'); return; }
-    if (!await confirm('Pay ' + fmtMoney(amount) + ' to ' + emp.name + '?')) return;
-
-    try {
-        // 1. Expense first (we need its id for the exact link)
-        const { data: expData, error: expErr } = await supabaseClient.from('expenses')
-            .insert([{ type: 'salary', employee_id: empId, name: 'Salary: ' + emp.name,
-                       amount: amount, date: new Date().toISOString().slice(0,10), shop_id: getShopId() }])
-            .select('id').single();
-        if (expErr) throw expErr;
-
-        // 2. Ledger entry — EXACTLY LINKED to the expense
-        const { error: lErr } = await supabaseClient.from('salary_ledger').insert([{
-            shop_id: getShopId(), employee_id: empId, entry_type: 'paid',
-            amount: -amount, note: 'Salary payment', created_by: 'Admin',
-            ref_expense_id: expData.id, created_at: new Date().toISOString() }]);
-        if (lErr) throw lErr;
-
-        // 3. Employee + local caches
-        await ssById(supabaseClient.from('employees').update({ last_paid: new Date().toISOString() }), empId);
-        emp.lastPaid = new Date().toISOString();
-        expensesCache.unshift({ id: expData.id, shopId: getShopId(), name: 'Salary: ' + emp.name,
-            amount: amount, date: new Date().toISOString().slice(0,10), type: 'salary', employeeId: empId });
-
-        await ssLoadLedger(true);
-        await ssRefreshAllPayrollViews();
-        alert('✅ Paid ' + fmtMoney(amount) + '. New balance: ' + fmtMoney(ssLedgerBalance(empId)));
-    } catch(e) { alert('❌ ' + e.message); }
-}
   
 function getUnpaidSalaryInfo(employee) {
     var today = new Date(); today.setHours(0,0,0,0);
@@ -3778,41 +3733,43 @@ async function paySalary(empId) {
     var emp = employeesCache.find(e => e.id === empId);
     if (!emp) { alert('Employee not found'); return; }
     await ssSyncEarnings(emp);
+    await ssLoadLedger(true);
     var bal = ssLedgerBalance(empId);
 
-    if (bal <= 0) { alert('ℹ️ ' + emp.name + ': nothing owed. Balance: ' + fmtMoney(bal)); return; }
+    if (bal <= 0) { alert('ℹ️ ' + emp.name + ': nothing owed (balance ' + fmtMoney(bal) + ').'); return; }
 
-    var amountStr = await prompt('Pay ' + emp.name + '\n\nBalance owed: ' + fmtMoney(bal) + '\n\nEnter amount to pay (full or partial):', bal.toFixed(2));
+    var amountStr = await prompt('Pay ' + emp.name + '\n\nOwed: ' + fmtMoney(bal) + '\n\nAmount to pay (full or partial):', bal.toFixed(2));
     if (amountStr === null) return;
     var amount = parseFloat(amountStr);
     if (isNaN(amount) || amount <= 0) { alert('Invalid amount.'); return; }
-    if (amount > bal) { alert('That is more than owed (' + fmtMoney(bal) + '). Paying extra would overpay — use Adjust instead (coming).'); return; }
-
-    if (!await confirm('Pay ' + fmtMoney(amount) + ' to ' + emp.name + '?\n' + (amount < bal ? '⚠️ PARTIAL — remaining balance will be ' + fmtMoney(bal - amount) : 'Full payment — balance becomes 0'))) return;
+    if (amount > bal + 0.01) { alert('More than owed (' + fmtMoney(bal) + ').'); return; }
+    if (!await confirm('Pay ' + fmtMoney(amount) + ' to ' + emp.name + '?')) return;
 
     try {
-        // 1. Ledger entry
+        const { data: expData, error: expErr } = await supabaseClient.from('expenses')
+            .insert([{ type: 'salary', employee_id: empId, name: 'Salary: ' + emp.name,
+                       amount: amount, date: new Date().toISOString().slice(0,10), shop_id: getShopId(),
+                       category: 'Salaries & Wages' }])
+            .select('id').single();
+        if (expErr) throw expErr;
+
         const { error: lErr } = await supabaseClient.from('salary_ledger').insert([{
             shop_id: getShopId(), employee_id: empId, entry_type: 'paid',
-            amount: -amount, note: 'Salary payment', created_by: 'Admin', created_at: new Date().toISOString()
-        }]);
+            amount: -amount, note: 'Salary payment', created_by: 'Admin',
+            ref_expense_id: expData.id, created_at: new Date().toISOString() }]);
         if (lErr) throw lErr;
-        // 2. Keep expense record (your accounting reports use it)
-        await supabaseClient.from('expenses').insert([{
-            type: 'salary', employee_id: empId, name: 'Salary: ' + emp.name,
-            amount: amount, date: new Date().toISOString().slice(0,10), shop_id: getShopId()
-        }]);
-        // 3. Update employee last paid
+
         await ssById(supabaseClient.from('employees').update({ last_paid: new Date().toISOString() }), empId);
         emp.lastPaid = new Date().toISOString();
+        expensesCache.unshift({ id: expData.id, shopId: getShopId(), name: 'Salary: ' + emp.name,
+            amount: amount, date: new Date().toISOString().slice(0,10), type: 'salary',
+            category: 'Salaries & Wages', employeeId: empId });
 
         await ssLoadLedger(true);
+        await ssRefreshAllPayrollViews();
         alert('✅ Paid ' + fmtMoney(amount) + '. New balance: ' + fmtMoney(ssLedgerBalance(empId)));
-        if (typeof switchStaffView === 'function') switchStaffView(currentStaffView);
-        if (typeof loadSalaryAlerts === 'function') loadSalaryAlerts();
     } catch(e) { alert('❌ ' + e.message); }
 }
-
 // ═══ ADVANCE (owner-only, max 1 month salary) ═══
 var _advanceEmpId = null;
 async function openAdvanceModal(empId) {
