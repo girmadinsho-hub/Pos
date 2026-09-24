@@ -4098,18 +4098,11 @@ var currentCreditView = 'excel';
 var creditListPage = 1;
 var creditGridPage = 1;
 
-function getAllCredits() {
-    return salesCache.filter(function(s) {
-        return s.paymentMethod === 'credit';
-    });
-}
-
-function switchCreditView(view) {
+// ═══ CREDIT VIEWS (async, server data) ═══
+async function switchCreditView(view) {
     currentCreditView = view;
     var btns = document.querySelectorAll('.credit-view-btn');
-    for (var i = 0; i < btns.length; i++) {
-        btns[i].classList.toggle('active', btns[i].dataset.view === view);
-    }
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.view === view);
     var excel = document.getElementById('creditExcelContainer');
     var list = document.getElementById('creditListContainer');
     var grid = document.getElementById('creditGridContainer');
@@ -4117,16 +4110,42 @@ function switchCreditView(view) {
     if (list) list.style.display = (view === 'list') ? 'block' : 'none';
     if (grid) grid.style.display = (view === 'grid') ? 'block' : 'none';
 
+    var credits = await getAllCredits();
+
     if (view === 'excel') {
         if (!window.creditTable) initCreditExcelTable();
-        else window.creditTable.setData(getAllCredits());
+        else window.creditTable.setData(credits);
     } else if (view === 'list') {
         creditListPage = 1;
-        buildCreditListView();
+        await buildCreditListView();
     } else if (view === 'grid') {
         creditGridPage = 1;
-        buildCreditGridView();
+        await buildCreditGridView();
     }
+}
+
+async function buildCreditListView() {
+    var credits = await getAllCredits();
+    var data = credits.map(function(c) {
+        return {
+            label: sanitize(c.customerName || 'Unknown') + (c.paidAt ? ' ✅' : ' ⏳'),
+            detail: 'Phone: ' + (c.customerPhone || '') + ' | Date: ' + formatDateTime(c.time),
+            right: appCurrencySymbol + (c.total || 0).toFixed(2)
+        };
+    });
+    renderList('creditListContainer', data, creditListPage, 20, 'loadMoreCreditList');
+}
+
+async function buildCreditGridView() {
+    var credits = await getAllCredits();
+    var data = credits.map(function(c) {
+        return {
+            label: sanitize(c.customerName || 'Unknown') + (c.paidAt ? ' ✅' : ' ⏳'),
+            detail: 'Phone: ' + (c.customerPhone || '') + ' | Date: ' + formatDateTime(c.time),
+            right: appCurrencySymbol + (c.total || 0).toFixed(2)
+        };
+    });
+    renderGrid('creditGridContainer', data, creditGridPage, 12, 'loadMoreCreditGrid');
 }
 
 function initCreditExcelTable() {
@@ -4161,17 +4180,6 @@ function initCreditExcelTable() {
 }
 
 // List builder
-function buildCreditListView() {
-    var credits = getAllCredits();
-    var data = credits.map(function(c) {
-        return {
-            label: sanitize(c.customerName || 'Unknown') + (c.paidAt ? ' ✅' : ' ⏳'),
-            detail: 'Phone: ' + (c.customerPhone || '') + ' | Date: ' + formatDateTime(c.time),
-            right: appCurrencySymbol + (c.total || 0).toFixed(2)
-        };
-    });
-    renderList('creditListContainer', data, creditListPage, 20, 'loadMoreCreditList');
-}
 function loadMoreCreditList() {
     creditListPage++;
     var credits = getAllCredits();
@@ -4186,17 +4194,6 @@ function loadMoreCreditList() {
 }
 
 // Grid builder
-function buildCreditGridView() {
-    var credits = getAllCredits();
-    var data = credits.map(function(c) {
-        return {
-            label: sanitize(c.customerName || 'Unknown') + (c.paidAt ? ' ✅' : ' ⏳'),
-            detail: 'Phone: ' + (c.customerPhone || '') + ' | Date: ' + formatDateTime(c.time),
-            right: appCurrencySymbol + (c.total || 0).toFixed(2)
-        };
-    });
-    renderGrid('creditGridContainer', data, creditGridPage, 12, 'loadMoreCreditGrid');
-}
 function loadMoreCreditGrid() {
     creditGridPage++;
     var credits = getAllCredits();
@@ -4241,6 +4238,7 @@ async function saveEditedCredit() {
         document.getElementById('editCreditModal').classList.remove('active');
         currentEditCreditId = null;
         switchCreditView(currentCreditView);
+        ssRefreshCreditsCache();
     } catch(e) {
         alert('❌ Error: ' + e.message);
     }
@@ -4277,6 +4275,7 @@ async function deleteCredit(saleId) {
 
             alert('✅ Credit closed.\nThe sale remains in your records as income. Stock was not changed.');
             switchCreditView(currentCreditView);
+                  ssRefreshCreditsCache();
         } catch(e) { alert('❌ Error: ' + e.message); }
     });
 }
@@ -7401,16 +7400,32 @@ function updateExpenseTotal() {
 	
 	
 // ===== CREDITS =====
-function loadCredits() {
-    var list = document.getElementById('creditList');
-    if (!list) return;
-    var credits = salesCache.filter(function(s) { return s.paymentMethod==='credit' && !s.paidAt; });
-    list.innerHTML = credits.length ? credits.map(function(s) {
-        return '<div style="padding:8px;border-bottom:1px solid #f1f5f9;"><b>'+sanitize(s.customerName||'Unknown')+'</b> - '+sanitize(s.customerPhone||'')+'<br>Amount: Br '+(s.total||0).toFixed(2)+' | Date: '+formatDateTime(s.time)+'<br><button class="btn-mini" onclick="settleCredit(\''+s.id+'\')">Settle Credit</button></div>';
-    }).join('') : '<div class="empty-state">No unpaid credits</div>';
+  
+	// ═══ CREDITS — server query (Package 4: salesCache no longer holds history) ═══
+var _creditsCache = null;
+async function getAllCredits() {
+    // Serve from cache if already loaded this session
+    if (_creditsCache) return _creditsCache;
+    try {
+        const { data, error } = await supabaseClient.from('sales')
+            .select('id, time, total, customer_name, customer_phone, paid_at, invoice_no, cashier_name')
+            .eq('shop_id', getShopId())
+            .eq('voided', false)
+            .eq('payment_method', 'credit')
+            .order('time', { ascending: false });
+        if (error) throw error;
+        _creditsCache = (data || []).map(function(s) {
+            return { id: s.id, time: s.time, total: s.total,
+                     customerName: s.customer_name, customerPhone: s.customer_phone,
+                     paidAt: s.paid_at, invoiceNo: s.invoice_no, cashierName: s.cashier_name };
+        });
+    } catch (e) {
+        console.warn('Credits query failed:', e.message);
+        _creditsCache = [];
+    }
+    return _creditsCache;
 }
-
-	
+function ssRefreshCreditsCache() { _creditsCache = null; }
 async function settleCredit(saleId) {
     showConfirm('Mark this credit as paid?', 'Settle Credit', async function(ok) {
         if (!ok) return;
@@ -7422,6 +7437,7 @@ async function settleCredit(saleId) {
             
             alert('✅ Credit settled');
             switchCreditView(currentCreditView);
+                  ssRefreshCreditsCache();
         } catch(e) { alert('❌ Error: ' + e.message); }
     });
 }
