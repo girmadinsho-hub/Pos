@@ -1683,8 +1683,16 @@ function initStaffExcelTable() {
             { title: 'Name', field:'name', render: function(item,html){ return html ? sanitize(item.name) : item.name; } },
             { title: 'Position', field:'position' },
             { title: 'Base Salary', field:'salary', align:'right', render: function(item,html){ return html ? appCurrencySymbol + (item.salary||0).toFixed(2) : item.salary; } },
-            { title: 'Schedule', field:'paymentAgreement' },
-            { title: 'Status', field:'status', render: function(item, html) {
+            { title: 'Pay Status (live)', width:'150px', render: function(item, html) {
+                var bal = (typeof ssLedgerBalance === 'function') ? ssLedgerBalance(item.id) : 0;
+                var info = (typeof getUnpaidSalaryInfo === 'function') ? getUnpaidSalaryInfo(item) : { partialDays: 0 };
+                if (!html) return String(bal);
+                var parts = [];
+                if (bal > 0) parts.push('<span style="color:#ef4444;font-weight:bold;">💰 ' + fmtMoney(bal) + ' owed</span>');
+                else parts.push('<span style="color:#10b981;font-weight:bold;">✅ settled</span>');
+                if (info.partialDays > 0) parts.push('<br><small style="color:#64748b;">⏳ ' + info.partialDays + 'd into next period</small>');
+                return parts.join('');
+            }},            { title: 'Status', field:'status', render: function(item, html) {
                 if (item.status === 'inactive') return html ? '<span style="color:#ef4444; font-weight:bold;">🔴 Inactive</span>' : 'Inactive';
                 return html ? '<span style="color:#10b981; font-weight:bold;">🟢 Active</span>' : 'Active';
             }},
