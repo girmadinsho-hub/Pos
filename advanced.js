@@ -735,66 +735,52 @@ async function openCrmModal() {
 async function openMarketingModal() {
     var mModal = document.getElementById('marketingModal');
     if (!mModal) return;
-    
     var listDiv = document.getElementById('marketingList');
     listDiv.innerHTML = '<p style="text-align:center; color:#94a3b8;">Finding inactive customers...</p>';
-    
     mModal.classList.add('active');
-
     try {
-        const { data, error } = await supabaseClient.from('sales').select('customer_name, customer_phone, time').eq('shop_id', getShopId());
+        const { data, error } = await supabaseClient.from('sales')
+            .select('customer_name, customer_phone, time')
+            .eq('shop_id', getShopId()).eq('voided', false);
         if (error) throw error;
 
         var customers = {};
-        
-        if (data) {
-            data.forEach(function(s) {
-                if (s.customer_phone) {
-                    if (!customers[s.customer_phone]) {
-                        customers[s.customer_phone] = { name: s.customer_name || 'Customer', phone: s.customer_phone, lastVisit: '' };
-                    }
-                    if (!customers[s.customer_phone].lastVisit || s.time > customers[s.customer_phone].lastVisit) {
-                        customers[s.customer_phone].lastVisit = s.time;
-                    }
-                }
-            });
-        }
-
-        var now = new Date();
-        var thirtyDaysAgo = new Date(now.getTime() - 30 * 86400000);
-        var inactiveCustomers = [];
-
-        Object.values(customers).forEach(function(c) {
-            if (new Date(c.lastVisit) < thirtyDaysAgo) {
-                inactiveCustomers.push(c);
+        (data || []).forEach(function(s) {
+            if (s.customer_phone) {
+                if (!customers[s.customer_phone]) customers[s.customer_phone] = { name: s.customer_name || 'Customer', phone: s.customer_phone, lastVisit: '' };
+                if (!customers[s.customer_phone].lastVisit || s.time > customers[s.customer_phone].lastVisit) customers[s.customer_phone].lastVisit = s.time;
             }
         });
 
+        var all = Object.values(customers);
+        if (all.length === 0) {
+            listDiv.innerHTML = '<p style="text-align:center; color:#f59e0b; padding:20px; font-weight:bold;">📭 No customer phone numbers yet</p>' +
+                '<p style="font-size:13px; color:#64748b; text-align:center; padding:0 15px;">Phone numbers are collected when you make <b>credit sales</b> or add a customer phone on receipts.<br><br>Once you have customer phones, this tool finds everyone who hasn\'t visited in 30+ days and lets you send them a WhatsApp promo with one tap! 💬</p>';
+            return;
+        }
+
+        var thirtyDaysAgo = new Date(Date.now() - 30 * 86400000);
+        var inactiveCustomers = all.filter(function(c) { return new Date(c.lastVisit) < thirtyDaysAgo; });
+
         if (inactiveCustomers.length === 0) {
-            listDiv.innerHTML = '<p style="text-align:center; color:#10b981; padding:20px;">✅ All your customers have visited in the last 30 days! Great job.</p>';
+            listDiv.innerHTML = '<p style="text-align:center; color:#10b981; padding:20px;">✅ All ' + all.length + ' customer(s) visited in the last 30 days! Great job.</p>';
             return;
         }
 
         var promoMsg = encodeURIComponent("Hello! We miss you at our shop. Come back this week and get a 10% discount on your order! Show this message to the cashier.");
-        
-        var html = '<p style="font-size:12px; color:#64748b; margin-bottom:15px;">These customers haven\'t visited in over 30 days. Click "Send Promo" to message them on WhatsApp.</p>';
-        
+        var html = '<p style="font-size:12px; color:#64748b; margin-bottom:15px;">These customers haven\'t visited in over 30 days. Tap "Send Promo" to message them on WhatsApp.</p>';
         inactiveCustomers.forEach(function(c) {
             var cleanPhone = c.phone.replace(/[^0-9]/g, '');
-            var daysSince = Math.floor((now - new Date(c.lastVisit)) / 86400000);
-            
-            html += '<div style="background:#f8fafc; border:1px solid #e2e8f0; padding:10px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">';
-            html += '<div><b>' + sanitize(c.name) + '</b><br><small style="color:#64748b;">Last visit: ' + daysSince + ' days ago</small></div>';
-            html += '<a href="https://wa.me/' + cleanPhone + '?text=' + promoMsg + '" target="_blank" class="btn btn-success btn-sm" style="background:#25D366; color:white; text-decoration:none; padding:8px 15px;">💬 Send Promo</a>';
-            html += '</div>';
+            var daysSince = Math.floor((Date.now() - new Date(c.lastVisit)) / 86400000);
+            html += '<div style="background:#f8fafc; border:1px solid #e2e8f0; padding:10px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">' +
+                '<div><b>' + sanitize(c.name) + '</b><br><small style="color:#64748b;">Last visit: ' + daysSince + ' days ago</small></div>' +
+                '<a href="https://wa.me/' + cleanPhone + '?text=' + promoMsg + '" target="_blank" style="background:#25D366; color:white; text-decoration:none; padding:8px 15px; border-radius:8px; font-weight:bold; font-size:13px;">💬 Send Promo</a></div>';
         });
-
         listDiv.innerHTML = html;
     } catch(e) {
-        listDiv.innerHTML = '<p style="color:red;">Error: ' + e.message + '</p>';
+        listDiv.innerHTML = '<p style="color:#ef4444;">Error: ' + e.message + '</p>';
     }
 }
-
 
 // ===== FEATURE 14: SALES COMMISSION TRACKING =====
 function openCommissionModal() {
