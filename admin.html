@@ -568,8 +568,25 @@ body.dark .submenu-item { color:#94a3b8; }
 body.dark .submenu-item:hover { background:#334155; color:#e2e8f0; }
 body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
 
+/* ===== THIRD-LEVEL SUB-MENU ===== */
+.submenu-item.has-sub3::after { content:'▸'; margin-left:auto; font-size:10px; opacity:.5; transition:transform .2s; }
+.submenu-item.has-sub3.expanded::after { transform:rotate(90deg); opacity:1; }
+.sub-submenu { display:none; padding-left:10px; }
+.sub-submenu.open { display:block; }
+.sub-submenu .submenu-item { padding-left:52px; font-size:12px; border-left-color:transparent; }
+.sub-submenu .submenu-item:hover { border-left-color:#93c5fd; }
 
 
+    /* ===== MOBILE: dashboard charts stack vertically (phones) ===== */
+@media (max-width: 768px) {
+    .dashboard-charts-row {
+        flex-direction: column !important;
+    }
+    .dashboard-charts-row .card {
+        min-width: 100% !important;
+        width: 100% !important;
+    }
+}
 			
 	  	</style>
 	
@@ -1049,7 +1066,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
     </div>
 
 
-    <div class="flex-row dashboard-charts-row" style="gap:10px;margin-top:12px;">
+       <div class="flex-row dashboard-charts-row" style="gap:10px;margin-top:12px;">
         <div class="card" style="flex:1;min-width:280px;">
             <div class="card-title">📈 Sales (7 Days)</div>
             <div style="height:220px;position:relative;"><canvas id="salesChart"></canvas></div>
