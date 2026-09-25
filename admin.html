@@ -912,12 +912,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 
     <div class="sidebar-tab has-submenu" onclick="toggleSubmenu(this)" title="Generate business reports">📈 Analytics & Reports</div>
     <div class="submenu" data-parent="8">
-        <div class="submenu-item has-sub3" onclick="toggleSub3(this)">📊 Standard Reports</div>
-        <div class="sub-submenu">
-            <div class="submenu-item" onclick="subGo(8, this, 'repDaily')">📅 Daily Summary</div>
-            <div class="submenu-item" onclick="subGo(8, this, 'repSales')">💰 Sales Report</div>
-            <div class="submenu-item" onclick="subGo(8, this, 'repSalary')">💵 Staff Salary Report</div>
-        </div>
+        
         <div class="submenu-item" onclick="subGo(8, this, 'repPnL')">📈 P&L Statement</div>
         <div class="submenu-item" onclick="subGo(8, this, 'repZ')">🖨️ Z-Report (End of Day)</div>
         <div class="submenu-item" onclick="subGo(8, this, 'repTax')">🧮 Tax Liability</div>
