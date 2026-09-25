@@ -1,4 +1,4 @@
-	<!DOCTYPE html> 
+<!DOCTYPE html> 
        <html>
        <head>
 	<script>window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#7f1d1d;color:#fff;padding:10px;font-family:monospace;font-size:12px;';d.textContent='❌ '+m+' | Line:'+l;d.onclick=function(){d.remove();};document.body.appendChild(d);};</script>
@@ -6803,7 +6803,6 @@ function switchSalesView(type, view) {
     if (excelCont) excelCont.style.display = view === 'excel' ? 'block' : 'none';
     if (listCont) listCont.style.display = view === 'list' ? 'block' : 'none';
     if (gridCont) gridCont.style.display = view === 'grid' ? 'block' : 'none';
-
     if (type === 'daily') { currentDailyView = view; }
     else if (type === 'weekly') { currentWeeklyView = view; }
     else if (type === 'monthly') { currentMonthlyView = view; }
@@ -6950,85 +6949,9 @@ function moneyCell(val) { return function(item, html) { return html ? appCurrenc
 function moneyTotal(val) { return function(item) { return toNum(item[val]); }; }
 function moneySum(s) { return appCurrencySymbol + s.toFixed(2); }
 
-function initDailyExcelTable() {
-    if (dailySalesTable) { dailySalesTable.setData(getDailySummary()); return; }
-    dailySalesTable = new ModernSheet('dailySalesExcelContainer', {
-        data: getDailySummary(),
-        columns: [
-            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
-            { title: 'Date', width:'100px', render: function(item,html){ return html ? formatDate(item.date) : item.date; } },
-            { title: '💵 Cash', field:'cash', align:'right', render: moneyCell('cash'), total:true, totalValue: moneyTotal('cash'), totalFormat: moneySum },
-            { title: '💳 Card', field:'card', align:'right', render: moneyCell('card'), total:true, totalValue: moneyTotal('card'), totalFormat: moneySum },
-            { title: '📱 Mobile', field:'mobile', align:'right', render: moneyCell('mobile'), total:true, totalValue: moneyTotal('mobile'), totalFormat: moneySum },
-            { title: '📝 Credit', field:'credit', align:'right', render: moneyCell('credit'), total:true, totalValue: moneyTotal('credit'), totalFormat: moneySum },
-            { title: '🧾 Tax', field:'tax', align:'right', render: moneyCell('tax'), total:true, totalValue: moneyTotal('tax'), totalFormat: moneySum },
-            { title: '💰 Total', field:'total', align:'right', render: moneyCell('total'), total:true, totalValue: moneyTotal('total'), totalFormat: moneySum }
-        ],
-        emptyMessage: 'No sales',
-        showSearch: false,
-        showFontSlider: true
-    });
-}
 
-function initWeeklyExcelTable() {
-    if (weeklySalesTable) { weeklySalesTable.setData(getWeeklySummary()); return; }
-    weeklySalesTable = new ModernSheet('weeklySalesExcelContainer', {
-        data: getWeeklySummary(),
-        columns: [
-            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
-            { title: 'Week Starting', width:'100px', render: function(item,html){ return html ? formatDate(item.weekStart) : item.weekStart; } },
-            { title: '💵 Cash', field:'cash', align:'right', render: moneyCell('cash'), total:true, totalValue: moneyTotal('cash'), totalFormat: moneySum },
-            { title: '💳 Card', field:'card', align:'right', render: moneyCell('card'), total:true, totalValue: moneyTotal('card'), totalFormat: moneySum },
-            { title: '📱 Mobile', field:'mobile', align:'right', render: moneyCell('mobile'), total:true, totalValue: moneyTotal('mobile'), totalFormat: moneySum },
-            { title: '📝 Credit', field:'credit', align:'right', render: moneyCell('credit'), total:true, totalValue: moneyTotal('credit'), totalFormat: moneySum },
-            { title: '🧾 Tax', field:'tax', align:'right', render: moneyCell('tax'), total:true, totalValue: moneyTotal('tax'), totalFormat: moneySum },
-            { title: '💰 Total', field:'total', align:'right', render: moneyCell('total'), total:true, totalValue: moneyTotal('total'), totalFormat: moneySum }
-        ],
-        emptyMessage: 'No sales',
-        showSearch: false,
-        showFontSlider: true
-    });
-}
 
-function initMonthlyExcelTable() {
-    if (monthlySalesTable) { monthlySalesTable.setData(getMonthlySummary()); return; }
-    monthlySalesTable = new ModernSheet('monthlySalesExcelContainer', {
-        data: getMonthlySummary(),
-        columns: [
-            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
-            { title: 'Month', field:'month' },
-            { title: '💵 Cash', field:'cash', align:'right', render: moneyCell('cash'), total:true, totalValue: moneyTotal('cash'), totalFormat: moneySum },
-            { title: '💳 Card', field:'card', align:'right', render: moneyCell('card'), total:true, totalValue: moneyTotal('card'), totalFormat: moneySum },
-            { title: '📱 Mobile', field:'mobile', align:'right', render: moneyCell('mobile'), total:true, totalValue: moneyTotal('mobile'), totalFormat: moneySum },
-            { title: '📝 Credit', field:'credit', align:'right', render: moneyCell('credit'), total:true, totalValue: moneyTotal('credit'), totalFormat: moneySum },
-            { title: '🧾 Tax', field:'tax', align:'right', render: moneyCell('tax'), total:true, totalValue: moneyTotal('tax'), totalFormat: moneySum },
-            { title: '💰 Total', field:'total', align:'right', render: moneyCell('total'), total:true, totalValue: moneyTotal('total'), totalFormat: moneySum }
-        ],
-        emptyMessage: 'No sales',
-        showSearch: false,
-        showFontSlider: true
-    });
-}
 
-function initYearlyExcelTable() {
-    if (window.yearlySalesTable) { window.yearlySalesTable.setData(getYearlySummary()); return; }
-    window.yearlySalesTable = new ModernSheet('yearlySalesExcelContainer', {
-        data: getYearlySummary(),
-        columns: [
-            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
-            { title: 'Year', field:'year' },
-            { title: '💵 Cash', field:'cash', align:'right', render: moneyCell('cash'), total:true, totalValue: moneyTotal('cash'), totalFormat: moneySum },
-            { title: '💳 Card', field:'card', align:'right', render: moneyCell('card'), total:true, totalValue: moneyTotal('card'), totalFormat: moneySum },
-            { title: '📱 Mobile', field:'mobile', align:'right', render: moneyCell('mobile'), total:true, totalValue: moneyTotal('mobile'), totalFormat: moneySum },
-            { title: '📝 Credit', field:'credit', align:'right', render: moneyCell('credit'), total:true, totalValue: moneyTotal('credit'), totalFormat: moneySum },
-            { title: '🧾 Tax', field:'tax', align:'right', render: moneyCell('tax'), total:true, totalValue: moneyTotal('tax'), totalFormat: moneySum },
-            { title: '💰 Total', field:'total', align:'right', render: moneyCell('total'), total:true, totalValue: moneyTotal('total'), totalFormat: moneySum }
-        ],
-        emptyMessage: 'No sales',
-        showSearch: false,
-        showFontSlider: true
-    });
-}
 
 
 function loadMoreList(containerId, data, pageVar, perPage, loadMoreFunc) {
@@ -7055,53 +6978,12 @@ function loadMoreList(containerId, data, pageVar, perPage, loadMoreFunc) {
     }
 }
 
-function buildDailyListView() {
-    var data = getDailySummary().map(function(d) {
-        return {
-            label: formatDate(d.date),
-            detail: 'Cash: Br '+toNum(d.cash).toFixed(2)+' | Card: Br '+toNum(d.card).toFixed(2)+' | Mobile: Br '+toNum(d.mobile).toFixed(2)+' | Credit: Br '+toNum(d.credit).toFixed(2)+' | Tax: Br '+toNum(d.tax).toFixed(2),
-            right: appCurrencySymbol +toNum(d.total).toFixed(2)
-        };
-    });
-    renderList('dailySalesListContainer', data, dailyListPage, PER_PAGE_LIST, 'loadMoreDailyList');
-}
 function loadMoreDailyList() { dailyListPage++; buildDailyListView(); }
 
-function buildWeeklyListView() {
-    var data = getWeeklySummary().map(function(w) {
-        var end = new Date(new Date(w.weekStart).getTime() + 6*86400000);
-        return {
-            label: formatDate(w.weekStart) + ' - ' + formatDate(end),
-            detail: 'Cash: Br '+toNum(w.cash).toFixed(2)+' | Card: Br '+toNum(w.card).toFixed(2)+' | Mobile: Br '+toNum(w.mobile).toFixed(2)+' | Credit: Br '+toNum(w.credit).toFixed(2)+' | Tax: Br '+toNum(w.tax).toFixed(2),
-            right: appCurrencySymbol +toNum(w.total).toFixed(2)
-        };
-    });
-    renderList('weeklySalesListContainer', data, weeklyListPage, PER_PAGE_LIST, 'loadMoreWeeklyList');
-}
 function loadMoreWeeklyList() { weeklyListPage++; buildWeeklyListView(); }
 
-function buildMonthlyListView() {
-    var data = getMonthlySummary().map(function(m) {
-        return {
-            label: m.month,
-            detail: 'Cash: Br '+toNum(m.cash).toFixed(2)+' | Card: Br '+toNum(m.card).toFixed(2)+' | Mobile: Br '+toNum(m.mobile).toFixed(2)+' | Credit: Br '+toNum(m.credit).toFixed(2)+' | Tax: Br '+toNum(m.tax).toFixed(2),
-            right: appCurrencySymbol +toNum(m.total).toFixed(2)
-        };
-    });
-    renderList('monthlySalesListContainer', data, monthlyListPage, PER_PAGE_LIST, 'loadMoreMonthlyList');
-}
 function loadMoreMonthlyList() { monthlyListPage++; buildMonthlyListView(); }
 
-function buildYearlyListView() {
-    var data = getYearlySummary().map(function(y) {
-        return {
-            label: y.year,
-            detail: 'Cash: Br '+toNum(y.cash).toFixed(2)+' | Card: Br '+toNum(y.card).toFixed(2)+' | Mobile: Br '+toNum(y.mobile).toFixed(2)+' | Credit: Br '+toNum(y.credit).toFixed(2)+' | Tax: Br '+toNum(y.tax).toFixed(2),
-            right: appCurrencySymbol +toNum(y.total).toFixed(2)
-        };
-    });
-    renderList('yearlySalesListContainer', data, yearlyListPage, PER_PAGE_LIST, 'loadMoreYearlyList');
-}
 function loadMoreYearlyList() { yearlyListPage++; buildYearlyListView(); }
 
 function loadMoreDetailedList() { detailedListPage++; buildDetailedListView(); }
@@ -7129,53 +7011,12 @@ function loadMoreGrid(containerId, data, pageVar, perPage, loadMoreFunc) {
     }
 }
 
-function buildDailyGridView() {
-    var data = getDailySummary().map(function(d) {
-        return {
-            label: formatDate(d.date),
-            detail: 'Cash: Br '+toNum(d.cash).toFixed(2)+' | Card: Br '+toNum(d.card).toFixed(2)+' | Mobile: Br '+toNum(d.mobile).toFixed(2)+' | Credit: Br '+toNum(d.credit).toFixed(2)+' | Tax: Br '+toNum(d.tax).toFixed(2),
-            right: appCurrencySymbol +toNum(d.total).toFixed(2)
-        };
-    });
-    renderGrid('dailySalesGridContainer', data, dailyGridPage, PER_PAGE_GRID, 'loadMoreDailyGrid');
-}
 function loadMoreDailyGrid() { dailyGridPage++; buildDailyGridView(); }
 
-function buildWeeklyGridView() {
-    var data = getWeeklySummary().map(function(w) {
-        var end = new Date(new Date(w.weekStart).getTime() + 6*86400000);
-        return {
-            label: formatDate(w.weekStart) + ' - ' + formatDate(end),
-            detail: 'Cash: Br '+toNum(w.cash).toFixed(2)+' | Card: Br '+toNum(w.card).toFixed(2)+' | Mobile: Br '+toNum(w.mobile).toFixed(2)+' | Credit: Br '+toNum(w.credit).toFixed(2)+' | Tax: Br '+toNum(w.tax).toFixed(2),
-            right: appCurrencySymbol +toNum(w.total).toFixed(2)
-        };
-    });
-    renderGrid('weeklySalesGridContainer', data, weeklyGridPage, PER_PAGE_GRID, 'loadMoreWeeklyGrid');
-}
 function loadMoreWeeklyGrid() { weeklyGridPage++; buildWeeklyGridView(); }
 
-function buildMonthlyGridView() {
-    var data = getMonthlySummary().map(function(m) {
-        return {
-            label: m.month,
-            detail: 'Cash: Br '+toNum(m.cash).toFixed(2)+' | Card: Br '+toNum(m.card).toFixed(2)+' | Mobile: Br '+toNum(m.mobile).toFixed(2)+' | Credit: Br '+toNum(m.credit).toFixed(2)+' | Tax: Br '+toNum(m.tax).toFixed(2),
-            right: appCurrencySymbol +toNum(m.total).toFixed(2)
-        };
-    });
-    renderGrid('monthlySalesGridContainer', data, monthlyGridPage, PER_PAGE_GRID, 'loadMoreMonthlyGrid');
-}
 function loadMoreMonthlyGrid() { monthlyGridPage++; buildMonthlyGridView(); }
 
-function buildYearlyGridView() {
-    var data = getYearlySummary().map(function(y) {
-        return {
-            label: y.year,
-            detail: 'Cash: Br '+toNum(y.cash).toFixed(2)+' | Card: Br '+toNum(y.card).toFixed(2)+' | Mobile: Br '+toNum(y.mobile).toFixed(2)+' | Credit: Br '+toNum(y.credit).toFixed(2)+' | Tax: Br '+toNum(y.tax).toFixed(2),
-            right: appCurrencySymbol +toNum(y.total).toFixed(2)
-        };
-    });
-    renderGrid('yearlySalesGridContainer', data, yearlyGridPage, PER_PAGE_GRID, 'loadMoreYearlyGrid');
-}
 function loadMoreYearlyGrid() { yearlyGridPage++; buildYearlyGridView(); }
 
 function loadMoreDetailedGrid() { detailedGridPage++; buildDetailedGridView(); }
@@ -7250,17 +7091,6 @@ function loadMoreList(containerId, data, pageVar, perPage, loadMoreFunc) {
     }
 }
 
-// Daily List
-function buildDailyListView() {
-    var data = getDailySummary().map(function(d) {
-        return {
-            label: formatDate(d.date),
-            detail: 'Cash: Br '+d.cash.toFixed(2)+' | Card: Br '+d.card.toFixed(2)+' | Mobile: Br '+d.mobile.toFixed(2)+' | Credit: Br '+d.credit.toFixed(2),
-            right: 'Total: Br '+d.total.toFixed(2)
-        };
-    });
-    renderList('dailySalesListContainer', data, dailyListPage, PER_PAGE_LIST, 'loadMoreDailyList');
-}
 function loadMoreDailyList() {
     dailyListPage++;
     var data = getDailySummary().map(function(d) {
@@ -7270,16 +7100,6 @@ function loadMoreDailyList() {
 }
 
 // Weekly List
-function buildWeeklyListView() {
-    var data = getWeeklySummary().map(function(w) {
-        return {
-            label: formatDate(w.start) + ' - ' + formatDate(w.end),
-            detail: 'Cash: Br '+w.cash.toFixed(2)+' | Card: Br '+w.card.toFixed(2)+' | Mobile: Br '+w.mobile.toFixed(2)+' | Credit: Br '+w.credit.toFixed(2),
-            right: 'Total: Br '+w.total.toFixed(2)
-        };
-    });
-    renderList('weeklySalesListContainer', data, weeklyListPage, PER_PAGE_LIST, 'loadMoreWeeklyList');
-}
 function loadMoreWeeklyList() {
     weeklyListPage++;
     var data = getWeeklySummary().map(function(w) {
@@ -7289,16 +7109,6 @@ function loadMoreWeeklyList() {
 }
 
 // Monthly List
-function buildMonthlyListView() {
-    var data = getMonthlySummary().map(function(m) {
-        return {
-            label: m.month,
-            detail: 'Cash: Br '+m.cash.toFixed(2)+' | Card: Br '+m.card.toFixed(2)+' | Mobile: Br '+m.mobile.toFixed(2)+' | Credit: Br '+m.credit.toFixed(2),
-            right: 'Total: Br '+m.total.toFixed(2)
-        };
-    });
-    renderList('monthlySalesListContainer', data, monthlyListPage, PER_PAGE_LIST, 'loadMoreMonthlyList');
-}
 function loadMoreMonthlyList() {
     monthlyListPage++;
     var data = getMonthlySummary().map(function(m) {
@@ -7406,16 +7216,6 @@ function loadMoreGrid(containerId, data, pageVar, perPage, loadMoreFunc) {
 }
 
 // Daily Grid
-function buildDailyGridView() {
-    var data = getDailySummary().map(function(d) {
-        return {
-            label: formatDate(d.date),
-            detail: 'Cash: Br '+d.cash.toFixed(2)+' | Card: Br '+d.card.toFixed(2)+' | Mobile: Br '+d.mobile.toFixed(2)+' | Credit: Br '+d.credit.toFixed(2),
-            right: appCurrencySymbol +d.total.toFixed(2)
-        };
-    });
-    renderGrid('dailySalesGridContainer', data, dailyGridPage, PER_PAGE_GRID, 'loadMoreDailyGrid');
-}
 function loadMoreDailyGrid() {
     dailyGridPage++;
     var data = getDailySummary().map(function(d) {
@@ -7425,16 +7225,6 @@ function loadMoreDailyGrid() {
 }
 
 // Weekly Grid
-function buildWeeklyGridView() {
-    var data = getWeeklySummary().map(function(w) {
-        return {
-            label: formatDate(w.start) + ' - ' + formatDate(w.end),
-            detail: 'Cash: Br '+w.cash.toFixed(2)+' | Card: Br '+w.card.toFixed(2)+' | Mobile: Br '+w.mobile.toFixed(2)+' | Credit: Br '+w.credit.toFixed(2),
-            right: appCurrencySymbol +w.total.toFixed(2)
-        };
-    });
-    renderGrid('weeklySalesGridContainer', data, weeklyGridPage, PER_PAGE_GRID, 'loadMoreWeeklyGrid');
-}
 function loadMoreWeeklyGrid() {
     weeklyGridPage++;
     var data = getWeeklySummary().map(function(w) {
@@ -7444,16 +7234,6 @@ function loadMoreWeeklyGrid() {
 }
 
 // Monthly Grid
-function buildMonthlyGridView() {
-    var data = getMonthlySummary().map(function(m) {
-        return {
-            label: m.month,
-            detail: 'Cash: Br '+m.cash.toFixed(2)+' | Card: Br '+m.card.toFixed(2)+' | Mobile: Br '+m.mobile.toFixed(2)+' | Credit: Br '+m.credit.toFixed(2),
-            right: appCurrencySymbol +m.total.toFixed(2)
-        };
-    });
-    renderGrid('monthlySalesGridContainer', data, monthlyGridPage, PER_PAGE_GRID, 'loadMoreMonthlyGrid');
-}
 function loadMoreMonthlyGrid() {
     monthlyGridPage++;
     var data = getMonthlySummary().map(function(m) {
@@ -7461,7 +7241,127 @@ function loadMoreMonthlyGrid() {
     });
     loadMoreGrid('monthlySalesGridContainer', data, monthlyGridPage, PER_PAGE_GRID, 'loadMoreMonthlyGrid');
 }
+// ═════════════════════════════════════════════════════════
+//  SALES SUMMARY TABLES — SELF-LOADING (async-proof, Package 4)
+//  Each table fetches its own data. No Promise ever reaches
+//  ModernSheet. Works on first click, any tab, any time.
+// ═════════════════════════════════════════════════════════
 
+async function ssEnsureDailyData() {
+    if (!window._ssDailyAll || window._ssDailyAll.length === 0) {
+        try { window._ssDailyAll = await ssFetchDailySummary(null, null); }
+        catch(e) { window._ssDailyAll = []; }
+    }
+    return window._ssDailyAll;
+}
+
+function ssMapSummaryRow(d) {
+    return { date: d.date, cash: d.cash, card: d.card, mobile: d.mobile,
+             credit: d.credit, tax: d.tax, total: d.total, count: d.count };
+}
+
+var SS_SUMMARY_COLS = [
+    { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
+    { title: '💵 Cash', field:'cash', align:'right', render: function(item,html){ return html?fmtMoney(item.cash):item.cash; }, total:true, totalValue:function(i){return i.cash;}, totalFormat:function(s){return fmtMoney(s);} },
+    { title: '💳 Card', field:'card', align:'right', render: function(item,html){ return html?fmtMoney(item.card):item.card; }, total:true, totalValue:function(i){return i.card;}, totalFormat:function(s){return fmtMoney(s);} },
+    { title: '📱 Mobile', field:'mobile', align:'right', render: function(item,html){ return html?fmtMoney(item.mobile):item.mobile; }, total:true, totalValue:function(i){return i.mobile;}, totalFormat:function(s){return fmtMoney(s);} },
+    { title: '📝 Credit', field:'credit', align:'right', render: function(item,html){ return html?fmtMoney(item.credit):item.credit; }, total:true, totalValue:function(i){return i.credit;}, totalFormat:function(s){return fmtMoney(s);} },
+    { title: '💰 Total', field:'total', align:'right', render: function(item,html){ return html?fmtMoney(item.total):item.total; }, total:true, totalValue:function(i){return i.total;}, totalFormat:function(s){return fmtMoney(s);} }
+];
+
+function ssSummaryDetail(d) {
+    return 'Cash: ' + fmtMoney(d.cash) + ' | Card: ' + fmtMoney(d.card) +
+           ' | Mobile: ' + fmtMoney(d.mobile) + ' | Credit: ' + fmtMoney(d.credit) +
+           ' | Tax: ' + fmtMoney(d.tax);
+}
+
+// ---------- DAILY ----------
+async function initDailyExcelTable() {
+    await ssEnsureDailyData();
+    var last30 = Date.now() - 30 * 86400000;
+    var data = (window._ssDailyAll || []).filter(function(d){ return new Date(d.date).getTime() >= last30; });
+    if (dailySalesTable) { dailySalesTable.setData(data); return; }
+    var cols = [{ title: 'Date', width:'100px', render: function(item,html){ return html?formatDate(item.date):item.date; } }].concat(SS_SUMMARY_COLS);
+    dailySalesTable = new ModernSheet('dailySalesExcelContainer', {
+        data: data, columns: cols, emptyMessage: 'No sales', showSearch:false, showFontSlider:true
+    });
+}
+async function buildDailyListView() {
+    await ssEnsureDailyData();
+    var last30 = Date.now() - 30 * 86400000;
+    var rows = (window._ssDailyAll || []).filter(function(d){ return new Date(d.date).getTime() >= last30; });
+    renderList('dailySalesListContainer', rows.map(function(d){ return { label: formatDate(d.date), detail: ssSummaryDetail(d), right: fmtMoney(d.total) }; }), dailyListPage, PER_PAGE_LIST, 'loadMoreDailyList');
+}
+async function buildDailyGridView() {
+    await ssEnsureDailyData();
+    var last30 = Date.now() - 30 * 86400000;
+    var rows = (window._ssDailyAll || []).filter(function(d){ return new Date(d.date).getTime() >= last30; });
+    renderGrid('dailySalesGridContainer', rows.map(function(d){ return { label: formatDate(d.date), detail: ssSummaryDetail(d), right: fmtMoney(d.total) }; }), dailyGridPage, PER_PAGE_GRID, 'loadMoreDailyGrid');
+}
+
+// ---------- WEEKLY ----------
+async function initWeeklyExcelTable() {
+    await ssEnsureDailyData();
+    var data = ssGroupDaily(window._ssDailyAll || [], 'week');
+    if (weeklySalesTable) { weeklySalesTable.setData(data); return; }
+    var cols = [{ title: 'Week Starting', width:'110px', render: function(item,html){ return html?formatDate(item.key):item.key; } }].concat(SS_SUMMARY_COLS);
+    weeklySalesTable = new ModernSheet('weeklySalesExcelContainer', {
+        data: data, columns: cols, emptyMessage: 'No sales', showSearch:false, showFontSlider:true
+    });
+}
+async function buildWeeklyListView() {
+    await ssEnsureDailyData();
+    var rows = ssGroupDaily(window._ssDailyAll || [], 'week');
+    renderList('weeklySalesListContainer', rows.map(function(w){ return { label: formatDate(w.key) + ' – +' + fmtMoney(w.total), detail: ssSummaryDetail(w), right: fmtMoney(w.total) }; }), weeklyListPage, PER_PAGE_LIST, 'loadMoreWeeklyList');
+}
+async function buildWeeklyGridView() {
+    await ssEnsureDailyData();
+    var rows = ssGroupDaily(window._ssDailyAll || [], 'week');
+    renderGrid('weeklySalesGridContainer', rows.map(function(w){ return { label: formatDate(w.key), detail: ssSummaryDetail(w), right: fmtMoney(w.total) }; }), weeklyGridPage, PER_PAGE_GRID, 'loadMoreWeeklyGrid');
+}
+
+// ---------- MONTHLY ----------
+async function initMonthlyExcelTable() {
+    await ssEnsureDailyData();
+    var data = ssGroupDaily(window._ssDailyAll || [], 'month');
+    if (monthlySalesTable) { monthlySalesTable.setData(data); return; }
+    var cols = [{ title: 'Month', field:'key' }].concat(SS_SUMMARY_COLS);
+    monthlySalesTable = new ModernSheet('monthlySalesExcelContainer', {
+        data: data, columns: cols, emptyMessage: 'No sales', showSearch:false, showFontSlider:true
+    });
+}
+async function buildMonthlyListView() {
+    await ssEnsureDailyData();
+    var rows = ssGroupDaily(window._ssDailyAll || [], 'month');
+    renderList('monthlySalesListContainer', rows.map(function(m){ return { label: m.key, detail: ssSummaryDetail(m), right: fmtMoney(m.total) }; }), monthlyListPage, PER_PAGE_LIST, 'loadMoreMonthlyList');
+}
+async function buildMonthlyGridView() {
+    await ssEnsureDailyData();
+    var rows = ssGroupDaily(window._ssDailyAll || [], 'month');
+    renderGrid('monthlySalesGridContainer', rows.map(function(m){ return { label: m.key, detail: ssSummaryDetail(m), right: fmtMoney(m.total) }; }), monthlyGridPage, PER_PAGE_GRID, 'loadMoreMonthlyGrid');
+}
+
+// ---------- YEARLY ----------
+async function initYearlyExcelTable() {
+    await ssEnsureDailyData();                                    // 🔑 the crash fix
+    var data = ssGroupDaily(window._ssDailyAll || [], 'year');
+    if (window.yearlySalesTable) { window.yearlySalesTable.setData(data); return; }
+    var cols = [{ title: 'Year', field:'key' }].concat(SS_SUMMARY_COLS);
+    window.yearlySalesTable = new ModernSheet('yearlySalesExcelContainer', {
+        data: data, columns: cols, emptyMessage: 'No sales', showSearch:false, showFontSlider:true
+    });
+}
+async function buildYearlyListView() {
+    await ssEnsureDailyData();
+    var rows = ssGroupDaily(window._ssDailyAll || [], 'year');
+    renderList('yearlySalesListContainer', rows.map(function(y){ return { label: y.key, detail: ssSummaryDetail(y), right: fmtMoney(y.total) }; }), yearlyListPage, PER_PAGE_LIST, 'loadMoreYearlyList');
+}
+async function buildYearlyGridView() {
+    await ssEnsureDailyData();
+    var rows = ssGroupDaily(window._ssDailyAll || [], 'year');
+    renderGrid('yearlySalesGridContainer', rows.map(function(y){ return { label: y.key, detail: ssSummaryDetail(y), right: fmtMoney(y.total) }; }), yearlyGridPage, PER_PAGE_GRID, 'loadMoreYearlyGrid');
+}
+  
 // Detailed Grid
 function loadMoreDetailedGrid() {
     detailedGridPage++;
@@ -8007,8 +7907,25 @@ async function getTopProductsData() {
     } catch(e) { return []; }
 }
 
+// ═══ TOP PRODUCTS — self-loading (async-proof) ═══
+function switchTopProductsView(view) {
+    currentTopProdView = view;
+    var btns = document.querySelectorAll('.topprod-view-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.view === view);
+    var excel = document.getElementById('topProductsExcelContainer');
+    var list = document.getElementById('topProductsListContainer');
+    var grid = document.getElementById('topProductsGridContainer');
+    if (excel) excel.style.display = view === 'excel' ? 'block' : 'none';
+    if (list) list.style.display = view === 'list' ? 'block' : 'none';
+    if (grid) grid.style.display = view === 'grid' ? 'block' : 'none';
+
+    if (view === 'excel') { initTopProductsExcel(); }
+    else if (view === 'list') { topProdListPage = 1; buildTopProductsList(); }
+    else if (view === 'grid') { topProdGridPage = 1; buildTopProductsGrid(); }
+}
+
 async function initTopProductsExcel() {
-    var data = await getTopProductsData();
+    var data = await getTopProductsData();            // 🔑 self-fetching
     if (window.topProdTable) { window.topProdTable.setData(data); return; }
     window.topProdTable = new ModernSheet('topProductsExcelContainer', {
         data: data,
@@ -8021,7 +7938,6 @@ async function initTopProductsExcel() {
         emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true
     });
 }
-
 async function buildTopProductsList() {
     var data = await getTopProductsData();
     var mapped = data.map(function(p){ return { label: sanitize(p.name), detail: 'Sold: ' + p.qty, right: fmtMoney(p.revenue) }; });
@@ -8055,14 +7971,31 @@ async function getCashierReportData() {
     } catch(e) { console.warn('Cashier report failed:', e.message); return []; }
 }
 
+// ═══ CASHIER PERFORMANCE — self-loading (async-proof) ═══
+function switchCashierReportView(view) {
+    currentCashierRepView = view;
+    var btns = document.querySelectorAll('.cashierrep-view-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.view === view);
+    var excel = document.getElementById('cashierReportExcelContainer');
+    var list = document.getElementById('cashierReportListContainer');
+    var grid = document.getElementById('cashierReportGridContainer');
+    if (excel) excel.style.display = view === 'excel' ? 'block' : 'none';
+    if (list) list.style.display = view === 'list' ? 'block' : 'none';
+    if (grid) grid.style.display = view === 'grid' ? 'block' : 'none';
+
+    if (view === 'excel') { initCashierReportExcel(); }
+    else if (view === 'list') { cashierRepListPage = 1; buildCashierReportList(); }
+    else if (view === 'grid') { cashierRepGridPage = 1; buildCashierReportGrid(); }
+}
+
 async function initCashierReportExcel() {
-    var data = await getCashierReportData();
+    var data = await getCashierReportData();          // 🔑 table fetches its OWN data
     if (window.cashierRepTable) { window.cashierRepTable.setData(data); return; }
     window.cashierRepTable = new ModernSheet('cashierReportExcelContainer', {
         data: data,
         columns: [
             { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
-            { title: 'Cashier', field:'name' },
+            { title: 'Cashier', field:'name', render: function(item,html){ return html?sanitize(item.name):item.name; } },
             { title: '💵 Cash', field:'cash', align:'right', render: function(item,html){ return html?fmtMoney(item.cash):item.cash; } },
             { title: '💳 Card', field:'card', align:'right', render: function(item,html){ return html?fmtMoney(item.card):item.card; } },
             { title: '📱 Mobile', field:'mobile', align:'right', render: function(item,html){ return html?fmtMoney(item.mobile):item.mobile; } },
@@ -8072,6 +8005,8 @@ async function initCashierReportExcel() {
         emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true
     });
 }
+
+  
 
 async function buildCashierReportList() {
     var data = await getCashierReportData();
@@ -8141,40 +8076,12 @@ async function buildSalesReportGrid() {
     renderGrid('salesReportGridContainer', mapped, salesRepGridPage, 12, 'loadMoreSalesRepGrid');
 }
 // ===== CASHIER PERFORMANCE =====
-function switchCashierReportView(view) {
-    currentCashierRepView = view;
-    var btns = document.querySelectorAll('.cashierrep-view-btn');
-    for (var i=0; i<btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.view === view);
-    document.getElementById('cashierReportExcelContainer').style.display = view==='excel'?'block':'none';
-    document.getElementById('cashierReportListContainer').style.display = view==='list'?'block':'none';
-    document.getElementById('cashierReportGridContainer').style.display = view==='grid'?'block':'none';
-
-    if (view==='excel') {
-        if (!window.cashierRepTable) initCashierReportExcel();
-        else window.cashierRepTable.setData(getCashierReportData());
-    } else if (view==='list') { cashierRepListPage=1; buildCashierReportList(); }
-    else if (view==='grid') { cashierRepGridPage=1; buildCashierReportGrid(); }
-}
 		
 function loadMoreCashierRepList() { cashierRepListPage++; var data = getCashierReportData().map(function(c){ return { label: c.name, detail: 'Cash: Br '+c.cash.toFixed(2)+' | Card: Br '+c.card.toFixed(2)+' | Mobile: Br '+c.mobile.toFixed(2)+' | Credit: Br '+c.credit.toFixed(2), right: 'Total: Br '+c.total.toFixed(2) }; }); loadMoreList('cashierReportListContainer', data, cashierRepListPage, 20, 'loadMoreCashierRepList'); }
 function loadMoreCashierRepGrid() { cashierRepGridPage++; var data = getCashierReportData().map(function(c){ return { label: c.name, detail: 'Cash: Br '+c.cash.toFixed(2)+' | Card: Br '+c.card.toFixed(2)+' | Mobile: Br '+c.mobile.toFixed(2)+' | Credit: Br '+c.credit.toFixed(2), right: appCurrencySymbol +c.total.toFixed(2) }; }); loadMoreGrid('cashierReportGridContainer', data, cashierRepGridPage, 12, 'loadMoreCashierRepGrid'); }
 
 // ===== TOP PRODUCTS =====
 
-function switchTopProductsView(view) {
-    currentTopProdView = view;
-    var btns = document.querySelectorAll('.topprod-view-btn');
-    for (var i=0; i<btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.view === view);
-    document.getElementById('topProductsExcelContainer').style.display = view==='excel'?'block':'none';
-    document.getElementById('topProductsListContainer').style.display = view==='list'?'block':'none';
-    document.getElementById('topProductsGridContainer').style.display = view==='grid'?'block':'none';
-
-    if (view==='excel') {
-        if (!window.topProdTable) initTopProductsExcel();
-        else window.topProdTable.setData(getTopProductsData());
-    } else if (view==='list') { topProdListPage=1; buildTopProductsList(); }
-    else if (view==='grid') { topProdGridPage=1; buildTopProductsGrid(); }
-}
 
 									
 function loadMoreTopProdList() { topProdListPage++; var data = getTopProductsData().map(function(p){ return { label: p.name, detail: 'Sold: '+p.qty, right: appCurrencySymbol +p.revenue.toFixed(2) }; }); loadMoreList('topProductsListContainer', data, topProdListPage, 20, 'loadMoreTopProdList'); }
