@@ -2035,4 +2035,3 @@ function switchDailySummaryView(view) {
     else if (view === 'list') { dailySummaryListPage = 1; buildDailySummaryList(); }
     else if (view === 'grid') { dailySummaryGridPage = 1; buildDailySummaryGrid(); }
 }
-  
