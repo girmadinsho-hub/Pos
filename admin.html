@@ -1950,6 +1950,8 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
         </div>
         <!-- NEW MARKETING BUTTON -->
         <button class="btn btn-primary" onclick="openMarketingModal()" style="width:100%; background:#25D366; color:white; border:none;">📣 WhatsApp Marketing Campaign</button>
+              <!-- 🏛️ GOVERNMENT TAX REPORT (ERCA-ready) -->
+        <button class="btn btn-primary" onclick="openFiscalReport()" style="width:100%; background:#b45309; margin-top:8px;">🏛️ Government Tax Report (ERCA)</button>
     </div>
     
 		 
@@ -2531,7 +2533,15 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
             
             <label>📊 VAT Registration Number</label>
             <input type="text" class="form-input" id="brandVat" placeholder="e.g., 600123456">
-					   <button class="btn btn-primary" onclick="saveShopBranding()">💾 Save</button>
+
+           
+            <label>🏛️ Tax Registration Type</label>
+            <select class="form-select" id="brandTaxType">
+                <option value="TOT">TOT — Turnover Tax (small business)</option>
+                <option value="VAT">VAT — Value Added Tax (registered)</option>
+            </select>
+
+	   <button class="btn btn-primary" onclick="saveShopBranding()">💾 Save</button>
 
         </div>
     </div>
@@ -3223,6 +3233,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 <script src="shared.js"></script>
 <script src="ssauth.js"></script>	 
 <script src="ssperf.js"></script>
+<script src="ssfiscal.js"></script>
 <script src="ssupload.js"></script>
 <script src="advanced.js"></script>
 <script src="smartcom.js"></script>
@@ -8746,7 +8757,8 @@ async function savePasswords() {
         shop_lat: document.getElementById('brandShopLat').value.trim() || null, 
         shop_lng: document.getElementById('brandShopLng').value.trim() || null,
         tin_number: document.getElementById('brandTin').value.trim(),
-        vat_number: document.getElementById('brandVat').value.trim()
+        vat_number: document.getElementById('brandVat').value.trim(),
+        tax_type: document.getElementById('brandTaxType') ? document.getElementById('brandTaxType').value : 'TOT'
     };
 
     try {
@@ -8803,6 +8815,7 @@ async function loadBrandingForm() {
             if (document.getElementById('brandCurrency')) document.getElementById('brandCurrency').value = data.currency || 'Br ';
             if (document.getElementById('brandTin')) document.getElementById('brandTin').value = data.tin_number || '';
             if (document.getElementById('brandVat')) document.getElementById('brandVat').value = data.vat_number || '';
+            if (document.getElementById('brandTaxType')) document.getElementById('brandTaxType').value = data.tax_type || 'TOT';
         }
     } catch(e) { console.error("Error loading branding:", e); }
 }
@@ -8935,7 +8948,50 @@ async function activateLicense() {
         alert('❌ Activation failed: ' + e.message);
     }
 }
-	
+  
+	// ═══ 🏛️ GOVERNMENT TAX REPORT — monthly fiscal summary (ERCA format) ═══
+async function openFiscalReport() {
+    var m = await prompt('Month (1-12):', String(new Date().getMonth() + 1));
+    if (!m) return;
+    var y = await prompt('Year:', String(new Date().getFullYear()));
+    if (!y) return;
+
+    var rep = await ssFiscalMonthlyReport(parseInt(y), parseInt(m));
+
+    var summary =
+        '🏛️ MONTHLY TAX REPORT\n' +
+        'Period: ' + y + ' / ' + m + '\n' +
+        '─────────────────────\n' +
+        'Receipts issued: ' + rep.issued + '\n' +
+        'Receipts voided: ' + rep.voided + ' (kept for audit)\n' +
+        'First receipt: ' + (rep.firstNo || '—') + '\n' +
+        'Last receipt: ' + (rep.lastNo || '—') + '\n' +
+        '─────────────────────\n' +
+        'Total sales: ' + fmtMoney(rep.totalSales) + '\n' +
+        'VAT collected: ' + fmtMoney(rep.totalVat) + '\n' +
+        '─────────────────────\n' +
+        'Keep this for your monthly tax declaration.';
+
+    alert(summary);
+
+    // Also log to console for copy-paste if needed
+    console.log('FISCAL REPORT', rep);
+
+    // Offer detailed receipt list
+    if (rep.receipts.length > 0) {
+        var wantDetail = await confirm('Show detailed receipt list?');
+        if (wantDetail) {
+            var detail = 'RECEIPT LIST ' + y + '/' + m + '\n\n';
+            rep.receipts.forEach(function(r) {
+                detail += r.receipt_no + ' | ' + new Date(r.receipt_date).toLocaleDateString() +
+                    ' | ' + fmtMoney(r.total) +
+                    ' | ' + (r.status === 'voided' ? '❌ VOIDED' : '✅') +
+                    (r.is_offline ? ' | (offline)' : '') + '\n';
+            });
+            alert(detail);
+        }
+    }
+}
 async function contactProvider() {
     await loadSupportContactsUniversal();
     var s = window.SUPPORT;
