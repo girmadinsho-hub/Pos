@@ -5036,17 +5036,26 @@ function initOrderTable() {
     data: purchaseOrders, 
     columns: [
       { title: '#', width: '40px', render: function(item, html, idx) { return idx+1; } },
-      { title: 'Order #', width: '100px', render: function(item, html) { return html ? '#' + item.id.slice(-5) : item.id; } },
-      { title: t('supplier'), render: function(item, html) { 
+      { title: 'Order #', width: '100px', render: function(item, html) { return html ? '<b>' + sanitize(item.orderNo || item.order_no || ('#' + item.id.slice(-5))) + '</b>' : (item.orderNo || item.order_no || item.id); } },      { title: t('supplier'), render: function(item, html) { 
           var s = suppliers.find(function(s) { return s.id === item.supplierId; }); 
           return html ? sanitize(s ? s.name : 'Unknown') : (s ? s.name : 'Unknown'); 
       }},
       // NEW: ITEMS COLUMN
-      { title: 'Items Ordered', render: function(item, html) {
-          if (!item.items || item.items.length === 0) return '-';
-          // Join all items into a string like: "Sugar x10, Coffee x5"
-          var str = item.items.map(function(i) { return i.name + ' x' + i.qty; }).join(', ');
-          return html ? '<span style="font-size:11px;">' + sanitize(str) + '</span>' : str;
+      { title: 'Items', render: function(item, html) {
+          // Pending items (not yet delivered) + received items (history) — full story
+          var pending = item.items || [];
+          var received = item.received_items || [];
+          if (pending.length === 0 && received.length === 0) return '-';
+          var parts = [];
+          if (received.length) {
+              var rStr = received.map(function(i) { return '✅ ' + i.name + ' x' + i.qty; }).join(', ');
+              parts.push(html ? '<span style="font-size:11px; color:#059669;">' + sanitize(rStr) + '</span>' : rStr);
+          }
+          if (pending.length) {
+              var pStr = pending.map(function(i) { return '⏳ ' + i.name + ' x' + i.qty; }).join(', ');
+              parts.push(html ? '<span style="font-size:11px; color:#f59e0b;">' + sanitize(pStr) + '</span>' : pStr);
+          }
+          return parts.join(html ? '<br>' : ' | ');
       }},
       { title: t('date'), field: 'date', width: '100px', render: function(item, html) { return html ? formatDate(item.date) : item.date; } },
       { title: t('status'), field: 'status', width: '80px', render: function(item, html) { 
@@ -6396,7 +6405,7 @@ async function confirmPartialReceive(finishOrder) {
     if (delivered.length === 0) { alert('Set at least one delivered quantity above 0.'); return; }
 
     try {
-        // 1. Add stock ONLY for delivered items (+ purchase log for cost history)
+        // 1. Add stock for delivered items + purchase log
         for (var i = 0; i < delivered.length; i++) {
             var d = delivered[i];
             var product = products.find(p => p.id === d.item.productId);
@@ -6405,7 +6414,7 @@ async function confirmPartialReceive(finishOrder) {
                     .update({ stock: (product.stock || 0) + d.qty })
                     .eq('firebase_id', d.item.productId);
                 if (prodErr) console.error('Stock update failed:', prodErr.message);
-                product.stock += d.qty;   // instant local update
+                product.stock += d.qty;
             }
             try {
                 await supabaseClient.from('purchases').insert([{
@@ -6417,29 +6426,37 @@ async function confirmPartialReceive(finishOrder) {
             } catch(e) {}
         }
 
-        // 2. Update the order: delivered stock moves out, remaining stays pending
+        // 2. 🔑 THE FIX: orders remember their FULL story
+        //    received_items = everything ever delivered (for history display)
+        //    items = only what's still pending (for the next delivery)
+        if (!order.received_items) order.received_items = [];
+        delivered.forEach(function(d) {
+            order.received_items.push({ productId: d.item.productId, name: d.item.name,
+                unit: d.item.unit || '', qty: d.qty, unitCost: d.item.unitCost || 0 });
+        });
         order.items = remaining;
         order.status = (finishOrder || remaining.length === 0) ? 'received' : 'partially_received';
+
+        var remainingTotal = remaining.reduce(function(s,x){ return s + (x.qty * (x.unitCost||0)); }, 0);
         await supabaseClient.from('purchase_orders')
-            .update({ items: remaining, status: order.status, total: remaining.reduce(function(s,x){ return s + (x.qty * (x.unitCost||0)); }, 0) })
+            .update({ items: remaining, received_items: order.received_items,
+                      status: order.status, total: remainingTotal })
             .eq('firebase_id', order.id);
 
-        // 3. 🔑 INSTANT refresh everywhere
+        // 3. Instant refresh everywhere
         document.getElementById('receiveModal').classList.remove('active');
         if (orderTable) orderTable.setData(purchaseOrders);
         if (typeof filterProductView === 'function') filterProductView();
         if (window.productTable) window.productTable.setData(products);
         if (window.stockTable) window.stockTable.setData(products);
         if (typeof renderStockAlertCenter === 'function') renderStockAlertCenter();
-        if (typeof switchStockView === 'function' && document.getElementById('stockExcelContainer')) switchStockView('excel');
 
         alert('✅ Received ' + delivered.length + ' item(s).' +
               (order.status === 'partially_received'
-                  ? '\n📦 ' + remaining.length + ' item(s) still pending — receive them on the next delivery!'
+                  ? '\n📦 ' + remaining.length + ' item(s) still pending.'
                   : '\nOrder complete!'));
     } catch(e) { alert('❌ Error: ' + e.message); }
-}
-	// ===== CANCEL ORDER (SUPABASE) =====
+}	// ===== CANCEL ORDER (SUPABASE) =====
 async function cancelOrder(id) {
     if (!await confirm('Cancel this order?')) return;
     try {
@@ -6492,6 +6509,7 @@ function loadSupplierProducts() {
         '<button class="btn-mini" id="poFSell" onclick="setPoFilter(\'sellable\')" style="flex:1;">🛒 Sellable</button>' +
         '<button class="btn-mini" id="poFRaw" onclick="setPoFilter(\'raw\')" style="flex:1;">🧪 Raw Material</button>' +
         '</div>' +
+       '<input type="text" id="poReference" class="form-input" placeholder="Order reference (optional — auto: PO-0001)" style="margin-bottom:8px;">' +
         '<input type="text" id="poSearch" class="search-box" placeholder="🔍 Search product to order..." oninput="renderPoProductList()" style="margin-bottom:8px;">' +
         '<div id="poProductList" style="max-height:230px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px; padding:8px;"></div>' +
         '<div id="poSelectedSummary" style="margin-top:8px; font-size:13px; font-weight:bold; color:#2563eb;"></div>';
@@ -6578,14 +6596,17 @@ async function createPurchaseOrder() {
     if (!items.length) { alert(t('noItemsSelected')); return; }
 
     try {
-        var docRef = { id: 'po_' + Date.now() };
-        var total = items.reduce(function(s,i) { return s + (i.qty * i.unitCost); }, 0);
+        // 📝 Readable order number: PO-0001, PO-0002... (editable reference below)
+        var orderNo = 'PO-' + String(purchaseOrders.length + 1).padStart(4, '0');
+        var customRef = document.getElementById('poReference') ? document.getElementById('poReference').value.trim() : '';
+        var docRef = { id: 'po_' + Date.now(), orderNo: customRef || orderNo };        var total = items.reduce(function(s,i) { return s + (i.qty * i.unitCost); }, 0);
         var poDate = new Date().toISOString().slice(0,10);
 
         if (supabaseClient) {
             const { error } = await supabaseClient.from('purchase_orders').insert([{
                 firebase_id: docRef.id, shop_id: getShopId(), supplier_id: supId,
-                items: items, total: total, status: 'pending', date: poDate
+                items: items, total: total, status: 'pending', date: poDate,
+                order_no: docRef.orderNo
             }]);
             if (error) throw error;
         }
