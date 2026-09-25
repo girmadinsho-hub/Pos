@@ -161,10 +161,11 @@ ModernSheet.prototype.buildHeader = function() {
       })(i, filterArrow);
     }
 
-    var handle = document.createElement('div');
+        var handle = document.createElement('div');
     handle.className = 'modern-sheet-resize-handle';
     (function(idx, thEl) {
       handle.addEventListener('mousedown', function(e) { self.startResize(e, thEl, idx); });
+      handle.addEventListener('touchstart', function(e) { self.startResize(e, thEl, idx); }, { passive: false });
     })(i, th);
     th.appendChild(handle);
 
@@ -183,27 +184,38 @@ ModernSheet.prototype.getFrozenLeft = function(colIdx) {
   }
   return left;
 };
-
 ModernSheet.prototype.startResize = function(e, th, colIdx) {
-  e.preventDefault();
-  var startX = e.pageX;
-  var startWidth = th.offsetWidth;
-  var self = this;
+    e.preventDefault();
+    e.stopPropagation();
+    var self = this;
+    var isTouch = (e.type === 'touchstart');
+    var startX = isTouch ? e.touches[0].pageX : e.pageX;
+    var startWidth = th.offsetWidth;
 
-  var onMove = function(e) {
-    var newWidth = Math.max(40, startWidth + (e.pageX - startX));
-    th.style.width = newWidth + 'px';
-    self.columns[colIdx].width = newWidth + 'px';
-    if (colIdx < self.frozenColumns) self.render();
-  };
-  var onUp = function() {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
-  };
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
+    var onMove = function(ev) {
+        var x = (ev.touches && ev.touches.length) ? ev.touches[0].pageX : ev.pageX;
+        var newWidth = Math.max(40, startWidth + (x - startX));
+        th.style.width = newWidth + 'px';
+        self.columns[colIdx].width = newWidth + 'px';
+        if (colIdx < self.frozenColumns) self.render();
+        if (ev.cancelable) ev.preventDefault();
+    };
+    var onUp = function() {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onUp);
+        document.removeEventListener('touchcancel', onUp);
+    };
+    if (isTouch) {
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', onUp);
+        document.addEventListener('touchcancel', onUp);
+    } else {
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    }
 };
-
 ModernSheet.prototype.autoFitColumn = function(colIdx) {
   var th = this.thead.querySelectorAll('th')[this.getVisibleIndex(colIdx)];
   if (!th) return;
