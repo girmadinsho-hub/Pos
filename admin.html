@@ -1,4 +1,4 @@
-	<!DOCTYPE html> 
+<!DOCTYPE html> 
        <html>
        <head>
 	<script>window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#7f1d1d;color:#fff;padding:10px;font-family:monospace;font-size:12px;';d.textContent='❌ '+m+' | Line:'+l;d.onclick=function(){d.remove();};document.body.appendChild(d);};</script>
@@ -1011,6 +1011,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
         <button class="period-btn active" onclick="loadDashboard('daily',this)">📅 Today</button>
         <button class="period-btn" onclick="loadDashboard('weekly',this)">📅 Week</button>
         <button class="period-btn" onclick="loadDashboard('monthly',this)">📅 Month</button>
+        <button class="period-btn" onclick="loadDashboard('yearly',this)">📅 Year</button>
     </div>
 
     <!-- KPI Row 1 -->
@@ -8348,6 +8349,7 @@ async function loadDashboard(period, btn) {
     if (period === 'daily') { start = new Date(now.getFullYear(), now.getMonth(), now.getDate()); }
     else if (period === 'weekly') { start = new Date(now.getTime() - 7*86400000); }
     else if (period === 'monthly') { start = new Date(now.getTime() - 30*86400000); }
+    else if (period === 'yearly') { start = new Date(now.getTime() - 365*86400000); }
 
     // 🚀 Package 4: daily summary rows from the SERVER (split-payment aware)
     var sales = [];
