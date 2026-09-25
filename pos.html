@@ -1296,6 +1296,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 <script src="sheet.js"></script>			 
 <script src="shared.js"></script>
 	<script src="ssauth.js"></script>
+  <script src="ssfiscal.js"></script>
   <script src="ssprint.js"></script>
 <script>
   
@@ -3275,7 +3276,9 @@ async function completePayment() {
     else receipt += payments[0].method;
     receipt += '\n──────────────────────\n';
     receipt += (window.shopBranding && window.shopBranding.receiptFooter) ? window.shopBranding.receiptFooter + '\n' : 'Thanks for coming!\n';
-    
+        // 🧾 FISCAL — gapless receipt number + archive (ERCA-ready)
+    var fiscalNo = await ssCreateFiscalReceipt(sale);
+    receipt += ssFiscalReceiptFooter(fiscalNo);
     document.getElementById('receiptContent').textContent = receipt;
       window._lastSaleForPrint = { brand: brand, items: items, subtotal: subtotal, discount: discount,
         tax: tax, taxRate: (parseFloat(document.getElementById('taxRate').value) || 0),
@@ -4029,6 +4032,7 @@ async function voidSale(saleId) {
             }
 
             // MARK voided — stays in records
+            await ssVoidFiscalReceipt(saleData.invoice_no || '');
             const { error: voidErr } = await supabaseClient.from('sales').update({
                 voided: true,
                 voided_at: new Date().toISOString(),
@@ -4227,7 +4231,8 @@ function handleWaiterCall(call) {
                 currency: data.currency || 'Br ',
                 receiptFooter: data.receipt_footer || 'Thank you for coming!',
                 tinNumber: data.tin_number || '',
-                vatNumber: data.vat_number || ''
+                vatNumber: data.vat_number || '',
+                taxType: data.tax_type || 'TOT'
             };
         } else {
             window.shopBranding = { name: 'SmartShop Pro', phone: '', address: '', currency: 'Br ', receiptFooter: 'Thank you for coming!' };
