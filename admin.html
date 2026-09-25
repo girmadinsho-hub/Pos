@@ -1872,48 +1872,13 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
         <button class="period-btn" onclick="loadReports('month',this)">📅 Month</button>
         <button class="period-btn" onclick="loadReports('year',this)">📅 Year</button>
     </div>
+    
     <div class="dashboard-grid">
         <div class="stat-card"><div class="stat-label">💰 Revenue</div><div class="stat-value" id="repRevenue">Br 0</div></div>
         <div class="stat-card green"><div class="stat-label">📈 Gross Profit</div><div class="stat-value" id="repGrossProfit">Br 0</div></div>
-        <div class="stat-card red"><div class="stat-label">📉 Losses</div><div class="stat-value" id="repLosses">Br 0</div></div>
         <div class="stat-card orange"><div class="stat-label">💸 Expenses</div><div class="stat-value" id="repExpenses">Br 0</div></div>
         <div class="stat-card purple"><div class="stat-label">💎 Net Profit</div><div class="stat-value" id="repNetProfit">Br 0</div></div>
-        <div class="stat-card"><div class="stat-label">💳 Credit Due</div><div class="stat-value" id="repCreditDue">Br 0</div></div>
     </div>
-
-<!-- Daily Summary Report -->
-<div class="card">
-    <div class="card-title" onclick="toggleCard(this)" data-lang-key="dailySummaryReport">📊 Daily Summary Report <span class="arrow open">▶</span>
-        <div style="margin-left:auto;display:flex;gap:6px;" onclick="event.stopPropagation()">
-            <button class="btn-mini active dailyrep-view-btn" data-view="excel" onclick="switchDailySummaryView('excel')">📊 Excel</button>
-            <button class="btn-mini dailyrep-view-btn" data-view="list" onclick="switchDailySummaryView('list')">📋 List</button>
-            <button class="btn-mini dailyrep-view-btn" data-view="grid" onclick="switchDailySummaryView('grid')">⊞ Grid</button>
-        </div>
-    </div>
-    <div class="card-body">
-        <div id="dailySummaryExcelContainer"></div>
-        <div id="dailySummaryListContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-        <div id="dailySummaryGridContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-    </div>
-</div>
-
-    <!-- ====== SALES REPORT ====== -->
-    <div class="card">
-        <div class="card-title" onclick="toggleCard(this)">
-            📊 Sales Report <span class="arrow open">▶</span>
-            <div style="margin-left:auto;display:flex;gap:6px;" onclick="event.stopPropagation()">
-                <button class="btn-mini active salesrep-view-btn" data-view="excel" onclick="switchSalesReportView('excel')">📊 Excel</button>
-                <button class="btn-mini salesrep-view-btn" data-view="list" onclick="switchSalesReportView('list')">📋 List</button>
-                <button class="btn-mini salesrep-view-btn" data-view="grid" onclick="switchSalesReportView('grid')">⊞ Grid</button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div id="salesReportExcelContainer"></div>
-            <div id="salesReportListContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-            <div id="salesReportGridContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-        </div>
-    </div>
-
 
 
     <!-- ====== CASHIER PERFORMANCE ====== -->
@@ -7973,10 +7938,8 @@ async function updateReportOverview() {
 
     document.getElementById('repRevenue').textContent = fmtMoney(revenue);
     document.getElementById('repGrossProfit').textContent = fmtMoney(grossProfit);
-    document.getElementById('repLosses').textContent = fmtMoney(tl);
     document.getElementById('repExpenses').textContent = fmtMoney(te);
     document.getElementById('repNetProfit').textContent = fmtMoney(grossProfit - tl - te);
-    document.getElementById('repCreditDue').textContent = fmtMoney(creditDue);
 }
 // Period change handler
 function loadReports(period, btn) {
@@ -7985,8 +7948,7 @@ function loadReports(period, btn) {
     for (var i=0; i<btns.length; i++) btns[i].classList.remove('active');
     if (btn) btn.classList.add('active');
     updateReportOverview();
-    // Refresh all currently visible report views
-    switchSalesReportView(currentSalesRepView);
+    // Refresh report views (Sales Report + Daily Summary removed — duplicates of Sales menu)
     switchExpenseReportView(currentExpenseRepView);
     switchCashierReportView(currentCashierRepView);
     switchTopProductsView(currentTopProdView);
@@ -7994,7 +7956,6 @@ function loadReports(period, btn) {
     switchLoanReportView(currentLoanRepView);
     switchBankReportView(currentBankRepView);
 }
-
 // ===== SALES REPORT =====
 function switchSalesReportView(view) {
     currentSalesRepView = view;
@@ -8366,7 +8327,6 @@ function loadMoreBankRepGrid() { bankRepGridPage++; var data = getBankReportData
 // ===== INIT ALL REPORT VIEWS ON TAB LOAD =====
 function initReportsTab() {
     updateReportOverview();
-    switchSalesReportView('excel');
     switchExpenseReportView('excel');
     switchCashierReportView('excel');
     switchTopProductsView('excel');
@@ -8374,7 +8334,6 @@ function initReportsTab() {
     switchLoanReportView('excel');
     switchBankReportView('excel');
 }
-
 
 
 			
