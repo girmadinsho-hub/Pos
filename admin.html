@@ -1,4 +1,4 @@
-	<!DOCTYPE html> 
+<!DOCTYPE html> 
        <html>
        <head>
 	<script>window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#7f1d1d;color:#fff;padding:10px;font-family:monospace;font-size:12px;';d.textContent='❌ '+m+' | Line:'+l;d.onclick=function(){d.remove();};document.body.appendChild(d);};</script>
@@ -6262,6 +6262,9 @@ async function deleteBankTxn(id) {
     } catch(e) { alert('❌ Error: ' + e.message); }
 }
 
+
+
+  
 // ===== SUPPLIERS & ORDERS =====
 function renderSuppliers() {
   document.getElementById('supplierList').innerHTML = suppliers.map(function(s) { return '<div style="padding:6px;border-bottom:1px solid #f1f5f9;">'+sanitize(s.name)+' ('+sanitize(s.phone||'')+') <button class="btn-mini" onclick="deleteSupplier(\''+s.id+'\')">🗑️</button></div>'; }).join('');
@@ -6270,6 +6273,7 @@ function populateSupplierDropdowns() {
   var sel = document.getElementById('poSupplier');
   sel.innerHTML = '<option value="">'+t('selectSupplier')+'</option>' + suppliers.map(function(s) { return '<option value="'+s.id+'">'+sanitize(s.name)+'</option>'; }).join('');
 }
+  
 
 	async function addSupplier() {
     var name = document.getElementById('supName').value.trim();
@@ -6320,45 +6324,8 @@ function populateSupplierDropdowns() {
     } catch(e) { alert('❌ Error: ' + e.message); }
 }
 
-async function createPurchaseOrder() {
-    var supId = document.getElementById('poSupplier').value;
-    if (!supId) { alert(t('selectSupplier')); return; }
-    var items = [];
-    products.forEach(function(p) {
-        var qtyInput = document.getElementById('poQty_'+p.id);
-        var qty = qtyInput ? parseInt(qtyInput.value) : 0;
-        if (qty > 0) items.push({ productId: p.id, name: p.name, qty: qty, unitCost: p.costPrice || 0 });
-    });
-    if (!items.length) { alert(t('noItemsSelected')); return; }
 
-    try {
-        var docRef = { id: 'po_' + Date.now() };
-        var total = items.reduce(function(s,i) { return s + (i.qty * i.unitCost); }, 0);
-        var poDate = new Date().toISOString().slice(0,10);
-        
-        // SAVE TO SUPABASE ONLY
-        if (supabaseClient) {
-            const { error } = await supabaseClient.from('purchase_orders').insert([{
-                firebase_id: docRef.id,
-                shop_id: getShopId(),
-                supplier_id: supId,
-                items: items,
-                total: total,
-                status: 'pending',
-                date: poDate
-            }]);
-            if (error) console.error("Supabase PO Save Error:", error.message);
-        }
-
-        // Update local UI instantly
-        purchaseOrders.push({ id: docRef.id, shopId: getShopId(), supplierId: supId, items: items, total: total, status: 'pending', date: poDate });
-        if (orderTable) orderTable.setData(purchaseOrders);
-        
-        alert(t('saved'));
-        loadSupplierProducts();
-    } catch(e) { alert('❌ ' + e.message); }
-}
-	
+  
 async function receiveOrder(id) {
     if (!await confirm('Receive this order? Stock will be updated.')) return;
     try {
@@ -6436,6 +6403,100 @@ async function deleteOrder(id) {
     } catch(e) { alert('❌ Error: ' + e.message); }
 }
 
+
+// ═══ PURCHASE ORDER BUILDER — searchable product list (was missing) ═══
+function loadSupplierProducts() {
+    var container = document.getElementById('poItems');
+    if (!container) { console.warn('poItems container missing'); return; }
+
+    var html = '<input type="text" id="poSearch" class="search-box" placeholder="🔍 Search product to order..." oninput="renderPoProductList()" style="margin-bottom:8px;">' +
+               '<div id="poProductList" style="max-height:250px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px; padding:8px;"></div>' +
+               '<div id="poSelectedSummary" style="margin-top:8px; font-size:13px; font-weight:bold; color:#2563eb;"></div>';
+    container.innerHTML = html;
+    renderPoProductList();
+}
+
+function renderPoProductList() {
+    var listDiv = document.getElementById('poProductList');
+    if (!listDiv) return;
+    var q = (document.getElementById('poSearch') ? document.getElementById('poSearch').value : '').toLowerCase();
+
+    var rows = products.filter(function(p) {
+        if (q && p.name.toLowerCase().indexOf(q) === -1) return false;
+        return true;
+    });
+
+    if (rows.length === 0) {
+        listDiv.innerHTML = '<p style="text-align:center; color:#94a3b8; padding:15px;">No products found.</p>';
+        return;
+    }
+
+    var html = '';
+    rows.forEach(function(p) {
+        var qtyInput = document.getElementById('poQty_' + p.id);
+        var currentQty = qtyInput ? qtyInput.value : '';
+        var low = (!p.isVirtual && p.stock <= (p.reorderLevel || 5));
+        html += '<div style="display:flex; align-items:center; gap:6px; padding:7px 4px; border-bottom:1px solid #f1f5f9;">' +
+            '<div style="flex:1; min-width:0;">' +
+                '<div style="font-weight:600; font-size:13px;">' + sanitize(p.name) + (low ? ' <span style="color:#ef4444;">⚠️</span>' : '') + '</div>' +
+                '<small style="color:#64748b;">Stock: ' + (p.stock || 0) + ' ' + (p.unit || '') + ' | Cost: ' + fmtMoney(p.costPrice || 0) + '</small>' +
+            '</div>' +
+            '<input type="number" id="poQty_' + p.id + '" value="' + currentQty + '" min="0" placeholder="0" ' +
+            'oninput="updatePoSummary()" style="width:70px; padding:8px; border:1px solid #cbd5e1; border-radius:8px; text-align:center; font-size:14px;">' +
+        '</div>';
+    });
+    listDiv.innerHTML = html;
+    updatePoSummary();
+}
+
+function updatePoSummary() {
+    var summary = document.getElementById('poSelectedSummary');
+    if (!summary) return;
+    var count = 0, total = 0;
+    products.forEach(function(p) {
+        var el = document.getElementById('poQty_' + p.id);
+        if (el) {
+            var q = parseFloat(el.value) || 0;
+            if (q > 0) { count++; total += q * (p.costPrice || 0); }
+        }
+    });
+    summary.textContent = count > 0
+        ? '🛒 ' + count + ' item(s) selected — Estimated total: ' + fmtMoney(total)
+        : '';
+}
+
+async function createPurchaseOrder() {
+    var supId = document.getElementById('poSupplier').value;
+    if (!supId) { alert(t('selectSupplier')); return; }
+    var items = [];
+    products.forEach(function(p) {
+        var qtyInput = document.getElementById('poQty_' + p.id);
+        var qty = qtyInput ? parseFloat(qtyInput.value) : 0;
+        if (qty > 0) items.push({ productId: p.id, name: p.name, qty: qty, unitCost: p.costPrice || 0 });
+    });
+    if (!items.length) { alert(t('noItemsSelected')); return; }
+
+    try {
+        var docRef = { id: 'po_' + Date.now() };
+        var total = items.reduce(function(s,i) { return s + (i.qty * i.unitCost); }, 0);
+        var poDate = new Date().toISOString().slice(0,10);
+
+        if (supabaseClient) {
+            const { error } = await supabaseClient.from('purchase_orders').insert([{
+                firebase_id: docRef.id, shop_id: getShopId(), supplier_id: supId,
+                items: items, total: total, status: 'pending', date: poDate
+            }]);
+            if (error) throw error;
+        }
+
+        purchaseOrders.push({ id: docRef.id, shopId: getShopId(), supplierId: supId, items: items, total: total, status: 'pending', date: poDate });
+        if (orderTable) orderTable.setData(purchaseOrders);
+
+        alert(t('saved') + '\n📦 ' + items.length + ' items — Estimated: ' + fmtMoney(total));
+        loadSupplierProducts();   // reset form
+    } catch(e) { alert('❌ ' + e.message); }
+}
+  
 
 function editOrderStatus(id) {
     var order = purchaseOrders.find(function(o) { return o.id === id; });
