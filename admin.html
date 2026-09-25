@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+	<!DOCTYPE html> 
        <html>
        <head>
 	<script>window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#7f1d1d;color:#fff;padding:10px;font-family:monospace;font-size:12px;';d.textContent='❌ '+m+' | Line:'+l;d.onclick=function(){d.remove();};document.body.appendChild(d);};</script>
@@ -6326,43 +6326,119 @@ function populateSupplierDropdowns() {
 
 
   
+// ═══ PARTIAL RECEIVE SYSTEM — supplier brings some items today ═══
+var _receivingOrderId = null;
+
 async function receiveOrder(id) {
-    if (!await confirm('Receive this order? Stock will be updated.')) return;
-    try {
-        var order = purchaseOrders.find(o => o.id === id);
-        if (!order) return;
-        
-        if (supabaseClient) {
-            // 1. Update Stock for each item in Supabase
-            for (const item of order.items) {
-                var product = products.find(p => p.id === item.productId);
-                if (product) {
-                    const { error: prodErr } = await supabaseClient.from('products')
-                        .update({ stock: product.stock + item.qty })
-                        .eq('firebase_id', item.productId);
-                    if (prodErr) console.error("Error updating product stock:", prodErr.message);
-                    
-                    // Update local cache
-                    product.stock += item.qty;
-                }
-            }
-            
-            // 2. Update Order Status in Supabase
-            const { error: ordErr } = await supabaseClient.from('purchase_orders')
-                .update({ status: 'received' })
-                .eq('firebase_id', id);
-            if (ordErr) throw ordErr;
-        }
-        
-        // Update local cache instantly
-        order.status = 'received';
-        if (orderTable) orderTable.setData(purchaseOrders);
-        if (typeof filterProductView === 'function') filterProductView();
-        
-        alert(t('saved'));
-    } catch(e) { alert('❌ Error: ' + e.message); }
+    var order = purchaseOrders.find(o => o.id === id);
+    if (!order) return;
+
+    _receivingOrderId = id;
+
+    // Build the receive dialog: pre-filled with ordered quantities, EDITABLE
+    var html = '<p style="font-size:12px; color:#64748b; margin-bottom:10px;">Change quantities to what the supplier <b>actually delivered</b>. Items left at 0 are NOT received — they stay pending for next delivery.</p>';
+    (order.items || []).forEach(function(item, idx) {
+        html += '<div style="display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid #f1f5f9;">' +
+            '<div style="flex:1;"><b>' + sanitize(item.name) + '</b><br>' +
+            '<small style="color:#64748b;">Ordered: ' + item.qty + (item.unit ? ' ' + item.unit : '') + ' @ ' + fmtMoney(item.unitCost || 0) + '</small></div>' +
+            '<div style="text-align:center;"><small>Delivered</small><br>' +
+            '<input type="number" id="recvQty_' + idx + '" value="' + item.qty + '" min="0" max="' + item.qty + '" ' +
+            'style="width:70px; padding:6px; border:1px solid #cbd5e1; border-radius:6px; text-align:center; font-size:14px;" onchange="updateRecvTotal()"></div>' +
+        '</div>';
+    });
+    html += '<div id="recvTotal" style="text-align:right; font-weight:bold; font-size:16px; color:#2563eb; margin:10px 0;"></div>';
+
+    // Buttons
+    html += '<div class="flex-row">' +
+        '<button class="btn btn-success" style="flex:1;" onclick="confirmPartialReceive(false)">📥 Receive Selected</button>' +
+        '</div>' +
+        '<button class="btn btn-outline" style="margin-top:6px;" onclick="confirmPartialReceive(true)">✅ Receive Selected & Finish Order</button>' +
+        '<button class="btn btn-outline" style="margin-top:6px;" onclick="document.getElementById(\'receiveModal\').classList.remove(\'active\')">Cancel</button>';
+
+    // Reuse modal (create if missing)
+    var m = document.getElementById('receiveModal');
+    if (!m) {
+        m = document.createElement('div');
+        m.className = 'modal'; m.id = 'receiveModal';
+        m.innerHTML = '<div class="modal-content" style="max-width:480px; max-height:85vh; overflow-y:auto;">' +
+            '<div class="card-title">📥 Receive Delivery</div><div id="receiveBody"></div></div>';
+        document.body.appendChild(m);
+        m.addEventListener('click', function(e){ if (e.target === m) m.classList.remove('active'); });
+    }
+    document.getElementById('receiveBody').innerHTML = html;
+    m.classList.add('active');
+    updateRecvTotal();
 }
 
+function updateRecvTotal() {
+    var order = purchaseOrders.find(o => o.id === _receivingOrderId);
+    if (!order) return;
+    var total = 0, any = false;
+    (order.items || []).forEach(function(item, idx) {
+        var q = parseFloat(document.getElementById('recvQty_' + idx).value) || 0;
+        if (q > 0) { total += q * (item.unitCost || 0); any = true; }
+    });
+    var el = document.getElementById('recvTotal');
+    if (el) el.textContent = any ? 'Delivery value: ' + fmtMoney(total) : 'Nothing selected';
+}
+
+async function confirmPartialReceive(finishOrder) {
+    var order = purchaseOrders.find(o => o.id === _receivingOrderId);
+    if (!order) return;
+
+    var delivered = [], remaining = [];
+    (order.items || []).forEach(function(item, idx) {
+        var q = parseFloat(document.getElementById('recvQty_' + idx).value) || 0;
+        if (q > 0) delivered.push({ item: item, qty: q });
+        else remaining.push(item);
+    });
+
+    if (delivered.length === 0) { alert('Set at least one delivered quantity above 0.'); return; }
+
+    try {
+        // 1. Add stock ONLY for delivered items (+ purchase log for cost history)
+        for (var i = 0; i < delivered.length; i++) {
+            var d = delivered[i];
+            var product = products.find(p => p.id === d.item.productId);
+            if (product) {
+                const { error: prodErr } = await supabaseClient.from('products')
+                    .update({ stock: (product.stock || 0) + d.qty })
+                    .eq('firebase_id', d.item.productId);
+                if (prodErr) console.error('Stock update failed:', prodErr.message);
+                product.stock += d.qty;   // instant local update
+            }
+            try {
+                await supabaseClient.from('purchases').insert([{
+                    shop_id: getShopId(), product_id: d.item.productId,
+                    date: new Date().toISOString().slice(0,10),
+                    qty: d.qty, cost_per_unit: d.item.unitCost || 0,
+                    reason: 'Supplier Delivery'
+                }]);
+            } catch(e) {}
+        }
+
+        // 2. Update the order: delivered stock moves out, remaining stays pending
+        order.items = remaining;
+        order.status = (finishOrder || remaining.length === 0) ? 'received' : 'partially_received';
+        await supabaseClient.from('purchase_orders')
+            .update({ items: remaining, status: order.status, total: remaining.reduce(function(s,x){ return s + (x.qty * (x.unitCost||0)); }, 0) })
+            .eq('firebase_id', order.id);
+
+        // 3. 🔑 INSTANT refresh everywhere
+        document.getElementById('receiveModal').classList.remove('active');
+        if (orderTable) orderTable.setData(purchaseOrders);
+        if (typeof filterProductView === 'function') filterProductView();
+        if (window.productTable) window.productTable.setData(products);
+        if (window.stockTable) window.stockTable.setData(products);
+        if (typeof renderStockAlertCenter === 'function') renderStockAlertCenter();
+        if (typeof switchStockView === 'function' && document.getElementById('stockExcelContainer')) switchStockView('excel');
+
+        alert('✅ Received ' + delivered.length + ' item(s).' +
+              (order.status === 'partially_received'
+                  ? '\n📦 ' + remaining.length + ' item(s) still pending — receive them on the next delivery!'
+                  : '\nOrder complete!'));
+    } catch(e) { alert('❌ Error: ' + e.message); }
+}
 	// ===== CANCEL ORDER (SUPABASE) =====
 async function cancelOrder(id) {
     if (!await confirm('Cancel this order?')) return;
@@ -6404,15 +6480,34 @@ async function deleteOrder(id) {
 }
 
 
-// ═══ PURCHASE ORDER BUILDER — searchable product list (was missing) ═══
+// ═══ PURCHASE ORDER BUILDER v2 — searchable + type filter ═══
+var poTypeFilter = 'all';   // all | sellable | raw
+
 function loadSupplierProducts() {
     var container = document.getElementById('poItems');
     if (!container) { console.warn('poItems container missing'); return; }
 
-    var html = '<input type="text" id="poSearch" class="search-box" placeholder="🔍 Search product to order..." oninput="renderPoProductList()" style="margin-bottom:8px;">' +
-               '<div id="poProductList" style="max-height:250px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px; padding:8px;"></div>' +
-               '<div id="poSelectedSummary" style="margin-top:8px; font-size:13px; font-weight:bold; color:#2563eb;"></div>';
+    var html = '<div style="display:flex; gap:5px; margin-bottom:8px; flex-wrap:wrap;">' +
+        '<button class="btn-mini" id="poFAll" onclick="setPoFilter(\'all\')" style="flex:1;">All</button>' +
+        '<button class="btn-mini" id="poFSell" onclick="setPoFilter(\'sellable\')" style="flex:1;">🛒 Sellable</button>' +
+        '<button class="btn-mini" id="poFRaw" onclick="setPoFilter(\'raw\')" style="flex:1;">🧪 Raw Material</button>' +
+        '</div>' +
+        '<input type="text" id="poSearch" class="search-box" placeholder="🔍 Search product to order..." oninput="renderPoProductList()" style="margin-bottom:8px;">' +
+        '<div id="poProductList" style="max-height:230px; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px; padding:8px;"></div>' +
+        '<div id="poSelectedSummary" style="margin-top:8px; font-size:13px; font-weight:bold; color:#2563eb;"></div>';
     container.innerHTML = html;
+    setPoFilter(poTypeFilter);
+}
+
+function setPoFilter(f) {
+    poTypeFilter = f;
+    var bAll = document.getElementById('poFAll'), bSell = document.getElementById('poFSell'), bRaw = document.getElementById('poFRaw');
+    if (bAll) bAll.style.background = (f === 'all') ? '#2563eb' : '';
+    if (bAll) bAll.style.color = (f === 'all') ? '#fff' : '';
+    if (bSell) bSell.style.background = (f === 'sellable') ? '#10b981' : '';
+    if (bSell) bSell.style.color = (f === 'sellable') ? '#fff' : '';
+    if (bRaw) bRaw.style.background = (f === 'raw') ? '#f59e0b' : '';
+    if (bRaw) bRaw.style.color = (f === 'raw') ? '#fff' : '';
     renderPoProductList();
 }
 
@@ -6422,6 +6517,10 @@ function renderPoProductList() {
     var q = (document.getElementById('poSearch') ? document.getElementById('poSearch').value : '').toLowerCase();
 
     var rows = products.filter(function(p) {
+        // 🧪 Virtual products are PRODUCED, never ordered — always hidden
+        if (p.isVirtual) return false;
+        if (poTypeFilter === 'sellable' && p.sellDirectly === false) return false;
+        if (poTypeFilter === 'raw' && p.sellDirectly !== false) return false;
         if (q && p.name.toLowerCase().indexOf(q) === -1) return false;
         return true;
     });
@@ -6454,6 +6553,7 @@ function updatePoSummary() {
     if (!summary) return;
     var count = 0, total = 0;
     products.forEach(function(p) {
+        if (p.isVirtual) return;
         var el = document.getElementById('poQty_' + p.id);
         if (el) {
             var q = parseFloat(el.value) || 0;
@@ -6464,6 +6564,7 @@ function updatePoSummary() {
         ? '🛒 ' + count + ' item(s) selected — Estimated total: ' + fmtMoney(total)
         : '';
 }
+
 
 async function createPurchaseOrder() {
     var supId = document.getElementById('poSupplier').value;
@@ -6591,25 +6692,22 @@ function calcEditOrderTotal() {
         order.items = updatedItems;
         order.total = newTotal;
 
-        alert('✅ Order updated successfully!');
+              alert('✅ Order updated successfully!');
         document.getElementById('editOrderModal').classList.remove('active');
         currentEditOrderId = null;
         
-        // 3. REFRESH UI
+        // 3. REFRESH UI — everywhere, instantly
         if (orderTable) orderTable.setData(purchaseOrders);
+        if (typeof filterProductView === 'function') filterProductView();
+        if (window.productTable) window.productTable.setData(products);
+        if (window.stockTable) window.stockTable.setData(products);
+        if (typeof renderStockAlertCenter === 'function') renderStockAlertCenter();
     } catch(e) {
         alert('❌ Error: ' + e.message);
     }
 }
 
 
-
-
-
-
-
-
-	
 
 // ===== SALES VIEW MANAGEMENT (FIXED NAN, FULL GRIDS, SCROLLABLE ITEM SUMMARY) =====
 var currentDailyView = 'excel', currentWeeklyView = 'excel', currentMonthlyView = 'excel', currentYearlyView = 'excel', currentDetailedView = 'excel';
