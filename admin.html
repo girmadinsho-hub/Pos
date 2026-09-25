@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+	<!DOCTYPE html> 
        <html>
        <head>
 	<script>window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#7f1d1d;color:#fff;padding:10px;font-family:monospace;font-size:12px;';d.textContent='❌ '+m+' | Line:'+l;d.onclick=function(){d.remove();};document.body.appendChild(d);};</script>
@@ -885,11 +885,13 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
     </div>
 
 	
-	    <div class="sidebar-tab has-submenu" onclick="toggleSubmenu(this)" title="View sales records">💰 Sales</div>
+	 <div class="sidebar-tab has-submenu" onclick="toggleSubmenu(this)" title="View sales records">💰 Sales</div>
     <div class="submenu" data-parent="2">
         <div class="submenu-item" onclick="subGo(2, this, 'none')">📅 Daily / Weekly / Monthly</div>
         <div class="submenu-item" onclick="subGo(2, this, 'none')">📋 Detailed Sales</div>
         <div class="submenu-item" onclick="subGo(2, this, 'none')">📦 Item Detail</div>
+        <div class="submenu-item" onclick="subGo(2, this, 'repCashier')">👤 Cashier Performance</div>
+        <div class="submenu-item" onclick="subGo(2, this, 'repTop')">🏆 Top Products</div>
     </div>
 
 	
@@ -914,8 +916,6 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
         <div class="sub-submenu">
             <div class="submenu-item" onclick="subGo(8, this, 'repDaily')">📅 Daily Summary</div>
             <div class="submenu-item" onclick="subGo(8, this, 'repSales')">💰 Sales Report</div>
-            <div class="submenu-item" onclick="subGo(8, this, 'repCashier')">👤 Cashier Performance</div>
-            <div class="submenu-item" onclick="subGo(8, this, 'repTop')">🏆 Top Products</div>
             <div class="submenu-item" onclick="subGo(8, this, 'repSalary')">💵 Staff Salary Report</div>
         </div>
         <div class="submenu-item" onclick="subGo(8, this, 'repPnL')">📈 P&L Statement</div>
@@ -1575,7 +1575,57 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
     </div>
 </div>
 
-	
+
+
+
+
+    <!-- 👥 Cashier Performance (moved from Reports — Sales data lives here) -->
+    <div class="card">
+        <div class="card-title" onclick="toggleCard(this)">
+            👥 Cashier Performance <span class="arrow open">▶</span>
+            <div style="margin-left:auto;display:flex;gap:6px;align-items:center;" onclick="event.stopPropagation()">
+                <select onchange="setCashierRepPeriod(this.value)" style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;font-size:11px;">
+                    <option value="today">Today</option><option value="week">Week</option>
+                    <option value="month" selected>Month</option><option value="year">Year</option>
+                </select>
+                <button class="btn-mini active cashierrep-view-btn" data-view="excel" onclick="switchCashierReportView('excel')">📊 Excel</button>
+                <button class="btn-mini cashierrep-view-btn" data-view="list" onclick="switchCashierReportView('list')">📋 List</button>
+                <button class="btn-mini cashierrep-view-btn" data-view="grid" onclick="switchCashierReportView('grid')">⊞ Grid</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="cashierReportExcelContainer"></div>
+            <div id="cashierReportListContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
+            <div id="cashierReportGridContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
+        </div>
+    </div>
+
+    <!-- 🏆 Top Selling Products (moved from Reports) -->
+    <div class="card">
+        <div class="card-title" onclick="toggleCard(this)">
+            🏆 Top Selling Products <span class="arrow open">▶</span>
+            <div style="margin-left:auto;display:flex;gap:6px;align-items:center;" onclick="event.stopPropagation()">
+                <select onchange="setTopProdPeriod(this.value)" style="padding:4px 8px;border-radius:6px;border:1px solid #cbd5e1;font-size:11px;">
+                    <option value="today">Today</option><option value="week">Week</option>
+                    <option value="month" selected>Month</option><option value="year">Year</option>
+                </select>
+                <button class="btn-mini active topprod-view-btn" data-view="excel" onclick="switchTopProductsView('excel')">📊 Excel</button>
+                <button class="btn-mini topprod-view-btn" data-view="list" onclick="switchTopProductsView('list')">📋 List</button>
+                <button class="btn-mini topprod-view-btn" data-view="grid" onclick="switchTopProductsView('grid')">⊞ Grid</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="topProductsExcelContainer"></div>
+            <div id="topProductsListContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
+            <div id="topProductsGridContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
+        </div>
+    </div>
+
+
+
+
+
+  
 
     <!-- Detailed Sales -->
     <div class="card">
@@ -1865,106 +1915,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 		
     <!-- Reports -->
    <div id="tab8" class="tab-content" style="display:none">
-		<!-- ====== OVERVIEW CARDS ====== -->
-    <div class="period-selector" style="display:flex;gap:6px;margin-bottom:10px">
-        <button class="period-btn active" onclick="loadReports('today',this)">📅 Today</button>
-        <button class="period-btn" onclick="loadReports('week',this)">📅 Week</button>
-        <button class="period-btn" onclick="loadReports('month',this)">📅 Month</button>
-        <button class="period-btn" onclick="loadReports('year',this)">📅 Year</button>
-    </div>
     
-    <div class="dashboard-grid">
-        <div class="stat-card"><div class="stat-label">💰 Revenue</div><div class="stat-value" id="repRevenue">Br 0</div></div>
-        <div class="stat-card green"><div class="stat-label">📈 Gross Profit</div><div class="stat-value" id="repGrossProfit">Br 0</div></div>
-        <div class="stat-card orange"><div class="stat-label">💸 Expenses</div><div class="stat-value" id="repExpenses">Br 0</div></div>
-        <div class="stat-card purple"><div class="stat-label">💎 Net Profit</div><div class="stat-value" id="repNetProfit">Br 0</div></div>
-    </div>
-
-
-    <!-- ====== CASHIER PERFORMANCE ====== -->
-    <div class="card">
-        <div class="card-title" onclick="toggleCard(this)">
-            👥 Cashier Performance <span class="arrow open">▶</span>
-            <div style="margin-left:auto;display:flex;gap:6px;" onclick="event.stopPropagation()">
-                <button class="btn-mini active cashierrep-view-btn" data-view="excel" onclick="switchCashierReportView('excel')">📊 Excel</button>
-                <button class="btn-mini cashierrep-view-btn" data-view="list" onclick="switchCashierReportView('list')">📋 List</button>
-                <button class="btn-mini cashierrep-view-btn" data-view="grid" onclick="switchCashierReportView('grid')">⊞ Grid</button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div id="cashierReportExcelContainer"></div>
-            <div id="cashierReportListContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-            <div id="cashierReportGridContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-        </div>
-    </div>
-
-    <!-- ====== TOP PRODUCTS ====== -->
-    <div class="card">
-        <div class="card-title" onclick="toggleCard(this)">
-            🏆 Top Selling Products <span class="arrow open">▶</span>
-            <div style="margin-left:auto;display:flex;gap:6px;" onclick="event.stopPropagation()">
-                <button class="btn-mini active topprod-view-btn" data-view="excel" onclick="switchTopProductsView('excel')">📊 Excel</button>
-                <button class="btn-mini topprod-view-btn" data-view="list" onclick="switchTopProductsView('list')">📋 List</button>
-                <button class="btn-mini topprod-view-btn" data-view="grid" onclick="switchTopProductsView('grid')">⊞ Grid</button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div id="topProductsExcelContainer"></div>
-            <div id="topProductsListContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-            <div id="topProductsGridContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-        </div>
-    </div>
-
-    <!-- ====== STAFF SALARY REPORT ====== -->
-    <div class="card">
-        <div class="card-title" onclick="toggleCard(this)">
-            💵 Staff Salary Report <span class="arrow open">▶</span>
-            <div style="margin-left:auto;display:flex;gap:6px;" onclick="event.stopPropagation()">
-                <button class="btn-mini active salaryrep-view-btn" data-view="excel" onclick="switchSalaryReportView('excel')">📊 Excel</button>
-                <button class="btn-mini salaryrep-view-btn" data-view="list" onclick="switchSalaryReportView('list')">📋 List</button>
-                <button class="btn-mini salaryrep-view-btn" data-view="grid" onclick="switchSalaryReportView('grid')">⊞ Grid</button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div id="salaryReportExcelContainer"></div>
-            <div id="salaryReportListContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-            <div id="salaryReportGridContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-        </div>
-    </div>
-
-    <!-- ====== LOAN SUMMARY ====== -->
-    <div class="card">
-        <div class="card-title" onclick="toggleCard(this)">
-            🏦 Loan Summary <span class="arrow open">▶</span>
-            <div style="margin-left:auto;display:flex;gap:6px;" onclick="event.stopPropagation()">
-                <button class="btn-mini active loanrep-view-btn" data-view="excel" onclick="switchLoanReportView('excel')">📊 Excel</button>
-                <button class="btn-mini loanrep-view-btn" data-view="list" onclick="switchLoanReportView('list')">📋 List</button>
-                <button class="btn-mini loanrep-view-btn" data-view="grid" onclick="switchLoanReportView('grid')">⊞ Grid</button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div id="loanReportExcelContainer"></div>
-            <div id="loanReportListContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-            <div id="loanReportGridContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-        </div>
-    </div>
-
-    <!-- ====== BANK SUMMARY ====== -->
-    <div class="card">
-        <div class="card-title" onclick="toggleCard(this)">
-            🏧 Bank Summary <span class="arrow open">▶</span>
-            <div style="margin-left:auto;display:flex;gap:6px;" onclick="event.stopPropagation()">
-                <button class="btn-mini active bankrep-view-btn" data-view="excel" onclick="switchBankReportView('excel')">📊 Excel</button>
-                <button class="btn-mini bankrep-view-btn" data-view="list" onclick="switchBankReportView('list')">📋 List</button>
-                <button class="btn-mini bankrep-view-btn" data-view="grid" onclick="switchBankReportView('grid')">⊞ Grid</button>
-            </div>
-        </div>
-        <div class="card-body">
-            <div id="bankReportExcelContainer"></div>
-            <div id="bankReportListContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-            <div id="bankReportGridContainer" style="display:none; max-height:60vh; overflow-y:auto;"></div>
-        </div>
-    </div>
 
 
 		     <!-- INVENTORY VALUATION -->
@@ -7376,6 +7327,178 @@ function loadMoreDetailedGrid() {
     loadMoreGrid('detailedSalesGridContainer', data, detailedGridPage, PER_PAGE_GRID, 'loadMoreDetailedGrid');
 }
 
+  
+// ═══════════════════════════════════════════════════════════════
+//  👥 CASHIER PERFORMANCE + 🏆 TOP PRODUCTS  — THE ONLY COPY
+//  (Lives in admin.html. Do NOT duplicate in advanced.js!)
+//  Server-powered • self-loading • period-aware
+// ═══════════════════════════════════════════════════════════════
+
+// ---------- period helpers ----------
+function setCashierRepPeriod(val) {
+    window.cashierRepPeriod = val;
+    if (currentCashierRepView === 'list') { cashierRepListPage = 1; buildCashierReportList(); }
+    else if (currentCashierRepView === 'grid') { cashierRepGridPage = 1; buildCashierReportGrid(); }
+    else { initCashierReportExcel(); }
+}
+function setTopProdPeriod(val) {
+    window.topProdPeriod = val;
+    if (currentTopProdView === 'list') { topProdListPage = 1; buildTopProductsList(); }
+    else if (currentTopProdView === 'grid') { topProdGridPage = 1; buildTopProductsGrid(); }
+    else { initTopProductsExcel(); }
+}
+
+// ---------- 👥 CASHIER PERFORMANCE ----------
+async function getCashierReportData() {
+    var start = getReportPeriodStart(window.cashierRepPeriod || 'month');
+    try {
+        const { data, error } = await supabaseClient.from('sales')
+            .select('cashier_name, total, payment_method, payments')
+            .eq('shop_id', getShopId()).eq('voided', false)
+            .gte('time', start.toISOString());
+        if (error) throw error;
+        var map = {};
+        (data || []).forEach(function(s) {
+            var name = s.cashier_name || 'Unknown';
+            if (!map[name]) map[name] = { name: name, cash: 0, card: 0, mobile: 0, credit: 0, total: 0 };
+            var b = { cash: 0, card: 0, mobile: 0, credit: 0 };
+            if (s.payment_method === 'split' && Array.isArray(s.payments)) {
+                s.payments.forEach(function(p) {
+                    var m = p.method || 'cash';
+                    if (b[m] !== undefined) b[m] += Number(p.amount || 0);
+                });
+            } else {
+                var m2 = s.payment_method || 'cash';
+                if (b[m2] !== undefined) b[m2] += Number(s.total || 0);
+            }
+            map[name].cash += b.cash; map[name].card += b.card;
+            map[name].mobile += b.mobile; map[name].credit += b.credit;
+            map[name].total += Number(s.total || 0);
+        });
+        return Object.values(map).sort(function(a, b) { return b.total - a.total; });
+    } catch(e) { console.warn('Cashier report failed:', e.message); return []; }
+}
+
+async function initCashierReportExcel() {
+    var data = await getCashierReportData();
+    if (window.cashierRepTable) { window.cashierRepTable.setData(data); return; }
+    window.cashierRepTable = new ModernSheet('cashierReportExcelContainer', {
+        data: data,
+        columns: [
+            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
+            { title: 'Cashier', field:'name', render: function(item,html){ return html?sanitize(item.name):item.name; } },
+            { title: '💵 Cash', field:'cash', align:'right', render: function(item,html){ return html?fmtMoney(item.cash):item.cash; } },
+            { title: '💳 Card', field:'card', align:'right', render: function(item,html){ return html?fmtMoney(item.card):item.card; } },
+            { title: '📱 Mobile', field:'mobile', align:'right', render: function(item,html){ return html?fmtMoney(item.mobile):item.mobile; } },
+            { title: '📝 Credit', field:'credit', align:'right', render: function(item,html){ return html?fmtMoney(item.credit):item.credit; } },
+            { title: 'Total', field:'total', align:'right', render: function(item,html){ return html?fmtMoney(item.total):item.total; }, total:true, totalValue:function(i){ return i.total; }, totalFormat:function(s){ return fmtMoney(s); } }
+        ],
+        emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true
+    });
+}
+
+function switchCashierReportView(view) {
+    currentCashierRepView = view;
+    var btns = document.querySelectorAll('.cashierrep-view-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.view === view);
+    var excel = document.getElementById('cashierReportExcelContainer');
+    var list = document.getElementById('cashierReportListContainer');
+    var grid = document.getElementById('cashierReportGridContainer');
+    if (excel) excel.style.display = view === 'excel' ? 'block' : 'none';
+    if (list) list.style.display = view === 'list' ? 'block' : 'none';
+    if (grid) grid.style.display = view === 'grid' ? 'block' : 'none';
+
+    if (view === 'excel') { initCashierReportExcel(); }
+    else if (view === 'list') { cashierRepListPage = 1; buildCashierReportList(); }
+    else if (view === 'grid') { cashierRepGridPage = 1; buildCashierReportGrid(); }
+}
+
+async function buildCashierReportList() {
+    var data = await getCashierReportData();
+    var mapped = data.map(function(c){
+        return { label: c.name,
+                 detail: 'Cash: ' + fmtMoney(c.cash) + ' | Card: ' + fmtMoney(c.card) + ' | Mobile: ' + fmtMoney(c.mobile) + ' | Credit: ' + fmtMoney(c.credit),
+                 right: fmtMoney(c.total) };
+    });
+    renderList('cashierReportListContainer', mapped, cashierRepListPage, 20, 'loadMoreCashierRepList');
+}
+async function buildCashierReportGrid() {
+    var data = await getCashierReportData();
+    var mapped = data.map(function(c){
+        return { label: c.name,
+                 detail: 'Cash: ' + fmtMoney(c.cash) + ' | Card: ' + fmtMoney(c.card) + ' | Mobile: ' + fmtMoney(c.mobile) + ' | Credit: ' + fmtMoney(c.credit),
+                 right: fmtMoney(c.total) };
+    });
+    renderGrid('cashierReportGridContainer', mapped, cashierRepGridPage, 12, 'loadMoreCashierRepGrid');
+}
+function loadMoreCashierRepList() { cashierRepListPage++; buildCashierReportList(); }
+function loadMoreCashierRepGrid() { cashierRepGridPage++; buildCashierReportGrid(); }
+
+// ---------- 🏆 TOP SELLING PRODUCTS ----------
+async function getTopProductsData() {
+    var start = getReportPeriodStart(window.topProdPeriod || 'month');
+    try {
+        const { data, error } = await supabaseClient.from('sales')
+            .select('items')
+            .eq('shop_id', getShopId()).eq('voided', false)
+            .gte('time', start.toISOString());
+        if (error) throw error;
+        var map = {};
+        (data || []).forEach(function(s) {
+            (s.items || []).forEach(function(i) {
+                if (!map[i.name]) map[i.name] = { name: i.name, qty: 0, revenue: 0 };
+                map[i.name].qty += i.qty || 0;
+                map[i.name].revenue += (i.price || 0) * (i.qty || 0);
+            });
+        });
+        return Object.values(map).sort(function(a, b) { return b.revenue - a.revenue; });
+    } catch(e) { console.warn('Top products failed:', e.message); return []; }
+}
+
+async function initTopProductsExcel() {
+    var data = await getTopProductsData();
+    if (window.topProdTable) { window.topProdTable.setData(data); return; }
+    window.topProdTable = new ModernSheet('topProductsExcelContainer', {
+        data: data,
+        columns: [
+            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
+            { title: 'Product', field:'name', render: function(item,html){ return html?sanitize(item.name):item.name; } },
+            { title: 'Qty Sold', field:'qty', align:'center' },
+            { title: 'Revenue', field:'revenue', align:'right', render: function(item,html){ return html?fmtMoney(item.revenue):item.revenue; }, total:true, totalValue:function(i){ return i.revenue; }, totalFormat:function(s){ return fmtMoney(s); } }
+        ],
+        emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true
+    });
+}
+
+function switchTopProductsView(view) {
+    currentTopProdView = view;
+    var btns = document.querySelectorAll('.topprod-view-btn');
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.view === view);
+    var excel = document.getElementById('topProductsExcelContainer');
+    var list = document.getElementById('topProductsListContainer');
+    var grid = document.getElementById('topProductsGridContainer');
+    if (excel) excel.style.display = view === 'excel' ? 'block' : 'none';
+    if (list) list.style.display = view === 'list' ? 'block' : 'none';
+    if (grid) grid.style.display = view === 'grid' ? 'block' : 'none';
+
+    if (view === 'excel') { initTopProductsExcel(); }
+    else if (view === 'list') { topProdListPage = 1; buildTopProductsList(); }
+    else if (view === 'grid') { topProdGridPage = 1; buildTopProductsGrid(); }
+}
+
+async function buildTopProductsList() {
+    var data = await getTopProductsData();
+    var mapped = data.map(function(p){ return { label: sanitize(p.name), detail: 'Sold: ' + p.qty, right: fmtMoney(p.revenue) }; });
+    renderList('topProductsListContainer', mapped, topProdListPage, 20, 'loadMoreTopProdList');
+}
+async function buildTopProductsGrid() {
+    var data = await getTopProductsData();
+    var mapped = data.map(function(p){ return { label: sanitize(p.name), detail: 'Sold: ' + p.qty, right: fmtMoney(p.revenue) }; });
+    renderGrid('topProductsGridContainer', mapped, topProdGridPage, 12, 'loadMoreTopProdGrid');
+}
+function loadMoreTopProdList() { topProdListPage++; buildTopProductsList(); }
+function loadMoreTopProdGrid() { topProdGridPage++; buildTopProductsGrid(); }
+  
 // ===== INITIALIZE ALL SALES VIEWS ON TAB LOAD =====
 async function initSalesTables() {
     updateCashierDropdownSafe();
@@ -7800,15 +7923,15 @@ var loanRepListPage=1, loanRepGridPage=1;
 var bankRepListPage=1, bankRepGridPage=1;
 
 // Helper: get period start date from selected period
-function getReportPeriodStart() {
+function getReportPeriodStart(periodOverride) {
+    var p = periodOverride || currentReportPeriod || 'today';
     var now = new Date();
-    if (currentReportPeriod === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    if (currentReportPeriod === 'week') return new Date(now.getTime() - 7*86400000);
-    if (currentReportPeriod === 'month') return new Date(now.getTime() - 30*86400000);
-    if (currentReportPeriod === 'year') return new Date(now.getTime() - 365*86400000);
+    if (p === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (p === 'week') return new Date(now.getTime() - 7*86400000);
+    if (p === 'month') return new Date(now.getTime() - 30*86400000);
+    if (p === 'year') return new Date(now.getTime() - 365*86400000);
     return new Date(0);
 }
-
 // Update overview cards
 // ═══ REPORT OVERVIEW (server-based) ═══
 async function updateReportOverview() {
@@ -7885,10 +8008,78 @@ function loadMoreSalesRepGrid() {
     var data = getSalesReportData().map(function(d){ return { label: formatDate(d.date), detail: 'Cash: Br '+d.cash.toFixed(2)+' | Card: Br '+d.card.toFixed(2)+' | Mobile: Br '+d.mobile.toFixed(2)+' | Credit: Br '+d.credit.toFixed(2), right: appCurrencySymbol +d.total.toFixed(2) }; });
     loadMoreGrid('salesReportGridContainer', data, salesRepGridPage, 12, 'loadMoreSalesRepGrid');
 }
+function setCashierRepPeriod(val) {
+    window.cashierRepPeriod = val;
+    initCashierReportExcel();
+    if (currentCashierRepView === 'list') buildCashierReportList();
+    else if (currentCashierRepView === 'grid') buildCashierReportGrid();
+}
+function setTopProdPeriod(val) {
+    window.topProdPeriod = val;
+    initTopProductsExcel();
+    if (currentTopProdView === 'list') buildTopProductsList();
+    else if (currentTopProdView === 'grid') buildTopProductsGrid();
+}
 
-// ═══ TOP PRODUCTS (server query on items) ═══
+
+
+
+// ═════════════════════════════════════════════════════════
+//  👥 CASHIER PERFORMANCE + 🏆 TOP PRODUCTS (Sales menu)
+//  Server-powered, self-loading, period-aware
+// ═════════════════════════════════════════════════════════
+
+// ---------- period helpers ----------
+function setCashierRepPeriod(val) {
+    window.cashierRepPeriod = val;
+    initCashierReportExcel();
+    if (currentCashierRepView === 'list') buildCashierReportList();
+    else if (currentCashierRepView === 'grid') buildCashierReportGrid();
+}
+function setTopProdPeriod(val) {
+    window.topProdPeriod = val;
+    initTopProductsExcel();
+    if (currentTopProdView === 'list') buildTopProductsList();
+    else if (currentTopProdView === 'grid') buildTopProductsGrid();
+}
+
+// ---------- 👥 CASHIER PERFORMANCE ----------
+async function getCashierReportData() {
+    var start = getReportPeriodStart(window.cashierRepPeriod || 'month');
+    try {
+        const { data, error } = await supabaseClient.from('sales')
+            .select('cashier_name, total, payment_method, payments')
+            .eq('shop_id', getShopId()).eq('voided', false)
+            .gte('time', start.toISOString());
+        if (error) throw error;
+        var map = {};
+        (data || []).forEach(function(s) {
+            var name = s.cashier_name || 'Unknown';
+            if (!map[name]) map[name] = { name: name, cash: 0, card: 0, mobile: 0, credit: 0, total: 0 };
+            // Split-payment aware (same buckets as dashboard)
+            var b = { cash: 0, card: 0, mobile: 0, credit: 0 };
+            if (s.payment_method === 'split' && Array.isArray(s.payments)) {
+                s.payments.forEach(function(p) {
+                    var m = p.method || 'cash';
+                    if (b[m] !== undefined) b[m] += Number(p.amount || 0);
+                });
+            } else {
+                var m2 = s.payment_method || 'cash';
+                if (b[m2] !== undefined) b[m2] += Number(s.total || 0);
+            }
+            map[name].cash += b.cash; map[name].card += b.card;
+            map[name].mobile += b.mobile; map[name].credit += b.credit;
+            map[name].total += Number(s.total || 0);
+        });
+        return Object.values(map).sort(function(a, b) { return b.total - a.total; });
+    } catch(e) { console.warn('Cashier report failed:', e.message); return []; }
+}
+
+
+
+// ---------- 🏆 TOP SELLING PRODUCTS ----------
 async function getTopProductsData() {
-    var start = getReportPeriodStart();
+    var start = getReportPeriodStart(window.topProdPeriod || 'month');
     try {
         const { data, error } = await supabaseClient.from('sales')
             .select('items')
@@ -7904,129 +8095,10 @@ async function getTopProductsData() {
             });
         });
         return Object.values(map).sort(function(a, b) { return b.revenue - a.revenue; });
-    } catch(e) { return []; }
-}
-
-// ═══ TOP PRODUCTS — self-loading (async-proof) ═══
-function switchTopProductsView(view) {
-    currentTopProdView = view;
-    var btns = document.querySelectorAll('.topprod-view-btn');
-    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.view === view);
-    var excel = document.getElementById('topProductsExcelContainer');
-    var list = document.getElementById('topProductsListContainer');
-    var grid = document.getElementById('topProductsGridContainer');
-    if (excel) excel.style.display = view === 'excel' ? 'block' : 'none';
-    if (list) list.style.display = view === 'list' ? 'block' : 'none';
-    if (grid) grid.style.display = view === 'grid' ? 'block' : 'none';
-
-    if (view === 'excel') { initTopProductsExcel(); }
-    else if (view === 'list') { topProdListPage = 1; buildTopProductsList(); }
-    else if (view === 'grid') { topProdGridPage = 1; buildTopProductsGrid(); }
-}
-
-async function initTopProductsExcel() {
-    var data = await getTopProductsData();            // 🔑 self-fetching
-    if (window.topProdTable) { window.topProdTable.setData(data); return; }
-    window.topProdTable = new ModernSheet('topProductsExcelContainer', {
-        data: data,
-        columns: [
-            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
-            { title: 'Product', field:'name', render: function(item,html){ return html?sanitize(item.name):item.name; } },
-            { title: 'Qty Sold', field:'qty', align:'center' },
-            { title: 'Revenue', field:'revenue', align:'right', render: function(item,html){ return html?fmtMoney(item.revenue):item.revenue; }, total:true, totalValue:function(i){ return i.revenue; }, totalFormat:function(s){ return fmtMoney(s); } }
-        ],
-        emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true
-    });
-}
-async function buildTopProductsList() {
-    var data = await getTopProductsData();
-    var mapped = data.map(function(p){ return { label: sanitize(p.name), detail: 'Sold: ' + p.qty, right: fmtMoney(p.revenue) }; });
-    renderList('topProductsListContainer', mapped, topProdListPage, 20, 'loadMoreTopProdList');
-}
-
-async function buildTopProductsGrid() {
-    var data = await getTopProductsData();
-    var mapped = data.map(function(p){ return { label: sanitize(p.name), detail: 'Sold: ' + p.qty, right: fmtMoney(p.revenue) }; });
-    renderGrid('topProductsGridContainer', mapped, topProdGridPage, 12, 'loadMoreTopProdGrid');
-}
-  // ═══ CASHIER PERFORMANCE (server query, split-payment aware) ═══
-async function getCashierReportData() {
-    var start = getReportPeriodStart();
-    try {
-        const { data, error } = await supabaseClient.from('sales')
-            .select('cashier_name, total, payment_method, payments')
-            .eq('shop_id', getShopId()).eq('voided', false)
-            .gte('time', start.toISOString());
-        if (error) throw error;
-        var map = {};
-        (data || []).forEach(function(s) {
-            var name = s.cashier_name || 'Unknown';
-            if (!map[name]) map[name] = { name: name, cash: 0, card: 0, mobile: 0, credit: 0, total: 0 };
-            var b = ssSplitPaymentBuckets({ paymentMethod: s.payment_method, payments: s.payments, total: Number(s.total || 0) });
-            map[name].cash += b.cash; map[name].card += b.card;
-            map[name].mobile += b.mobile; map[name].credit += b.credit;
-            map[name].total += Number(s.total || 0);
-        });
-        return Object.values(map).sort(function(a, b) { return b.total - a.total; });
-    } catch(e) { console.warn('Cashier report failed:', e.message); return []; }
-}
-
-// ═══ CASHIER PERFORMANCE — self-loading (async-proof) ═══
-function switchCashierReportView(view) {
-    currentCashierRepView = view;
-    var btns = document.querySelectorAll('.cashierrep-view-btn');
-    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('active', btns[i].dataset.view === view);
-    var excel = document.getElementById('cashierReportExcelContainer');
-    var list = document.getElementById('cashierReportListContainer');
-    var grid = document.getElementById('cashierReportGridContainer');
-    if (excel) excel.style.display = view === 'excel' ? 'block' : 'none';
-    if (list) list.style.display = view === 'list' ? 'block' : 'none';
-    if (grid) grid.style.display = view === 'grid' ? 'block' : 'none';
-
-    if (view === 'excel') { initCashierReportExcel(); }
-    else if (view === 'list') { cashierRepListPage = 1; buildCashierReportList(); }
-    else if (view === 'grid') { cashierRepGridPage = 1; buildCashierReportGrid(); }
-}
-
-async function initCashierReportExcel() {
-    var data = await getCashierReportData();          // 🔑 table fetches its OWN data
-    if (window.cashierRepTable) { window.cashierRepTable.setData(data); return; }
-    window.cashierRepTable = new ModernSheet('cashierReportExcelContainer', {
-        data: data,
-        columns: [
-            { title: '#', width:'40px', render: function(item,html,idx){ return idx+1; } },
-            { title: 'Cashier', field:'name', render: function(item,html){ return html?sanitize(item.name):item.name; } },
-            { title: '💵 Cash', field:'cash', align:'right', render: function(item,html){ return html?fmtMoney(item.cash):item.cash; } },
-            { title: '💳 Card', field:'card', align:'right', render: function(item,html){ return html?fmtMoney(item.card):item.card; } },
-            { title: '📱 Mobile', field:'mobile', align:'right', render: function(item,html){ return html?fmtMoney(item.mobile):item.mobile; } },
-            { title: '📝 Credit', field:'credit', align:'right', render: function(item,html){ return html?fmtMoney(item.credit):item.credit; } },
-            { title: 'Total', field:'total', align:'right', render: function(item,html){ return html?fmtMoney(item.total):item.total; }, total:true, totalValue:function(i){ return i.total; }, totalFormat:function(s){ return fmtMoney(s); } }
-        ],
-        emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true
-    });
+    } catch(e) { console.warn('Top products failed:', e.message); return []; }
 }
 
   
-
-async function buildCashierReportList() {
-    var data = await getCashierReportData();
-    var mapped = data.map(function(c){
-        return { label: c.name,
-                 detail: 'Cash: ' + fmtMoney(c.cash) + ' | Card: ' + fmtMoney(c.card) + ' | Mobile: ' + fmtMoney(c.mobile) + ' | Credit: ' + fmtMoney(c.credit),
-                 right: fmtMoney(c.total) };
-    });
-    renderList('cashierReportListContainer', mapped, cashierRepListPage, 20, 'loadMoreCashierRepList');
-}
-
-async function buildCashierReportGrid() {
-    var data = await getCashierReportData();
-    var mapped = data.map(function(c){
-        return { label: c.name,
-                 detail: 'Cash: ' + fmtMoney(c.cash) + ' | Card: ' + fmtMoney(c.card) + ' | Mobile: ' + fmtMoney(c.mobile) + ' | Credit: ' + fmtMoney(c.credit),
-                 right: fmtMoney(c.total) };
-    });
-    renderGrid('cashierReportGridContainer', mapped, cashierRepGridPage, 12, 'loadMoreCashierRepGrid');
-}
 // ═══ SALES REPORT (server-based) ═══
 async function getSalesReportData() {
     var start = getReportPeriodStart();
@@ -8075,18 +8147,8 @@ async function buildSalesReportGrid() {
     });
     renderGrid('salesReportGridContainer', mapped, salesRepGridPage, 12, 'loadMoreSalesRepGrid');
 }
-// ===== CASHIER PERFORMANCE =====
-		
-function loadMoreCashierRepList() { cashierRepListPage++; var data = getCashierReportData().map(function(c){ return { label: c.name, detail: 'Cash: Br '+c.cash.toFixed(2)+' | Card: Br '+c.card.toFixed(2)+' | Mobile: Br '+c.mobile.toFixed(2)+' | Credit: Br '+c.credit.toFixed(2), right: 'Total: Br '+c.total.toFixed(2) }; }); loadMoreList('cashierReportListContainer', data, cashierRepListPage, 20, 'loadMoreCashierRepList'); }
-function loadMoreCashierRepGrid() { cashierRepGridPage++; var data = getCashierReportData().map(function(c){ return { label: c.name, detail: 'Cash: Br '+c.cash.toFixed(2)+' | Card: Br '+c.card.toFixed(2)+' | Mobile: Br '+c.mobile.toFixed(2)+' | Credit: Br '+c.credit.toFixed(2), right: appCurrencySymbol +c.total.toFixed(2) }; }); loadMoreGrid('cashierReportGridContainer', data, cashierRepGridPage, 12, 'loadMoreCashierRepGrid'); }
-
-// ===== TOP PRODUCTS =====
-
-
-									
-function loadMoreTopProdList() { topProdListPage++; var data = getTopProductsData().map(function(p){ return { label: p.name, detail: 'Sold: '+p.qty, right: appCurrencySymbol +p.revenue.toFixed(2) }; }); loadMoreList('topProductsListContainer', data, topProdListPage, 20, 'loadMoreTopProdList'); }
-function loadMoreTopProdGrid() { topProdGridPage++; var data = getTopProductsData().map(function(p){ return { label: p.name, detail: 'Sold: '+p.qty, right: appCurrencySymbol +p.revenue.toFixed(2) }; }); loadMoreGrid('topProductsGridContainer', data, topProdGridPage, 12, 'loadMoreTopProdGrid'); }
-
+	
+							
 // ===== STAFF SALARY REPORT =====
 function getSalaryReportData() {
     return employeesCache.filter(function(e){ return e.status==='active'; }).map(function(emp){
