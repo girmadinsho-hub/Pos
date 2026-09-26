@@ -2356,6 +2356,11 @@ function logout(){
     var taxRateInput = document.getElementById('taxRate');
     var taxRateDisplay = document.getElementById('taxRateDisplay');
 
+        // 🔒 TOT LAW: Turnover Tax shops NEVER collect VAT — force zero regardless of any setting
+    if (window.shopBranding && window.shopBranding.taxType === 'TOT') {
+        posSettings.enableTax = false;
+        posSettings.taxRate = 0;
+    }
     if (posSettings.enableTax) {
         // Owner enabled tax with a fixed rate — lock everything
         if (enableTaxCheck) { enableTaxCheck.checked = true; enableTaxCheck.disabled = true; }   // cannot uncheck
