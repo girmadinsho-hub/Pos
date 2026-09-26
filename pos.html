@@ -680,6 +680,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
             <option value="am">አማ</option>
             <option value="om">OR</option>
         </select>
+          <button onclick="ssOpenAdmin()" class="header-icon" id="btnAdminJump" title="Dashboard & Reports" style="display:none;">📊</button>
         <button onclick="toggleDarkMode()" class="header-icon" title="Dark Mode">🌓</button>
         <button onclick="logout()" class="header-icon" title="Logout">🚪</button>
     </div>
@@ -2387,6 +2388,9 @@ function logout(){
     // Hide all first
     if (payBtn) payBtn.style.display = 'none';
     if (clearBtn) clearBtn.style.display = 'none';
+        // 🏪 OWNER-SOLO — Owner/Manager jumps to Admin from POS
+    var adminJump = document.getElementById('btnAdminJump');
+    if (adminJump) adminJump.style.display = (staffRole === 'Owner' || staffRole === 'Manager') ? 'flex' : 'none';
     if (holdBtn) holdBtn.style.display = 'none';
     if (heldBtn) heldBtn.style.display = 'none';
     if (sendToKitchenBtn) sendToKitchenBtn.style.display = 'none';
@@ -4302,7 +4306,8 @@ function handleWaiterCall(call) {
     }
 }
 
-		
+		// 🏪 OWNER-SOLO — open Admin on this device (same session, PIN protected)
+function ssOpenAdmin() { location.href = 'admin.html?from=pos'; }
 
 		function toggleSidebar() { 
     document.getElementById('sidebar').classList.toggle('open'); 
