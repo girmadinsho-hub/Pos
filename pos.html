@@ -760,7 +760,8 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     <div class="card-title">🛒 <span id="cartTitle">CART</span> <span class="badge" id="cartCount">0</span></div>
     <div class="negotiate-toggle" id="negotiateToggleRow" style="display:none;"><label><input type="checkbox" id="enableNegotiate" onchange="updateCart()"> <span id="lblNegotiate">Negotiate Price</span></label></div>
     <div class="discount-row" id="discountToggleRow"><span>🏷️ Discount:</span><input type="number" id="discountPercent" value="0" min="0" max="100" onchange="updateCart()" placeholder="%"> % <span>or Br</span><input type="number" id="discountAmount" value="0" min="0" onchange="updateCart()" placeholder="Amount"><button class="btn-mini add" onclick="redeemLoyaltyPoints()" style="margin-left:4px;">🎁 Redeem</button></div>
-    <div class="tax-toggle" id="taxToggleRow" style="display:none;"><label><input type="checkbox" id="enableTax" onchange="toggleTax()"> <span id="lblTax">Tax</span></label><span id="taxRateBox">Rate: <input type="number" id="taxRate" value="10" min="0" onchange="updateCart()"> %</span></div>
+    <div class="tax-toggle" id="taxToggleRow" style="display:none;"><label><input type="checkbox" id="enableTax" onchange="toggleTax()"> <span id="lblTax">Tax</span></label>                   <span id="taxRateBox">Rate: <b id="taxRateDisplay" style="color:#2563eb;">0</b>% 🔒</span>
+            <input type="hidden" id="taxRate" value="0"> </div>
     <div id="cartItems" style="max-height:180px;overflow-y:auto;min-height:30px;"></div>
     <div style="margin-top:10px;">
         <div class="total-row"><span id="lblSub">Subtotal:</span><span id="subtotal">Br 0.00</span></div>
@@ -2350,11 +2351,23 @@ function logout(){
     if (negotiateRow) negotiateRow.style.display = posSettings.negotiatePrice ? 'flex' : 'none';
     if (discountRow) discountRow.style.display = posSettings.enableDiscount ? 'flex' : 'none';
     
+    // 🔒 TAX LOCK — rate comes ONLY from Admin settings; cashier cannot change it
     var enableTaxCheck = document.getElementById('enableTax');
-    if (enableTaxCheck) enableTaxCheck.checked = posSettings.enableTax;
     var taxRateInput = document.getElementById('taxRate');
-    if (taxRateInput && !posSettings.enableTax) taxRateInput.value = 0;
+    var taxRateDisplay = document.getElementById('taxRateDisplay');
 
+    if (posSettings.enableTax) {
+        // Owner enabled tax with a fixed rate — lock everything
+        if (enableTaxCheck) { enableTaxCheck.checked = true; enableTaxCheck.disabled = true; }   // cannot uncheck
+        var lockedRate = posSettings.taxRate || 0;
+        if (taxRateInput) taxRateInput.value = lockedRate;
+        if (taxRateDisplay) taxRateDisplay.textContent = lockedRate;
+    } else {
+        // Tax disabled by owner — nothing to collect
+        if (enableTaxCheck) { enableTaxCheck.checked = false; enableTaxCheck.disabled = false; }
+        if (taxRateInput) taxRateInput.value = 0;
+        if (taxRateDisplay) taxRateDisplay.textContent = '0';
+    }
     // ===== ROLE + SHOP TYPE BUTTONS =====
     var staffRole = currentCashier ? (currentCashier.position || 'Cashier') : 'Cashier';
     var payBtn = document.getElementById('btnPay'); 
