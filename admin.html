@@ -9762,12 +9762,19 @@ function loadShopsList() {
 }						
 	
 async function savePosSettings() {
+       // 🔒 TAX RULE: tax type decides everything (TOT → always 0 & off)
+    var brandTaxType = (document.getElementById('brandTaxType') ? document.getElementById('brandTaxType').value : 'TOT');
+    var isVatShop = (brandTaxType === 'VAT');
+    var enableTaxFinal = isVatShop && document.getElementById('settingEnableTax').checked;   // only VAT shops can enable
+    var taxRateFinal = isVatShop ? (parseFloat(document.getElementById('settingTaxRate').value) || 0) : 0;
+    var taxNameFinal = isVatShop ? (document.getElementById('settingTaxName').value.trim() || 'VAT') : 'TOT';
+
     var payload = {
         shop_id: getShopId(),
         shop_type: document.getElementById('settingShopType').value,
-        enable_tax: document.getElementById('settingEnableTax').checked,
-        tax_name: document.getElementById('settingTaxName').value.trim() || 'Tax',
-        tax_rate: parseFloat(document.getElementById('settingTaxRate').value) || 0,
+        enable_tax: enableTaxFinal,
+        tax_name: taxNameFinal,
+        tax_rate: taxRateFinal,
         negotiate_price: document.getElementById('settingNegotiatePrice').checked,
         bulk_pricing: document.getElementById('settingBulkPricing').checked,
         enable_discount: document.getElementById('settingEnableDiscount').checked
