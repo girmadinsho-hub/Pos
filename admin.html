@@ -3234,6 +3234,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 <script src="ssauth.js"></script>	 
 <script src="ssperf.js"></script>
 <script src="ssfiscal.js"></script>
+<script src="ssfeatures.js"></script>
 <script src="ssupload.js"></script>
 <script src="advanced.js"></script>
 <script src="smartcom.js"></script>
@@ -4078,6 +4079,11 @@ function subGo(tabNum, itemEl, action) {
 // ===== UNIFIED TAB SWITCHER (CLEAN & SAFE) =====
 function selectTab(i, el) {
     // 1. MANAGER RESTRICTION – only allow specific tabs
+      // 🔒 PLAN GUARD — locked tools show upgrade message instead
+    if (typeof ssTabAllowed === 'function' && !ssTabAllowed(i)) {
+        alert('✨ This tool is available on a higher plan.\n\nYour plan: ' + (typeof ssPlanLabel === 'function' ? ssPlanLabel() : '') + '\n\nUpgrade: License tab → Activate a new key, or contact your provider.');
+        return;
+    }
     if (typeof loginRole !== 'undefined' && loginRole === 'manager') {
         var allowed = [0, 2, 3, 4, 15]; // Dashboard, Sales, Stock, Credits, Notebook
         if (!allowed.includes(i)) return; // Silently ignore clicks on restricted tabs
@@ -8944,6 +8950,7 @@ async function activateLicense() {
         // 5. Refresh UI + reload data for the (possibly new) shop
         if (typeof loadLicenseInfo === 'function') loadLicenseInfo();
         if (typeof loadAllCaches === 'function') loadAllCaches();
+        if (typeof ssApplyPlanVisibility === 'function') ssApplyPlanVisibility();
     } catch (e) {
         alert('❌ Activation failed: ' + e.message);
     }
@@ -12833,6 +12840,20 @@ function init() {
     if (ssSid) ssSid.textContent = getShopId();
 	  loadSupportContactsUniversal();
     if (supabaseClient) loadAllCaches();
+      // 🎯 PLAN VISIBILITY — sidebar + tools + unlock card
+    if (typeof ssApplyPlanVisibility === 'function') ssApplyPlanVisibility();
+
+    // 🛒 OWNER-SOLO — Back to Selling button (admin opened from POS)
+    try {
+        if (new URLSearchParams(window.location.search).get('from') === 'pos' && !document.getElementById('ssBackToPos')) {
+            var backBtn = document.createElement('button');
+            backBtn.id = 'ssBackToPos';
+            backBtn.textContent = '🛒 Back to Selling';
+            backBtn.style.cssText = 'position:fixed;bottom:16px;right:16px;z-index:9999;background:#10b981;color:#fff;border:none;padding:14px 20px;border-radius:999px;font-weight:800;font-size:15px;box-shadow:0 6px 18px rgba(16,185,129,.45);cursor:pointer;';
+            backBtn.onclick = function() { location.href = 'pos.html'; };
+            document.body.appendChild(backBtn);
+        }
+    } catch(e) {}
     document.getElementById('langSelect').value = appLang;
     setTimeout(function() { loadShopList(); }, 1000);
 
