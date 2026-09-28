@@ -950,6 +950,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 	
 	<div class="sidebar-tab" onclick="selectTab(9, this)" title="Manage suppliers and orders">🏭 Suppliers</div>
     <div class="sidebar-tab" onclick="selectTab(18, this)" title="Create product recipes">📋 Recipes</div>
+    <div class="sidebar-tab" onclick="selectTab(21, this)" title="Manage rooms and guests" id="hotelSidebarTab" style="display:none;">🏨 Hotel</div>
     <div class="sidebar-tab" onclick="selectTab(10, this)" title="Manage loyalty points">🎁 Loyalty</div>
     <div class="sidebar-tab" onclick="selectTab(11, this)" title="Track loans given/received">💸 Loans</div>
     <div class="sidebar-tab" onclick="selectTab(12, this)" title="Manage bank accounts">🏦 Bank</div>
@@ -2402,6 +2403,37 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
         </div>
         <p style="font-size:12px; color:#64748b; margin-bottom:10px;">Every activated POS and Kitchen device appears here. Revoke instantly locks that device. Restore brings it back.</p>
         <div id="devicesList"></div>
+    </div>
+</div>
+
+    <!-- ═══ 🏨 HOTEL MANAGEMENT (tab21) ═══ -->
+<div id="tab21" class="tab-content" style="display:none">
+
+    <!-- LIVE STATUS SUMMARY -->
+    <div class="dashboard-grid" id="hotelStatsRow" style="margin-bottom:12px;"></div>
+
+    <!-- ROOM BOARD -->
+    <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <span>🛏️ Room Board (Live)</span>
+            <div style="display:flex;gap:6px;">
+                <button class="btn-mini" onclick="openRoomEditor()">➕ Add Room</button>
+                <button class="btn-mini" onclick="loadHotelBoard()">🔄</button>
+            </div>
+        </div>
+        <div id="roomBoard" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(105px,1fr)); gap:10px;"></div>
+    </div>
+
+    <!-- TODAY'S ARRIVALS & DEPARTURES -->
+    <div class="card">
+        <div class="card-title" onclick="toggleCard(this)">🚪 Arrivals & Departures <span class="arrow open">▶</span></div>
+        <div class="card-body" id="arrivalsList"></div>
+    </div>
+
+    <!-- STAY HISTORY -->
+    <div class="card">
+        <div class="card-title" onclick="toggleCard(this)">📜 Guest Stay History <span class="arrow open">▶</span></div>
+        <div class="card-body" id="stayHistoryList" style="max-height:50vh; overflow-y:auto;"></div>
     </div>
 </div>
 
@@ -4157,6 +4189,7 @@ function selectTab(i, el) {
         if (i===18 && typeof initRecipeTab === 'function') initRecipeTab();
 			  if (i===19 && typeof initAdminChat === 'function') initAdminChat();
 			  if (i===20 && typeof loadDevices === 'function') loadDevices();
+        if (i===21) { if (typeof loadHotelBoard === 'function') loadHotelBoard(); }
     } catch(e) {
         console.error("Error loading tab " + i + ":", e);
     }
@@ -12871,6 +12904,9 @@ function init() {
     if (supabaseClient) loadAllCaches();
       // 🎯 PLAN VISIBILITY — sidebar + tools + unlock card
     if (typeof ssApplyPlanVisibility === 'function') ssApplyPlanVisibility();
+        // 🏨 Hotel tab — only for hotel-type shops
+    var hotelTab = document.getElementById('hotelSidebarTab');
+    if (hotelTab) hotelTab.style.display = (typeof ssHasFeature === 'function' && ssHasFeature('rooms')) ? 'flex' : 'none';
 
     // 🛒 OWNER-SOLO — Back to Selling button (admin opened from POS)
     try {
