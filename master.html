@@ -148,12 +148,9 @@
                         <input type="text" id="keyPrefix" placeholder="Key Prefix (default: SMART)" style="flex:1">
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        <select id="planType" onchange="onPlanChange()" style="flex:1">
-                            <option value="basic">Basic – 500 Br/month</option>
-                            <option value="standard">Standard – 1,000 Br/month</option>
-                            <option value="premium">Premium – 2,000 Br/month</option>
-                            <option value="enterprise">Enterprise – configurable</option>
-                        </select>
+                    <select id="planType" onchange="onPlanChange()">
+                        <option value="">Loading plans…</option>
+                    </select>
                         <input type="date" id="startDate" style="flex:1" title="Leave empty for today">
                     </div>
                     <div id="enterpriseConfig" style="display:none">
@@ -348,7 +345,7 @@ const SUPABASE_URL = "https://mtwcdvmdoxzcejzgypdw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8";
 let supabaseClient = null;
 if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY,{ auth: { flowType: 'implicit' } });
     console.log("✅ Supabase Connected in Master!");
 }
 
@@ -609,10 +606,13 @@ function calculateEnterprisePrice() {
     document.getElementById('enterprisePriceDisplay').innerHTML = 'Monthly price: <b>'+m.toLocaleString()+' Br</b> (Yearly: '+(m*10).toLocaleString()+' Br)';
 }
 function onPlanChange() {
-    document.getElementById('enterpriseConfig').style.display = document.getElementById('planType').value==='enterprise'?'block':'none';
-    if (document.getElementById('planType').value==='enterprise') calculateEnterprisePrice();
+    // Enterprise pricing now lives in the Plan Manager — the old
+    // shops/cashiers calculator is retired. Simple pass-through.
+    var sel = document.getElementById('planType');
+    var cfg = document.getElementById('enterpriseConfig');
+    if (cfg) cfg.style.display = 'none';   // always hidden — prices are Master-managed
 }
-function showBulkGenerate() { document.getElementById('bulkGenerateSection').style.display='block'; }
+  function showBulkGenerate() { document.getElementById('bulkGenerateSection').style.display='block'; }
 
 // ===== KEY GENERATION =====
 async function isShopIdUnique(shopId) {
@@ -641,13 +641,32 @@ async function generateLicense() {
         shop_name: shop, shop_id: shopId, plan, key, 
         start_date: now.toISOString(), expiry_date: expiry.toISOString(), status:'active', created_at: new Date().toISOString() 
     };
-    if (plan==='enterprise') {
-        const s = document.getElementById('entShops').value, c = document.getElementById('entCashiers').value;
-        data.max_shops = s==='0'?999:parseInt(s); data.max_cashiers_per_shop = c==='0'?999:parseInt(c);
-        data.max_products = 999999; data.price_monthly = ENTERPRISE_PRICES[s]?.[c]||5000; data.price_yearly = data.price_monthly*10;
+    // ═══ MASTER-CONTROLLED LIMITS — read from the Plan Manager (plans table) ═══
+    // Plan names in the dropdown now match the plans table exactly.
+    // Everything (limits, prices, business type) comes from ONE source of truth.
+    let planDef = null;
+    try {
+        const r = await supabaseClient.from('plans').select('*').ilike('name', plan).limit(1);
+        if (r.data && r.data[0]) planDef = r.data[0];
+    } catch(e) { console.warn('Plan definition lookup failed:', e.message); }
+
+    if (planDef) {
+        data.max_shops = planDef.max_branches || 1;
+        data.max_cashiers_per_shop = planDef.max_cashiers || 999;
+        data.max_products = planDef.max_products || 999999;
+        data.max_tables = planDef.max_tables || 0;
+        data.max_menu_items = planDef.max_menu_items || 0;
+        data.has_stock_mgmt = planDef.has_stock_mgmt !== false;
+        data.price_monthly = planDef.price_monthly || 0;
+        data.price_yearly = planDef.price_yearly || 0;
+        data.business_type = planDef.business_type || 'retail';
+        data.features = planDef.features || [];
     } else {
-        data.max_shops = 1; data.max_cashiers_per_shop = plan==='basic'?2:(plan==='standard'?5:10);
-        data.max_products = plan==='basic'?200:(plan==='standard'?1000:10000);
+        // Fallback (plan not found in table — shouldn't happen after seeding)
+        data.max_shops = 1;
+        data.max_cashiers_per_shop = 2;
+        data.max_products = 200;
+        data.business_type = 'retail';
     }
     await supabaseClient.from('licenses').insert([data]);
         await supabaseClient.from('shops').upsert({ name: shop, shop_id: shopId, plan, active: true, created_at: now.toISOString() }, { onConflict: 'shop_id' });	logAction('generate',`Generated key for ${shop} (${key})`);
@@ -1092,6 +1111,8 @@ function initMasterPanel() {
 	loadTierSettings();
 	  setupRegistrationAlerts();
 	  loadSupportContacts();
+  loadPlanEditor();
+      loadPlanDropdown();
 }
 // ===== 📢 INSTANT NEW-REGISTRATION ALERTS =====
 function setupRegistrationAlerts() {
@@ -1234,7 +1255,105 @@ function showMasterTab(tabId) {
     for (var i = 0; i < tabs.length; i++) tabs[i].style.display = 'none';
     document.getElementById(tabId).style.display = 'block';
 }
-	
+// 📋 Fill the license generator dropdown from the plans table (both branches)
+async function loadPlanDropdown() {
+    var sel = document.getElementById('planType');
+    if (!sel) return;
+    try {
+        const { data, error } = await supabaseClient.from('plans').select('*').eq('active', true).order('display_order');
+        if (error) throw error;
+        var html = '';
+        var groups = { retail: '🛒 Retail', cafe: '☕ Café / Restaurant', hotel: '🏨 Hotel' };
+        ['retail','cafe','hotel'].forEach(function(bt) {
+            var plans = (data || []).filter(function(p){ return p.business_type === bt; });
+            if (!plans.length) return;
+            html += '<optgroup label="' + (groups[bt] || bt) + '">';
+            plans.forEach(function(p) {
+                if (p.is_default_free) return;   // free plan never needs a key
+                var price = (p.price_monthly > 0) ? (p.name + ' – ' + p.price_monthly + ' Br/mo') : (p.name + ' – custom');
+                html += '<option value="' + p.name + '">' + price + '</option>';
+            });
+            html += '</optgroup>';
+        });
+        sel.innerHTML = html || '<option value="basic">Basic</option>';
+    } catch(e) {
+        sel.innerHTML = '<option value="basic">Basic</option><option value="standard">Standard</option>';
+    }
+}
+  
+async function loadPlanEditor() {
+    const { data, error } = await supabaseClient.from('plans').select('*').order('display_order');
+    var container = document.getElementById('planEditorList');
+    if (error || !data) { container.innerHTML = '<p style="color:#f44336;">Load failed</p>'; return; }
+
+    var groups = { retail: '🛒 RETAIL SHOP PLANS', cafe: '☕ CAFÉ / RESTAURANT PLANS', hotel: '🏨 HOTEL PLANS' };
+    var html = '';
+    ['retail','cafe','hotel'].forEach(function(bt) {
+        var plans = data.filter(function(p){ return p.business_type === bt; });
+        if (!plans.length) return;
+        html += '<h3 style="color:#4caf50; margin:15px 0 8px 0; font-size:14px;">' + (groups[bt] || bt) + '</h3>';
+        plans.forEach(function(p) {
+            var feats = Array.isArray(p.features) ? p.features : [];
+            html += '<div style="background:#2a2a3e;border-radius:12px;padding:14px;margin-bottom:12px;">' +
+                '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                '<input value="' + (p.name || '') + '" id="planName_' + p.id + '" placeholder="Name" style="flex:1;padding:8px;">' +
+                '<input value="' + (p.line || '') + '" id="planLine_' + p.id + '" placeholder="Tagline" style="flex:1;padding:8px;">' +
+                '</div>' +
+                '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">' +
+                lbl(p.id, 'Prod', 'planProd', p.max_products) +
+                lbl(p.id, 'Staff', 'planCash', p.max_cashiers) +
+                lbl(p.id, 'Tables', 'planTable', p.max_tables || 0) +
+                lbl(p.id, 'Menu', 'planMenu', p.max_menu_items || 0) +
+                lbl(p.id, 'Br/Mo', 'planPM', p.price_monthly) +
+                lbl(p.id, 'Br/Yr', 'planPY', p.price_yearly) +
+                lbl(p.id, 'Branches', 'planBr', p.max_branches || 1) +
+                '</div>' +
+                '<label style="display:block;margin-top:8px;font-size:12px;"><input type="checkbox" ' + (p.has_stock_mgmt !== false ? 'checked' : '') + ' id="planStock_' + p.id + '"> Stock management included</label>' +
+                '<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;color:#94a3b8;">🔓 Features</summary>' +
+                ['dashboard','products','sales','stock','staff','notebook','settings','devices','license','expenses','losses','credits','reports','kitchen','recipes','qrMenu','receipts','intercom','loyalty','suppliers','loans','bank','taxReports','crm','marketing','menuEng','timesheets','forecast','valuation','branches','rooms'].map(function(f) {
+                    return '<label style="display:inline-block;font-size:11px;margin:3px;"><input type="checkbox" ' + (feats.indexOf(f) !== -1 ? 'checked' : '') + ' id="planFeat_' + p.id + '_' + f + '"> ' + f + '</label>';
+                }).join('') + '</details></div>';
+        });
+    });
+    container.innerHTML = html;
+}
+function lbl(id, label, prefix, val) {
+    return '<label style="flex:1;min-width:70px;font-size:11px;color:#94a3b8;">' + label +
+        '<input type="number" value="' + (val || 0) + '" id="' + prefix + '_' + id + '" style="width:100%;padding:8px;"></label>';
+}
+
+  async function saveAllPlans() {
+    if (!confirm('Save all plan changes?\n\nPrices, limits, tables, stock management, features — applies immediately to the whole platform.')) return;
+    try {
+        const { data } = await supabaseClient.from('plans').select('id').order('display_order');
+        var ALLF = ['dashboard','products','sales','stock','staff','notebook','settings','devices','license','expenses','losses','credits','reports','kitchen','recipes','qrMenu','receipts','intercom','loyalty','suppliers','loans','bank','taxReports','crm','marketing','menuEng','timesheets','forecast','valuation','branches','rooms'];
+        for (var i = 0; i < data.length; i++) {
+            var id = data[i].id;
+            var feats = [];
+            ALLF.forEach(function(f) {
+                var cb = document.getElementById('planFeat_' + id + '_' + f);
+                if (cb && cb.checked) feats.push(f);
+            });
+            await supabaseClient.from('plans').update({
+                name: document.getElementById('planName_' + id).value.trim(),
+                line: document.getElementById('planLine_' + id).value.trim(),
+                max_products: parseInt(document.getElementById('planProd_' + id).value) || 0,
+                max_cashiers: parseInt(document.getElementById('planCash_' + id).value) || 0,
+                max_tables: parseInt(document.getElementById('planTable_' + id).value) || 0,
+                max_menu_items: parseInt(document.getElementById('planMenu_' + id).value) || 0,
+                max_branches: parseInt(document.getElementById('planBr_' + id).value) || 1,
+                price_monthly: parseFloat(document.getElementById('planPM_' + id).value) || 0,
+                price_yearly: parseFloat(document.getElementById('planPY_' + id).value) || 0,
+                has_stock_mgmt: document.getElementById('planStock_' + id).checked,
+                features: feats
+            }).eq('id', id);
+        }
+        alert('✅ All plans saved! Platform rules updated.');
+        loadPlanEditor();
+        logAction('plans_updated', 'Plan Manager v2 changes saved');
+    } catch (e) { alert('❌ ' + e.message); }
+}
+  
 </script>
 </body>
 </html>
