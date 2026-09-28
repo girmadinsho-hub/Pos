@@ -687,6 +687,25 @@ body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
         <div class="card-title">📝 Create Account</div>
         <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Set up your shop in one minute.</p>
 
+        <label style="font-size:11px; color:#64748b; font-weight:700;">🏪 WHAT IS YOUR BUSINESS?</label>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <label style="flex:1; border:2px solid #2563eb; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;">
+                <input type="radio" name="regBizType" value="retail" checked style="margin-right:4px;">🛒 Retail Shop
+            </label>
+            <label style="flex:1; border:2px solid #e2e8f0; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;" id="regCafeLabel">
+                <input type="radio" name="regBizType" value="cafe" style="margin-right:4px;">☕ Café / Restaurant
+            </label>
+        </div>
+        <label style="font-size:11px; color:#64748b; font-weight:700;">🏪 WHAT IS YOUR BUSINESS?</label>
+        <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <label style="flex:1; border:2px solid #2563eb; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;">
+                <input type="radio" name="regBizType" value="retail" checked style="margin-right:4px;">🛒 Retail Shop
+            </label>
+            <label style="flex:1; border:2px solid #e2e8f0; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;" id="regCafeLabel">
+                <input type="radio" name="regBizType" value="cafe" style="margin-right:4px;">☕ Café / Restaurant
+            </label>
+        </div>
+      
         <input type="text" id="regShopName" class="form-input" placeholder="Shop Name * (e.g., Friends Coffee)" oninput="regPreviewShopId()">
 
         <label style="font-size:11px; color:#64748b; font-weight:700;">🔑 YOUR SHOP ID (for connecting POS/Kitchen devices)</label>
@@ -8890,8 +8909,15 @@ async function activateLicense() {
         const { data: lic, error } = await supabaseClient.from('licenses')
             .select('*').eq('key', key).limit(1).maybeSingle();
         if (error) throw error;
+              // 🔀 Branch check: café keys for café shops, retail keys for retail
+        const { data: myShopRow } = await supabaseClient.from('shops').select('business_type').eq('shop_id', getShopId()).maybeSingle();
+        var myBiz = (myShopRow && myShopRow.business_type) || 'retail';
+        if (lic.business_type && lic.business_type !== myBiz) {
+            alert('❌ This key is for a ' + lic.business_type.toUpperCase() + ' business.\nYour shop is registered as ' + myBiz.toUpperCase() + '.\nContact your provider for the correct key.');
+            return;
+        }
         if (!lic) { alert('❌ Invalid key! Copy-paste the key exactly as provided.'); return; }
-        if (lic.status !== 'active') { alert('❌ This license was revoked. Contact your provider.'); return; }
+       if (lic.status !== 'active') { alert('❌ This license was revoked. Contact your provider.'); return; }
 
         var daysLeft = Math.ceil((new Date(lic.expiry_date) - new Date()) / 86400000);
         if (daysLeft <= 0) {
@@ -11518,11 +11544,12 @@ async function ssCompleteRegistration(shopId, shopName, phone, email, dk) {
     await supabaseClient.from('shops').insert([{
         shop_id: shopId, name: shopName, phone: phone, owner_email: email,
         plan: 'trial', active: true,
+        business_type: (document.querySelector('input[name="regBizType"]:checked') || {value:'retail'}).value,
         trial_expires: new Date(Date.now() + trialDays * 86400000).toISOString(),
         registered_at: new Date().toISOString()
     }]);
-    await supabaseClient.from('settings').insert([{ shop_id: shopId, name: shopName, currency: 'Br ' }]);
-    try { await supabaseClient.auth.updateUser({ data: { shopId: shopId, shopName: shopName } }); } catch(e) {}
+        await supabaseClient.from('settings').insert([{ shop_id: shopId, name: shopName, currency: 'Br ',
+            shop_type: ((document.querySelector('input[name="regBizType"]:checked') || {value:'retail'}).value === 'cafe') ? 'cafe' : 'retail' }]);    try { await supabaseClient.auth.updateUser({ data: { shopId: shopId, shopName: shopName } }); } catch(e) {}
 
     localStorage.setItem('shopId', shopId);
     localStorage.setItem('appCurrencySymbol', 'Br ');
@@ -11685,6 +11712,7 @@ async function ssCompleteSetup() {
         await supabaseClient.from('shops').insert([{
             shop_id: finalId, name: name, phone: phone, owner_email: (await supabaseClient.auth.getUser()).data.user.email,
             plan: 'trial', active: true,
+              business_type: (document.querySelector('input[name="regBizType"]:checked') || {value:'retail'}).value,
             trial_expires: new Date(Date.now() + trialDays * 86400000).toISOString(),
             registered_at: new Date().toISOString()
         }]);
@@ -11806,8 +11834,9 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
                 }
 
                 await loadSupportContactsUniversal();
-                const { data: plans } = await supabaseClient.from('plans').select('*').eq('active', true);
-                var plansHtml = '';
+                    const { data: shopRow2 } = await supabaseClient.from('shops').select('business_type').eq('shop_id', getShopId()).maybeSingle();
+                    var myBizType = (shopRow2 && shopRow2.business_type) || 'retail';
+                    const { data: plans } = await supabaseClient.from('plans').select('*').eq('active', true).eq('business_type', myBizType).order('display_order');                var plansHtml = '';
                 (plans || []).forEach(function(pl) {
                     plansHtml += '<div style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:16px;margin-bottom:10px;">' +
                         '<div style="display:flex;justify-content:space-between;align-items:center;">' +
