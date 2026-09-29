@@ -4126,7 +4126,23 @@ function subGo(tabNum, itemEl, action) {
         }
     } catch(e) { console.warn('Submenu action failed:', e); }
 }
-	
+
+  // 🏨 HOTEL — lazy loader: downloads hotel.js once, then opens the board
+var _hotelJsLoaded = false;
+function ssLazyLoadHotel() {
+    if (_hotelJsLoaded) {
+        if (typeof loadHotelBoard === 'function') loadHotelBoard();
+        return;
+    }
+    var s = document.createElement('script');
+    s.src = 'hotel.js?v=' + (window.SS_CACHE_VERSION || '1');
+    s.onload = function() {
+        _hotelJsLoaded = true;
+        loadHotelBoard();
+    };
+    s.onerror = function() { alert('⚠️ Hotel module failed to load. Check your internet and try again.'); };
+    document.head.appendChild(s);
+}
 // ===== UNIFIED TAB SWITCHER (CLEAN & SAFE) =====
 function selectTab(i, el) {
     // 1. MANAGER RESTRICTION – only allow specific tabs
@@ -4189,8 +4205,7 @@ function selectTab(i, el) {
         if (i===18 && typeof initRecipeTab === 'function') initRecipeTab();
 			  if (i===19 && typeof initAdminChat === 'function') initAdminChat();
 			  if (i===20 && typeof loadDevices === 'function') loadDevices();
-        if (i===21) { if (typeof loadHotelBoard === 'function') loadHotelBoard(); }
-    } catch(e) {
+        if (i===21) { ssLazyLoadHotel(); }    } catch(e) {
         console.error("Error loading tab " + i + ":", e);
     }
 }
