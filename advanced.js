@@ -1,3 +1,4 @@
+// ==========================================
 // SMARTBIZ PRO - ADVANCED FEATURES MODULE
 // ==========================================
 
@@ -1631,15 +1632,21 @@ async function updateStaffPositions() {
     var empPosSelect = document.getElementById('empPosition');
     if (!empPosSelect) return;
 
-    var shopType = 'retail', bizType = 'retail';
+    // 🔑 Check BOTH: business_type (retail/cafe/hotel) AND shop_type (retail/cafe)
+    var bizType = 'retail', shopType = 'retail';
     try {
-        const { data } = await supabaseClient.from('settings').select('shop_type').eq('shop_id', getShopId()).maybeSingle();
-        if (data && data.shop_type) shopType = data.shop_type;
-        const { data: shopRow } = await supabaseClient.from('shops').select('business_type').eq('shop_id', getShopId()).maybeSingle();
+        const { data: shopRow } = await supabaseClient.from('shops')
+            .select('business_type').eq('shop_id', getShopId()).maybeSingle();
         if (shopRow && shopRow.business_type) bizType = shopRow.business_type;
+
+        const { data: setRow } = await supabaseClient.from('settings')
+            .select('shop_type').eq('shop_id', getShopId()).maybeSingle();
+        if (setRow && setRow.shop_type) shopType = setRow.shop_type;
     } catch (e) {}
 
     if (bizType === 'hotel') {
+        // 🏨 HOTEL: Reception, Waiter (room service), Chef, Cashier (restaurant),
+        // Cleaner, Guard, Manager, Owner
         empPosSelect.innerHTML =
             '<option value="Reception">🛎️ Reception</option>' +
             '<option value="Waiter">Waiter (Restaurant/Room Service)</option>' +
@@ -1651,6 +1658,7 @@ async function updateStaffPositions() {
             '<option value="Owner">Owner</option>' +
             '<option value="Other">Other</option>';
     } else if (shopType === 'cafe') {
+        // ☕ CAFÉ
         empPosSelect.innerHTML =
             '<option value="Cashier">Cashier</option>' +
             '<option value="Waiter">Waiter</option>' +
@@ -1661,6 +1669,7 @@ async function updateStaffPositions() {
             '<option value="Cleaner">Cleaner</option>' +
             '<option value="Other">Other</option>';
     } else {
+        // 🛒 RETAIL
         empPosSelect.innerHTML =
             '<option value="Cashier">Cashier</option>' +
             '<option value="Manager">Manager</option>' +
