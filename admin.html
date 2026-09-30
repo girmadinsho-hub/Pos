@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+	<!DOCTYPE html> 
        <html>
        <head>
 	<script>window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#7f1d1d;color:#fff;padding:10px;font-family:monospace;font-size:12px;';d.textContent='❌ '+m+' | Line:'+l;d.onclick=function(){d.remove();};document.body.appendChild(d);};</script>
@@ -2486,8 +2486,9 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
         <div class="card-body">
             <label style="font-size:12px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">🏪 What type of shop is this?</label>
             <select class="form-select" id="settingShopType" onchange="savePosSettings()" style="margin-bottom:15px;">
-                <option value="retail">Retail / Supermarket (Simple)</option>
-                <option value="cafe">Cafe / Restaurant (Advanced)</option>
+                <option value="retail">🛒 Retail / Supermarket (Simple)</option>
+                <option value="cafe">☕ Cafe / Restaurant (Advanced)</option>
+                <option value="hotel">🏨 Hotel (Cafe + Rooms + Full Service)</option>
             </select>
 
                       <!-- 🖨️ KITCHEN TICKET MODE -->
@@ -9863,9 +9864,10 @@ async function savePosSettings() {
     var taxRateFinal = isVatShop ? (parseFloat(document.getElementById('settingTaxRate').value) || 0) : 0;
     var taxNameFinal = isVatShop ? (document.getElementById('settingTaxName').value.trim() || 'VAT') : 'TOT';
 
-    var payload = {
+        var payload = {
         shop_id: getShopId(),
-        shop_type: document.getElementById('settingShopType').value,
+        // 🏨 Hotel = café tools internally + hotel system via business_type
+        shop_type: document.getElementById('settingShopType').value === 'hotel' ? 'cafe' : document.getElementById('settingShopType').value,
         enable_tax: enableTaxFinal,
         tax_name: taxNameFinal,
         tax_rate: taxRateFinal,
@@ -9890,52 +9892,42 @@ async function savePosSettings() {
         alert('❌ Error saving POS settings: ' + e.message);
     }
 }
-async function loadPosSettings() {
-    if (!supabaseClient) return;
-    
-    const { data, error } = await supabaseClient.from('settings').select('*').eq('shop_id', getShopId()).maybeSingle();
-    if (error) { console.error('loadPosSettings error:', error.message); return; }
-    if (!data) return;
-    
-    window.posSettings = window.posSettings || {};
-    var shopType = data.shop_type || 'retail';
-    
-    posSettings.shopType = shopType;
-    posSettings.kotPrintMode = data.kot_print_mode || 'digital';
-    var kotSel = document.getElementById('settingKotMode');
-    if (kotSel) kotSel.value = posSettings.kotPrintMode;
-    posSettings.enableTax = data.enable_tax !== false;
-    posSettings.taxName = data.tax_name || 'Tax';
-    posSettings.taxRate = data.tax_rate || 0;
-    posSettings.negotiatePrice = data.negotiate_price !== false;
-    posSettings.bulkPricing = data.bulk_pricing !== false;
-    posSettings.enableDiscount = data.enable_discount !== false;
-  
-    posSettings.kotPrintMode = data.kot_print_mode || 'digital';
-    var settingShopType = document.getElementById('settingShopType');
-    if (settingShopType) settingShopType.value = shopType;
-    
-    var settingEnableTax = document.getElementById('settingEnableTax');
-    if (settingEnableTax) settingEnableTax.checked = posSettings.enableTax;
-    
-    var settingTaxName = document.getElementById('settingTaxName');
-    if (settingTaxName) settingTaxName.value = posSettings.taxName;
-    
-    var settingTaxRate = document.getElementById('settingTaxRate');
-    if (settingTaxRate) settingTaxRate.value = posSettings.taxRate;
-    
-    var settingNegotiatePrice = document.getElementById('settingNegotiatePrice');
-    if (settingNegotiatePrice) settingNegotiatePrice.checked = posSettings.negotiatePrice;
-    
-    var settingBulkPricing = document.getElementById('settingBulkPricing');
-    if (settingBulkPricing) settingBulkPricing.checked = posSettings.bulkPricing;
-    
-    var settingEnableDiscount = document.getElementById('settingEnableDiscount');
-    if (settingEnableDiscount) settingEnableDiscount.checked = posSettings.enableDiscount;
+async function savePosSettings() {
+    var payload = {
+        shop_id: getShopId(),
+        // 🏨 Hotel = café tools internally + hotel system via business_type
+        shop_type: document.getElementById('settingShopType').value === 'hotel' ? 'cafe' : document.getElementById('settingShopType').value,
+        enable_tax: document.getElementById('settingEnableTax').checked,
+        tax_name: document.getElementById('settingTaxName').value.trim() || 'Tax',
+        tax_rate: parseFloat(document.getElementById('settingTaxRate').value) || 0,
+        negotiate_price: document.getElementById('settingNegotiatePrice').checked,
+        bulk_pricing: document.getElementById('settingBulkPricing').checked,
+        enable_discount: document.getElementById('settingEnableDiscount').checked
+    };
+    var kotEl = document.getElementById('settingKotMode');
+    if (kotEl) payload.kot_print_mode = kotEl.value;
 
-    if (typeof applyShopTypeUI === 'function') applyShopTypeUI(shopType);
-}				
-				async function saveShopLevel() {
+    try {
+        if (supabaseClient) {
+            // 1. Save the settings (shop_type: hotel stored internally as 'cafe')
+            const { error } = await supabaseClient.from('settings')
+                .upsert(payload, { onConflict: 'shop_id', returning: 'minimal' });
+            if (error) throw error;
+
+            // 2. 🏨 BUSINESS TYPE — the master identity (hotel/retail/cafe)
+            //    Hotel selected → business_type='hotel' (activates rooms + hotel staff)
+            //    Anything else  → business_type follows the selection
+            var selValue = document.getElementById('settingShopType').value;
+            var newBizType = (selValue === 'hotel') ? 'hotel' : selValue;
+            await supabaseClient.from('shops').update({ business_type: newBizType }).eq('shop_id', getShopId());
+        }
+
+        if (typeof applyShopTypeUI === 'function') applyShopTypeUI(payload.shop_type);
+        alert(t('posSettingsSaved'));
+    } catch(e) {
+        alert('❌ Error saving POS settings: ' + e.message);
+    }
+}				async function saveShopLevel() {
     var level = document.getElementById('shopLevelSelect').value;
     try {
         if (supabaseClient) {
@@ -12345,6 +12337,7 @@ var baseURL = window.location.origin + path + 'menu.html';
 function toggleCashierFields() {
     var pos = document.getElementById('empPosition').value;
     var pwdDiv = document.getElementById('cashierPasswordField');
+    // All roles that log in somewhere get a PIN
     var pinRoles = ['Cashier', 'Waiter', 'Chef', 'Manager', 'Owner', 'Reception', 'Cleaner', 'Guard'];
     if (pwdDiv) pwdDiv.style.display = pinRoles.indexOf(pos) !== -1 ? 'block' : 'none';
 }
