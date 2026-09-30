@@ -687,22 +687,17 @@ body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
         <div class="card-title">📝 Create Account</div>
         <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Set up your shop in one minute.</p>
 
+
         <label style="font-size:11px; color:#64748b; font-weight:700;">🏪 WHAT IS YOUR BUSINESS?</label>
-        <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <label style="flex:1; border:2px solid #2563eb; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;">
-                <input type="radio" name="regBizType" value="retail" checked style="margin-right:4px;">🛒 Retail Shop
+        <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+            <label style="flex:1; min-width:100px; border:2px solid #2563eb; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;">
+                <input type="radio" name="regBizType" value="retail" checked style="margin-right:4px;">🛒 Retail
             </label>
-            <label style="flex:1; border:2px solid #e2e8f0; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;" id="regCafeLabel">
-                <input type="radio" name="regBizType" value="cafe" style="margin-right:4px;">☕ Café / Restaurant
+            <label style="flex:1; min-width:100px; border:2px solid #e2e8f0; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;">
+                <input type="radio" name="regBizType" value="cafe" style="margin-right:4px;">☕ Café
             </label>
-        </div>
-        <label style="font-size:11px; color:#64748b; font-weight:700;">🏪 WHAT IS YOUR BUSINESS?</label>
-        <div style="display:flex; gap:8px; margin-bottom:8px;">
-            <label style="flex:1; border:2px solid #2563eb; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;">
-                <input type="radio" name="regBizType" value="retail" checked style="margin-right:4px;">🛒 Retail Shop
-            </label>
-            <label style="flex:1; border:2px solid #e2e8f0; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;" id="regCafeLabel">
-                <input type="radio" name="regBizType" value="cafe" style="margin-right:4px;">☕ Café / Restaurant
+            <label style="flex:1; min-width:100px; border:2px solid #e2e8f0; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;">
+                <input type="radio" name="regBizType" value="hotel" style="margin-right:4px;">🏨 Hotel
             </label>
         </div>
       
@@ -11596,8 +11591,8 @@ async function ssCompleteRegistration(shopId, shopName, phone, email, dk) {
         trial_expires: new Date(Date.now() + trialDays * 86400000).toISOString(),
         registered_at: new Date().toISOString()
     }]);
-        await supabaseClient.from('settings').insert([{ shop_id: shopId, name: shopName, currency: 'Br ',
-            shop_type: ((document.querySelector('input[name="regBizType"]:checked') || {value:'retail'}).value === 'cafe') ? 'cafe' : 'retail' }]);    try { await supabaseClient.auth.updateUser({ data: { shopId: shopId, shopName: shopName } }); } catch(e) {}
+            await supabaseClient.from('settings').insert([{ shop_id: shopId, name: shopName, currency: 'Br ',
+            shop_type: (document.querySelector('input[name="regBizType"]:checked') || {value:'retail'}).value === 'retail' ? 'retail' : 'cafe' }]);    try { await supabaseClient.auth.updateUser({ data: { shopId: shopId, shopName: shopName } }); } catch(e) {}
 
     localStorage.setItem('shopId', shopId);
     localStorage.setItem('appCurrencySymbol', 'Br ');
@@ -12329,11 +12324,11 @@ var baseURL = window.location.origin + path + 'menu.html';
     area.style.display = 'block';
 }
 
-	function toggleCashierFields() {
+function toggleCashierFields() {
     var pos = document.getElementById('empPosition').value;
     var pwdDiv = document.getElementById('cashierPasswordField');
-    // Show PIN field for Cashiers, Waiters, Chefs, Managers, and Owners
-    if (pwdDiv) pwdDiv.style.display = (pos === 'Cashier' || pos === 'Waiter' || pos === 'Chef' || pos === 'Manager' || pos === 'Owner') ? 'block' : 'none';
+    var pinRoles = ['Cashier', 'Waiter', 'Chef', 'Manager', 'Owner', 'Reception', 'Cleaner', 'Guard'];
+    if (pwdDiv) pwdDiv.style.display = pinRoles.indexOf(pos) !== -1 ? 'block' : 'none';
 }
 
 // ===== ADMIN: KITCHEN ANALYTICS DASHBOARD =====
