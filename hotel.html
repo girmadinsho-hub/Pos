@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f172a">
+<title>🏨 SmartHotel Desk</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
+body { background:#0f172a; color:#e2e8f0; min-height:100vh; padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom); }
+.header { position:sticky; top:0; background:linear-gradient(135deg,#1e3a8a,#2563eb); padding:14px; border-radius:0 0 18px 18px; display:flex; justify-content:space-between; align-items:center; margin:0 -16px 16px; z-index:100; }
+.header b { font-size:17px; }
+.header small { display:block; font-size:11px; opacity:.85; }
+.htl-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:14px; }
+.htl-stat { background:#1e293b; border-radius:14px; padding:12px 6px; text-align:center; }
+.htl-stat b { font-size:18px; display:block; }
+.htl-stat small { font-size:9px; color:#94a3b8; font-weight:700; }
+.htl-board { display:grid; grid-template-columns:repeat(auto-fill,minmax(105px,1fr)); gap:10px; margin-top:10px; }
+.htl-modal { position:fixed; inset:0; background:rgba(0,0,0,.65); z-index:1000; display:flex; align-items:center; justify-content:center; padding:16px; }
+.htl-modal-content { background:#fff; color:#1e293b; border-radius:18px; padding:20px; width:100%; max-width:420px; max-height:88vh; overflow-y:auto; }
+.htl-input { width:100%; padding:11px; border:1.5px solid #cbd5e1; border-radius:10px; margin-bottom:8px; font-size:14px; }
+.htl-btn { width:100%; padding:13px; border:none; border-radius:11px; font-size:14px; font-weight:700; margin-bottom:7px; cursor:pointer; }
+.htl-btn.success { background:#10b981; color:#fff; }
+.htl-btn.primary { background:#2563eb; color:#fff; }
+.htl-btn.outline { background:#fff; color:#334155; border:1.5px solid #cbd5e1; }
+h2 { font-size:17px; margin:12px 0 6px; }
+/* LOGIN */
+.login { position:fixed; inset:0; background:linear-gradient(135deg,#0f172a,#1e3a8a); display:flex; align-items:center; justify-content:center; z-index:999; padding:20px; }
+.login-box { background:#fff; color:#1e293b; border-radius:20px; padding:28px; width:100%; max-width:360px; text-align:center; }
+.login-box h1 { font-size:22px; color:#1e3a8a; margin-bottom:4px; }
+.login-box p { font-size:12px; color:#64748b; margin-bottom:16px; }
+select, input { width:100%; padding:13px; border:1.5px solid #cbd5e1; border-radius:11px; font-size:15px; margin-bottom:10px; }
+.login-btn { width:100%; padding:14px; background:#2563eb; color:#fff; border:none; border-radius:12px; font-size:16px; font-weight:800; cursor:pointer; }
+</style>
+</head>
+<body>
+
+<div class="login" id="loginScreen">
+    <div class="login-box">
+        <h1>🏨 SmartHotel Desk</h1>
+        <p>Reception · Housekeeping · Security</p>
+        <div id="ownerSection" style="display:none; text-align:left; background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:14px; margin-bottom:12px;">
+            <b style="font-size:13px; color:#1e3a8a;">🔐 Device Activation</b>
+            <p style="font-size:11px; color:#64748b; margin:4px 0 8px;">Owner signs in ONCE — staff PINs after this.</p>
+            <input type="email" id="ownerEmail" placeholder="Owner email">
+            <input type="password" id="ownerPass" placeholder="Owner password">
+            <button class="login-btn" style="background:#10b981;" onclick="htlActivateDevice()">🔓 Activate</button>
+        </div>
+        <div id="staffSection">
+            <select id="staffSelect" style="display:none;" onchange="document.getElementById('pinInput').style.display='block'"></select>
+            <input type="password" id="pinInput" placeholder="4-digit PIN" maxlength="4" style="display:none; text-align:center; letter-spacing:8px; font-size:20px;">
+            <button class="login-btn" style="display:none;" id="loginBtn" onclick="htlStaffLogin()">🔓 Sign In</button>
+            <p onclick="document.getElementById('ownerSection').style.display=\'block\'; this.style.display=\'none\';" style="font-size:11px; color:#2563eb; margin-top:12px; cursor:pointer; text-decoration:underline;">New device? Owner activates here</p>
+        </div>
+    </div>
+</div>
+
+<div id="mainApp" style="display:none;">
+    <div class="header">
+        <div>
+            <b>🏨 <span id="hdTitle">Hotel Desk</span></b>
+            <small id="hdWho">—</small>
+        </div>
+        <button onclick="htlLogout()" style="background:rgba(255,255,255,.2); border:none; color:#fff; padding:8px 14px; border-radius:10px; font-weight:700; cursor:pointer;">🚪</button>
+    </div>
+    <div id="htlContent"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+<script src="config.js"></script>
+<script src="shared.js"></script>
+<script src="ssauth.js"></script>
+<script src="hotel.js"></script>
+<script>
+var supabaseClient = window.supabase.createClient(SS_CONFIG.SUPABASE_URL, SS_CONFIG.SUPABASE_KEY, { auth: { flowType: 'implicit' } });
+var HTL_STAFF = [];
+
+// ═══ AUTH FLOW ═══
+supabaseClient.auth.onAuthStateChange(async function(event, session) {
+    var isReal = session && session.user && session.user.email && !session.user.is_anonymous;
+    if (isReal) {
+        var sid = localStorage.getItem('hotelShopId') || localStorage.getItem('shopId') || '';
+        if (!sid || sid === 'default') {
+            try {
+                const { data: myShops } = await supabaseClient.from('shops').select('shop_id,name,business_type').eq('owner_email', session.user.email).eq('active', true);
+                var hotel = (myShops || []).find(function(s){ return s.business_type === 'hotel'; });
+                var chosen = hotel || (myShops && myShops[0]);
+                if (chosen) { localStorage.setItem('hotelShopId', chosen.shop_id); localStorage.setItem('shopId', chosen.shop_id); }
+            } catch(e) {}
+        }
+        if (localStorage.getItem('hotelStaffId')) showMainApp();
+        else htlShowStaffLogin();
+    } else {
+        document.getElementById('ownerSection').style.display = 'block';
+    }
+});
+
+async function htlActivateDevice() {
+    var email = document.getElementById('ownerEmail').value.trim();
+    var pass = document.getElementById('ownerPass').value;
+    if (!email || !pass) { alert('Fill email and password.'); return; }
+    try {
+        const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
+        if (error) throw error;
+        alert('✅ Device activated!');
+        document.getElementById('ownerSection').style.display = 'none';
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+async function htlShowStaffLogin() {
+    document.getElementById('loginScreen').style.display = 'flex';
+    const { data: staff } = await supabaseClient.from('employees').select('firebase_id, name, position, status, hashed_password, pin_salt')
+        .eq('shop_id', getShopId()).eq('status', 'active')
+        .in('position', ['Reception', 'Cleaner', 'Guard']);
+    HTL_STAFF = staff || [];
+    var sel = document.getElementById('staffSelect');
+    sel.innerHTML = HTL_STAFF.length
+        ? HTL_STAFF.map(s => '<option value="' + (s.firebase_id || s.id) + '">' + s.name + ' (' + s.position + ')</option>').join('')
+        : '<option>No hotel staff found</option>';
+    sel.style.display = 'block';
+    document.getElementById('pinInput').style.display = 'block';
+    document.getElementById('loginBtn').style.display = 'block';
+}
+
+async function htlStaffLogin() {
+    var id = document.getElementById('staffSelect').value;
+    var pin = document.getElementById('pinInput').value.trim();
+    if (!id || !pin) { alert('Select name and enter PIN.'); return; }
+    var v = await ssVerifyStaffPin(getShopId(), id, pin);
+    if (!v.ok) {
+        if (v.reason === 'locked') alert('🔒 Locked for ' + v.minutes + ' min.');
+        else if (v.reason === 'network') alert('📶 Connect to internet to sign in.');
+        else alert('❌ Wrong PIN!');
+        return;
+    }
+    var me = HTL_STAFF.find(s => (s.firebase_id || s.id) === id);
+    localStorage.setItem('hotelStaffId', id);
+    localStorage.setItem('hotelStaffName', me ? me.name : 'Staff');
+    localStorage.setItem('hotelPosition', me ? me.position : '');
+    showMainApp();
+}
+
+function showMainApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    var role = htlRole();
+    var name = localStorage.getItem('hotelStaffName') || '';
+    document.getElementById('hdWho').textContent = '👤 ' + name + ' · ' + role;
+    document.getElementById('hdTitle').textContent = (role === 'Cleaner') ? 'Housekeeping' : (role === 'Guard') ? 'Security' : 'Front Desk';
+    htlLoad().then(function(){ htlRenderMyMode(); htlRealtime(); });
+}
+
+function htlLogout() {
+    localStorage.removeItem('hotelStaffId');
+    localStorage.removeItem('hotelPosition');
+    location.reload();
+}
+</script>
+</body>
+</html>
