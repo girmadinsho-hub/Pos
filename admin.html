@@ -1,4 +1,4 @@
-	<!DOCTYPE html> 
+<!DOCTYPE html> 
        <html>
        <head>
 	<script>window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#7f1d1d;color:#fff;padding:10px;font-family:monospace;font-size:12px;';d.textContent='❌ '+m+' | Line:'+l;d.onclick=function(){d.remove();};document.body.appendChild(d);};</script>
@@ -851,6 +851,7 @@ function adminLogout() {
     if (passInput) passInput.value = '';
     
     supabaseClient.auth.signOut();    
+      localStorage.removeItem('hotelPosition');
     // 3. The onAuthStateChanged listener will detect the logout and show the login screen.
 }
   
@@ -2402,23 +2403,25 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
 </div>
 
     <!-- ═══ 🏨 HOTEL MANAGEMENT (tab21) ═══ -->
-<div id="tab21" class="tab-content" style="display:none">
+< id="tab21" class="tab-content" style="display:none">
 
     <!-- LIVE STATUS SUMMARY -->
     <div class="dashboard-grid" id="hotelStatsRow" style="margin-bottom:12px;"></div>
 
-    <!-- ROOM BOARD -->
+       <!-- ROOM BOARD -->
     <div class="card">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
             <span>🛏️ Room Board (Live)</span>
             <div style="display:flex;gap:6px;">
-                <button class="btn-mini" onclick="openRoomEditor()">➕ Add Room</button>
-                <button class="btn-mini" onclick="loadHotelBoard()">🔄</button>
+                <button class="btn-mini" onclick="htlOwnerAddRoom()">➕ Add Room</button>
+                <button class="btn-mini" onclick="htlLoad().then(function(){htlRenderReception();})">🔄</button>
             </div>
         </div>
-        <div id="roomBoard" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(105px,1fr)); gap:10px;"></div>
+        <div id="htlContent"></div>
     </div>
 
+
+    
     <!-- TODAY'S ARRIVALS & DEPARTURES -->
     <div class="card">
         <div class="card-title" onclick="toggleCard(this)">🚪 Arrivals & Departures <span class="arrow open">▶</span></div>
@@ -4131,12 +4134,27 @@ function ssLazyLoadHotel() {
     }
     var s = document.createElement('script');
     s.src = 'hotel.js?v=' + (window.SS_CACHE_VERSION || '1');
-    s.onload = function() {
+        s.onload = function() {
         _hotelJsLoaded = true;
-        loadHotelBoard();
+        localStorage.setItem('hotelPosition', 'Reception');   // owner sees the reception board (full tools)
+        htlLoad().then(function(){ htlRenderReception(); });
     };
     s.onerror = function() { alert('⚠️ Hotel module failed to load. Check your internet and try again.'); };
     document.head.appendChild(s);
+}
+  // 🏨 OWNER: add/edit rooms (reception cannot — permission rule)
+async function htlOwnerAddRoom() {
+    var num = await prompt('Room number:');
+    if (!num) return;
+    var rate = parseFloat(await prompt('Nightly rate:'));
+    if (isNaN(rate) || rate <= 0) { alert('Rate required.'); return; }
+    var type = await prompt('Type (Standard/Deluxe/Suite/Family):', 'Standard') || 'Standard';
+    try {
+        await supabaseClient.from('rooms').insert([{ shop_id: getShopId(),
+            room_number: num.trim(), room_type: type, base_rate: rate, capacity: 2, status: 'available' }]);
+        alert('✅ Room ' + num + ' added!');
+        if (_hotelJsLoaded) htlLoad().then(function(){ htlRenderReception(); });
+    } catch(e) { alert('❌ ' + e.message); }
 }
 // ===== UNIFIED TAB SWITCHER (CLEAN & SAFE) =====
 function selectTab(i, el) {
@@ -4200,7 +4218,7 @@ function selectTab(i, el) {
         if (i===18 && typeof initRecipeTab === 'function') initRecipeTab();
 			  if (i===19 && typeof initAdminChat === 'function') initAdminChat();
 			  if (i===20 && typeof loadDevices === 'function') loadDevices();
-        if (i===21) { ssLazyLoadHotel(); }    } catch(e) {
+                if (i===21) { ssLazyLoadHotel(); }    } catch(e) {
         console.error("Error loading tab " + i + ":", e);
     }
 }
