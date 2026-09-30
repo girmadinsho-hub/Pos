@@ -46,11 +46,11 @@ select, input { width:100%; padding:13px; border:1.5px solid #cbd5e1; border-rad
             <input type="password" id="ownerPass" placeholder="Owner password">
             <button class="login-btn" style="background:#10b981;" onclick="htlActivateDevice()">🔓 Activate</button>
         </div>
-        <div id="staffSection">
+          <div id="staffSection">
             <select id="staffSelect" style="display:none;" onchange="document.getElementById('pinInput').style.display='block'"></select>
             <input type="password" id="pinInput" placeholder="4-digit PIN" maxlength="4" style="display:none; text-align:center; letter-spacing:8px; font-size:20px;">
             <button class="login-btn" style="display:none;" id="loginBtn" onclick="htlStaffLogin()">🔓 Sign In</button>
-            <p onclick="document.getElementById('ownerSection').style.display=\'block\'; this.style.display=\'none\';" style="font-size:11px; color:#2563eb; margin-top:12px; cursor:pointer; text-decoration:underline;">New device? Owner activates here</p>
+            <p onclick="showOwnerActivation()" style="font-size:11px; color:#2563eb; margin-top:12px; cursor:pointer; text-decoration:underline;">New device? Owner activates here</p>
         </div>
     </div>
 </div>
@@ -155,6 +155,10 @@ function htlLogout() {
     localStorage.removeItem('hotelStaffId');
     localStorage.removeItem('hotelPosition');
     location.reload();
+}
+  function showOwnerActivation() {
+    document.getElementById('ownerSection').style.display = 'block';
+    this.style.display = 'none';
 }
 </script>
 </body>
