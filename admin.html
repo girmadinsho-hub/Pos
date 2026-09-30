@@ -11907,8 +11907,9 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
                     '<p style="color:#94a3b8;font-size:14px;margin-bottom:20px;">' + (hardBlocked ? 'Contact your provider to restore service.' : 'Thank you for trying SmartShop Pro!<br><b>Choose your plan to continue:</b>') + '</p>' +
                     plansHtml +
                     '<div style="margin-top:15px;padding:12px;background:rgba(255,255,255,.1);border-radius:10px;font-size:12px;color:#cbd5e1;">' +
-                    'After payment, you receive a <b>License Key</b>.<br>Activate it: Admin → License → Activate.</div>' +
-                    '<button onclick="supabaseClient.auth.signOut().then(()=>location.reload())" style="margin-top:15px;padding:10px 30px;border:none;border-radius:8px;background:rgba(255,255,255,.15);color:white;cursor:pointer;">Logout</button>' +
+                                              'After payment, send your transaction ID on WhatsApp:<br><b>' + window.SUPPORT.phone + '</b><br>' +
+                        'Or call: <b>' + window.SUPPORT.phone + '</b>' + (window.SUPPORT.email ? ' · 📧 ' + window.SUPPORT.email : '') + '<br>' +
+                        'Then activate your key: Admin → License → Activate.</div>' +
                     '</div>';
                 picker.style.display = 'block';
                 return;
