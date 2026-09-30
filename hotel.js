@@ -1,191 +1,132 @@
 // ══════════════════════════════════════════════════════════════
-//  🏨 SMARTSHOP HOTEL MODULE — complete hotel domain
-//  Rooms • Check-in/out • Folio billing • Housekeeping • History
-//  Loaded lazily (only for hotel shops, only when Hotel tab opens)
+//  🏨 SMARTSHOP HOTEL ENGINE — rooms, stays, folio, alerts
+//  Used by: hotel.html (reception/cleaner/guard) + admin (owner tab)
 // ══════════════════════════════════════════════════════════════
+var HTL = { rooms: [], stays: [], myRole: null, alerts: [] };
 
-// ─── Loader guard: make sure shared dependencies exist ───
-if (typeof getShopId !== 'function' || typeof supabaseClient === 'undefined') {
-    console.warn('HOTEL: shared.js not loaded yet — functions will work once page finishes loading');
-}
-
-// ═══ HOTEL STATE ═══
-var hotelRooms = [], hotelStays = [];
-var chargesNow = [];
-
-// ═══ MAIN BOARD ═══
-async function loadHotelBoard() {
-    // ... (paste EVERYTHING from my previous hotel message:
-    //      loadHotelBoard, statCard, openRoomEditor, saveRoom, deleteRoom,
-    //      openRoomActions, checkIn, openFolio, checkOut, addQuickCharge,
-    //      extendStay, setRoomStatus, checkInReserved, loadArrivalsList,
-    //      loadStayHistory)
-    //      — the complete functions exactly as I gave them)
-}
-
-// ═══ LAZY SELF-START: if the Hotel tab is open when this file loads, render now ═══
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(function() {
-        var tab = document.getElementById('tab21');
-        if (tab && tab.style.display !== 'none') loadHotelBoard();
-    }, 800);
-});
-
-var hotelRooms = [], hotelStays = [];
-
-async function loadHotelBoard() {
-    // Load rooms + active stays
-    const { data: rooms } = await supabaseClient.from('rooms').select('*').eq('shop_id', getShopId()).order('room_number');
-    hotelRooms = rooms || [];
-    const { data: stays } = await supabaseClient.from('guest_stays').select('*')
-        .eq('shop_id', getShopId()).in('status', ['active', 'reserved']).order('check_in', { ascending: false });
-    hotelStays = stays || [];
-
-    // Stats
-    var total = hotelRooms.length;
-    var occupied = hotelRooms.filter(r => r.status === 'occupied').length;
-    var available = hotelRooms.filter(r => r.status === 'available').length;
-    var cleaning = hotelRooms.filter(r => r.status === 'cleaning').length;
-    var reserved = hotelRooms.filter(r => r.status === 'reserved').length;
-    var occupancy = total > 0 ? Math.round(occupied / total * 100) : 0;
-    document.getElementById('hotelStatsRow').innerHTML =
-        statCard('🛏️ Total', total, '#2563eb') + statCard('✅ Available', available, '#10b981') +
-        statCard('👥 Occupied', occupied + ' (' + occupancy + '%)', '#f59e0b') +
-        statCard('🧹 Cleaning', cleaning, '#8b5cf6');
-
-    // Room board
-    var html = '';
-    hotelRooms.forEach(function(room) {
-        var colors = { available:'#10b981', occupied:'#ef4444', cleaning:'#f59e0b', maintenance:'#64748b', reserved:'#3b82f6' };
-        var c = colors[room.status] || '#64748b';
-        var stay = hotelStays.find(s => s.room_id === room.id && s.status === 'active');
-        var sub = room.status === 'occupied' && stay
-            ? stay.guest_name + ' · out ' + (stay.planned_checkout ? new Date(stay.planned_checkout).toLocaleDateString() : '—')
-            : (room.room_type + ' · ' + fmtMoney(room.base_rate) + '/night');
-        html += '<div onclick="openRoomActions(\'' + room.id + '\')" style="background:' + c + '; color:white; border-radius:12px; padding:10px; cursor:pointer; min-height:80px; display:flex; flex-direction:column; justify-content:center;">' +
-            '<b style="font-size:17px;">' + room.room_number + '</b>' +
-            '<small style="opacity:.9; font-size:10px; line-height:1.3; margin-top:3px;">' + sanitize(sub) + '</small></div>';
-    });
-    document.getElementById('roomBoard').innerHTML = html || '<p style="color:#94a3b8;">No rooms yet — tap "➕ Add Room" to build your hotel.</p>';
-
-    loadArrivalsList();
-    loadStayHistory();
-}
-function statCard(label, val, color) {
-    return '<div class="stat-card" style="border-left-color:' + color + ';"><div class="stat-label">' + label + '</div><div class="stat-value" style="font-size:18px;">' + val + '</div></div>';
-}
-
-// ═══ ROOM EDITOR (add/edit rooms) ═══
-function openRoomEditor(roomId) {
-    var room = roomId ? hotelRooms.find(r => r.id === roomId) : null;
-    var num = room ? room.room_number : '';
-    var type = room ? room.room_type : 'Standard';
-    var rate = room ? room.base_rate : '';
-    var cap = room ? room.capacity : 2;
-
-    var old = document.getElementById('roomEditorModal'); if (old) old.remove();
-    var m = document.createElement('div'); m.className = 'modal active'; m.id = 'roomEditorModal';
-    m.innerHTML = '<div class="modal-content"><h3>' + (room ? '✏️ Edit Room ' + num : '➕ Add Room') + '</h3>' +
-        '<input class="form-input" id="reNum" placeholder="Room number *" value="' + num + '">' +
-        '<select class="form-select" id="reType">' +
-        ['Standard','Deluxe','Suite','Family','Single','Double'].map(function(t){ return '<option ' + (t===type?'selected':'') + '>' + t + '</option>'; }).join('') + '</select>' +
-        '<input type="number" class="form-input" id="reRate" placeholder="Nightly rate *" value="' + rate + '">' +
-        '<input type="number" class="form-input" id="reCap" placeholder="Capacity (guests)" value="' + cap + '">' +
-        '<div class="flex-row"><button class="btn btn-success" onclick="saveRoom(\'' + (roomId || '') + '\')">💾 Save</button>' +
-        (room ? '<button class="btn btn-danger" onclick="deleteRoom(\'' + roomId + '\')">🗑️</button>' : '') +
-        '<button class="btn btn-outline" onclick="document.getElementById(\'roomEditorModal\').classList.remove(\'active\')">Cancel</button></div></div>';
-    document.body.appendChild(m);
-}
-async function saveRoom(roomId) {
-    var num = document.getElementById('reNum').value.trim();
-    var rate = parseFloat(document.getElementById('reRate').value) || 0;
-    if (!num || rate <= 0) { alert('Room number and rate are required.'); return; }
+function htlRole() {
     try {
-        if (roomId) {
-            await supabaseClient.from('rooms').update({
-                room_number: num, room_type: document.getElementById('reType').value,
-                base_rate: rate, capacity: parseInt(document.getElementById('reCap').value) || 2
-            }).eq('id', roomId);
-        } else {
-            await supabaseClient.from('rooms').insert([{ shop_id: getShopId(), room_number: num,
-                room_type: document.getElementById('reType').value, base_rate: rate,
-                capacity: parseInt(document.getElementById('reCap').value) || 2, status: 'available' }]);
-        }
-        document.getElementById('roomEditorModal').classList.remove('active');
-        loadHotelBoard();
-    } catch(e) { alert('❌ ' + e.message); }
-}
-async function deleteRoom(roomId) {
-    if (!await confirm('Delete this room permanently?')) return;
-    await supabaseClient.from('rooms').delete().eq('id', roomId);
-    document.getElementById('roomEditorModal').classList.remove('active');
-    loadHotelBoard();
+        var p = localStorage.getItem('hotelPosition');
+        return p || (localStorage.getItem('kitchenChefName') ? 'Chef' : null);
+    } catch(e) { return null; }
 }
 
-// ═══ ROOM ACTIONS (the heart — tap any room) ═══
-function openRoomActions(roomId) {
-    var room = hotelRooms.find(r => r.id === roomId);
+// ═══ DATA LOADING ═══
+async function htlLoad() {
+    const { data: rooms } = await supabaseClient.from('rooms').select('*')
+        .eq('shop_id', getShopId()).order('room_number');
+    HTL.rooms = rooms || [];
+
+    const { data: stays } = await supabaseClient.from('guest_stays').select('*')
+        .eq('shop_id', getShopId()).in('status', ['active','reserved'])
+        .order('check_in', { ascending: false });
+    HTL.stays = stays || [];
+
+    if (htlRole() === 'Guard') await htlLoadAlerts();
+}
+
+function htlStayFor(roomId) {
+    return HTL.stays.find(function(s){ return s.room_id === roomId && s.status === 'active'; });
+}
+
+// ═══ STATS + BOARD ═══
+function htlStats() {
+    var total = HTL.rooms.length;
+    var occ = HTL.rooms.filter(r => r.status === 'occupied').length;
+    var avail = HTL.rooms.filter(r => r.status === 'available').length;
+    var clean = HTL.rooms.filter(r => r.status === 'cleaning').length;
+    var pct = total > 0 ? Math.round(occ / total * 100) : 0;
+    return { total: total, occ: occ, avail: avail, clean: clean, pct: pct };
+}
+
+function htlBoardHtml() {
+    var colors = { available:'#10b981', occupied:'#ef4444', cleaning:'#f59e0b', maintenance:'#64748b', reserved:'#3b82f6' };
+    var html = '';
+    HTL.rooms.forEach(function(room) {
+        var c = colors[room.status] || '#64748b';
+        var stay = htlStayFor(room.id);
+        var sub = (room.status === 'occupied' && stay)
+            ? stay.guest_name + ' · ' + (stay.planned_checkout ? new Date(stay.planned_checkout).toLocaleDateString() : 'open')
+            : (room.room_type + ' · ' + htlMoney(room.base_rate));
+        html += '<div onclick="htlOpenRoom(\'' + room.id + '\')" style="background:' + c + ';color:#fff;border-radius:12px;padding:10px;cursor:pointer;min-height:82px;display:flex;flex-direction:column;justify-content:center;">' +
+            '<b style="font-size:17px;">' + room.room_number + '</b>' +
+            '<small style="opacity:.92;font-size:10px;line-height:1.35;margin-top:3px;">' + htlEscape(sub) + '</small></div>';
+    });
+    return html || '<p style="color:#94a3b8;grid-column:1/-1;text-align:center;padding:20px;">No rooms yet — ask the owner to add rooms in Admin.</p>';
+}
+function htlMoney(v) { return (typeof fmtMoney === 'function' ? fmtMoney : function(x){ return 'Br ' + Number(x||0).toFixed(2); })(v); }
+function htlEscape(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ═══ ROOM ACTIONS MODAL (reception heart) ═══
+function htlOpenRoom(roomId) {
+    if (htlRole() !== 'Reception') return;
+    var room = HTL.rooms.find(r => r.id === roomId);
     if (!room) return;
-    var stay = hotelStays.find(s => s.room_id === roomId && s.status === 'active');
+    var stay = htlStayFor(roomId);
+    htlCloseModal('roomActionsModal');
 
-    var old = document.getElementById('roomActionsModal'); if (old) old.remove();
-    var m = document.createElement('div'); m.className = 'modal active'; m.id = 'roomActionsModal';
-    var body = '<h3>🛏️ Room ' + room.room_number + ' <small style="color:#64748b;">(' + room.room_type + ')</small></h3>';
+    var body = '<h3 style="margin-bottom:8px;">🛏️ Room ' + htlEscape(room.room_number) + ' <small style="color:#64748b;">(' + htlEscape(room.room_type) + ' · ' + htlMoney(room.base_rate) + '/night)</small></h3>';
 
     if (room.status === 'available' || room.status === 'cleaning') {
-        // CHECK-IN form
-        body += '<p style="font-size:12px;color:#10b981;font-weight:700;">✅ Available — ready for guests</p>' +
-            '<input class="form-input" id="ciName" placeholder="Guest name *">' +
-            '<input class="form-input" id="ciPhone" placeholder="Phone">' +
-            '<input class="form-input" id="ciDoc" placeholder="Passport / ID number">' +
-            '<input class="form-input" id="ciNationality" placeholder="Nationality">' +
+        body += '<p style="font-size:12px;color:#10b981;font-weight:700;margin-bottom:8px;">✅ Ready for guests</p>' +
+            '<input class="htl-input" id="ciName" placeholder="Guest name *">' +
+            '<input class="htl-input" id="ciPhone" placeholder="Phone">' +
+            '<input class="htl-input" id="ciDoc" placeholder="Passport / ID number">' +
+            '<input class="htl-input" id="ciNationality" placeholder="Nationality">' +
             '<div style="display:flex;gap:6px;">' +
-            '<input type="number" class="form-input" id="ciNights" placeholder="Nights *" style="flex:1;">' +
-            '<input type="number" class="form-input" id="ciRate" value="' + room.base_rate + '" placeholder="Rate/night" style="flex:1;">' +
+            '<input type="number" class="htl-input" id="ciNights" placeholder="Nights *" style="flex:1;">' +
+            '<input type="number" class="htl-input" id="ciRate" value="' + room.base_rate + '" placeholder="Rate/night" style="flex:1;">' +
             '</div>' +
-            '<input type="number" class="form-input" id="ciGuests" placeholder="Number of guests" value="1">' +
-            '<input type="number" class="form-input" id="ciDeposit" placeholder="Deposit paid now (optional)">' +
-            '<button class="btn btn-success" onclick="checkIn(\'' + roomId + '\')">🚪 Check In</button>';
+            '<div style="display:flex;gap:6px;">' +
+            '<input type="number" class="htl-input" id="ciGuests" placeholder="Guests" value="1" style="flex:1;">' +
+            '<input type="number" class="htl-input" id="ciDeposit" placeholder="Deposit now (optional)" style="flex:1;">' +
+            '</div>' +
+            '<button class="htl-btn success" onclick="htlCheckIn(\'' + roomId + '\')">🚪 Check In</button>';
     } else if (room.status === 'occupied' && stay) {
-        // OCCUPIED — view folio, add charges, check out
-        body += '<div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:10px;">' +
-            '👤 <b>' + sanitize(stay.guest_name) + '</b><br>' +
-            '📞 ' + sanitize(stay.guest_phone || '—') + ' · 🌍 ' + sanitize(stay.guest_nationality || '—') + '<br>' +
+        body += '<div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:10px;font-size:13px;">' +
+            '👤 <b>' + htlEscape(stay.guest_name) + '</b><br>' +
+            '📞 ' + htlEscape(stay.guest_phone || '—') + ' · 🌍 ' + htlEscape(stay.guest_nationality || '—') + '<br>' +
             '🚪 In: ' + new Date(stay.check_in).toLocaleDateString() + ' → Out: ' + (stay.planned_checkout ? new Date(stay.planned_checkout).toLocaleDateString() : 'open') + '<br>' +
-            '💰 Rate: ' + fmtMoney(stay.nightly_rate) + '/night · Deposit: ' + fmtMoney(stay.deposit || 0) + '</div>' +
-            '<button class="btn btn-primary" onclick="openFolio(\'' + stay.id + '\')">📋 View Folio & Checkout</button>' +
-            '<button class="btn btn-outline" onclick="addQuickCharge(\'' + stay.id + '\')">➕ Add Charge (minibar/laundry)</button>' +
-            '<button class="btn btn-outline" onclick="extendStay(\'' + stay.id + '\')">🌙 Extend Stay</button>';
-    } else if (room.status === 'maintenance') {
-        body += '<p style="color:#64748b;">🔧 Under maintenance</p>' +
-            '<button class="btn btn-success" onclick="setRoomStatus(\'' + roomId + '\',\'cleaning\')">✅ Fixed → Send to Cleaning</button>';
+            '💰 ' + htlMoney(stay.nightly_rate) + '/night · Deposit: ' + htlMoney(stay.deposit || 0) + '</div>' +
+            '<button class="htl-btn primary" onclick="htlOpenFolio(\'' + stay.id + '\')">📋 View Folio & Checkout</button>' +
+            '<button class="htl-btn outline" onclick="htlQuickCharge(\'' + stay.id + '\')">➕ Add Charge (minibar/laundry)</button>' +
+            '<button class="htl-btn outline" onclick="htlExtendStay(\'' + stay.id + '\')">🌙 Extend Stay</button>';
     } else if (room.status === 'reserved') {
         body += '<p style="color:#3b82f6;">📅 Reserved</p>' +
-            '<button class="btn btn-success" onclick="checkInReserved(\'' + roomId + '\')">🚪 Guest Arrived — Check In</button>' +
-            '<button class="btn btn-outline" onclick="setRoomStatus(\'' + roomId + '\',\'available\')">❌ Cancel Reservation</button>';
+            '<button class="htl-btn success" onclick="htlSetRoomStatus(\'' + roomId + '\',\'available\')">🚪 Guest Arrived — Check In</button>' +
+            '<button class="htl-btn outline" onclick="htlSetRoomStatus(\'' + roomId + '\',\'available\')">❌ Cancel Reservation</button>';
+    } else if (room.status === 'maintenance') {
+        body += '<p style="color:#64748b;">🔧 Under maintenance</p>' +
+            '<button class="htl-btn success" onclick="htlSetRoomStatus(\'' + roomId + '\',\'cleaning\')">✅ Fixed → Cleaning</button>';
     }
 
-    // Housekeeping + maintenance always available (when not occupied)
     if (room.status !== 'occupied') {
         body += '<div style="display:flex;gap:6px;margin-top:8px;">' +
-            (room.status !== 'maintenance' ? '<button class="btn btn-outline" style="flex:1;" onclick="setRoomStatus(\'' + roomId + '\',\'maintenance\')">🔧 Maintenance</button>' : '') +
-            (room.status === 'cleaning' ? '<button class="btn btn-success" style="flex:1;" onclick="setRoomStatus(\'' + roomId + '\',\'available\')">✅ Cleaned → Available</button>' : '') +
+            (room.status !== 'maintenance' ? '<button class="htl-btn outline" style="flex:1;" onclick="htlSetRoomStatus(\'' + roomId + '\',\'maintenance\')">🔧</button>' : '') +
+            (room.status === 'cleaning' ? '<button class="htl-btn success" style="flex:1;" onclick="htlSetRoomStatus(\'' + roomId + '\',\'available\')">✅ Cleaned</button>' : '') +
             '</div>';
     }
-    body += '<button class="btn btn-outline" onclick="openRoomEditor(\'' + roomId + '\')">✏️ Edit Room</button>';
-    body += '<button class="btn btn-outline" onclick="document.getElementById(\'roomActionsModal\').classList.remove(\'active\')">Close</button>';
-    m.innerHTML = '<div class="modal-content" style="max-height:85vh;overflow-y:auto;">' + body + '</div>';
-    document.body.appendChild(m);
+    body += '<button class="htl-btn outline" onclick="htlCloseModal(\'roomActionsModal\')">Close</button>';
+    htlModal('roomActionsModal', body);
 }
 
+function htlModal(id, bodyHtml) {
+    var m = document.createElement('div');
+    m.className = 'htl-modal'; m.id = id;
+    m.innerHTML = '<div class="htl-modal-content">' + bodyHtml + '</div>';
+    m.addEventListener('click', function(e){ if (e.target === m) m.remove(); });
+    document.body.appendChild(m);
+}
+function htlCloseModal(id) { var m = document.getElementById(id); if (m) m.remove(); }
+
 // ═══ CHECK-IN ═══
-async function checkIn(roomId) {
-    var room = hotelRooms.find(r => r.id === roomId);
+async function htlCheckIn(roomId) {
+    var room = HTL.rooms.find(r => r.id === roomId);
     var name = document.getElementById('ciName').value.trim();
     var nights = parseInt(document.getElementById('ciNights').value) || 0;
     var rate = parseFloat(document.getElementById('ciRate').value) || room.base_rate;
     if (!name || nights <= 0) { alert('Guest name and nights are required.'); return; }
-    var checkout = new Date(Date.now() + nights * 86400000).toISOString().slice(0, 10);
+    var checkout = new Date(Date.now() + nights * 86400000).toISOString().slice(0,10);
     try {
         const { data: stay, error } = await supabaseClient.from('guest_stays').insert([{
             shop_id: getShopId(), room_id: roomId, guest_name: name,
@@ -199,23 +140,20 @@ async function checkIn(roomId) {
         }]).select().single();
         if (error) throw error;
         await supabaseClient.from('rooms').update({ status: 'occupied' }).eq('id', roomId);
-        // First night charged immediately to folio
         await supabaseClient.from('folio_charges').insert([{ shop_id: getShopId(), stay_id: stay.id,
             charge_type: 'room_night', description: 'Room ' + room.room_number + ' — night 1', amount: rate }]);
-        document.getElementById('roomActionsModal').classList.remove('active');
-        alert('✅ ' + name + ' checked in to Room ' + room.room_number + '!\n\nCheckout: ' + new Date(checkout).toLocaleDateString() + '\nRate: ' + fmtMoney(rate) + '/night');
-        loadHotelBoard();
+        htlCloseModal('roomActionsModal');
+        await htlLoad(); htlRenderReception();
+        alert('✅ ' + name + ' checked in to Room ' + room.room_number + '!\n\nCheckout: ' + new Date(checkout).toLocaleDateString() + '\nRate: ' + htlMoney(rate) + '/night');
     } catch(e) { alert('❌ ' + e.message); }
 }
 
-// ═══ FOLIO & CHECKOUT ═══
-async function openFolio(stayId) {
-    const { data: charges } = await supabaseClient.from('folio_charges').select('*').eq('stay_id', stayId).order('charge_date');
-    const { data: stayR } = await supabaseClient.from('guest_stays').select('*').eq('id', stayId).single();
-    var stay = stayR;
+// ═══ FOLIO (auto-bills missing nights!) ═══
+async function htlOpenFolio(stayId) {
+    const { data: stay } = await supabaseClient.from('guest_stays').select('*').eq('id', stayId).single();
     if (!stay) return;
+    const { data: charges } = await supabaseClient.from('folio_charges').select('*').eq('stay_id', stayId).order('charge_date');
 
-    // Add any missing nights (auto-billing!)
     var nightsStayed = Math.max(1, Math.ceil((Date.now() - new Date(stay.check_in)) / 86400000));
     var roomNights = (charges || []).filter(c => c.charge_type === 'room_night').length;
     if (nightsStayed > roomNights) {
@@ -223,110 +161,192 @@ async function openFolio(stayId) {
             await supabaseClient.from('folio_charges').insert([{ shop_id: getShopId(), stay_id: stayId,
                 charge_type: 'room_night', description: 'Room — night ' + n, amount: stay.nightly_rate }]);
         }
-        const { data: charges2 } = await supabaseClient.from('folio_charges').select('*').eq('stay_id', stayId).order('charge_date');
-        chargesNow = charges2 || [];
-    } else { chargesNow = charges || []; }
+    }
+    const { data: chargesFinal } = await supabaseClient.from('folio_charges').select('*').eq('stay_id', stayId).order('charge_date');
+    var list = chargesFinal || [];
 
     var icons = { room_night:'🛏️', food:'🍽️', minibar:'🥤', laundry:'👕', spa:'💆', other:'➕' };
-    var total = 0, html = '';
-    chargesNow.forEach(function(c) {
+    var total = 0, rows = '';
+    list.forEach(function(c) {
         total += Number(c.amount);
-        html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">' +
-            '<span>' + (icons[c.charge_type] || '➕') + ' ' + sanitize(c.description || c.charge_type) + '</span><b>' + fmtMoney(c.amount) + '</b></div>';
+        rows += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">' +
+            '<span>' + (icons[c.charge_type] || '➕') + ' ' + htlEscape(c.description || c.charge_type) + '</span><b>' + htlMoney(c.amount) + '</b></div>';
     });
     var due = total - (stay.deposit || 0);
 
-    var old = document.getElementById('folioModal'); if (old) old.remove();
-    var m = document.createElement('div'); m.className = 'modal active'; m.id = 'folioModal';
-    m.innerHTML = '<div class="modal-content" style="max-height:85vh;overflow-y:auto;"><h3>📋 Folio — ' + sanitize(stay.guest_name) + '</h3>' +
-        '<div style="max-height:40vh;overflow-y:auto;">' + (html || '<p style="color:#94a3b8;">No charges yet.</p>') + '</div>' +
+    htlCloseModal('folioModal');
+    htlModal('folioModal',
+        '<h3>📋 Folio — ' + htlEscape(stay.guest_name) + '</h3>' +
+        '<div style="max-height:38vh;overflow-y:auto;">' + (rows || '<p style="color:#94a3b8;">No charges.</p>') + '</div>' +
         '<div style="border-top:2px solid #e2e8f0;margin-top:10px;padding-top:10px;">' +
-        '<div style="display:flex;justify-content:space-between;"><span>Total charges</span><b>' + fmtMoney(total) + '</b></div>' +
-        '<div style="display:flex;justify-content:space-between;color:#10b981;"><span>Deposit paid</span><b>−' + fmtMoney(stay.deposit || 0) + '</b></div>' +
-        '<div style="display:flex;justify-content:space-between;font-size:18px;color:#ef4444;"><span><b>BALANCE DUE</b></span><b>' + fmtMoney(due) + '</b></div></div>' +
-        '<button class="btn btn-success" onclick="checkOut(\'' + stayId + '\',' + due + ')">💳 Pay ' + fmtMoney(due) + ' & Check Out</button>' +
-        '<button class="btn btn-outline" onclick="document.getElementById(\'folioModal\').classList.remove(\'active\')">Close</button></div>';
-    document.body.appendChild(m);
+        '<div style="display:flex;justify-content:space-between;"><span>Total</span><b>' + htlMoney(total) + '</b></div>' +
+        '<div style="display:flex;justify-content:space-between;color:#10b981;"><span>Deposit</span><b>−' + htlMoney(stay.deposit || 0) + '</b></div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:18px;color:#ef4444;"><span><b>BALANCE DUE</b></span><b>' + htlMoney(due) + '</b></div></div>' +
+        '<button class="htl-btn success" onclick="htlPayModal(\'' + stayId + '\',' + due + ')">💳 Pay ' + htlMoney(due) + ' & Check Out</button>' +
+        '<button class="htl-btn outline" onclick="htlCloseModal(\'folioModal\')">Close</button>');
 }
-var chargesNow = [];
 
-async function checkOut(stayId, due) {
-    if (!await confirm('Collect ' + fmtMoney(due) + ' and check out this guest?')) return;
+// ═══ PAYMENT (reception collects — cash/card/mobile) ═══
+function htlPayModal(stayId, due) {
+    htlCloseModal('folioModal');
+    htlModal('payModal',
+        '<h3>💳 Collect Payment — ' + htlMoney(due) + '</h3>' +
+        '<p style="font-size:12px;color:#64748b;">How is the guest paying?</p>' +
+        '<button class="htl-btn success" onclick="htlCheckout(\'' + stayId + '\',\'' + due + '\',\'cash\')">💵 Cash</button>' +
+        '<button class="htl-btn primary" onclick="htlCheckout(\'' + stayId + '\',\'' + due + '\',\'card\')">💳 Card</button>' +
+        '<button class="htl-btn primary" onclick="htlCheckout(\'' + stayId + '\',\'' + due + '\',\'mobile\')">📱 Mobile (Telebirr/CBE)</button>' +
+        '<button class="htl-btn outline" onclick="htlCloseModal(\'payModal\')">Cancel</button>');
+}
+
+async function htlCheckout(stayId, due, method) {
+    if (!await confirm('Collect ' + htlMoney(due) + ' (' + method + ') and check out?')) return;
     try {
-        // Record payment as a sale (enters your sales reports + dashboards!)
+        // 1. Record as SALE (dashboards + reports + fiscal all see it!)
         await supabaseClient.from('sales').insert([{
-            items: [{ name: 'Hotel stay settlement', qty: 1, price: due, subtotal: due }],
-            subtotal: due, discount: 0, tax: 0, total: due, profit: 0,
-            payment_method: 'cash', payments: [{ method: 'cash', amount: due }],
-            shop_id: getShopId(), cashier_id: 'hotel', cashier_name: 'Hotel Desk',
+            items: [{ name: 'Hotel room settlement', qty: 1, price: Number(due), subtotal: Number(due) }],
+            subtotal: Number(due), discount: 0, tax: 0, total: Number(due), profit: 0,
+            payment_method: method, payments: [{ method: method, amount: Number(due) }],
+            shop_id: getShopId(),
+            cashier_id: localStorage.getItem('hotelStaffId') || 'reception',
+            cashier_name: localStorage.getItem('hotelStaffName') || 'Reception',
             shift_id: 'hotel', time: new Date().toISOString(),
-            note: 'Hotel checkout', invoice_no: 'HTL-' + Date.now().toString().slice(-8), order_type: 'Hotel'
+            note: 'Hotel checkout', invoice_no: 'HTL-' + Date.now().toString().slice(-8),
+            order_type: 'Room Stay'
         }]);
-        const { data: stayR } = await supabaseClient.from('guest_stays').select('room_id').eq('id', stayId).single();
+        // 2. Close the stay + room → cleaning
+        const { data: stay } = await supabaseClient.from('guest_stays').select('room_id, guest_name').eq('id', stayId).single();
         await supabaseClient.from('guest_stays').update({ status: 'checked_out', actual_checkout: new Date().toISOString() }).eq('id', stayId);
-        await supabaseClient.from('rooms').update({ status: 'cleaning' }).eq('id', stayR.room_id);
-        document.getElementById('folioModal').classList.remove('active');
-        alert('✅ Guest checked out! Room sent to 🧹 Cleaning.\nPayment recorded in Sales.');
-        loadHotelBoard();
+        var room = HTL.rooms.find(r => r.id === stay.room_id);
+        await supabaseClient.from('rooms').update({ status: 'cleaning' }).eq('id', stay.room_id);
+        // 3. 🔔 GUARD ALERT — guest leaving
+        await supabaseClient.from('hotel_alerts').insert([{
+            shop_id: getShopId(), alert_type: 'checkout',
+            room_number: room ? room.room_number : '?', guest_name: stay.guest_name,
+            message: 'Guest checked out — verify room property at gate'
+        }]);
+        htlCloseModal('payModal');
+        await htlLoad(); htlRenderReception();
+        alert('✅ Checked out! Payment recorded.\nRoom → 🧹 Cleaning · Guard notified 🔔');
     } catch(e) { alert('❌ ' + e.message); }
 }
 
-// ═══ QUICK CHARGE (minibar, laundry...) ═══
-async function addQuickCharge(stayId) {
+// ═══ QUICK CHARGE / EXTEND ═══
+async function htlQuickCharge(stayId) {
     var amt = parseFloat(await prompt('Charge amount:'));
     if (isNaN(amt) || amt <= 0) return;
     var desc = await prompt('Description (e.g., Minibar — 2 beers):', 'Extra charge');
     if (!desc) return;
     await supabaseClient.from('folio_charges').insert([{ shop_id: getShopId(), stay_id: stayId,
         charge_type: 'other', description: desc, amount: amt }]);
-    document.getElementById('roomActionsModal').classList.remove('active');
-    alert('✅ Charged to room folio.');
-    openFolio(stayId);
+    htlCloseModal('roomActionsModal');
+    htlOpenFolio(stayId);
 }
-
-// ═══ EXTEND STAY ═══
-async function extendStay(stayId) {
+async function htlExtendStay(stayId) {
     var extra = parseInt(await prompt('Extend by how many nights?', '1'));
     if (isNaN(extra) || extra <= 0) return;
     const { data: stay } = await supabaseClient.from('guest_stays').select('planned_checkout').eq('id', stayId).single();
-    var newDate = new Date(new Date(stay.planned_checkout).getTime() + extra * 86400000).toISOString().slice(0, 10);
-    await supabaseClient.from('guest_stays').update({ planned_checkout: newDate }).eq('id', stayId);
-    alert('✅ Extended! New checkout: ' + new Date(newDate).toLocaleDateString());
-    document.getElementById('roomActionsModal').classList.remove('active');
-    loadHotelBoard();
+    var nd = new Date(new Date(stay.planned_checkout).getTime() + extra * 86400000).toISOString().slice(0,10);
+    await supabaseClient.from('guest_stays').update({ planned_checkout: nd }).eq('id', stayId);
+    htlCloseModal('roomActionsModal');
+    alert('✅ New checkout: ' + new Date(nd).toLocaleDateString());
+    await htlLoad(); htlRenderReception();
 }
 
-// ═══ HELPERS ═══
-async function setRoomStatus(roomId, status) {
-    await supabaseClient.from('rooms').update({ status: status }).eq('id', roomId);
-    document.getElementById('roomActionsModal').classList.remove('active');
-    loadHotelBoard();
+// ═══ CLEANER MODE ═══
+async function htlRenderCleaner() {
+    var s = htlStats();
+    document.getElementById('htlContent').innerHTML =
+        '<h2>🧹 My Cleaning Tasks</h2>' +
+        '<p style="color:#94a3b8;font-size:13px;">Rooms waiting for you:</p><div style="margin-top:12px;">';
+    var tasks = HTL.rooms.filter(r => r.status === 'cleaning');
+    if (tasks.length === 0) {
+        document.getElementById('htlContent').innerHTML += '<p style="color:#10b981;font-weight:bold;padding:20px;text-align:center;">✨ All rooms clean — great job!</p>';
+    } else {
+        tasks.forEach(function(room) {
+            document.getElementById('htlContent').innerHTML +=
+                '<div style="background:#fff7ed;border:2px solid #f59e0b;border-radius:14px;padding:16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;">' +
+                '<div><b style="font-size:20px;">🛏️ ' + htlEscape(room.room_number) + '</b><br><small style="color:#64748b;">' + htlEscape(room.room_type) + '</small></div>' +
+                '<button onclick="htlCleaned(\'' + room.id + '\')" style="background:#10b981;color:#fff;border:none;padding:14px 22px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;">✅ Cleaned</button></div>';
+        });
+    }
+    document.getElementById('htlContent').innerHTML += '</div>';
 }
-async function checkInReserved(roomId) { openRoomActions(roomId); setRoomStatus(roomId, 'available').then(function(){ openRoomActions(roomId); }); }
+async function htlCleaned(roomId) {
+    await supabaseClient.from('rooms').update({ status: 'available' }).eq('id', roomId);
+    if (navigator.vibrate) navigator.vibrate(100);
+    await htlLoad(); htlRenderCleaner();
+}
 
-async function loadArrivalsList() {
-    var el = document.getElementById('arrivalsList'); if (!el) return;
-    var today = new Date().toISOString().slice(0, 10);
-    var html = '';
-    hotelStays.forEach(function(s) {
-        var room = hotelRooms.find(r => r.id === s.room_id);
-        var d = new Date(s.check_in).toISOString().slice(0, 10);
-        var out = s.planned_checkout ? new Date(s.planned_checkout).toISOString().slice(0, 10) : '';
-        if (d === today) html += '<div style="padding:8px;border-bottom:1px solid #f1f5f9;">🟢 <b>' + sanitize(s.guest_name) + '</b> — Room ' + (room ? room.room_number : '?') + ' · IN today' + (s.status === 'reserved' ? ' (RESERVED — not yet arrived)' : ' ✅ arrived') + '</div>';
-        if (out === today) html += '<div style="padding:8px;border-bottom:1px solid #f1f5f9;">🔴 <b>' + sanitize(s.guest_name) + '</b> — Room ' + (room ? room.room_number : '?') + ' · OUT today</div>';
-    });
-    el.innerHTML = html || '<p style="color:#94a3b8;">No arrivals or departures today.</p>';
+// ═══ GUARD MODE ═══
+async function htlLoadAlerts() {
+    const { data } = await supabaseClient.from('hotel_alerts').select('*')
+        .eq('shop_id', getShopId()).eq('status', 'pending').order('created_at', { ascending: false });
+    HTL.alerts = data || [];
 }
-async function loadStayHistory() {
-    var el = document.getElementById('stayHistoryList'); if (!el) return;
-    const { data } = await supabaseClient.from('guest_stays').select('*')
-        .eq('shop_id', getShopId()).eq('status', 'checked_out').order('actual_checkout', { ascending: false }).limit(30);
-    var html = '';
-    (data || []).forEach(function(s) {
-        var room = hotelRooms.find(r => r.id === s.room_id);
-        html += '<div style="padding:8px;border-bottom:1px solid #f1f5f9;font-size:13px;">' +
-            '<b>' + sanitize(s.guest_name) + '</b> — Room ' + (room ? room.room_number : '?') +
-            ' · ' + new Date(s.check_in).toLocaleDateString() + ' → ' + new Date(s.actual_checkout).toLocaleDateString() + '</div>';
-    });
-    el.innerHTML = html || '<p style="color:#94a3b8;">No completed stays yet.</p>';
+async function htlRenderGuard() {
+    await htlLoadAlerts();
+    var html = '<h2>💂 Security Alerts</h2><p style="color:#94a3b8;font-size:13px;">Watch for guests leaving:</p><div style="margin-top:12px;">';
+    if (HTL.alerts.length === 0) {
+        html += '<p style="color:#10b981;padding:20px;text-align:center;">✅ No active alerts. All calm.</p>';
+    } else {
+        HTL.alerts.forEach(function(a) {
+            html += '<div style="background:#fef2f2;border:2px solid #ef4444;border-radius:14px;padding:16px;margin-bottom:10px;">' +
+                '<b style="font-size:16px;">🔔 ' + htlEscape(a.message) + '</b><br>' +
+                '<span style="font-size:13px;">🛏️ Room ' + htlEscape(a.room_number || '?') + ' · 👤 ' + htlEscape(a.guest_name || '') + '</span><br>' +
+                '<small style="color:#94a3b8;">' + new Date(a.created_at).toLocaleTimeString() + '</small><br>' +
+                '<button onclick="htlAckAlert(\'' + a.id + '\')" style="background:#334155;color:#fff;border:none;padding:10px 18px;border-radius:10px;font-weight:700;margin-top:8px;cursor:pointer;">✓ Acknowledged</button></div>';
+        });
+    }
+    document.getElementById('htlContent').innerHTML = html + '</div>';
+}
+async function htlAckAlert(id) {
+    await supabaseClient.from('hotel_alerts').update({ status: 'acknowledged' }).eq('id', id);
+    htlRenderGuard();
+}
+
+// ═══ RECEPTION RENDER ═══
+function htlRenderReception() {
+    var s = htlStats();
+    document.getElementById('htlContent').innerHTML =
+        '<div class="htl-stats">' +
+        '<div class="htl-stat"><b>' + s.total + '</b><small>🛏️ Total</small></div>' +
+        '<div class="htl-stat" style="background:#ecfdf5;"><b>' + s.avail + '</b><small>✅ Free</small></div>' +
+        '<div class="htl-stat" style="background:#fef2f2;"><b>' + s.occ + ' (' + s.pct + '%)</b><small>👥 Occupied</small></div>' +
+        '<div class="htl-stat" style="background:#fff7ed;"><b>' + s.clean + '</b><small>🧹 Cleaning</small></div>' +
+        '</div>' +
+        '<h2 style="margin-top:16px;">🛏️ Room Board <small style="font-size:11px;color:#94a3b8;">(tap a room)</small></h2>' +
+        '<div class="htl-board">' + htlBoardHtml() + '</div>';
+}
+
+// ═══ REALTIME (all screens live) ═══
+function htlRealtime() {
+    window.__htlChannel = supabaseClient.channel('hotel-' + getShopId())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'shop_id=eq.' + getShopId() }, function() {
+            htlLoad().then(function(){ htlRenderMyMode(); });
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'hotel_alerts', filter: 'shop_id=eq.' + getShopId() }, function(payload) {
+            var a = payload.new || {};
+            if (htlRole() === 'Guard') {
+                try { navigator.vibrate([300,150,300]); } catch(e) {}
+                try { htlBeep(); } catch(e) {}
+                htlRenderGuard();
+            }
+        })
+        .subscribe();
+}
+function htlBeep() {
+    try {
+        var ctx = window.__htlAudio || new (window.AudioContext || window.webkitAudioContext)();
+        window.__htlAudio = ctx;
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = 880; g.gain.value = 0.3;
+        o.connect(g); g.connect(ctx.destination);
+        o.start(); o.stop(ctx.currentTime + 0.3);
+    } catch(e) {}
+}
+function htlRenderMyMode() {
+    var r = htlRole();
+    if (r === 'Reception') htlRenderReception();
+    else if (r === 'Cleaner') htlRenderCleaner();
+    else if (r === 'Guard') htlRenderGuard();
 }
