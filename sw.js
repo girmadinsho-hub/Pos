@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartshoppro-v255';
+const CACHE_NAME = 'smartshoppro-v256';
 const urlsToCache = [
   './',
   './index.html',
