@@ -136,63 +136,82 @@
         <div style="padding:15px 20px; cursor:pointer; font-weight:600; color:#64748b;" onclick="showMasterTab('tabSettings')">⚙️ Settings</div>
     </div>
 
-	
     <div style="padding:15px; max-width:1000px; margin:0 auto;">
-                <!-- TAB 1: LICENSES -->
+        <!-- TAB 1: LICENSES -->
         <div id="tabLicenses" class="master-tab-content">
             <div class="card">
                 <div class="card-title" onclick="toggleCard(this)">🔑 Generate Licence Key <span class="arrow open">▶</span></div>
                 <div class="card-body">
-                    <input type="text" id="shopName" placeholder="Shop Name (for new shops)">
-                    <input type="text" id="keyPrefix" placeholder="Key Prefix (default: SMART)">
-                    <select id="planType" onchange="onPlanChange()">
-                        <option value="">Loading plans…</option>
-                    </select>
-                    <input type="date" id="startDate" title="Leave empty for today">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <input type="text" id="shopName" placeholder="Shop Name" style="flex:2">
+                        <input type="text" id="keyPrefix" placeholder="Key Prefix (default: SMART)" style="flex:1">
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <select id="planType" onchange="onPlanChange()" style="flex:1">
+                            <option value="basic">Basic – 500 Br/month</option>
+                            <option value="standard">Standard – 1,000 Br/month</option>
+                            <option value="premium">Premium – 2,000 Br/month</option>
+                            <option value="enterprise">Enterprise – configurable</option>
+                        </select>
+                        <input type="date" id="startDate" style="flex:1" title="Leave empty for today">
+                    </div>
+                    <div id="enterpriseConfig" style="display:none">
+                        <label>Number of Shops</label>
+                        <select id="entShops" onchange="calculateEnterprisePrice()">
+                            <option value="1">1 shop</option><option value="2">2 shops</option><option value="3">3 shops</option>
+                            <option value="5">5 shops</option><option value="10">10 shops</option><option value="0">Unlimited</option>
+                        </select>
+                        <label>Cashiers per Shop</label>
+                        <select id="entCashiers" onchange="calculateEnterprisePrice()">
+                            <option value="1">1</option><option value="2" selected>2</option><option value="3">3</option>
+                            <option value="5">5</option><option value="10">10</option><option value="0">Unlimited</option>
+                        </select>
+                        <div id="enterprisePriceDisplay" style="margin:10px 0;font-size:16px;color:#4caf50"></div>
+                    </div>
                     <select id="duration">
-                        <option value="30">30 Days</option>
-                        <option value="90">90 Days (10% off)</option>
-                        <option value="180">180 Days (15% off)</option>
-                        <option value="365">365 Days (20% off)</option>
+                        <option value="30">30 Days</option><option value="90">90 Days (10% off)</option>
+                        <option value="180">180 Days (15% off)</option><option value="365">365 Days (20% off)</option>
                     </select>
-                    <button class="btn btn-blue" onclick="generateLicense()" style="width:100%">Generate Single Key</button>
+                    <div style="display:flex;gap:8px">
+                        <button class="btn btn-blue" onclick="generateLicense()" style="flex:2">Generate Single Key</button>
+                        <button class="btn btn-blue" onclick="showBulkGenerate()" style="flex:1">📋 Bulk Generate</button>
+                    </div>
+                    <div id="bulkGenerateSection" style="display:none;margin-top:10px">
+                        <textarea id="bulkShopNames" rows="4" placeholder="Enter shop names, one per line..."></textarea>
+                        <button class="btn btn-green" onclick="bulkGenerate()">🚀 Generate All</button>
+                    </div>
                     <div id="generatedKey" style="margin-top:10px;padding:10px;background:#333;border-radius:5px;display:none"></div>
                 </div>
             </div>
 
             <div class="card">
-                <div class="card-title" onclick="toggleCard(this)">📋 All Licenses & Shops <span class="arrow open">▶</span></div>
-               <button class="btn btn-yellow" onclick="ssDiagnose()" style="margin-bottom:10px; width:100%;">🔬 DIAGNOSE (tap me)</button>
+                <div class="card-title" onclick="toggleCard(this)">📋 Active Licences <span class="arrow open">▶</span></div>
                 <div class="card-body">
                     <div class="filter-bar" style="margin-bottom:10px;">
-                        <input type="text" id="filterSearch" placeholder="🔍 Search shop or key..." oninput="renderLicenseTableV2()">
-                        <select id="filterStatus" onchange="renderLicenseTableV2()">
-                            <option value="">All Status</option>
-                            <option value="active">Active</option>
-                            <option value="expiring">Expiring (≤7 days)</option>
-                            <option value="expired">Expired</option>
-                            <option value="trial">Trial</option>
+                        <input type="text" id="filterSearch" placeholder="🔍 Search shop or key..." oninput="filterLicenses()">
+                        <select id="filterPlan" onchange="filterLicenses()">
+                            <option value="">All Plans</option><option value="basic">Basic</option><option value="standard">Standard</option>
+                            <option value="premium">Premium</option><option value="enterprise">Enterprise</option><option value="trial">Trial</option>
+                        </select>
+                        <select id="filterStatus" onchange="filterLicenses()">
+                            <option value="">All Status</option><option value="active">Active</option>
+                            <option value="expiring">Expiring (≤5 days)</option><option value="expired">Expired</option>
                         </select>
                     </div>
+                    <div class="bulk-actions" style="display:flex;gap:8px;margin-bottom:10px;">
+                        <button class="btn btn-green" onclick="bulkExtend()">✅ Bulk +30 Days</button>
+                        <button class="btn btn-red" onclick="bulkRevoke()">⛔ Bulk Revoke</button>
+                        <button class="btn btn-blue" onclick="exportCSV()">📥 Export CSV</button>
+                    </div>
                     <div class="table-wrapper">
-                        <table id="licenseTableV2" style="width:100%;border-collapse:collapse;font-size:13px;min-width:900px;">
+                        <table id="licenseTable" style="width:100%;border-collapse:collapse;font-size:13px;min-width:800px;">
                             <tr style="background:#333;color:#fff;">
-                                <th style="padding:10px;">Shop</th>
-                                <th style="padding:10px;">Type</th>
-                                <th style="padding:10px;">Plan</th>
-                                <th style="padding:10px;">Expires</th>
-                                <th style="padding:10px;">Status</th>
-                                <th style="padding:10px;">Actions</th>
+                                <th class="checkbox-col" style="padding:10px;text-align:center;width:30px;"><input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes()"></th>
+                                <th style="padding:10px;text-align:left;">Shop</th><th style="padding:10px;text-align:left;">Shop ID</th><th style="padding:10px;text-align:left;">Plan</th>
+                                <th style="padding:10px;text-align:left;">Key</th><th style="padding:10px;text-align:left;">Expires</th><th style="padding:10px;text-align:left;">Status</th><th style="padding:10px;text-align:left;">Actions</th>
                             </tr>
                         </table>
                     </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-title" onclick="toggleCard(this)">💰 Payment History <span class="arrow open">▶</span></div>
-                <div class="card-body">
-                    <div id="paymentHistoryList"><p style="color:#94a3b8;">Loading…</p></div>
                 </div>
             </div>
         </div>
@@ -293,34 +312,25 @@
         </div>
 
 <div class="card">
-    <div class="card-title">📞 Support Contacts (All Screens)</div>
-    <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Change ONCE here — every customer screen (license activation, trial expiry, support buttons) updates automatically.</p>
+    <div class="card-title">📞 Support Contacts</div>
+    <p style="font-size:13px; color:#64748b; margin-bottom:15px;">These contacts appear on every customer screen (license activation, trial expiry, support buttons).</p>
 
-    <label>📱 Phone / WhatsApp (with country code) *</label>
+    <label style="font-weight:600; font-size:12px; color:#475569;">WhatsApp / Phone (with country code)</label>
     <input type="text" id="supportPhoneInput" placeholder="+251973316100" style="margin-bottom:10px;">
 
-    <label>📧 Email</label>
+    <label style="font-weight:600; font-size:12px; color:#475569;">Email</label>
     <input type="email" id="supportEmailInput" placeholder="support@yourapp.com" style="margin-bottom:10px;">
 
-    <label>✈️ Telegram (optional)</label>
+    <label style="font-weight:600; font-size:12px; color:#475569;">Telegram (optional)</label>
     <input type="text" id="supportTelegramInput" placeholder="@yourtelegram" style="margin-bottom:10px;">
-
-    <label>👍 Facebook page (optional)</label>
-    <input type="text" id="supportFacebookInput" placeholder="facebook.com/yourpage" style="margin-bottom:10px;">
-
-    <label>📸 Instagram (optional)</label>
-    <input type="text" id="supportInstagramInput" placeholder="@yourinstagram" style="margin-bottom:10px;">
-
-    <label>🌐 Website (optional)</label>
-    <input type="text" id="supportWebsiteInput" placeholder="https://yourwebsite.com" style="margin-bottom:10px;">
 
     <button class="btn btn-green" onclick="saveSupportContacts()">💾 Save Contacts</button>
 </div>
-</div>
+			
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-	<script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
 <script>
 // ===== SUPABASE INITIALIZATION =====
@@ -328,7 +338,7 @@ const SUPABASE_URL = "https://mtwcdvmdoxzcejzgypdw.supabase.co";
 const SUPABASE_KEY = "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8";
 let supabaseClient = null;
 if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY,{ auth: { flowType: 'implicit' } });
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     console.log("✅ Supabase Connected in Master!");
 }
 
@@ -427,185 +437,36 @@ async function deleteAuditLog(id) {
     } catch(e) { alert('❌ Error: ' + e.message); }
 }
 
-
-function licenseStatus(l) {
-    var days = Math.ceil((new Date(l.expiry_date) - new Date()) / 86400000);
-    if (days < 0) return { cls: 'status-expired', text: 'EXPIRED ' + Math.abs(days) + 'd ago', days: days };
-    if (days <= 7) return { cls: 'status-warning', text: '⚠️ ' + days + 'd left', days: days };
-    return { cls: 'status-active', text: '✅ ' + days + 'd', days: days };
-}
-
-  function renderLicenseTableV2() {
-    var q = (document.getElementById('filterSearch').value || '').toLowerCase();
-    var st = document.getElementById('filterStatus').value;
-    var table = document.getElementById('licenseTableV2');
-    if (!table) { console.warn('licenseTableV2 element missing!'); return; }
-    table.innerHTML = '<tr style="background:#333;color:#fff;"><th style="padding:10px;">Shop</th><th style="padding:10px;">Type</th><th style="padding:10px;">Plan</th><th style="padding:10px;">Expires</th><th style="padding:10px;">Status</th><th style="padding:10px;">Actions</th></tr>';
-
-    var rows = allLicenses.filter(function(l) {
-        if (q && (l.shop_name || '').toLowerCase().indexOf(q) === -1 && (l.key || '').toLowerCase().indexOf(q) === -1) return false;
-        var s = licenseStatus(l);
-        if (st === 'active' && s.days <= 7) return false;
-        if (st === 'expiring' && !(s.days >= 0 && s.days <= 7)) return false;
-        if (st === 'expired' && s.days >= 0) return false;
-        if (st === 'trial' && !l.is_trial) return false;
-        return true;
-    });
-
-    if (rows.length === 0) { table.innerHTML += '<tr><td colspan="6" style="padding:20px;text-align:center;color:#94a3b8;">No licenses found.</td></tr>'; return; }
-
-    var typeIcon = { retail: '🛒', cafe: '☕', hotel: '🏨' };
-    rows.forEach(function(l) {
-        var s = licenseStatus(l);
-        table.innerHTML += '<tr style="border-bottom:1px solid #444;">' +
-            '<td style="padding:10px;"><b>' + sanitize(l.shop_name) + '</b><br><small style="color:#94a3b8;">' + l.shop_id + '</small></td>' +
-            '<td style="padding:10px;">' + (typeIcon[l.business_type] || '🛒') + ' ' + l.business_type + '</td>' +
-            '<td style="padding:10px;"><b>' + l.plan + '</b></td>' +
-            '<td style="padding:10px;">' + new Date(l.expiry_date).toLocaleDateString() + '</td>' +
-            '<td style="padding:10px;" class="' + s.cls + '"><b>' + s.text + '</b></td>' +
-            '<td style="padding:10px;"><div style="display:flex;gap:4px;flex-wrap:wrap;">' +
-                '<button class="btn btn-green" style="padding:6px 10px;font-size:11px;" onclick="extendLicenseV2(\'' + (l.id || 'trial:' + l.shop_id) + '\')">📅 Extend</button>' +
-                '<button class="btn btn-blue" style="padding:6px 10px;font-size:11px;" onclick="changePlanV2(\'' + (l.id || 'trial:' + l.shop_id) + '\')">🔄 Plan</button>' +
-                (l.id ? '<button class="btn btn-red" style="padding:6px 10px;font-size:11px;" onclick="revokeLicense(\'' + l.id + '\')">⛔</button>' : '') +
-            '</div></td></tr>';
-    });
-}
-
-// 📅 EXTEND — works with ANY plan, records payment
-async function extendLicenseV2(licenseId) {
-    var l = allLicenses.find(function(x){ return (x.id === licenseId) || ('trial:' + x.shop_id === licenseId); });
-    if (!l) return;
-
-    var days = parseInt(await prompt('Extend "' + l.shop_name + '" by how many days?\n\n(7 / 30 / 90 / 365)', '30'));
-    if (isNaN(days) || days <= 0) return;
-
-    // Suggest price from the plan
-    var suggestedPrice = 0;
-    try {
-        const { data: pd } = await supabaseClient.from('plans').select('price_monthly, price_yearly').ilike('name', l.plan === 'Trial' ? 'Basic' : l.plan).maybeSingle();
-        if (pd) {
-            if (days >= 365) suggestedPrice = pd.price_yearly || (pd.price_monthly * 12 * 0.8);
-            else suggestedPrice = Math.round(pd.price_monthly * days / 30);
-        }
-    } catch(e) {}
-
-    var amountStr = await prompt('Amount paid (Br):\n(Suggested: ' + suggestedPrice + ' Br for ' + days + ' days)', String(suggestedPrice));
-    var amount = parseFloat(amountStr) || 0;
-    var method = await prompt('Payment method:\n(Telebirr / CBE / Cash / Free)', 'Telebirr');
-    if (method === null) return;
-    if (!await confirm('Extend ' + l.shop_name + ' by ' + days + ' days?\nAmount: ' + amount + ' Br via ' + method)) return;
-
-    try {
-        var newExpiry = new Date(l.expiry_date && new Date(l.expiry_date) > new Date() ? l.expiry_date : new Date());
-        newExpiry.setDate(newExpiry.getDate() + days);
-        var newExpiryStr = newExpiry.toISOString();
-
-        if (l.is_trial) {
-            // Trial shop → generate a real license (converts to paid!)
-            var key = ('SMART-' + (l.plan === 'Trial' ? 'BASIC' : l.plan.toUpperCase()) + '-' + l.shop_id + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
-            await supabaseClient.from('licenses').insert([{
-                shop_name: l.shop_name, shop_id: l.shop_id, plan: 'Basic', key: key,
-                start_date: new Date().toISOString(), expiry_date: newExpiryStr,
-                status: 'active', created_at: new Date().toISOString(),
-                business_type: l.business_type
-            }]);
-            await supabaseClient.from('shops').update({ plan: 'basic' }).eq('shop_id', l.shop_id);
-        } else {
-            await supabaseClient.from('licenses').update({ expiry_date: newExpiryStr }).eq('id', l.id);
-        }
-
-        // Record the payment
-        await supabaseClient.from('payments').insert([{
-            shop_id: l.shop_id, shop_name: l.shop_name, license_id: l.id,
-            action: 'extend', plan_name: l.plan, days: days,
-            amount: amount, payment_method: method, notes: 'Extended ' + days + ' days'
-        }]);
-
-        alert('✅ ' + l.shop_name + ' extended to ' + newExpiry.toLocaleDateString() + '!\nPayment recorded: ' + amount + ' Br (' + method + ')');
-        loadLicenses();
-        loadPaymentHistory();
-        logAction('extend', l.shop_name + ' +' + days + 'd (' + amount + ' Br ' + method + ')');
-    } catch(e) { alert('❌ ' + e.message); }
-}
-
-// 🔄 CHANGE PLAN — upgrade/downgrade instantly
-async function changePlanV2(licenseId) {
-    var l = allLicenses.find(function(x){ return (x.id === licenseId) || ('trial:' + x.shop_id === licenseId); });
-    if (!l) return;
-
-    // Load available plans of the same business type
-    var plans = [];
-    try {
-        const { data } = await supabaseClient.from('plans').select('name, business_type, price_monthly').eq('active', true).eq('business_type', l.business_type).order('display_order');
-        plans = data || [];
-    } catch(e) {}
-    if (!plans.length) { alert('No plans found for this business type.'); return; }
-
-    var list = plans.map(function(p, i){ return (i+1) + '. ' + p.name + ' (' + p.price_monthly + ' Br/mo)'; }).join('\n');
-    var choice = parseInt(await prompt('Change ' + l.shop_name + ' to which plan?\n\n' + list));
-    if (isNaN(choice) || choice < 1 || choice > plans.length) return;
-    var newPlan = plans[choice-1];
-
-    if (!await confirm('Change ' + l.shop_name + ' to ' + newPlan.name + '?')) return;
-
-    try {
-        if (l.is_trial) {
-            var key = ('SMART-' + newPlan.name.toUpperCase() + '-' + l.shop_id + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
-            await supabaseClient.from('licenses').insert([{
-                shop_name: l.shop_name, shop_id: l.shop_id, plan: newPlan.name, key: key,
-                start_date: new Date().toISOString(),
-                expiry_date: new Date(Date.now() + 30*86400000).toISOString(),
-                status: 'active', created_at: new Date().toISOString(),
-                business_type: l.business_type
-            }]);
-            await supabaseClient.from('shops').update({ plan: newPlan.name }).eq('shop_id', l.shop_id);
-        } else {
-            await supabaseClient.from('licenses').update({ plan: newPlan.name }).eq('id', l.id);
-            await supabaseClient.from('shops').update({ plan: newPlan.name }).eq('shop_id', l.shop_id);
-        }
-        await supabaseClient.from('payments').insert([{
-            shop_id: l.shop_id, shop_name: l.shop_name, license_id: l.id,
-            action: 'plan_change', plan_name: newPlan.name, days: 0,
-            amount: 0, payment_method: 'plan_change', notes: 'Plan → ' + newPlan.name
-        }]);
-        alert('✅ ' + l.shop_name + ' is now on ' + newPlan.name + '!');
-        loadLicenses(); loadPaymentHistory();
-        logAction('plan_change', l.shop_name + ' → ' + newPlan.name);
-    } catch(e) { alert('❌ ' + e.message); }
-}
-
-// 💰 PAYMENT HISTORY
-async function loadPaymentHistory() {
-    var el = document.getElementById('paymentHistoryList');
-    if (!el) return;
-    const { data, error } = await supabaseClient.from('payments').select('*').order('created_at', { ascending: false }).limit(50);
-    if (error) { el.innerHTML = '<p style="color:#f44336;">Load failed.</p>'; return; }
-    if (!data || data.length === 0) { el.innerHTML = '<p style="color:#94a3b8;">No payments recorded yet.</p>'; return; }
-    var total = 0;
-    var html = data.map(function(p) {
-        total += Number(p.amount || 0);
-        return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #444;font-size:13px;">' +
-            '<span>🏪 ' + sanitize(p.shop_name) + ' · ' + (p.action === 'extend' ? '📅 +' + p.days + 'd' : '🔄 ' + p.plan_name) + '</span>' +
-            '<span><b style="color:#4caf50;">' + p.amount + ' Br</b> · ' + (p.payment_method || '') + ' · ' + new Date(p.created_at).toLocaleDateString() + '</span></div>';
-    }).join('');
-    html += '<div style="text-align:right;font-size:16px;font-weight:bold;color:#4caf50;margin-top:10px;">Total recorded: ' + total.toFixed(2) + ' Br</div>';
-    el.innerHTML = html;
-}
-
-// Revenue summary (feeds CEO dashboard)
 function loadRevenueSummary() {
-    var active = 0, expiring = 0, expired = 0;
-    allLicenses.forEach(function(l) {
-        var s = licenseStatus(l);
-        if (s.days < 0) expired++;
-        else { if (l.plan !== 'Trial') active++; if (s.days <= 7) expiring++; }
+    var activeCount = 0, trialCount = 0, expiredCount = 0;
+    var expiringSoon = [];
+
+    allLicenses.forEach(l => {
+        var days = Math.ceil((new Date(l.expiry_date) - new Date()) / 86400000);
+        if (days < 0) {
+            expiredCount++;
+        } else {
+            if (l.plan === 'trial') trialCount++; else activeCount++;
+            if (days <= 5) expiringSoon.push({ name: l.shop_name, days: days });
+        }
     });
-    var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;margin-bottom:15px;">' +
-        '<div style="background:#e6f4ea;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#10b981;">' + active + '</b><small>Active Paid</small></div>' +
-        '<div style="background:#fef3c7;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#f59e0b;">' + expiring + '</b><small>Expiring ≤7d</small></div>' +
-        '<div style="background:#fee2e2;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#ef4444;">' + expired + '</b><small>Expired</small></div></div>';
-    var el = document.getElementById('revenueSummary');
-    if (el) el.innerHTML = html;
+
+    var html = `
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;margin-bottom:15px;">
+            <div style="background:#e6f4ea;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#10b981;">${activeCount + trialCount}</b><small>Active / Trial</small></div>
+            <div style="background:#fef3c7;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#f59e0b;">${expiringSoon.length}</b><small>Expiring ≤5d</small></div>
+            <div style="background:#fee2e2;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#ef4444;">${expiredCount}</b><small>Expired</small></div>
+        </div>
+    `;
+
+    if (expiringSoon.length > 0) {
+        html += '<h4 style="color:#1e293b;">⚠️ Action Required</h4>';
+        expiringSoon.forEach(s => {
+            html += `<div style="padding:6px 0;border-bottom:1px solid #f1f5f9;"><b>${s.name}</b> - Expires in <b style="color:#ef4444;">${s.days}d</b></div>`;
+        });
+    }
+
+    document.getElementById('revenueSummary').innerHTML = html;
 }
 
 async function loadShopSnapshot() {
@@ -738,13 +599,10 @@ function calculateEnterprisePrice() {
     document.getElementById('enterprisePriceDisplay').innerHTML = 'Monthly price: <b>'+m.toLocaleString()+' Br</b> (Yearly: '+(m*10).toLocaleString()+' Br)';
 }
 function onPlanChange() {
-    // Enterprise pricing now lives in the Plan Manager — the old
-    // shops/cashiers calculator is retired. Simple pass-through.
-    var sel = document.getElementById('planType');
-    var cfg = document.getElementById('enterpriseConfig');
-    if (cfg) cfg.style.display = 'none';   // always hidden — prices are Master-managed
+    document.getElementById('enterpriseConfig').style.display = document.getElementById('planType').value==='enterprise'?'block':'none';
+    if (document.getElementById('planType').value==='enterprise') calculateEnterprisePrice();
 }
-  function showBulkGenerate() { document.getElementById('bulkGenerateSection').style.display='block'; }
+function showBulkGenerate() { document.getElementById('bulkGenerateSection').style.display='block'; }
 
 // ===== KEY GENERATION =====
 async function isShopIdUnique(shopId) {
@@ -773,32 +631,13 @@ async function generateLicense() {
         shop_name: shop, shop_id: shopId, plan, key, 
         start_date: now.toISOString(), expiry_date: expiry.toISOString(), status:'active', created_at: new Date().toISOString() 
     };
-    // ═══ MASTER-CONTROLLED LIMITS — read from the Plan Manager (plans table) ═══
-    // Plan names in the dropdown now match the plans table exactly.
-    // Everything (limits, prices, business type) comes from ONE source of truth.
-    let planDef = null;
-    try {
-        const r = await supabaseClient.from('plans').select('*').ilike('name', plan).limit(1);
-        if (r.data && r.data[0]) planDef = r.data[0];
-    } catch(e) { console.warn('Plan definition lookup failed:', e.message); }
-
-    if (planDef) {
-        data.max_shops = planDef.max_branches || 1;
-        data.max_cashiers_per_shop = planDef.max_cashiers || 999;
-        data.max_products = planDef.max_products || 999999;
-        data.max_tables = planDef.max_tables || 0;
-        data.max_menu_items = planDef.max_menu_items || 0;
-        data.has_stock_mgmt = planDef.has_stock_mgmt !== false;
-        data.price_monthly = planDef.price_monthly || 0;
-        data.price_yearly = planDef.price_yearly || 0;
-        data.business_type = planDef.business_type || 'retail';
-        data.features = planDef.features || [];
+    if (plan==='enterprise') {
+        const s = document.getElementById('entShops').value, c = document.getElementById('entCashiers').value;
+        data.max_shops = s==='0'?999:parseInt(s); data.max_cashiers_per_shop = c==='0'?999:parseInt(c);
+        data.max_products = 999999; data.price_monthly = ENTERPRISE_PRICES[s]?.[c]||5000; data.price_yearly = data.price_monthly*10;
     } else {
-        // Fallback (plan not found in table — shouldn't happen after seeding)
-        data.max_shops = 1;
-        data.max_cashiers_per_shop = 2;
-        data.max_products = 200;
-        data.business_type = 'retail';
+        data.max_shops = 1; data.max_cashiers_per_shop = plan==='basic'?2:(plan==='standard'?5:10);
+        data.max_products = plan==='basic'?200:(plan==='standard'?1000:10000);
     }
     await supabaseClient.from('licenses').insert([data]);
         await supabaseClient.from('shops').upsert({ name: shop, shop_id: shopId, plan, active: true, created_at: now.toISOString() }, { onConflict: 'shop_id' });	logAction('generate',`Generated key for ${shop} (${key})`);
@@ -811,7 +650,6 @@ async function generateLicense() {
     document.getElementById('shopName').value = '';
     loadLicenses(); loadShops(); populateSnapshotDropdown(); loadRevenueSummary();
 }
-  
 
 async function bulkGenerate() {
     const names = document.getElementById('bulkShopNames').value.split('\n').filter(n=>n.trim());
@@ -844,7 +682,52 @@ async function bulkGenerate() {
     logAction('bulk_generate',`Generated ${names.length} licences`);
 }
 
+// ===== LICENCE TABLE =====
+function filterLicenses() { renderLicenseTable(); }
+function getFilteredLicenses() {
+    const s = document.getElementById('filterSearch').value.toLowerCase();
+    const p = document.getElementById('filterPlan').value, st = document.getElementById('filterStatus').value;
+    return allLicenses.filter(l=>{
+        const match = !s || (l.shop_name.toLowerCase().includes(s) || l.key.toLowerCase().includes(s) || l.shop_id.toLowerCase().includes(s));
+        const mp = !p || l.plan === p;
+        const days = Math.ceil((new Date(l.expiry_date)-new Date())/86400000);
+        let ms = true;
+        if (st==='active') ms = days>5; else if (st==='expiring') ms = days>=0&&days<=5; else if (st==='expired') ms = days<0;
+        return match&&mp&&ms;
+    });
+}
 
+async function customExtendLicense(licenseId) {
+    var selectEl = document.getElementById('extDays_' + licenseId);
+    if (!selectEl) return;
+    var days = parseInt(selectEl.value);
+    if (!confirm('Extend this license by ' + days + ' days?')) return;
+
+    var payMethod = prompt("How did the shop pay for this extension? (e.g., Telebirr, CBE, Cash)");
+    if (payMethod === null) return; 
+    payMethod = payMethod.trim() || 'Unspecified';
+
+    try {
+        var lic = allLicenses.find(l => l.id === licenseId);
+        if (!lic) return;
+        var exp = new Date(lic.expiry_date);
+        if (exp < new Date()) exp = new Date();
+        exp.setDate(exp.getDate() + days);
+        
+        await supabaseClient.from('licenses').update({ 
+            expiry_date: exp.toISOString(),
+            plan: lic.plan === 'trial' ? 'basic' : lic.plan 
+        }).eq('id', licenseId);
+
+        await supabaseClient.from('payments').insert([{
+            shop_id: lic.shop_id, shop_name: lic.shop_name, days_extended: days, payment_method: payMethod, timestamp: new Date().toISOString()
+        }]);
+
+        alert('✅ Extended by ' + days + ' days! Payment recorded via ' + payMethod + '.');
+        loadLicenses();
+        logAction('extend', 'Extended ' + lic.shop_name + ' by ' + days + ' days via ' + payMethod);
+    } catch (e) { alert('❌ Error: ' + e.message); }
+}
 
 async function revokeLicense(licenseId) {
     if (!confirm('⚠️ Revoke this license? The shop will be locked out immediately.')) return;
@@ -856,8 +739,64 @@ async function revokeLicense(licenseId) {
     } catch (e) { alert('❌ Error: ' + e.message); }
 }
 
+function renderLicenseTable() {
+    const filtered = getFilteredLicenses();
+    const table = document.getElementById('licenseTable');
+    table.innerHTML = `<tr><th class="checkbox-col"><input type="checkbox" id="selectAll" onchange="toggleAllCheckboxes()"></th>
+        <th>Shop</th><th>Shop ID</th><th>Plan</th><th>Key</th><th>Expires</th><th>Status</th><th>Activated</th><th>Actions</th></tr>`;
 
+    if (filtered.length === 0) {
+        table.innerHTML += '<tr><td colspan="9" style="text-align:center;padding:20px;color:#94a3b8;">No licenses found.</td></tr>';
+        return;
+    }
 
+    filtered.forEach(l => {
+        const days = Math.ceil((new Date(l.expiry_date) - new Date()) / 86400000);
+        const sc = days > 5 ? 'status-active' : days > 0 ? 'status-warning' : 'status-expired';
+        const st = days > 5 ? 'Active' : days > 0 ? 'Expiring in ' + days + 'd' : 'EXPIRED';
+        
+        let planHtml = l.plan;
+        if (l.plan === 'enterprise') planHtml += '<br><small style="font-size:10px; color:#94a3b8;">Shops:' + (l.max_shops || '?') + '</small>';
+        
+        let actHtml = '<span style="color:#94a3b8;">Not yet</span>';
+        if (l.activated_at) actHtml = '✅ ' + new Date(l.activated_at).toLocaleDateString();
+
+        table.innerHTML += `<tr>
+            <td class="checkbox-col"><input type="checkbox" class="licence-check" data-id="${l.id}"></td>
+            <td>${l.shop_name}</td><td>${l.shop_id || 'N/A'}</td><td>${planHtml}</td>
+            <td style="font-family:monospace;font-size:11px;">${l.key}</td>
+            <td>${new Date(l.expiry_date).toLocaleDateString()}</td><td class="${sc}">${st}</td>
+            <td>${actHtml}</td>
+            <td>
+                <div class="actions-row">
+                    <select id="extDays_${l.id}" style="padding:4px;border-radius:4px;">
+                        <option value="7">+7d</option><option value="15">+15d</option><option value="30" selected>+30d</option><option value="60">+60d</option><option value="90">+90d</option>
+                    </select>
+                    <button class="btn btn-green" onclick="customExtendLicense('${l.id}')">✅</button>
+                    <button class="btn btn-red" onclick="revokeLicense('${l.id}')">⛔</button>
+                    <button class="btn btn-red" onclick="deleteLicense('${l.id}')" style="background:#b71c1c;">🗑️</button>
+                </div>
+            </td>
+        </tr>`;
+    });
+}
+
+function toggleAllCheckboxes() {
+    const master = document.getElementById('selectAll');
+    document.querySelectorAll('.licence-check').forEach(cb=>cb.checked=master.checked);
+}
+function getSelectedLicenseIds() { return [...document.querySelectorAll('.licence-check:checked')].map(cb=>cb.dataset.id); }
+
+async function bulkExtend() {
+    const ids = getSelectedLicenseIds(); if (!ids.length) return alert('Select at least one licence.');
+    if (!confirm(`Extend ${ids.length} licence(s) by 30 days?`)) return;
+    for (const id of ids) {
+        var lic = allLicenses.find(l => l.id === id);
+        var exp = new Date(lic.expiry_date); exp.setDate(exp.getDate()+30);
+        await supabaseClient.from('licenses').update({expiry_date:exp.toISOString()}).eq('id', id);
+    }
+    alert('✅ Extended '+ids.length+' licence(s).'); loadLicenses(); logAction('bulk_extend',`Extended ${ids.length} licences`);
+}
 
 async function bulkRevoke() {
     const ids = getSelectedLicenseIds(); if (!ids.length) return alert('Select at least one licence.');
@@ -892,7 +831,43 @@ async function deleteLicense(id) {
     } catch (e) { alert('❌ Deletion failed: ' + e.message); }
 }
 
-function loadShops() {
+// ═══ LOAD LICENSES — the one and only copy ═══
+var allLicenses = [];
+
+async function loadLicenses() {
+    const { data: lics, error } = await supabaseClient.from('licenses').select('*').order('created_at', { ascending: false });
+    if (error) {
+        console.error("Load licenses error:", error.message);
+        alert('⚠️ License load failed: ' + error.message);
+        return;
+    }
+    const { data: shops, error: sErr } = await supabaseClient.from('shops').select('*').order('created_at', { ascending: false });
+    if (sErr) { console.error("Shops load error:", sErr.message); }
+
+    allLicenses = [];
+    (lics || []).forEach(function(l) {
+        var shop = (shops || []).find(function(s){ return s.shop_id === l.shop_id; });
+        allLicenses.push({
+            id: l.id, shop_name: l.shop_name || (shop ? shop.name : l.shop_id),
+            shop_id: l.shop_id, key: l.key, plan: l.plan,
+            business_type: l.business_type || (shop ? shop.business_type : 'retail') || 'retail',
+            expiry_date: l.expiry_date, start_date: l.start_date,
+            is_trial: false
+        });
+    });
+    (shops || []).forEach(function(s) {
+        if (s.plan === 'trial' && !allLicenses.find(function(l){ return l.shop_id === s.shop_id; })) {
+            allLicenses.push({
+                id: null, shop_name: s.name, shop_id: s.shop_id, key: '(trial)',
+                plan: 'Trial', business_type: s.business_type || 'retail',
+                expiry_date: s.trial_expires, start_date: s.registered_at,
+                is_trial: true
+            });
+        }
+    });
+    renderLicenseTableV2();
+    loadRevenueSummary();
+}function loadShops() {
     var container = document.getElementById('shopsTable');
     if (!container) return;
     var html = '<tr style="background:#333;color:#fff;"><th>Shop Name</th><th>Shop ID</th><th>Plan</th><th>Email</th><th>Days Left</th><th>Active</th><th>Actions</th></tr>';
@@ -1126,21 +1101,18 @@ async function changeMasterPassword() {
         alert("❌ Error: " + error.message);
     }
 }
+
 function initMasterPanel() {
-    loadLicenses();
-    loadShops();
+    loadLicenses(); 
+    loadShops(); 
     loadAuditLog();
-    populateSnapshotDropdown();
+    populateSnapshotDropdown(); 
     loadGlobalTrialDays();
     loadSupportContacts();
-    loadTierSettings();
-    loadPlanDropdown();
-    loadPlanEditor();
-    loadPaymentHistory();
-    setupRegistrationAlerts();
+	loadTierSettings();
+	  setupRegistrationAlerts();
+	  loadSupportContacts();
 }
-  
-
 // ===== 📢 INSTANT NEW-REGISTRATION ALERTS =====
 function setupRegistrationAlerts() {
     supabaseClient.channel('new-registrations')
@@ -1231,38 +1203,32 @@ async function loadTierSettings() {
     } catch(e) { console.error("Error loading tiers:", e); }
 }
 
-// ===== SUPPORT CONTACTS (6 PLATFORMS — controls all customer screens) =====
+// ===== SUPPORT CONTACTS =====
 async function loadSupportContacts() {
     try {
         const { data } = await supabaseClient.from('global_settings')
-            .select('support_phone, support_email, support_telegram, support_facebook, support_instagram, support_website')
+            .select('support_phone, support_email, support_telegram')
             .eq('id', 'globalConfig').maybeSingle();
         if (data) {
             document.getElementById('supportPhoneInput').value = data.support_phone || '';
             document.getElementById('supportEmailInput').value = data.support_email || '';
             document.getElementById('supportTelegramInput').value = data.support_telegram || '';
-            document.getElementById('supportFacebookInput').value = data.support_facebook || '';
-            document.getElementById('supportInstagramInput').value = data.support_instagram || '';
-            document.getElementById('supportWebsiteInput').value = data.support_website || '';
         }
     } catch(e) { console.error('Load contacts error:', e.message); }
 }
 
 async function saveSupportContacts() {
     var phone = document.getElementById('supportPhoneInput').value.trim();
+    var email = document.getElementById('supportEmailInput').value.trim();
+    var telegram = document.getElementById('supportTelegramInput').value.trim();
+
     if (!phone) { alert('Phone number is required.'); return; }
+
     try {
-        const { error } = await supabaseClient.from('global_settings').upsert({
-            id: 'globalConfig',
-            support_phone: phone,
-            support_email: document.getElementById('supportEmailInput').value.trim(),
-            support_telegram: document.getElementById('supportTelegramInput').value.trim(),
-            support_facebook: document.getElementById('supportFacebookInput').value.trim(),
-            support_instagram: document.getElementById('supportInstagramInput').value.trim(),
-            support_website: document.getElementById('supportWebsiteInput').value.trim()
-        });
+        const { error } = await supabaseClient.from('global_settings')
+            .upsert({ id: 'globalConfig', support_phone: phone, support_email: email, support_telegram: telegram });
         if (error) throw error;
-        alert('✅ Saved! All customer screens now use these contacts.');
+        alert('✅ Support contacts saved! Every screen now uses these.');
         logAction('support_contacts', 'Updated support contacts');
     } catch(e) { alert('❌ Error: ' + e.message); }
 }
@@ -1282,135 +1248,7 @@ function showMasterTab(tabId) {
     for (var i = 0; i < tabs.length; i++) tabs[i].style.display = 'none';
     document.getElementById(tabId).style.display = 'block';
 }
-// 📋 Fill the license generator dropdown from the plans table (both branches)
-async function loadPlanDropdown() {
-    var sel = document.getElementById('planType');
-    if (!sel) return;
-    try {
-        const { data, error } = await supabaseClient.from('plans').select('*').eq('active', true).order('display_order');
-        if (error) throw error;
-        var html = '';
-        var groups = { retail: '🛒 Retail', cafe: '☕ Café / Restaurant', hotel: '🏨 Hotel' };
-        ['retail','cafe','hotel'].forEach(function(bt) {
-            var plans = (data || []).filter(function(p){ return p.business_type === bt; });
-            if (!plans.length) return;
-            html += '<optgroup label="' + (groups[bt] || bt) + '">';
-            plans.forEach(function(p) {
-                if (p.is_default_free) return;   // free plan never needs a key
-                var price = (p.price_monthly > 0) ? (p.name + ' – ' + p.price_monthly + ' Br/mo') : (p.name + ' – custom');
-                html += '<option value="' + p.name + '">' + price + '</option>';
-            });
-            html += '</optgroup>';
-        });
-        sel.innerHTML = html || '<option value="basic">Basic</option>';
-    } catch(e) {
-        sel.innerHTML = '<option value="basic">Basic</option><option value="standard">Standard</option>';
-    }
-}
-  
-async function loadPlanEditor() {
-    const { data, error } = await supabaseClient.from('plans').select('*').order('display_order');
-    var container = document.getElementById('planEditorList');
-    if (error || !data) { container.innerHTML = '<p style="color:#f44336;">Load failed</p>'; return; }
-
-    var groups = { retail: '🛒 RETAIL SHOP PLANS', cafe: '☕ CAFÉ / RESTAURANT PLANS', hotel: '🏨 HOTEL PLANS' };
-    var html = '';
-    ['retail','cafe','hotel'].forEach(function(bt) {
-        var plans = data.filter(function(p){ return p.business_type === bt; });
-        if (!plans.length) return;
-        html += '<h3 style="color:#4caf50; margin:15px 0 8px 0; font-size:14px;">' + (groups[bt] || bt) + '</h3>';
-        plans.forEach(function(p) {
-            var feats = Array.isArray(p.features) ? p.features : [];
-            html += '<div style="background:#2a2a3e;border-radius:12px;padding:14px;margin-bottom:12px;">' +
-                '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                '<input value="' + (p.name || '') + '" id="planName_' + p.id + '" placeholder="Name" style="flex:1;padding:8px;">' +
-                '<input value="' + (p.line || '') + '" id="planLine_' + p.id + '" placeholder="Tagline" style="flex:1;padding:8px;">' +
-                '</div>' +
-                '<div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">' +
-                lbl(p.id, 'Prod', 'planProd', p.max_products) +
-                lbl(p.id, 'Staff', 'planCash', p.max_cashiers) +
-                lbl(p.id, 'Tables', 'planTable', p.max_tables || 0) +
-                lbl(p.id, 'Menu', 'planMenu', p.max_menu_items || 0) +
-                lbl(p.id, 'Br/Mo', 'planPM', p.price_monthly) +
-                lbl(p.id, 'Br/Yr', 'planPY', p.price_yearly) +
-                lbl(p.id, 'Branches', 'planBr', p.max_branches || 1) +
-                '</div>' +
-                '<label style="display:block;margin-top:8px;font-size:12px;"><input type="checkbox" ' + (p.has_stock_mgmt !== false ? 'checked' : '') + ' id="planStock_' + p.id + '"> Stock management included</label>' +
-                '<details style="margin-top:8px;"><summary style="cursor:pointer;font-size:12px;color:#94a3b8;">🔓 Features</summary>' +
-                ['dashboard','products','sales','stock','staff','notebook','settings','devices','license','expenses','losses','credits','reports','kitchen','recipes','qrMenu','receipts','intercom','loyalty','suppliers','loans','bank','taxReports','crm','marketing','menuEng','timesheets','forecast','valuation','branches','rooms'].map(function(f) {
-                    return '<label style="display:inline-block;font-size:11px;margin:3px;"><input type="checkbox" ' + (feats.indexOf(f) !== -1 ? 'checked' : '') + ' id="planFeat_' + p.id + '_' + f + '"> ' + f + '</label>';
-                }).join('') + '</details></div>';
-        });
-    });
-    container.innerHTML = html;
-}
-function lbl(id, label, prefix, val) {
-    return '<label style="flex:1;min-width:70px;font-size:11px;color:#94a3b8;">' + label +
-        '<input type="number" value="' + (val || 0) + '" id="' + prefix + '_' + id + '" style="width:100%;padding:8px;"></label>';
-}
-
-  async function saveAllPlans() {
-    if (!confirm('Save all plan changes?\n\nPrices, limits, tables, stock management, features — applies immediately to the whole platform.')) return;
-    try {
-        const { data } = await supabaseClient.from('plans').select('id').order('display_order');
-        var ALLF = ['dashboard','products','sales','stock','staff','notebook','settings','devices','license','expenses','losses','credits','reports','kitchen','recipes','qrMenu','receipts','intercom','loyalty','suppliers','loans','bank','taxReports','crm','marketing','menuEng','timesheets','forecast','valuation','branches','rooms'];
-        for (var i = 0; i < data.length; i++) {
-            var id = data[i].id;
-            var feats = [];
-            ALLF.forEach(function(f) {
-                var cb = document.getElementById('planFeat_' + id + '_' + f);
-                if (cb && cb.checked) feats.push(f);
-            });
-            await supabaseClient.from('plans').update({
-                name: document.getElementById('planName_' + id).value.trim(),
-                line: document.getElementById('planLine_' + id).value.trim(),
-                max_products: parseInt(document.getElementById('planProd_' + id).value) || 0,
-                max_cashiers: parseInt(document.getElementById('planCash_' + id).value) || 0,
-                max_tables: parseInt(document.getElementById('planTable_' + id).value) || 0,
-                max_menu_items: parseInt(document.getElementById('planMenu_' + id).value) || 0,
-                max_branches: parseInt(document.getElementById('planBr_' + id).value) || 1,
-                price_monthly: parseFloat(document.getElementById('planPM_' + id).value) || 0,
-                price_yearly: parseFloat(document.getElementById('planPY_' + id).value) || 0,
-                has_stock_mgmt: document.getElementById('planStock_' + id).checked,
-                features: feats
-            }).eq('id', id);
-        }
-        alert('✅ All plans saved! Platform rules updated.');
-        loadPlanEditor();
-        logAction('plans_updated', 'Plan Manager v2 changes saved');
-    } catch (e) { alert('❌ ' + e.message); }
-}
-  
-  // 🔬 TEMPORARY DIAGNOSTIC — removes the guesswork
-async function ssDiagnose() {
-    var report = '🔬 DIAGNOSTIC REPORT\n\n';
-    report += 'renderLicenseTableV2: ' + (typeof renderLicenseTableV2) + '\n';
-    report += 'allLicenses loaded: ' + (typeof allLicenses !== 'undefined' ? allLicenses.length : 'variable missing') + '\n\n';
-
-    // Can the browser read the shops?
-    try {
-        const { data: shops, error } = await supabaseClient.from('shops').select('shop_id, name').limit(100);
-        report += 'Browser reads shops: ' + (error ? '❌ ERROR: ' + error.message : '✅ ' + (shops || []).length + ' shops visible') + '\n';
-    } catch(e) { report += 'Browser reads shops: ❌ ' + e.message + '\n'; }
-
-    // Can the browser read licenses?
-    try {
-        const { data: lics, error } = await supabaseClient.from('licenses').select('shop_id').limit(100);
-        report += 'Browser reads licenses: ' + (error ? '❌ ERROR: ' + error.message : '✅ ' + (lics || []).length + ' licenses visible') + '\n';
-    } catch(e) { report += 'Browser reads licenses: ❌ ' + e.message + '\n'; }
-
-    // Master status
-    try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        report += 'Logged in as: ' + (user ? user.email : 'nobody') + '\n';
-        const { data: mu } = await supabaseClient.from('master_users').select('role').eq('email', user.email).maybeSingle();
-        report += 'Master role: ' + (mu ? '✅ ' + mu.role : '❌ NOT in master_users!') + '\n';
-    } catch(e) { report += 'Login check failed: ' + e.message + '\n'; }
-
-    alert(report);
-    console.log(report);
-}
+	
 </script>
 </body>
 </html>
- 
