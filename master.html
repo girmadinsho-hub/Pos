@@ -162,7 +162,6 @@
 
             <div class="card">
                 <div class="card-title" onclick="toggleCard(this)">📋 All Licenses & Shops <span class="arrow open">▶</span></div>
-               <button class="btn btn-yellow" onclick="ssDiagnose()" style="margin-bottom:10px; width:100%;">🔬 DIAGNOSE (tap me)</button>
                 <div class="card-body">
                     <div class="filter-bar" style="margin-bottom:10px;">
                         <input type="text" id="filterSearch" placeholder="🔍 Search shop or key..." oninput="renderLicenseTableV2()">
@@ -461,6 +460,183 @@ async function loadLicenses() {
     });
     renderLicenseTableV2();
     loadRevenueSummary();
+}
+
+
+  // ══════════════════════════════════════════════════════════════
+//  LICENSE ENGINE v2 — the drawing + actions (the missing piece!)
+// ══════════════════════════════════════════════════════════════
+
+function licenseStatus(l) {
+    var days = Math.ceil((new Date(l.expiry_date) - new Date()) / 86400000);
+    if (days < 0) return { cls: 'status-expired', text: 'EXPIRED ' + Math.abs(days) + 'd ago', days: days };
+    if (days <= 7) return { cls: 'status-warning', text: '⚠️ ' + days + 'd left', days: days };
+    return { cls: 'status-active', text: '✅ ' + days + 'd', days: days };
+}
+
+function renderLicenseTableV2() {
+    var q = (document.getElementById('filterSearch').value || '').toLowerCase();
+    var st = document.getElementById('filterStatus').value;
+    var table = document.getElementById('licenseTableV2');
+    if (!table) { console.warn('licenseTableV2 element missing!'); return; }
+    table.innerHTML = '<tr style="background:#333;color:#fff;"><th style="padding:10px;">Shop</th><th style="padding:10px;">Type</th><th style="padding:10px;">Plan</th><th style="padding:10px;">Expires</th><th style="padding:10px;">Status</th><th style="padding:10px;">Actions</th></tr>';
+
+    var rows = allLicenses.filter(function(l) {
+        if (q && (l.shop_name || '').toLowerCase().indexOf(q) === -1 && (l.key || '').toLowerCase().indexOf(q) === -1) return false;
+        var s = licenseStatus(l);
+        if (st === 'active' && s.days <= 7) return false;
+        if (st === 'expiring' && !(s.days >= 0 && s.days <= 7)) return false;
+        if (st === 'expired' && s.days >= 0) return false;
+        if (st === 'trial' && !l.is_trial) return false;
+        return true;
+    });
+
+    if (rows.length === 0) { table.innerHTML += '<tr><td colspan="6" style="padding:20px;text-align:center;color:#94a3b8;">No licenses found.</td></tr>'; return; }
+
+    var typeIcon = { retail: '🛒', cafe: '☕', hotel: '🏨' };
+    rows.forEach(function(l) {
+        var s = licenseStatus(l);
+        table.innerHTML += '<tr style="border-bottom:1px solid #444;">' +
+            '<td style="padding:10px;"><b>' + sanitize(l.shop_name) + '</b><br><small style="color:#94a3b8;">' + l.shop_id + '</small></td>' +
+            '<td style="padding:10px;">' + (typeIcon[l.business_type] || '🛒') + ' ' + l.business_type + '</td>' +
+            '<td style="padding:10px;"><b>' + l.plan + '</b></td>' +
+            '<td style="padding:10px;">' + new Date(l.expiry_date).toLocaleDateString() + '</td>' +
+            '<td style="padding:10px;" class="' + s.cls + '"><b>' + s.text + '</b></td>' +
+            '<td style="padding:10px;"><div style="display:flex;gap:4px;flex-wrap:wrap;">' +
+                '<button class="btn btn-green" style="padding:6px 10px;font-size:11px;" onclick="extendLicenseV2(\'' + (l.id || 'trial:' + l.shop_id) + '\')">📅 Extend</button>' +
+                '<button class="btn btn-blue" style="padding:6px 10px;font-size:11px;" onclick="changePlanV2(\'' + (l.id || 'trial:' + l.shop_id) + '\')">🔄 Plan</button>' +
+                (l.id ? '<button class="btn btn-red" style="padding:6px 10px;font-size:11px;" onclick="revokeLicense(\'' + l.id + '\')">⛔</button>' : '') +
+            '</div></td></tr>';
+    });
+}
+
+async function extendLicenseV2(licenseId) {
+    var l = allLicenses.find(function(x){ return (x.id === licenseId) || ('trial:' + x.shop_id === licenseId); });
+    if (!l) return;
+
+    var days = parseInt(await prompt('Extend "' + l.shop_name + '" by how many days?\n\n(7 / 30 / 90 / 365)', '30'));
+    if (isNaN(days) || days <= 0) return;
+
+    var suggestedPrice = 0;
+    try {
+        const { data: pd } = await supabaseClient.from('plans').select('price_monthly, price_yearly').ilike('name', l.plan === 'Trial' ? 'Basic' : l.plan).maybeSingle();
+        if (pd) {
+            if (days >= 365) suggestedPrice = pd.price_yearly || (pd.price_monthly * 12 * 0.8);
+            else suggestedPrice = Math.round(pd.price_monthly * days / 30);
+        }
+    } catch(e) {}
+
+    var amountStr = await prompt('Amount paid (Br):\n(Suggested: ' + suggestedPrice + ' Br for ' + days + ' days)', String(suggestedPrice));
+    var amount = parseFloat(amountStr) || 0;
+    var method = await prompt('Payment method:\n(Telebirr / CBE / Cash / Free)', 'Telebirr');
+    if (method === null) return;
+    if (!await confirm('Extend ' + l.shop_name + ' by ' + days + ' days?\nAmount: ' + amount + ' Br via ' + method)) return;
+
+    try {
+        var newExpiry = new Date(l.expiry_date && new Date(l.expiry_date) > new Date() ? l.expiry_date : new Date());
+        newExpiry.setDate(newExpiry.getDate() + days);
+        var newExpiryStr = newExpiry.toISOString();
+
+        if (l.is_trial) {
+            var key = ('SMART-BASIC-' + l.shop_id + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
+            await supabaseClient.from('licenses').insert([{
+                shop_name: l.shop_name, shop_id: l.shop_id, plan: 'Basic', key: key,
+                start_date: new Date().toISOString(), expiry_date: newExpiryStr,
+                status: 'active', created_at: new Date().toISOString(),
+                business_type: l.business_type
+            }]);
+            await supabaseClient.from('shops').update({ plan: 'basic' }).eq('shop_id', l.shop_id);
+        } else {
+            await supabaseClient.from('licenses').update({ expiry_date: newExpiryStr }).eq('id', l.id);
+        }
+
+        await supabaseClient.from('payments').insert([{
+            shop_id: l.shop_id, shop_name: l.shop_name, license_id: l.id,
+            action: 'extend', plan_name: l.plan, days: days,
+            amount: amount, payment_method: method, notes: 'Extended ' + days + ' days'
+        }]);
+
+        alert('✅ ' + l.shop_name + ' extended to ' + newExpiry.toLocaleDateString() + '!\nPayment recorded: ' + amount + ' Br (' + method + ')');
+        loadLicenses();
+        loadPaymentHistory();
+        logAction('extend', l.shop_name + ' +' + days + 'd (' + amount + ' Br ' + method + ')');
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+async function changePlanV2(licenseId) {
+    var l = allLicenses.find(function(x){ return (x.id === licenseId) || ('trial:' + x.shop_id === licenseId); });
+    if (!l) return;
+
+    var plans = [];
+    try {
+        const { data } = await supabaseClient.from('plans').select('name, business_type, price_monthly').eq('active', true).order('display_order');
+        plans = data || [];
+    } catch(e) {}
+    if (!plans.length) { alert('No plans found — run the plans SQL.'); return; }
+
+    var list = plans.map(function(p, i){ return (i+1) + '. ' + p.name + ' (' + p.business_type + ') — ' + p.price_monthly + ' Br/mo'; }).join('\n');
+    var choice = parseInt(await prompt('Change ' + l.shop_name + ' to which plan?\n\n' + list));
+    if (isNaN(choice) || choice < 1 || choice > plans.length) return;
+    var newPlan = plans[choice-1];
+
+    if (!await confirm('Change ' + l.shop_name + ' to ' + newPlan.name + ' (' + newPlan.business_type + ')?')) return;
+
+    try {
+        if (l.is_trial) {
+            var key = ('SMART-' + newPlan.name.toUpperCase() + '-' + l.shop_id + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
+            await supabaseClient.from('licenses').insert([{
+                shop_name: l.shop_name, shop_id: l.shop_id, plan: newPlan.name, key: key,
+                start_date: new Date().toISOString(),
+                expiry_date: new Date(Date.now() + 30*86400000).toISOString(),
+                status: 'active', created_at: new Date().toISOString(),
+                business_type: newPlan.business_type
+            }]);
+            await supabaseClient.from('shops').update({ plan: newPlan.name, business_type: newPlan.business_type }).eq('shop_id', l.shop_id);
+        } else {
+            await supabaseClient.from('licenses').update({ plan: newPlan.name, business_type: newPlan.business_type }).eq('id', l.id);
+            await supabaseClient.from('shops').update({ plan: newPlan.name, business_type: newPlan.business_type }).eq('shop_id', l.shop_id);
+        }
+        await supabaseClient.from('payments').insert([{
+            shop_id: l.shop_id, shop_name: l.shop_name, license_id: l.id,
+            action: 'plan_change', plan_name: newPlan.name, days: 0,
+            amount: 0, payment_method: 'plan_change', notes: 'Plan → ' + newPlan.name
+        }]);
+        alert('✅ ' + l.shop_name + ' is now on ' + newPlan.name + ' (' + newPlan.business_type + ')!');
+        loadLicenses(); loadPaymentHistory();
+        logAction('plan_change', l.shop_name + ' → ' + newPlan.name);
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+async function loadPaymentHistory() {
+    var el = document.getElementById('paymentHistoryList');
+    if (!el) return;
+    const { data, error } = await supabaseClient.from('payments').select('*').order('created_at', { ascending: false }).limit(50);
+    if (error) { el.innerHTML = '<p style="color:#f44336;">Load failed: ' + error.message + '</p>'; return; }
+    if (!data || data.length === 0) { el.innerHTML = '<p style="color:#94a3b8;">No payments recorded yet.</p>'; return; }
+    var total = 0;
+    var html = data.map(function(p) {
+        total += Number(p.amount || 0);
+        return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #444;font-size:13px;">' +
+            '<span>🏪 ' + sanitize(p.shop_name) + ' · ' + (p.action === 'extend' ? '📅 +' + p.days + 'd' : '🔄 ' + p.plan_name) + '</span>' +
+            '<span><b style="color:#4caf50;">' + p.amount + ' Br</b> · ' + (p.payment_method || '') + ' · ' + new Date(p.created_at).toLocaleDateString() + '</span></div>';
+    }).join('');
+    html += '<div style="text-align:right;font-size:16px;font-weight:bold;color:#4caf50;margin-top:10px;">Total recorded: ' + total.toFixed(2) + ' Br</div>';
+    el.innerHTML = html;
+}
+
+function loadRevenueSummary() {
+    var active = 0, expiring = 0, expired = 0;
+    allLicenses.forEach(function(l) {
+        var s = licenseStatus(l);
+        if (s.days < 0) expired++;
+        else { if (l.plan !== 'Trial') active++; if (s.days <= 7) expiring++; }
+    });
+    var html = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;margin-bottom:15px;">' +
+        '<div style="background:#e6f4ea;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#10b981;">' + active + '</b><small>Active Paid</small></div>' +
+        '<div style="background:#fef3c7;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#f59e0b;">' + expiring + '</b><small>Expiring ≤7d</small></div>' +
+        '<div style="background:#fee2e2;padding:10px;border-radius:8px;"><b style="display:block;font-size:20px;color:#ef4444;">' + expired + '</b><small>Expired</small></div></div>';
+    var el = document.getElementById('revenueSummary');
+    if (el) el.innerHTML = html;
 }
 
 function licenseStatus(l) {
@@ -812,42 +988,7 @@ async function generateLicense() {
     loadLicenses(); loadShops(); populateSnapshotDropdown(); loadRevenueSummary();
 }
   
-var allLicenses = [];
 
-async function loadLicenses() {
-    const { data: lics, error } = await supabaseClient.from('licenses').select('*').order('created_at', { ascending: false });
-    if (error) {
-        console.error("Load licenses error:", error.message);
-        alert('⚠️ License load failed: ' + error.message);
-        return;
-    }
-    const { data: shops, error: sErr } = await supabaseClient.from('shops').select('*').order('created_at', { ascending: false });
-    if (sErr) { console.error("Shops load error:", sErr.message); }
-
-    allLicenses = [];
-    (lics || []).forEach(function(l) {
-        var shop = (shops || []).find(function(s){ return s.shop_id === l.shop_id; });
-        allLicenses.push({
-            id: l.id, shop_name: l.shop_name || (shop ? shop.name : l.shop_id),
-            shop_id: l.shop_id, key: l.key, plan: l.plan,
-            business_type: l.business_type || (shop ? shop.business_type : 'retail') || 'retail',
-            expiry_date: l.expiry_date, start_date: l.start_date,
-            is_trial: false
-        });
-    });
-    (shops || []).forEach(function(s) {
-        if (s.plan === 'trial' && !allLicenses.find(function(l){ return l.shop_id === s.shop_id; })) {
-            allLicenses.push({
-                id: null, shop_name: s.name, shop_id: s.shop_id, key: '(trial)',
-                plan: 'Trial', business_type: s.business_type || 'retail',
-                expiry_date: s.trial_expires, start_date: s.registered_at,
-                is_trial: true
-            });
-        }
-    });
-    renderLicenseTableV2();
-    loadRevenueSummary();
-}
 async function bulkGenerate() {
     const names = document.getElementById('bulkShopNames').value.split('\n').filter(n=>n.trim());
     if (!names.length) return alert('Enter at least one shop name!');
@@ -1416,35 +1557,8 @@ function lbl(id, label, prefix, val) {
     } catch (e) { alert('❌ ' + e.message); }
 }
   
-  // 🔬 TEMPORARY DIAGNOSTIC — removes the guesswork
-async function ssDiagnose() {
-    var report = '🔬 DIAGNOSTIC REPORT\n\n';
-    report += 'renderLicenseTableV2: ' + (typeof renderLicenseTableV2) + '\n';
-    report += 'allLicenses loaded: ' + (typeof allLicenses !== 'undefined' ? allLicenses.length : 'variable missing') + '\n\n';
-
-    // Can the browser read the shops?
-    try {
-        const { data: shops, error } = await supabaseClient.from('shops').select('shop_id, name').limit(100);
-        report += 'Browser reads shops: ' + (error ? '❌ ERROR: ' + error.message : '✅ ' + (shops || []).length + ' shops visible') + '\n';
-    } catch(e) { report += 'Browser reads shops: ❌ ' + e.message + '\n'; }
-
-    // Can the browser read licenses?
-    try {
-        const { data: lics, error } = await supabaseClient.from('licenses').select('shop_id').limit(100);
-        report += 'Browser reads licenses: ' + (error ? '❌ ERROR: ' + error.message : '✅ ' + (lics || []).length + ' licenses visible') + '\n';
-    } catch(e) { report += 'Browser reads licenses: ❌ ' + e.message + '\n'; }
-
-    // Master status
-    try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        report += 'Logged in as: ' + (user ? user.email : 'nobody') + '\n';
-        const { data: mu } = await supabaseClient.from('master_users').select('role').eq('email', user.email).maybeSingle();
-        report += 'Master role: ' + (mu ? '✅ ' + mu.role : '❌ NOT in master_users!') + '\n';
-    } catch(e) { report += 'Login check failed: ' + e.message + '\n'; }
-
-    alert(report);
-    console.log(report);
-}
+  
 </script>
 </body>
 </html>
+ 
