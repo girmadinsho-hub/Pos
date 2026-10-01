@@ -683,41 +683,45 @@ body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
 			 
 <!-- Registration Modal (Hidden by default) -->
 <div class="modal" id="registerModal">
-    <div class="modal-content">
-        <div class="card-title">📝 Create Account</div>
-        <p style="font-size: 13px; color: #64748b; margin-bottom: 15px;">Set up your shop in one minute.</p>
+    <div class="modal-content" style="max-width:420px; max-height:90vh; overflow-y:auto;">
+        <div class="card-title" style="font-size:20px;">🎉 Create Your Account</div>
+        <p style="font-size:12px; color:#64748b; margin-bottom:14px;">Free 30-day trial with <b>full access</b> — explore everything, pay later only if you love it.</p>
 
-
-        <label style="font-size:11px; color:#64748b; font-weight:700;">🏪 WHAT IS YOUR BUSINESS?</label>
-        <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
-            <label style="flex:1; min-width:100px; border:2px solid #2563eb; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;">
-                <input type="radio" name="regBizType" value="retail" checked style="margin-right:4px;">🛒 Retail
-            </label>
-            <label style="flex:1; min-width:100px; border:2px solid #e2e8f0; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;">
-                <input type="radio" name="regBizType" value="cafe" style="margin-right:4px;">☕ Café
-            </label>
-            <label style="flex:1; min-width:100px; border:2px solid #e2e8f0; border-radius:10px; padding:10px; text-align:center; cursor:pointer; font-weight:700;">
-                <input type="radio" name="regBizType" value="hotel" style="margin-right:4px;">🏨 Hotel
-            </label>
+        <!-- Shop Info -->
+        <input type="text" id="regShopName" class="form-input" placeholder="🏪 Shop / Hotel name *" oninput="regPreviewShopId()">
+        <label style="font-size:10px; color:#64748b; font-weight:700;">🔑 SHOP ID (for connecting POS/Kitchen devices)</label>
+        <div style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
+            <input type="text" id="regShopId" class="form-input" placeholder="auto from name" style="flex:1;" oninput="regShopIdInput()">
+            <span id="regShopIdStatus" style="font-size:18px; min-width:24px; text-align:center;"></span>
         </div>
-      
-        <input type="text" id="regShopName" class="form-input" placeholder="Shop Name * (e.g., Friends Coffee)" oninput="regPreviewShopId()">
+        <small id="regShopIdHint" style="font-size:10px; color:#64748b; display:block; margin-bottom:10px;">Auto-made from your name — you can edit it.</small>
 
-        <label style="font-size:11px; color:#64748b; font-weight:700;">🔑 YOUR SHOP ID (for connecting POS/Kitchen devices)</label>
-        <div style="display:flex; gap:6px; align-items:center;">
-            <input type="text" id="regShopId" class="form-input" placeholder="auto from shop name" style="flex:1;" oninput="regShopIdInput()">
-            <span id="regShopIdStatus" style="font-size:20px; min-width:26px; text-align:center;"></span>
+        <!-- Contact -->
+        <input type="tel" id="regPhone" class="form-input" placeholder="📱 Phone number *" style="border-color:#f59e0b;">
+        <input type="email" id="regEmail" class="form-input" placeholder="📧 Email address *">
+
+        <!-- Password -->
+        <label style="font-size:10px; color:#64748b; font-weight:700;">🔐 PASSWORD</label>
+        <div style="position:relative;">
+            <input type="password" id="regPass" class="form-input" placeholder="Password * (min 6 characters)" oninput="regCheckStrength()" style="padding-right:44px;">
+            <button type="button" onclick="regTogglePwd('regPass', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; font-size:18px; cursor:pointer;">👁️</button>
         </div>
-        <small id="regShopIdHint" style="font-size:11px; color:#64748b; display:block; margin-bottom:10px;">Auto-made from your shop name — you can edit it.</small>
-
-        <input type="tel" id="regPhone" class="form-input" placeholder="Phone Number">
-        <input type="email" id="regEmail" class="form-input" placeholder="Your Email Address *">
-        <input type="password" id="regPass" class="form-input" placeholder="Create Password * (min 6 characters)">
-
-        <div class="flex-row" style="margin-top: 10px;">
-            <button class="btn btn-outline" onclick="closeRegisterForm()">Cancel</button>
-            <button class="btn btn-success" onclick="registerAccount()">Create Account</button>
+        <div style="display:flex; gap:3px; margin:4px 0;">
+            <div id="strBar1" style="flex:1; height:5px; border-radius:3px; background:#e2e8f0;"></div>
+            <div id="strBar2" style="flex:1; height:5px; border-radius:3px; background:#e2e8f0;"></div>
+            <div id="strBar3" style="flex:1; height:5px; border-radius:3px; background:#e2e8f0;"></div>
         </div>
+        <small id="strText" style="font-size:10px; color:#94a3b8; display:block; margin-bottom:8px;">Use letters + numbers for a stronger password</small>
+
+        <label style="font-size:10px; color:#64748b; font-weight:700;">🔐 CONFIRM PASSWORD</label>
+        <div style="position:relative;">
+            <input type="password" id="regPass2" class="form-input" placeholder="Repeat password *" oninput="regCheckMatch()" style="padding-right:44px;">
+            <button type="button" onclick="regTogglePwd('regPass2', this)" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; font-size:18px; cursor:pointer;">👁️</button>
+        </div>
+        <div id="matchIndicator" style="font-size:11px; margin-bottom:10px; display:none;"></div>
+
+        <button class="btn btn-success" onclick="registerAccountV2()" style="padding:14px; font-size:16px; margin-top:6px;">🚀 Create My Account</button>
+        <button class="btn btn-outline" onclick="closeRegisterForm()">Cancel</button>
     </div>
 </div>
 
@@ -8974,10 +8978,7 @@ async function activateLicense() {
               // 🔀 Branch check: café keys for café shops, retail keys for retail
         const { data: myShopRow } = await supabaseClient.from('shops').select('business_type').eq('shop_id', getShopId()).maybeSingle();
         var myBiz = (myShopRow && myShopRow.business_type) || 'retail';
-        if (lic.business_type && lic.business_type !== myBiz) {
-            alert('❌ This key is for a ' + lic.business_type.toUpperCase() + ' business.\nYour shop is registered as ' + myBiz.toUpperCase() + '.\nContact your provider for the correct key.');
-            return;
-        }
+      
         if (!lic) { alert('❌ Invalid key! Copy-paste the key exactly as provided.'); return; }
        if (lic.status !== 'active') { alert('❌ This license was revoked. Contact your provider.'); return; }
 
@@ -9001,7 +9002,14 @@ async function activateLicense() {
             }
             saveShopId(lic.shop_id);   // adopt the licensed shop
         }
+                   // 🏨 THE MOMENT OF TRUTH: the key's business type becomes the shop's type!
+        if (lic.business_type) {
+            await supabaseClient.from('shops').update({ business_type: lic.business_type }).eq('shop_id', lic.shop_id);
+            await supabaseClient.from('settings').update({ shop_type: lic.business_type === 'retail' ? 'retail' : 'cafe' }).eq('shop_id', lic.shop_id);
+        }
+      
         // 🤝 CLAIM ownership if this shop has no owner yet
+
         try {
             var u2 = await supabaseClient.auth.getUser();
             if (u2.data && u2.data.user && u2.data.user.email) {
@@ -11505,12 +11513,13 @@ async function registerAccount() {
     var phone = document.getElementById('regPhone').value.trim();
     var email = document.getElementById('regEmail').value.trim();
     var pass = document.getElementById('regPass').value.trim();
+    var pass2 = document.getElementById('regPass2') ? document.getElementById('regPass2').value : pass;
     if (!shopName || !email || !pass) { alert('Please fill all required fields.'); return; }
+    if (pass !== pass2) { alert('Passwords do not match!'); return; }
 
-    // 🛡️ ONE DEVICE = ONE SHOP (client + server)
+    // 🛡️ ONE DEVICE = ONE SHOP
     if (localStorage.getItem('deviceRegistered') === 'true') {
-        var existingShop = localStorage.getItem('shopId') || '';
-        alert('⛔ This device already has a shop' + (existingShop ? ': ' + existingShop : '') + '.\n\nOne device = one shop.\nUse the LOGIN screen with your email and password.\nNeed another shop? Upgrade to Enterprise or contact support.');
+        alert('⛔ This device already registered a shop.\n\nUse the LOGIN screen with your email and password.\nNeed another shop? Contact: ' + (window.SUPPORT ? window.SUPPORT.phone : 'provider'));
         return;
     }
     var dk = localStorage.getItem('deviceKey_admin');
@@ -11524,12 +11533,11 @@ async function registerAccount() {
     var baseId = document.getElementById('regShopId').value.trim().toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
     if (!baseId) baseId = regGenerateShopId(shopName);
     if (!baseId) { alert('Enter a shop name with letters or numbers.'); return; }
-    if (regShopIdAvailable === false) { alert('❌ Shop ID "' + baseId + '" is taken. Choose another.'); return; }
 
     try {
         const { data, error } = await supabaseClient.auth.signUp({ email: email, password: pass });
 
-        // 🔄 EMAIL ALREADY HAS AN ACCOUNT → Welcome-Back flow (help, don't block!)
+        // 🔄 Existing account → welcome-back flow
         if (error && (error.message || '').toLowerCase().indexOf('already') !== -1) {
             var shopId2 = await ssResolveShopId(baseId);
             await handleExistingAccount(email, pass, shopName, phone, dk, shopId2);
@@ -11544,7 +11552,7 @@ async function registerAccount() {
         alert('❌ Registration failed: ' + e.message);
     }
 }
-
+  
 // 🔄 Existing account → verify password → show their shop info (or complete unfinished registration)
 async function handleExistingAccount(email, pass, shopName, phone, dk, fallbackShopId) {
     const { error: signInErr } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
@@ -11594,15 +11602,15 @@ async function ssCompleteRegistration(shopId, shopName, phone, email, dk) {
         if (gs && gs.default_trial_days > 0) trialDays = gs.default_trial_days;
     } catch(e) {}
 
+    // 🆕 NO business type at registration — default retail until license activation
     await supabaseClient.from('shops').insert([{
         shop_id: shopId, name: shopName, phone: phone, owner_email: email,
-        plan: 'trial', active: true,
-        business_type: (document.querySelector('input[name="regBizType"]:checked') || {value:'retail'}).value,
+        plan: 'trial', active: true, business_type: 'retail',
         trial_expires: new Date(Date.now() + trialDays * 86400000).toISOString(),
         registered_at: new Date().toISOString()
     }]);
-            await supabaseClient.from('settings').insert([{ shop_id: shopId, name: shopName, currency: 'Br ',
-            shop_type: (document.querySelector('input[name="regBizType"]:checked') || {value:'retail'}).value === 'retail' ? 'retail' : 'cafe' }]);    try { await supabaseClient.auth.updateUser({ data: { shopId: shopId, shopName: shopName } }); } catch(e) {}
+    await supabaseClient.from('settings').insert([{ shop_id: shopId, name: shopName, currency: 'Br ', shop_type: 'retail' }]);
+    try { await supabaseClient.auth.updateUser({ data: { shopId: shopId, shopName: shopName } }); } catch(e) {}
 
     localStorage.setItem('shopId', shopId);
     localStorage.setItem('appCurrencySymbol', 'Br ');
@@ -11615,8 +11623,7 @@ async function ssCompleteRegistration(shopId, shopName, phone, email, dk) {
     document.getElementById('regSuccessEmail').textContent = email;
     document.getElementById('registerModal').classList.remove('active');
     document.getElementById('regSuccessModal').classList.add('active');
-}
-	
+}	
 
 async function contactSupport() {
     await loadSupportContactsUniversal();
