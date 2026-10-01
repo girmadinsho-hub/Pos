@@ -928,35 +928,177 @@ async function deleteLicense(id) {
     } catch (e) { alert('❌ Deletion failed: ' + e.message); }
 }
 
-function loadShops() {
+// ══════════════════════════════════════════════════════════════
+//  🏪 SUPER SHOPS TABLE — the ONE command center
+//  Shops + license keys + expiry + extend + plan change + block
+// ══════════════════════════════════════════════════════════════
+var _shopLicenses = {};
+
+async function loadShops() {
     var container = document.getElementById('shopsTable');
     if (!container) return;
-    var html = '<tr style="background:#333;color:#fff;"><th>Shop Name</th><th>Shop ID</th><th>Plan</th><th>Email</th><th>Days Left</th><th>Active</th><th>Actions</th></tr>';
-    supabaseClient.from('shops').select('*').order('registered_at', { ascending: false }).then(({data, error}) => {
-        if (error) { alert('Error: ' + error.message); return; }
-        if (!data || data.length === 0) { container.innerHTML = html + '<tr><td colspan="7" style="padding:20px;color:#94a3b8;">No shops registered yet.</td></tr>'; return; }
-        data.forEach(function(shop) {
-            var daysLeft = shop.trial_expires ? Math.ceil((new Date(shop.trial_expires) - new Date()) / 86400000) : '—';
-            var daysColor = daysLeft === '—' ? '#64748b' : (daysLeft <= 7 ? '#ef4444' : (daysLeft <= 0 ? '#dc2626' : '#10b981'));
-            var trialBadge = (shop.plan === 'trial') ? ' <span style="background:#f59e0b;color:white;font-size:9px;padding:2px 6px;border-radius:4px;">TRIAL</span>' : '';
-            var blocked = shop.blocked ? '<span style="color:#ef4444;">⛔ BLOCKED</span>' : '✅';
-            html += '<tr>' +
-                '<td>' + shop.name + trialBadge + '</td>' +
-                '<td style="font-size:11px;">' + shop.shop_id + '</td>' +
-                '<td>' + (shop.plan || 'trial') + '</td>' +
-                '<td style="font-size:11px;">' + (shop.owner_email || '—') + '</td>' +
-                '<td style="color:' + daysColor + ';font-weight:bold;">' + (daysLeft <= 0 ? 'EXPIRED' : daysLeft + 'd') + '</td>' +
-                '<td>' + (shop.active ? blocked : 'inactive') + '</td>' +
-                '<td>' +
-                    '<button class="btn btn-sm btn-blue" onclick="generateLicenseFor(\'' + shop.shop_id + '\')">🔑 License</button> ' +
-							      '<button class="btn btn-sm btn-yellow" onclick="extendTrial(\'' + shop.shop_id + '\')">📅 Days</button> ' +
-                    '<button class="btn btn-sm btn-red" onclick="masterBlockShop(\'' + shop.shop_id + '\',' + !shop.blocked + ')">' + (shop.blocked ? 'Unblock' : 'Block') + '</button>' +
-                '</td></tr>';
-        });
-        container.innerHTML = html;
+
+    // Load shops + their licenses TOGETHER
+    const { data: shops, error } = await supabaseClient.from('shops').select('*').order('created_at', { ascending: false });
+    if (error) { container.innerHTML = '<tr><td colspan="7">Error: ' + error.message + '</td></tr>'; return; }
+
+    const { data: lics } = await supabaseClient.from('licenses').select('*').order('created_at', { ascending: false });
+    _shopLicenses = {};
+    (lics || []).forEach(function(l) {
+        // keep the LATEST license per shop
+        if (!_shopLicenses[l.shop_id] || new Date(l.created_at) > new Date(_shopLicenses[l.shop_id].created_at)) {
+            _shopLicenses[l.shop_id] = l;
+        }
     });
+
+    var typeIcon = { retail: '🛒', cafe: '☕', hotel: '🏨' };
+    var html = '<tr style="background:#333;color:#fff;">' +
+        '<th style="padding:10px;">Shop</th>' +
+        '<th style="padding:10px;">Type</th>' +
+        '<th style="padding:10px;">Plan</th>' +
+        '<th style="padding:10px;">License Key</th>' +
+        '<th style="padding:10px;">Expires</th>' +
+        '<th style="padding:10px;">Actions</th></tr>';
+
+    if (!shops || shops.length === 0) {
+        html += '<tr><td colspan="6" style="padding:20px;color:#94a3b8;">No shops registered yet.</td></tr>';
+    } else {
+        shops.forEach(function(shop) {
+            var lic = _shopLicenses[shop.shop_id];
+            var bizType = shop.business_type || (lic ? lic.business_type : 'retail') || 'retail';
+            var plan = lic ? lic.plan : (shop.plan || 'trial');
+            var key = lic ? lic.key : '—';
+            var expiry = lic ? new Date(lic.expiry_date) : (shop.trial_expires ? new Date(shop.trial_expires) : null);
+
+            var days = expiry ? Math.ceil((expiry - new Date()) / 86400000) : null;
+            var stColor = days === null ? '#64748b' : (days < 0 ? '#ef4444' : (days <= 7 ? '#f59e0b' : '#10b981'));
+            var stText = days === null ? '—' : (days < 0 ? '❌ EXPIRED' : (days <= 7 ? '⚠️ ' + days + 'd left' : '✅ ' + days + 'd'));
+            var trialBadge = (plan === 'trial') ? ' <span style="background:#f59e0b;color:white;font-size:9px;padding:2px 6px;border-radius:4px;">TRIAL</span>' : '';
+
+            html += '<tr style="border-bottom:1px solid #444;">' +
+                '<td style="padding:10px;"><b>' + (shop.name || 'Unknown') + trialBadge + '</b>' +
+                    '<br><small style="color:#94a3b8;">' + shop.shop_id + '</small>' +
+                    '<br><small style="color:#64748b;">📧 ' + (shop.owner_email || '—') + ' · 📱 ' + (shop.phone || '—') + '</small></td>' +
+                '<td style="padding:10px;">' + (typeIcon[bizType] || '🛒') + ' ' + bizType + '</td>' +
+                '<td style="padding:10px;"><b>' + plan + '</b></td>' +
+                '<td style="padding:10px;"><code style="font-size:10px;color:#4caf50;word-break:break-all;">' + key + '</code></td>' +
+                '<td style="padding:10px;color:' + stColor + ';font-weight:bold;">' + stText +
+                    '<br><small>' + (expiry ? expiry.toLocaleDateString() : '—') + '</small></td>' +
+                '<td style="padding:10px;"><div style="display:flex;flex-direction:column;gap:4px;">' +
+                    '<button class="btn btn-green" style="padding:6px 8px;font-size:10px;" onclick="extendShop(\'' + shop.shop_id + '\')">📅 Extend</button>' +
+                    '<button class="btn btn-blue" style="padding:6px 8px;font-size:10px;" onclick="changeShopPlan(\'' + shop.shop_id + '\')">🔄 Plan</button>' +
+                    '<button class="btn btn-sm btn-blue" style="padding:6px 8px;font-size:10px;" onclick="generateLicenseFor(\'' + shop.shop_id + '\')">🔑 Key</button>' +
+                    '<button class="btn btn-sm btn-red" style="padding:6px 8px;font-size:10px;" onclick="masterBlockShop(\'' + shop.shop_id + '\',' + !shop.blocked + ')">' + (shop.blocked ? 'Unblock' : '⛔ Block') + '</button>' +
+                '</div></td></tr>';
+        });
+    }
+    container.innerHTML = html;
 }
 
+// 📅 EXTEND a shop's license (creates one if trial — records payment!)
+async function extendShop(shopId) {
+    var shop = await getShopRow(shopId);
+    var lic = _shopLicenses[shopId];
+
+    var days = parseInt(await prompt('Extend "' + (shop ? shop.name : shopId) + '" by days?\n\n(7 / 30 / 90 / 365)', '30'));
+    if (isNaN(days) || days <= 0) return;
+
+    var suggested = 0;
+    try {
+        var planName = lic ? lic.plan : 'Basic';
+        const { data: pd } = await supabaseClient.from('plans').select('price_monthly, price_yearly').ilike('name', planName).maybeSingle();
+        if (pd) suggested = days >= 365 ? (pd.price_yearly || pd.price_monthly * 10) : Math.round(pd.price_monthly * days / 30);
+    } catch(e) {}
+
+    var amountStr = await prompt('Amount paid (Br):\n(Suggested: ' + suggested + ')', String(suggested));
+    var amount = parseFloat(amountStr) || 0;
+    var method = await prompt('Method: (Telebirr / CBE / Cash / Free)', 'Telebirr');
+    if (method === null) return;
+    if (!await confirm('Extend ' + days + ' days for ' + amount + ' Br (' + method + ')?')) return;
+
+    try {
+        var base = (lic && lic.expiry_date && new Date(lic.expiry_date) > new Date()) ? new Date(lic.expiry_date) : new Date();
+        base.setDate(base.getDate() + days);
+        var newExpiry = base.toISOString();
+
+        if (lic) {
+            await supabaseClient.from('licenses').update({ expiry_date: newExpiry }).eq('id', lic.id);
+        } else {
+            // Trial → convert to paid with a real key!
+            var key = ('SMART-BASIC-' + shopId + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
+            await supabaseClient.from('licenses').insert([{
+                shop_name: shop ? shop.name : shopId, shop_id: shopId, plan: 'Basic', key: key,
+                start_date: new Date().toISOString(), expiry_date: newExpiry,
+                status: 'active', created_at: new Date().toISOString(),
+                business_type: shop ? (shop.business_type || 'retail') : 'retail'
+            }]);
+            await supabaseClient.from('shops').update({ plan: 'basic' }).eq('shop_id', shopId);
+        }
+
+        await supabaseClient.from('payments').insert([{
+            shop_id: shopId, shop_name: shop ? shop.name : shopId,
+            action: 'extend', plan_name: lic ? lic.plan : 'Basic', days: days,
+            amount: amount, payment_method: method, notes: 'Extended ' + days + ' days'
+        }]);
+
+        alert('✅ Extended to ' + base.toLocaleDateString() + '!\nPayment recorded: ' + amount + ' Br (' + method + ')');
+        loadShops(); loadPaymentHistory();
+        logAction('extend', shopId + ' +' + days + 'd (' + amount + ' Br)');
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+// 🔄 CHANGE PLAN (any plan, any type — stamps business type!)
+async function changeShopPlan(shopId) {
+    var shop = await getShopRow(shopId);
+    var lic = _shopLicenses[shopId];
+
+    var plans = [];
+    try {
+        const { data } = await supabaseClient.from('plans').select('name, business_type, price_monthly').eq('active', true).order('display_order');
+        plans = data || [];
+    } catch(e) {}
+    if (!plans.length) { alert('No plans found.'); return; }
+
+    var list = plans.map(function(p, i){ return (i+1) + '. ' + p.name + ' (' + p.business_type + ') — ' + p.price_monthly + ' Br/mo'; }).join('\n');
+    var choice = parseInt(await prompt('Change "' + (shop ? shop.name : shopId) + '" to which plan?\n\n' + list));
+    if (isNaN(choice) || choice < 1 || choice > plans.length) return;
+    var np = plans[choice-1];
+    if (!await confirm('Change to ' + np.name + ' (' + np.business_type + ')?')) return;
+
+    try {
+        if (lic) {
+            await supabaseClient.from('licenses').update({ plan: np.name, business_type: np.business_type }).eq('id', lic.id);
+        } else {
+            var key = ('SMART-' + np.name.toUpperCase() + '-' + shopId + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
+            await supabaseClient.from('licenses').insert([{
+                shop_name: shop ? shop.name : shopId, shop_id: shopId, plan: np.name, key: key,
+                start_date: new Date().toISOString(),
+                expiry_date: new Date(Date.now() + 30*86400000).toISOString(),
+                status: 'active', created_at: new Date().toISOString(),
+                business_type: np.business_type
+            }]);
+        }
+        await supabaseClient.from('shops').update({ plan: np.name, business_type: np.business_type }).eq('shop_id', shopId);
+
+        await supabaseClient.from('payments').insert([{
+            shop_id: shopId, shop_name: shop ? shop.name : shopId,
+            action: 'plan_change', plan_name: np.name, days: 0,
+            amount: 0, payment_method: 'plan_change', notes: '→ ' + np.name
+        }]);
+
+        alert('✅ Now on ' + np.name + ' (' + np.business_type + ')!');
+        loadShops(); loadPaymentHistory();
+        logAction('plan_change', shopId + ' → ' + np.name);
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+async function getShopRow(shopId) {
+    try {
+        const { data } = await supabaseClient.from('shops').select('*').eq('shop_id', shopId).maybeSingle();
+        return data;
+    } catch(e) { return null; }
+}
+  
 async function masterBlockShop(shopId, block) {
     if (!confirm(block ? 'Block this customer?' : 'Unblock?')) return;
     await supabaseClient.from('shops').update({ blocked: block }).eq('shop_id', shopId);
