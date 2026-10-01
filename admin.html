@@ -11500,6 +11500,62 @@ function closeRegisterForm() {
     document.getElementById('registerModal').classList.remove('active');
     document.getElementById('loginScreen').style.display = 'flex';
 }
+  // ═════════════════════════════════════════════════════════
+//  🎉 REGISTRATION v2 HELPERS — password toggles, strength, validation
+// ═════════════════════════════════════════════════════════
+function regTogglePwd(id, btn) {
+    var el = document.getElementById(id);
+    el.type = el.type === 'password' ? 'text' : 'password';
+    btn.textContent = el.type === 'password' ? '👁️' : '🙈';
+}
+
+function regCheckStrength() {
+    var p = document.getElementById('regPass').value;
+    var score = 0;
+    if (p.length >= 6) score++;
+    if (p.length >= 10 || (p.match(/[A-Z]/) && p.match(/[0-9]/))) score++;
+    if (p.match(/[A-Z]/) && p.match(/[0-9]/) && p.match(/[^A-Za-z0-9]/)) score++;
+    var colors = ['#ef4444', '#f59e0b', '#10b981'];
+    var texts = ['Weak — add numbers', 'Good — add CAPS & symbols', 'Strong password! 💪'];
+    for (var i = 1; i <= 3; i++) {
+        document.getElementById('strBar' + i).style.background = (i <= score) ? colors[score-1] : '#e2e8f0';
+    }
+    document.getElementById('strText').textContent = score > 0 ? texts[score-1] : 'Use letters + numbers for a stronger password';
+    regCheckMatch();
+}
+
+function regCheckMatch() {
+    var p1 = document.getElementById('regPass').value;
+    var p2 = document.getElementById('regPass2').value;
+    var el = document.getElementById('matchIndicator');
+    if (!p2) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    if (p1 === p2) { el.innerHTML = '✅ Passwords match'; el.style.color = '#10b981'; }
+    else { el.innerHTML = '❌ Passwords do not match'; el.style.color = '#ef4444'; }
+}
+
+async function registerAccountV2() {
+    var shopName = document.getElementById('regShopName').value.trim();
+    var phone = document.getElementById('regPhone').value.trim();
+    var email = document.getElementById('regEmail').value.trim();
+    var pass = document.getElementById('regPass').value;
+    var pass2 = document.getElementById('regPass2').value;
+
+    // 🛡️ FULL VALIDATION — friendly messages
+    if (!shopName) { alert('Please enter your shop name.'); return; }
+    if (!phone || phone.replace(/[^0-9]/g, '').length < 9) { alert('Please enter a valid phone number (at least 9 digits).'); return; }
+    if (!email) { alert('Please enter your email address.'); return; }
+    if (!pass || pass.length < 6) { alert('Password must be at least 6 characters.'); return; }
+    if (pass !== pass2) { alert('Passwords do not match!'); return; }
+
+    if (localStorage.getItem('deviceRegistered') === 'true') {
+        alert('⛔ This device already registered a shop.\n\nUse the LOGIN screen with your email and password.\nNeed another shop? Contact: ' + (window.SUPPORT ? window.SUPPORT.phone : 'provider'));
+        return;
+    }
+
+    // All validation passed → continue with the main registration flow
+    await registerAccount();
+}
 function closeRegSuccess() { document.getElementById('regSuccessModal').classList.remove('active'); }
 
 function checkDeviceLock() {
