@@ -162,6 +162,7 @@
 
             <div class="card">
                 <div class="card-title" onclick="toggleCard(this)">📋 All Licenses & Shops <span class="arrow open">▶</span></div>
+               <button class="btn btn-yellow" onclick="ssDiagnose()" style="margin-bottom:10px; width:100%;">🔬 DIAGNOSE (tap me)</button>
                 <div class="card-body">
                     <div class="filter-bar" style="margin-bottom:10px;">
                         <input type="text" id="filterSearch" placeholder="🔍 Search shop or key..." oninput="renderLicenseTableV2()">
@@ -1415,6 +1416,35 @@ function lbl(id, label, prefix, val) {
     } catch (e) { alert('❌ ' + e.message); }
 }
   
+  // 🔬 TEMPORARY DIAGNOSTIC — removes the guesswork
+async function ssDiagnose() {
+    var report = '🔬 DIAGNOSTIC REPORT\n\n';
+    report += 'renderLicenseTableV2: ' + (typeof renderLicenseTableV2) + '\n';
+    report += 'allLicenses loaded: ' + (typeof allLicenses !== 'undefined' ? allLicenses.length : 'variable missing') + '\n\n';
+
+    // Can the browser read the shops?
+    try {
+        const { data: shops, error } = await supabaseClient.from('shops').select('shop_id, name').limit(100);
+        report += 'Browser reads shops: ' + (error ? '❌ ERROR: ' + error.message : '✅ ' + (shops || []).length + ' shops visible') + '\n';
+    } catch(e) { report += 'Browser reads shops: ❌ ' + e.message + '\n'; }
+
+    // Can the browser read licenses?
+    try {
+        const { data: lics, error } = await supabaseClient.from('licenses').select('shop_id').limit(100);
+        report += 'Browser reads licenses: ' + (error ? '❌ ERROR: ' + error.message : '✅ ' + (lics || []).length + ' licenses visible') + '\n';
+    } catch(e) { report += 'Browser reads licenses: ❌ ' + e.message + '\n'; }
+
+    // Master status
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        report += 'Logged in as: ' + (user ? user.email : 'nobody') + '\n';
+        const { data: mu } = await supabaseClient.from('master_users').select('role').eq('email', user.email).maybeSingle();
+        report += 'Master role: ' + (mu ? '✅ ' + mu.role : '❌ NOT in master_users!') + '\n';
+    } catch(e) { report += 'Login check failed: ' + e.message + '\n'; }
+
+    alert(report);
+    console.log(report);
+}
 </script>
 </body>
 </html>
