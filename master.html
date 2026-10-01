@@ -162,6 +162,7 @@
 
             <div class="card">
                 <div class="card-title" onclick="toggleCard(this)">📋 All Licenses & Shops <span class="arrow open">▶</span></div>
+               <button class="btn btn-yellow" onclick="ssDiagnose()" style="margin-bottom:10px; width:100%;">🔬 DIAGNOSE (tap me)</button>
                 <div class="card-body">
                     <div class="filter-bar" style="margin-bottom:10px;">
                         <input type="text" id="filterSearch" placeholder="🔍 Search shop or key..." oninput="renderLicenseTableV2()">
@@ -425,16 +426,22 @@ async function deleteAuditLog(id) {
         loadAuditLog(); 
     } catch(e) { alert('❌ Error: ' + e.message); }
 }
+
 // ══════════════════════════════════════════════════════════════
-//  LICENSE ENGINE v2 — plans-based, payment-recording
+//  LICENSE ENGINE v2 — COMPLETE (loadLicenses + render + actions)
+//  ONE copy only — this is the master's command center
 // ══════════════════════════════════════════════════════════════
 var allLicenses = [];
 
 async function loadLicenses() {
-    // Merge: licenses + shops (trials without licenses show too)
     const { data: lics, error } = await supabaseClient.from('licenses').select('*').order('created_at', { ascending: false });
-    if (error) return console.error("Load licenses error:", error.message);
-    const { data: shops } = await supabaseClient.from('shops').select('*').order('created_at', { ascending: false });
+    if (error) {
+        console.error("Load licenses error:", error.message);
+        alert('⚠️ License load failed: ' + error.message);
+        return;
+    }
+    const { data: shops, error: sErr } = await supabaseClient.from('shops').select('*').order('created_at', { ascending: false });
+    if (sErr) { console.error("Shops load error:", sErr.message); }
 
     allLicenses = [];
     (lics || []).forEach(function(l) {
@@ -444,28 +451,23 @@ async function loadLicenses() {
             shop_id: l.shop_id, key: l.key, plan: l.plan,
             business_type: l.business_type || (shop ? shop.business_type : 'retail') || 'retail',
             expiry_date: l.expiry_date, start_date: l.start_date,
-            is_trial: false, shop_row: shop
+            is_trial: false
         });
     });
-    // Trial shops without a license
+    // Trial shops without a license — they appear too!
     (shops || []).forEach(function(s) {
         if (s.plan === 'trial' && !allLicenses.find(function(l){ return l.shop_id === s.shop_id; })) {
             allLicenses.push({
                 id: null, shop_name: s.name, shop_id: s.shop_id, key: '(trial)',
                 plan: 'Trial', business_type: s.business_type || 'retail',
                 expiry_date: s.trial_expires, start_date: s.registered_at,
-                is_trial: true, shop_row: s
+                is_trial: true
             });
         }
     });
     renderLicenseTableV2();
     loadRevenueSummary();
 }
-
-
-  // ══════════════════════════════════════════════════════════════
-//  LICENSE ENGINE v2 — the drawing + actions (the missing piece!)
-// ══════════════════════════════════════════════════════════════
 
 function licenseStatus(l) {
     var days = Math.ceil((new Date(l.expiry_date) - new Date()) / 86400000);
@@ -638,7 +640,6 @@ function loadRevenueSummary() {
     var el = document.getElementById('revenueSummary');
     if (el) el.innerHTML = html;
 }
-
 function licenseStatus(l) {
     var days = Math.ceil((new Date(l.expiry_date) - new Date()) / 86400000);
     if (days < 0) return { cls: 'status-expired', text: 'EXPIRED ' + Math.abs(days) + 'd ago', days: days };
@@ -647,62 +648,6 @@ function licenseStatus(l) {
 }
 
 
-// 📅 EXTEND — works with ANY plan, records payment
-async function extendLicenseV2(licenseId) {
-    var l = allLicenses.find(function(x){ return (x.id === licenseId) || ('trial:' + x.shop_id === licenseId); });
-    if (!l) return;
-
-    var days = parseInt(await prompt('Extend "' + l.shop_name + '" by how many days?\n\n(7 / 30 / 90 / 365)', '30'));
-    if (isNaN(days) || days <= 0) return;
-
-    // Suggest price from the plan
-    var suggestedPrice = 0;
-    try {
-        const { data: pd } = await supabaseClient.from('plans').select('price_monthly, price_yearly').ilike('name', l.plan === 'Trial' ? 'Basic' : l.plan).maybeSingle();
-        if (pd) {
-            if (days >= 365) suggestedPrice = pd.price_yearly || (pd.price_monthly * 12 * 0.8);
-            else suggestedPrice = Math.round(pd.price_monthly * days / 30);
-        }
-    } catch(e) {}
-
-    var amountStr = await prompt('Amount paid (Br):\n(Suggested: ' + suggestedPrice + ' Br for ' + days + ' days)', String(suggestedPrice));
-    var amount = parseFloat(amountStr) || 0;
-    var method = await prompt('Payment method:\n(Telebirr / CBE / Cash / Free)', 'Telebirr');
-    if (method === null) return;
-    if (!await confirm('Extend ' + l.shop_name + ' by ' + days + ' days?\nAmount: ' + amount + ' Br via ' + method)) return;
-
-    try {
-        var newExpiry = new Date(l.expiry_date && new Date(l.expiry_date) > new Date() ? l.expiry_date : new Date());
-        newExpiry.setDate(newExpiry.getDate() + days);
-        var newExpiryStr = newExpiry.toISOString();
-
-        if (l.is_trial) {
-            // Trial shop → generate a real license (converts to paid!)
-            var key = ('SMART-' + (l.plan === 'Trial' ? 'BASIC' : l.plan.toUpperCase()) + '-' + l.shop_id + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
-            await supabaseClient.from('licenses').insert([{
-                shop_name: l.shop_name, shop_id: l.shop_id, plan: 'Basic', key: key,
-                start_date: new Date().toISOString(), expiry_date: newExpiryStr,
-                status: 'active', created_at: new Date().toISOString(),
-                business_type: l.business_type
-            }]);
-            await supabaseClient.from('shops').update({ plan: 'basic' }).eq('shop_id', l.shop_id);
-        } else {
-            await supabaseClient.from('licenses').update({ expiry_date: newExpiryStr }).eq('id', l.id);
-        }
-
-        // Record the payment
-        await supabaseClient.from('payments').insert([{
-            shop_id: l.shop_id, shop_name: l.shop_name, license_id: l.id,
-            action: 'extend', plan_name: l.plan, days: days,
-            amount: amount, payment_method: method, notes: 'Extended ' + days + ' days'
-        }]);
-
-        alert('✅ ' + l.shop_name + ' extended to ' + newExpiry.toLocaleDateString() + '!\nPayment recorded: ' + amount + ' Br (' + method + ')');
-        loadLicenses();
-        loadPaymentHistory();
-        logAction('extend', l.shop_name + ' +' + days + 'd (' + amount + ' Br ' + method + ')');
-    } catch(e) { alert('❌ ' + e.message); }
-}
 
 // 🔄 CHANGE PLAN — upgrade/downgrade instantly
 async function changePlanV2(licenseId) {
@@ -751,22 +696,6 @@ async function changePlanV2(licenseId) {
 }
 
 // 💰 PAYMENT HISTORY
-async function loadPaymentHistory() {
-    var el = document.getElementById('paymentHistoryList');
-    if (!el) return;
-    const { data, error } = await supabaseClient.from('payments').select('*').order('created_at', { ascending: false }).limit(50);
-    if (error) { el.innerHTML = '<p style="color:#f44336;">Load failed.</p>'; return; }
-    if (!data || data.length === 0) { el.innerHTML = '<p style="color:#94a3b8;">No payments recorded yet.</p>'; return; }
-    var total = 0;
-    var html = data.map(function(p) {
-        total += Number(p.amount || 0);
-        return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #444;font-size:13px;">' +
-            '<span>🏪 ' + sanitize(p.shop_name) + ' · ' + (p.action === 'extend' ? '📅 +' + p.days + 'd' : '🔄 ' + p.plan_name) + '</span>' +
-            '<span><b style="color:#4caf50;">' + p.amount + ' Br</b> · ' + (p.payment_method || '') + ' · ' + new Date(p.created_at).toLocaleDateString() + '</span></div>';
-    }).join('');
-    html += '<div style="text-align:right;font-size:16px;font-weight:bold;color:#4caf50;margin-top:10px;">Total recorded: ' + total.toFixed(2) + ' Br</div>';
-    el.innerHTML = html;
-}
 
 // Revenue summary (feeds CEO dashboard)
 function loadRevenueSummary() {
@@ -1557,7 +1486,35 @@ function lbl(id, label, prefix, val) {
     } catch (e) { alert('❌ ' + e.message); }
 }
   
-  
+  // 🔬 TEMPORARY DIAGNOSTIC — removes the guesswork
+async function ssDiagnose() {
+    var report = '🔬 DIAGNOSTIC REPORT\n\n';
+    report += 'renderLicenseTableV2: ' + (typeof renderLicenseTableV2) + '\n';
+    report += 'allLicenses loaded: ' + (typeof allLicenses !== 'undefined' ? allLicenses.length : 'variable missing') + '\n\n';
+
+    // Can the browser read the shops?
+    try {
+        const { data: shops, error } = await supabaseClient.from('shops').select('shop_id, name').limit(100);
+        report += 'Browser reads shops: ' + (error ? '❌ ERROR: ' + error.message : '✅ ' + (shops || []).length + ' shops visible') + '\n';
+    } catch(e) { report += 'Browser reads shops: ❌ ' + e.message + '\n'; }
+
+    // Can the browser read licenses?
+    try {
+        const { data: lics, error } = await supabaseClient.from('licenses').select('shop_id').limit(100);
+        report += 'Browser reads licenses: ' + (error ? '❌ ERROR: ' + error.message : '✅ ' + (lics || []).length + ' licenses visible') + '\n';
+    } catch(e) { report += 'Browser reads licenses: ❌ ' + e.message + '\n'; }
+
+    // Master status
+    try {
+        const { data: { user } } = await supabaseClient.auth.getUser();
+        report += 'Logged in as: ' + (user ? user.email : 'nobody') + '\n';
+        const { data: mu } = await supabaseClient.from('master_users').select('role').eq('email', user.email).maybeSingle();
+        report += 'Master role: ' + (mu ? '✅ ' + mu.role : '❌ NOT in master_users!') + '\n';
+    } catch(e) { report += 'Login check failed: ' + e.message + '\n'; }
+
+    alert(report);
+    console.log(report);
+}
 </script>
 </body>
 </html>
