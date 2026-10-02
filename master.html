@@ -70,6 +70,22 @@
         .standard-dialog-btn-secondary { background: #e2e8f0 !important; color: #334155 !important; border: 1px solid #cbd5e1 !important; }
         .standard-dialog-btn-danger { background: #ef4444 !important; color: #fff !important; }
         .standard-dialog-btn-success { background: #10b981 !important; color: #fff !important; }
+    
+         /* ═══ STANDARD DIALOGS ═══ */
+.standard-dialog-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.6); z-index:99999; display:flex; align-items:center; justify-content:center; animation:sdFade .2s ease; }
+@keyframes sdFade { from{opacity:0} to{opacity:1} }
+.standard-dialog-box { background:#fff; border-radius:16px; padding:24px; width:90%; max-width:400px; box-shadow:0 20px 60px rgba(0,0,0,.3); text-align:center; animation:sdUp .25s ease; }
+@keyframes sdUp { from{transform:translateY(30px);opacity:0} to{transform:translateY(0);opacity:1} }
+.standard-dialog-icon { font-size:44px; margin-bottom:10px; }
+.standard-dialog-title { font-size:17px; font-weight:800; color:#1e293b; margin-bottom:8px; }
+.standard-dialog-message { font-size:15px; color:#475569; margin-bottom:18px; line-height:1.6; white-space:pre-wrap; text-align:left; }
+.standard-dialog-input { width:100%; padding:13px; border:2px solid #e2e8f0; border-radius:10px; font-size:16px; margin-bottom:16px; text-align:center; outline:none; }
+.standard-dialog-input:focus { border-color:#2563eb; }
+.standard-dialog-buttons { display:flex; gap:10px; }
+.standard-dialog-btn { padding:12px 22px; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; flex:1; }
+.standard-dialog-btn-primary { background:#2563eb; color:#fff; }
+.standard-dialog-btn-secondary { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+    
     </style>
 </head>
 <body>
@@ -175,7 +191,6 @@
             <div class="card">
                 <div class="card-title" onclick="toggleCard(this)" style="cursor:pointer;">
                     🏪 Manage Shops — ALL Licenses & Keys <span class="arrow open">▶</span>
-                    <button class="btn btn-blue" style="float:right;padding:4px 12px;font-size:11px;" onclick="event.stopPropagation(); loadShops(); loadPaymentHistory();">🔄 Refresh</button>
                 </div>                <div class="card-body">
                     <button class="btn btn-blue" onclick="loadShops()" style="margin-bottom:10px">🔄 Refresh</button>
                     <div class="table-wrapper">
@@ -307,6 +322,38 @@ if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
     console.log("✅ Supabase Connected in Master!");
 }
 
+  // ═══ STANDARD DIALOG SYSTEM (replaces ugly native dialogs) ═══
+window.alert = function(message) { return sdDialog(message, '⚠️', 'SmartShop Master', null, false); };
+window.confirm = function(message) { return new Promise(function(res){ sdDialog(message, '❓', 'Please Confirm', res, false); }); };
+window.prompt = function(message, defaultValue) {
+    return new Promise(function(res){ sdDialog(message, '✏️', 'Input Required', res, true, defaultValue || ''); });
+};
+
+function sdDialog(message, icon, title, callback, hasInput, defVal) {
+    var ov = document.createElement('div');
+    ov.className = 'standard-dialog-overlay';
+    ov.innerHTML = '<div class="standard-dialog-box">' +
+        '<div class="standard-dialog-icon">' + icon + '</div>' +
+        '<div class="standard-dialog-title">' + title + '</div>' +
+        '<div class="standard-dialog-message">' + message + '</div>' +
+        (hasInput ? '<input class="standard-dialog-input" id="sdInput" value="' + String(defVal || '').replace(/"/g, '&quot;') + '">' : '') +
+        '<div class="standard-dialog-buttons">' +
+            (callback ? '<button class="standard-dialog-btn standard-dialog-btn-secondary" id="sdCancel">Cancel</button>' : '') +
+            '<button class="standard-dialog-btn standard-dialog-btn-primary" id="sdOk">OK</button>' +
+        '</div></div>';
+    document.body.appendChild(ov);
+    var input = document.getElementById('sdInput');
+    if (input) { input.focus(); input.select(); input.addEventListener('keydown', function(e){ if (e.key === 'Enter') finish(true); }); }
+    function finish(ok) {
+        var val = hasInput ? (ok ? document.getElementById('sdInput').value : null) : ok;
+        ov.remove();
+        if (callback) callback(val);
+    }
+    document.getElementById('sdOk').onclick = function(){ finish(true); };
+    var c = document.getElementById('sdCancel');
+    if (c) c.onclick = function(){ finish(false); };
+    ov.addEventListener('click', function(e){ if (e.target === ov) { ov.remove(); if (callback) callback(hasInput ? null : false); } });
+}
 
 // ===== GHOST DATA SCANNER =====
 async function findAndCleanGhostShops() {
@@ -818,21 +865,18 @@ async function deleteLicense(id) {
     } catch (e) { alert('❌ Deletion failed: ' + e.message); }
 }
 
-
-
-
-
 // ══════════════════════════════════════════════════════════════
-//  🏪 SUPER SHOPS TABLE v2 — mobile-perfect, horizontal buttons
+//  🏪 SHOPS COMMAND CENTER v3 — readable colors, horizontal actions
 // ══════════════════════════════════════════════════════════════
 var _shopLicenses = {};
 
 async function loadShops() {
     var container = document.getElementById('shopsTable');
     if (!container) return;
+    container.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#94a3b8;">⏳ Loading shops…</td></tr>';
 
     const { data: shops, error } = await supabaseClient.from('shops').select('*').order('created_at', { ascending: false });
-    if (error) { container.innerHTML = '<tr><td colspan="6">Error: ' + error.message + '</td></tr>'; return; }
+    if (error) { container.innerHTML = '<tr><td colspan="6" style="padding:20px;color:#f44336;">❌ ' + error.message + '</td></tr>'; return; }
 
     const { data: lics } = await supabaseClient.from('licenses').select('*').order('created_at', { ascending: false });
     _shopLicenses = {};
@@ -843,18 +887,20 @@ async function loadShops() {
     });
 
     var typeIcon = { retail: '🛒', cafe: '☕', hotel: '🏨' };
-    var html = '<tr style="background:#333;color:#fff;">' +
-        '<th style="padding:12px 8px;font-size:13px;">Shop</th>' +
-        '<th style="padding:12px 8px;font-size:13px;">Type</th>' +
-        '<th style="padding:12px 8px;font-size:13px;">Plan</th>' +
-        '<th style="padding:12px 8px;font-size:13px;">License</th>' +
-        '<th style="padding:12px 8px;font-size:13px;">Expires</th>' +
-        '<th style="padding:12px 8px;font-size:13px;">Actions</th></tr>';
+    var html = '<tr style="background:#1e40af;color:#fff;position:sticky;top:0;">' +
+        '<th style="padding:14px 10px;font-size:14px;text-align:left;">🏪 Shop</th>' +
+        '<th style="padding:14px 10px;font-size:14px;">Type</th>' +
+        '<th style="padding:14px 10px;font-size:14px;">Plan</th>' +
+        '<th style="padding:14px 10px;font-size:14px;">🔑 License Key</th>' +
+        '<th style="padding:14px 10px;font-size:14px;">⏰ Expires</th>' +
+        '<th style="padding:14px 10px;font-size:14px;">' +
+            '<button class="btn btn-green" style="padding:8px 16px;font-size:12px;margin:0;cursor:pointer;" onclick="loadShops();loadPaymentHistory();">🔄 Refresh</button>' +
+        '</th></tr>';
 
     if (!shops || shops.length === 0) {
-        html += '<tr><td colspan="6" style="padding:20px;color:#94a3b8;">No shops registered yet.</td></tr>';
+        html += '<tr><td colspan="6" style="padding:20px;text-align:center;color:#94a3b8;">No shops registered yet.</td></tr>';
     } else {
-        shops.forEach(function(shop) {
+        shops.forEach(function(shop, idx) {
             var lic = _shopLicenses[shop.shop_id];
             var bizType = shop.business_type || (lic ? lic.business_type : 'retail') || 'retail';
             var plan = lic ? lic.plan : (shop.plan || 'trial');
@@ -862,49 +908,67 @@ async function loadShops() {
             var expiry = lic ? new Date(lic.expiry_date) : (shop.trial_expires ? new Date(shop.trial_expires) : null);
 
             var days = expiry ? Math.ceil((expiry - new Date()) / 86400000) : null;
-            var stColor = days === null ? '#64748b' : (days < 0 ? '#ef4444' : (days <= 7 ? '#f59e0b' : '#10b981'));
-            var stText = days === null ? '—' : (days < 0 ? '❌ EXPIRED' : (days <= 7 ? '⚠️ ' + days + 'd' : '✅ ' + days + 'd'));
-            var trialBadge = (plan === 'trial') ? ' <span style="background:#f59e0b;color:white;font-size:10px;padding:2px 6px;border-radius:4px;">TRIAL</span>' : '';
+            var stBg, stText;
+            if (days === null)      { stBg = '#374151'; stText = '—'; }
+            else if (days < 0)      { stBg = '#7f1d1d'; stText = '❌ EXPIRED ' + Math.abs(days) + 'd ago'; }
+            else if (days <= 7)     { stBg = '#78350f'; stText = '⚠️ ' + days + ' days left'; }
+            else                    { stBg = '#14532d'; stText = '✅ ' + days + ' days'; }
 
-            html += '<tr style="border-bottom:1px solid #444;">' +
+            // Row colors: alternating soft blue/white — EASY ON THE EYES
+            var rowBg = (idx % 2 === 0) ? '#1e293b' : '#243244';
+            var trialBadge = (plan === 'trial') ? ' <span style="background:#f59e0b;color:#000;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;">TRIAL</span>' : '';
+            var blockedBadge = shop.blocked ? ' <span style="background:#ef4444;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;">BLOCKED</span>' : '';
 
-                // 📱 SHOP — bigger fonts, readable email/phone
-                '<td style="padding:12px 8px;min-width:150px;">' +
-                    '<b style="font-size:15px;">' + (shop.name || 'Unknown') + trialBadge + '</b>' +
-                    '<br><small style="color:#94a3b8;font-size:12px;">🆔 ' + shop.shop_id + '</small>' +
-                    '<br><small style="color:#64748b;font-size:12px;">📧 ' + (shop.owner_email || '—') + '</small>' +
-                    '<br><small style="color:#64748b;font-size:12px;">📱 ' + (shop.phone || '—') + '</small>' +
+            html += '<tr style="background:' + rowBg + ';border-bottom:2px solid #0f172a;">' +
+
+                // SHOP — big, readable
+                '<td style="padding:14px 10px;min-width:170px;">' +
+                    '<b style="font-size:16px;color:#fff;">' + (shop.name || 'Unknown') + trialBadge + blockedBadge + '</b>' +
+                    '<br><span style="color:#93c5fd;font-size:13px;">🆔 ' + shop.shop_id + '</span>' +
+                    '<br><span style="color:#cbd5e1;font-size:12px;">📧 ' + (shop.owner_email || '—') + '</span>' +
+                    '<br><span style="color:#cbd5e1;font-size:12px;">📱 ' + (shop.phone || '—') + '</span>' +
                 '</td>' +
 
-                // 🏷️ TYPE — big icon + label
-                '<td style="padding:12px 8px;font-size:14px;white-space:nowrap;">' + (typeIcon[bizType] || '🛒') + ' ' + bizType + '</td>' +
-
-                // 💼 PLAN — bigger
-                '<td style="padding:12px 8px;"><b style="font-size:14px;">' + plan + '</b></td>' +
-
-                // 🔑 KEY — readable, wraps nicely
-                '<td style="padding:12px 8px;max-width:140px;"><code style="font-size:11px;color:#4caf50;word-break:break-all;line-height:1.5;">' + key + '</code></td>' +
-
-                // ⏰ EXPIRY — clear status
-                '<td style="padding:12px 8px;white-space:nowrap;">' +
-                    '<b style="color:' + stColor + ';font-size:14px;">' + stText + '</b>' +
-                    '<br><small style="color:#94a3b8;font-size:12px;">' + (expiry ? expiry.toLocaleDateString() : '—') + '</small>' +
+                // TYPE — bold badge style
+                '<td style="padding:14px 10px;text-align:center;">' +
+                    '<span style="background:#1e3a8a;color:#fff;font-size:13px;font-weight:700;padding:6px 10px;border-radius:8px;white-space:nowrap;">' + (typeIcon[bizType] || '🛒') + ' ' + bizType + '</span>' +
                 '</td>' +
 
-                // 🎛️ ACTIONS — HORIZONTAL row of buttons!
-                '<td style="padding:12px 8px;">' +
-                    '<div style="display:flex;gap:6px;flex-wrap:wrap;max-width:230px;">' +
-                        '<button class="btn btn-green" style="padding:10px 12px;font-size:12px;flex:1;min-width:60px;margin:0;" title="Extend days" onclick="extendShop(\'' + shop.shop_id + '\')">📅</button>' +
-                        '<button class="btn btn-blue" style="padding:10px 12px;font-size:12px;flex:1;min-width:60px;margin:0;" title="Change plan" onclick="changeShopPlan(\'' + shop.shop_id + '\')">🔄</button>' +
-                        '<button class="btn btn-sm btn-blue" style="padding:10px 12px;font-size:12px;flex:1;min-width:60px;margin:0;" title="Generate key" onclick="generateLicenseFor(\'' + shop.shop_id + '\')">🔑</button>' +
-                        '<button class="btn btn-sm btn-red" style="padding:10px 12px;font-size:12px;flex:1;min-width:60px;margin:0;" title="Block/Unblock" onclick="masterBlockShop(\'' + shop.shop_id + '\',' + !shop.blocked + ')">' + (shop.blocked ? '🔓' : '⛔') + '</button>' +
+                // PLAN — big badge
+                '<td style="padding:14px 10px;text-align:center;">' +
+                    '<span style="background:#312e81;color:#fff;font-size:14px;font-weight:700;padding:6px 12px;border-radius:8px;">' + plan + '</span>' +
+                '</td>' +
+
+                // KEY — green, readable, monospace
+                '<td style="padding:14px 10px;max-width:150px;">' +
+                    '<code style="font-size:12px;color:#4ade80;word-break:break-all;line-height:1.6;background:#0f172a;padding:6px 8px;border-radius:6px;display:inline-block;">' + key + '</code>' +
+                '</td>' +
+
+                // EXPIRY — colored status box
+                '<td style="padding:14px 10px;text-align:center;">' +
+                    '<div style="background:' + stBg + ';border-radius:10px;padding:10px 8px;">' +
+                        '<b style="font-size:14px;color:#fff;">' + stText + '</b>' +
+                        '<br><span style="font-size:12px;color:#e2e8f0;">' + (expiry ? expiry.toLocaleDateString() : '—') + '</span>' +
                     '</div>' +
-                    '<div style="font-size:10px;color:#64748b;margin-top:4px;text-align:center;">📅days 🔄plan 🔑key ' + (shop.blocked ? '🔓unblock' : '⛔block') + '</div>' +
+                '</td>' +
+
+                // ACTIONS — HORIZONTAL single row!
+                '<td style="padding:14px 10px;">' +
+                    '<div style="display:flex;gap:5px;justify-content:center;flex-wrap:nowrap;">' +
+                        '<button class="btn btn-green"  style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:52px;" title="Extend days"    onclick="extendShop(\'' + shop.shop_id + '\')">📅</button>' +
+                        '<button class="btn btn-blue"   style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:52px;" title="Change plan"    onclick="changeShopPlan(\'' + shop.shop_id + '\')">🔄</button>' +
+                        '<button class="btn btn-yellow" style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:52px;" title="Generate key"   onclick="generateLicenseFor(\'' + shop.shop_id + '\')">🔑</button>' +
+                        '<button class="btn btn-red"    style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:52px;" title="Block / Unblock" onclick="masterBlockShop(\'' + shop.shop_id + '\',' + !shop.blocked + ')">' + (shop.blocked ? '🔓' : '⛔') + '</button>' +
+                    '</div>' +
                 '</td></tr>';
         });
     }
     container.innerHTML = html;
-}// 📅 EXTEND a shop's license (creates one if trial — records payment!)
+}
+
+
+
+
 async function extendShop(shopId) {
     var shop = await getShopRow(shopId);
     var lic = _shopLicenses[shopId];
