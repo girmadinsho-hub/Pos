@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zombie Scanner v2</title>
+<style>
+  body{font-family:monospace;padding:16px;background:#111;color:#0f0;}
+  h1{font-size:18px} p{color:#888;font-size:12px}
+  select,button{padding:10px;font-size:16px;margin:4px 0;width:100%;max-width:420px;display:block;box-sizing:border-box}
+  input{padding:10px;font-size:16px;margin:4px;width:45%;max-width:200px;display:inline-block;box-sizing:border-box}
+  pre{white-space:pre-wrap;word-break:break-all;background:#000;padding:10px;border:1px solid #333;font-size:12px;max-height:70vh;overflow:auto}
+</style>
+</head>
+<body>
+<h1>🧟 Zombie Scanner v2</h1>
+<p>Read-only tool. Nothing changed, nothing uploaded anywhere.</p>
+<select id="fileSel">
+  <option>admin.html</option>
+  <option>pos.html</option>
+  <option>advanced.js</option>
+  <option>shared.js</option>
+  <option>master.html</option>
+  <option>index.html</option>
+  <option>kitchen.html</option>
+  <option>menu.html</option>
+  <option>hotel.html</option>
+  <option>hotel.js</option>
+  <option>smartcom.js</option>
+  <option>ssauth.js</option>
+  <option>ssfeatures.js</option>
+  <option>ssfiscal.js</option>
+  <option>ssperf.js</option>
+  <option>ssprint.js</option>
+  <option>ssupload.js</option>
+  <option>sheet.js</option>
+  <option>config.js</option>
+  <option>sw.js</option>
+</select>
+<button onclick="copyWhole()">📋 Copy WHOLE file (small files)</button>
+<div>
+  <input type="number" id="fromLn" placeholder="from line">
+  <input type="number" id="toLn" placeholder="to line">
+</div>
+<button onclick="copyRange()">📋 Copy LINES range (big files)</button>
+<button onclick="scan()">🔍 Scan functions (find zombies)</button>
+<pre id="out">Pick a file, then choose an action.</pre>
+<script>
+let cache='';
+async function load(){
+  const f=document.getElementById('fileSel').value;
+  document.getElementById('out').textContent='Fetching '+f+' ...';
+  const res=await fetch(f+'?t='+Date.now());
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  cache=await res.text();
+  document.getElementById('out').textContent='✅ Loaded '+f+' — '+cache.split('\n').length+' lines, '+cache.length+' characters.';
+}
+async function copyWhole(){
+  try{
+    await load();
+    await navigator.clipboard.writeText(cache);
+    alert('WHOLE file copied!\nGo to the chat and long-press → Paste.');
+  }catch(e){
+    document.getElementById('out').textContent=cache;
+    alert('Copy blocked by browser. File is shown below — long-press it, Select All, Copy.');
+  }
+}
+async function copyRange(){
+  try{
+    await load();
+    const a=parseInt(document.getElementById('fromLn').value)||1;
+    const b=parseInt(document.getElementById('toLn').value)||0;
+    const lines=cache.split('\n');
+    const end=(b>0&&b<=lines.length)?b:lines.length;
+    const slice='FILE: '+document.getElementById('fileSel').value+' | LINES '+a+'-'+end+' (part)\n\n'+lines.slice(a-1,end).join('\n');
+    await navigator.clipboard.writeText(slice);
+    alert('Lines '+a+'-'+end+' copied!\nNow paste into the chat.');
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function scan(){
+  try{
+    await load();
+    const lines=cache.split('\n');
+    const map={};
+    lines.forEach((ln,i)=>{
+      let m=ln.match(/function\s+([A-Za-z_$][\w$]*)\s*\(/);
+      if(m){(map[m[1]]=map[m[1]]||[]).push(i+1);return;}
+      m=ln.match(/(?:window\.)?([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?function\s*\(/);
+      if(m){(map[m[1]]=map[m[1]]||[]).push(i+1);return;}
+      m=ln.match(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)/);
+      if(m){(map[m[1]]=map[m[1]]||[]).push(i+1);}
+    });
+    const names=Object.keys(map).sort();
+    const dups=names.filter(n=>map[n].length>1);
+    const total=names.reduce((s,n)=>s+map[n].length,0);
+    let r='FILE: '+document.getElementById('fileSel').value+'\nTotal lines: '+lines.length+'\nUnique functions: '+names.length+'\nTotal definitions: '+total+'\nDUPLICATED: '+dups.length+'\n============================\n';
+    dups.forEach(n=>{r+='⚠️ '+n+'  x'+map[n].length+'  lines: '+map[n].join(', ')+'\n';});
+    r+='============================\nALL FUNCTIONS:\n';
+    names.forEach(n=>{r+=n+(map[n].length>1?' (x'+map[n].length+')':'')+'\n';});
+    document.getElementById('out').textContent=r;
+  }catch(e){
+    document.getElementById('out').textContent='ERROR: '+e.message+'\n\nOpen from the live site (girmadinsho-hub.github.io/Pos/), not phone storage.';
+  }
+}
+</script>
+</body>
+</html>
