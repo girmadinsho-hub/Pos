@@ -1376,8 +1376,11 @@ async function changeMasterPassword() {
         alert("❌ Error: " + error.message);
     }
 }
-  function initMasterPanel() {
-    loadShops();              // 🏪 THE command center (shops + keys + expiry)
+function initMasterPanel() {
+    alert('DEBUG: loadPlanEditor is ' + typeof loadPlanEditor + ' | saveAllPlans is ' + typeof saveAllPlans + ' | pmLbl is ' + typeof pmLbl);
+  
+  
+  loadShops();              // 🏪 THE command center (shops + keys + expiry)
     loadAuditLog();
     populateSnapshotDropdown();
     loadGlobalTrialDays();
