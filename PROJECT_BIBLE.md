@@ -7,3 +7,6 @@ master.html fully read. FOUND: loadTierSettings() crash = Plan Manager stuck (co
 SQL DONE: added support_facebook/instagram/telegram/website columns to global_settings → contacts save PASS
 NOW: Wave 1 = 7 function replacements in master.html (fix crash + await confirms) → bump sw.js +1 → test 5 items
 NEXT: Wave 2 = delete dead code in master (~420 lines) → then ad
+
+MASTER.HTML: CLEAN ✅ (~1270 lines, 0 zombies). Plan Manager healed, CEO Dashboard live (4 boxes),await-confirms fixed, 💣 deleteShopForever + eraseShopData added, deleteShopLicense restored,cleanupShopData rebuilt on eraseShopData. sw.js bumped through v408+
+NEXT: read sheet.js + advanced.js + hotel.js → then admin.html full read (~14 chunks) →ONE report → build admin-clean.html tab-by-tab
