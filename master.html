@@ -78,8 +78,9 @@
 @keyframes sdUp { from{transform:translateY(30px);opacity:0} to{transform:translateY(0);opacity:1} }
 .standard-dialog-icon { font-size:44px; margin-bottom:10px; }
 .standard-dialog-title { font-size:17px; font-weight:800; color:#1e293b; margin-bottom:8px; }
-.standard-dialog-message { font-size:15px; color:#475569; margin-bottom:18px; line-height:1.6; white-space:pre-wrap; text-align:left; }
-.standard-dialog-input { width:100%; padding:13px; border:2px solid #e2e8f0; border-radius:10px; font-size:16px; margin-bottom:16px; text-align:center; outline:none; }
+.standard-dialog-message { font-size:15px; color:#475569; margin-bottom:18px; line-height:1.6; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word; overflow-y:auto; max-height:45vh; text-align:left; }
+.standard-dialog-box { background:#fff; border-radius:16px; padding:24px; width:90%; max-width:400px; max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.3); text-align:center; animation:sdUp .25s ease; }
+.standard-dialog-select { width:100%; padding:13px; border:2px solid #e2e8f0; border-radius:10px; font-size:16px; margin-bottom:16px; background:#fff; color:#1e293b; outline:none; }.standard-dialog-input { width:100%; padding:13px; border:2px solid #e2e8f0; border-radius:10px; font-size:16px; margin-bottom:16px; text-align:center; outline:none; }
 .standard-dialog-input:focus { border-color:#2563eb; }
 .standard-dialog-buttons { display:flex; gap:10px; }
 .standard-dialog-btn { padding:12px 22px; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; flex:1; }
@@ -325,11 +326,10 @@ if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
   // ═══ STANDARD DIALOG SYSTEM (replaces ugly native dialogs) ═══
 window.alert = function(message) { return sdDialog(message, '⚠️', 'SmartShop Master', null, false); };
 window.confirm = function(message) { return new Promise(function(res){ sdDialog(message, '❓', 'Please Confirm', res, false); }); };
-window.prompt = function(message, defaultValue) {
-    return new Promise(function(res){ sdDialog(message, '✏️', 'Input Required', res, true, defaultValue || ''); });
+window.prompt = function(message, defaultValue, options) {
+    return new Promise(function(res){ sdDialog(message, '✏️', 'Input Required', res, true, defaultValue || '', options || null); });
 };
-
-function sdDialog(message, icon, title, callback, hasInput, defVal) {
+  function sdDialog(message, icon, title, callback, hasInput, defVal) {
     var ov = document.createElement('div');
     ov.className = 'standard-dialog-overlay';
     ov.innerHTML = '<div class="standard-dialog-box">' +
@@ -966,15 +966,14 @@ async function loadShops() {
     container.innerHTML = html;
 }
 
-
-
-
+// ═══ 📅 EXTEND SHOP — dropdown days + dropdown payment method ═══
 async function extendShop(shopId) {
     var shop = await getShopRow(shopId);
     var lic = _shopLicenses[shopId];
+    var shopName = shop ? shop.name : shopId;
 
-    var days = parseInt(await prompt('Extend "' + (shop ? shop.name : shopId) + '" by days?\n\n(7 / 30 / 90 / 365)', '30'));
-    if (isNaN(days) || days <= 0) return;
+    var days = parseInt(await prompt('Extend "' + shopName + '" — select duration:', '30', ['7|📅 7 days', '30|📅 30 days (1 month)', '90|📅 90 days (3 months)', '180|📅 180 days (6 months)', '365|📅 365 days (1 year)']));
+    if (!days) return;
 
     var suggested = 0;
     try {
@@ -983,11 +982,15 @@ async function extendShop(shopId) {
         if (pd) suggested = days >= 365 ? (pd.price_yearly || pd.price_monthly * 10) : Math.round(pd.price_monthly * days / 30);
     } catch(e) {}
 
-    var amountStr = await prompt('Amount paid (Br):\n(Suggested: ' + suggested + ')', String(suggested));
+    var amountStr = await prompt('Amount paid (Suggested: ' + suggested + ' Br):', String(suggested));
+    if (amountStr === null || amountStr === undefined) return;
     var amount = parseFloat(amountStr) || 0;
-    var method = await prompt('Method: (Telebirr / CBE / Cash / Free)', 'Telebirr');
-    if (method === null) return;
-    if (!await confirm('Extend ' + days + ' days for ' + amount + ' Br (' + method + ')?')) return;
+
+    var method = await prompt('Payment method for ' + amount + ' Br:', 'Telebirr', ['Telebirr|📱 Telebirr', 'CBE|🏦 CBE Birr', 'Cash|💵 Cash', 'Bank|🏛️ Bank Transfer', 'Free|🎁 Free / Promotion']);
+    if (!method) return;
+
+    var ok = await confirm('✅ Extend "' + shopName + '" by ' + days + ' days?\n\n💰 Amount: ' + amount + ' Br\n💳 Method: ' + method);
+    if (!ok) return;
 
     try {
         var base = (lic && lic.expiry_date && new Date(lic.expiry_date) > new Date()) ? new Date(lic.expiry_date) : new Date();
@@ -997,10 +1000,9 @@ async function extendShop(shopId) {
         if (lic) {
             await supabaseClient.from('licenses').update({ expiry_date: newExpiry }).eq('id', lic.id);
         } else {
-            // Trial → convert to paid with a real key!
             var key = ('SMART-BASIC-' + shopId + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
             await supabaseClient.from('licenses').insert([{
-                shop_name: shop ? shop.name : shopId, shop_id: shopId, plan: 'Basic', key: key,
+                shop_name: shopName, shop_id: shopId, plan: 'Basic', key: key,
                 start_date: new Date().toISOString(), expiry_date: newExpiry,
                 status: 'active', created_at: new Date().toISOString(),
                 business_type: shop ? (shop.business_type || 'retail') : 'retail'
@@ -1009,42 +1011,47 @@ async function extendShop(shopId) {
         }
 
         await supabaseClient.from('payments').insert([{
-            shop_id: shopId, shop_name: shop ? shop.name : shopId,
+            shop_id: shopId, shop_name: shopName,
             action: 'extend', plan_name: lic ? lic.plan : 'Basic', days: days,
-            amount: amount, payment_method: method, notes: 'Extended ' + days + ' days'
+            amount: amount, payment_method: method, notes: 'Extended ' + days + ' days',
+            created_at: new Date().toISOString()
         }]);
 
-        alert('✅ Extended to ' + base.toLocaleDateString() + '!\nPayment recorded: ' + amount + ' Br (' + method + ')');
+        alert('✅ ' + shopName + ' extended to ' + base.toLocaleDateString() + '!\n💰 Payment recorded: ' + amount + ' Br (' + method + ')');
         loadShops(); loadPaymentHistory();
-        logAction('extend', shopId + ' +' + days + 'd (' + amount + ' Br)');
+        logAction('extend', shopId + ' +' + days + 'd (' + amount + ' Br ' + method + ')');
     } catch(e) { alert('❌ ' + e.message); }
 }
 
-// 🔄 CHANGE PLAN (any plan, any type — stamps business type!)
+// ═══ 🔄 CHANGE PLAN — full dropdown, no typing! ═══
 async function changeShopPlan(shopId) {
     var shop = await getShopRow(shopId);
-    var lic = _shopLicenses[shopId];
+    var shopName = shop ? shop.name : shopId;
 
     var plans = [];
     try {
         const { data } = await supabaseClient.from('plans').select('name, business_type, price_monthly').eq('active', true).order('display_order');
         plans = data || [];
     } catch(e) {}
-    if (!plans.length) { alert('No plans found.'); return; }
+    if (!plans.length) { alert('No plans found — check Plan Manager.'); return; }
 
-    var list = plans.map(function(p, i){ return (i+1) + '. ' + p.name + ' (' + p.business_type + ') — ' + p.price_monthly + ' Br/mo'; }).join('\n');
-    var choice = parseInt(await prompt('Change "' + (shop ? shop.name : shopId) + '" to which plan?\n\n' + list));
-    if (isNaN(choice) || choice < 1 || choice > plans.length) return;
-    var np = plans[choice-1];
-    if (!await confirm('Change to ' + np.name + ' (' + np.business_type + ')?')) return;
+    var options = plans.map(function(p){ return p.name + '|' + (p.business_type === 'retail' ? '🛒' : p.business_type === 'cafe' ? '☕' : '🏨') + ' ' + p.name + ' (' + p.price_monthly + ' Br/mo)'; });
+    var chosen = await prompt('Change "' + shopName + '" to which plan?', '', options);
+    if (!chosen) return;
+    var np = plans.find(function(p){ return p.name === chosen; });
+    if (!np) return;
+
+    var ok = await confirm('Change "' + shopName + '" to ' + np.name + ' (' + np.business_type + ')?');
+    if (!ok) return;
 
     try {
+        var lic = _shopLicenses[shopId];
         if (lic) {
             await supabaseClient.from('licenses').update({ plan: np.name, business_type: np.business_type }).eq('id', lic.id);
         } else {
             var key = ('SMART-' + np.name.toUpperCase() + '-' + shopId + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
             await supabaseClient.from('licenses').insert([{
-                shop_name: shop ? shop.name : shopId, shop_id: shopId, plan: np.name, key: key,
+                shop_name: shopName, shop_id: shopId, plan: np.name, key: key,
                 start_date: new Date().toISOString(),
                 expiry_date: new Date(Date.now() + 30*86400000).toISOString(),
                 status: 'active', created_at: new Date().toISOString(),
@@ -1054,14 +1061,90 @@ async function changeShopPlan(shopId) {
         await supabaseClient.from('shops').update({ plan: np.name, business_type: np.business_type }).eq('shop_id', shopId);
 
         await supabaseClient.from('payments').insert([{
-            shop_id: shopId, shop_name: shop ? shop.name : shopId,
+            shop_id: shopId, shop_name: shopName,
             action: 'plan_change', plan_name: np.name, days: 0,
-            amount: 0, payment_method: 'plan_change', notes: '→ ' + np.name
+            amount: 0, payment_method: 'plan_change', notes: '→ ' + np.name,
+            created_at: new Date().toISOString()
         }]);
 
-        alert('✅ Now on ' + np.name + ' (' + np.business_type + ')!');
+        alert('✅ ' + shopName + ' is now on ' + np.name + ' (' + np.business_type + ')!');
         loadShops(); loadPaymentHistory();
         logAction('plan_change', shopId + ' → ' + np.name);
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+// ═══ 🔑 GENERATE KEY for known shop — dropdown plan + duration ═══
+async function generateLicenseFor(shopId) {
+    var shop = await getShopRow(shopId);
+    var shopName = shop ? shop.name : shopId;
+
+    var plans = [];
+    try {
+        const { data } = await supabaseClient.from('plans').select('name, business_type, price_monthly').eq('active', true).order('display_order');
+        plans = data || [];
+    } catch(e) {}
+    if (!plans.length) { alert('No plans found.'); return; }
+
+    var options = plans.map(function(p){ return p.name + '|' + (p.business_type === 'retail' ? '🛒' : p.business_type === 'cafe' ? '☕' : '🏨') + ' ' + p.name; });
+    var planName = await prompt('Create license for "' + shopName + '" — plan:', '', options);
+    if (!planName) return;
+    var np = plans.find(function(p){ return p.name === planName; });
+    if (!np) return;
+
+    var days = parseInt(await prompt('Duration:', '30', ['7|📅 7 days', '30|📅 30 days', '90|📅 90 days', '180|📅 180 days', '365|📅 365 days']));
+    if (!days) return;
+
+    var key = ('SMART-' + np.name.toUpperCase() + '-' + shopId + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
+    try {
+        await supabaseClient.from('licenses').insert([{
+            shop_id: shopId, shop_name: shopName, plan: np.name, key: key, status: 'active',
+            start_date: new Date().toISOString(),
+            expiry_date: new Date(Date.now() + days * 86400000).toISOString(),
+            max_products: 999999, max_cashiers_per_shop: 999,
+            business_type: np.business_type,
+            created_at: new Date().toISOString()
+        }]);
+        await supabaseClient.from('shops').update({ plan: np.name, business_type: np.business_type }).eq('shop_id', shopId);
+
+        alert('✅ License created for ' + shopName + '!\n\n🔑 Key: ' + key + '\n📋 Plan: ' + np.name + ' (' + np.business_type + ')\n⏰ ' + days + ' days\n\nSend this key to the customer!');
+        loadShops();
+        logAction('generate_key', shopName + ' → ' + np.name + ' (' + key + ')');
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+// ═══ 📅 EXTEND TRIAL — dropdown ═══
+async function extendTrial(shopId) {
+    var days = parseInt(await prompt('Extend trial by:', '7', ['3|3 days', '7|📅 7 days', '14|14 days', '30|📅 30 days']));
+    if (!days) return;
+    try {
+        const { data: shop } = await supabaseClient.from('shops').select('trial_expires').eq('shop_id', shopId).maybeSingle();
+        var base = (shop && shop.trial_expires && new Date(shop.trial_expires) > new Date()) ? new Date(shop.trial_expires) : new Date();
+        var newDate = new Date(base.getTime() + days * 86400000);
+        const { error } = await supabaseClient.from('shops').update({ trial_expires: newDate.toISOString() }).eq('shop_id', shopId);
+        if (error) throw error;
+        alert('✅ Trial now ends: ' + newDate.toLocaleDateString());
+        loadShops();
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+// ═══ 🧹 CLEANUP — dropdown-confirmed safety ═══
+async function cleanupShopData() {
+    var sid = await prompt('⚠️ Type the EXACT Shop ID to wipe completely:');
+    if (!sid) return;
+    var ok1 = await confirm('⚠️ DELETE ALL DATA for shop "' + sid + '"?\nProducts, sales, staff — EVERYTHING. This cannot be undone.');
+    if (!ok1) return;
+    var ok2 = await confirm('🚨 FINAL WARNING!\n\nType-to-confirm replaced by double-confirm.\nAre you ABSOLUTELY sure about "' + sid + '"?');
+    if (!ok2) return;
+    try {
+        var cols = ['products','sales','losses','expenses','employees','suppliers','purchase_orders','loyalty','loans','bank_accounts','bank_transactions','notes','settings','recipes','orders','fiscal_receipts','salary_ledger','purchase_orders'];
+        for (var i = 0; i < cols.length; i++) {
+            await supabaseClient.from(cols[i]).delete().eq('shop_id', sid);
+        }
+        await supabaseClient.from('shops').delete().eq('shop_id', sid);
+        await supabaseClient.from('licenses').delete().eq('shop_id', sid);
+        alert('✅ Shop "' + sid + '" completely deleted.');
+        loadShops();
+        logAction('cleanup', 'Deep cleaned: ' + sid);
     } catch(e) { alert('❌ ' + e.message); }
 }
 
@@ -1093,22 +1176,6 @@ async function extendTrial(shopId) {
         alert('✅ Trial now ends: ' + newDate.toLocaleDateString());
         loadShops();
     } catch(e) { alert('❌ ' + e.message); }
-}
-// Quick license generator for a known shop
-async function generateLicenseFor(shopId) {
-    var plan = prompt('Plan for ' + shopId + ' (shop/medium/supermarket/enterprise/cafe/restaurant/hotel):');
-    if (!plan) return;
-    var days = parseInt(prompt('Duration in days:', '30')) || 30;
-    var key = ('SMART-' + plan.toUpperCase() + '-' + shopId + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
-    const { error } = await supabaseClient.from('licenses').insert([{
-        shop_id: shopId, plan: plan, key: key, status: 'active',
-        start_date: new Date().toISOString(),
-        expiry_date: new Date(Date.now() + days * 86400000).toISOString(),
-        max_products: 999999, max_cashiers_per_shop: 999
-    }]);
-    if (error) return alert('❌ ' + error.message);
-    alert('✅ License created!\n\nKey: ' + key + '\nDays: ' + days + '\n\nSend this key to the customer — they activate it in Admin → License.');
-    loadShops();
 }
 
 async function toggleShopActive(docId, makeActive) {
@@ -1529,7 +1596,56 @@ function lbl(id, label, prefix, val) {
         logAction('plans_updated', 'Plan Manager v2 changes saved');
     } catch (e) { alert('❌ ' + e.message); }
 }
-  
+
+  function sdDialog(message, icon, title, callback, hasInput, defVal, options) {
+    var ov = document.createElement('div');
+    ov.className = 'standard-dialog-overlay';
+    // options = array of strings → dropdown instead of typing!
+    var inputHtml = '';
+    if (hasInput && options && options.length) {
+        inputHtml = '<select class="standard-dialog-select" id="sdInput">' +
+            options.map(function(o){
+                var v = String(o); var lbl = v;
+                if (v.indexOf('|') !== -1) { var parts = v.split('|'); v = parts[0]; lbl = parts[1]; }
+                return '<option value="' + v + '" ' + (String(defVal) === v ? 'selected' : '') + '>' + lbl + '</option>';
+            }).join('') + '</select>';
+    } else if (hasInput) {
+        inputHtml = '<input class="standard-dialog-input" id="sdInput" value="' + String(defVal || '').replace(/"/g, '&quot;') + '">';
+    }
+    ov.innerHTML = '<div class="standard-dialog-box">' +
+        '<div class="standard-dialog-icon">' + icon + '</div>' +
+        '<div class="standard-dialog-title">' + title + '</div>' +
+        '<div class="standard-dialog-message">' + message + '</div>' +
+        inputHtml +
+        '<div class="standard-dialog-buttons">' +
+            (callback ? '<button class="standard-dialog-btn standard-dialog-btn-secondary" id="sdCancel">Cancel</button>' : '') +
+            '<button class="standard-dialog-btn standard-dialog-btn-primary" id="sdOk">OK</button>' +
+        '</div></div>';
+    document.body.appendChild(ov);
+
+    var input = document.getElementById('sdInput');
+    if (input && input.tagName === 'INPUT') { input.focus(); input.select(); }
+    else if (input && input.tagName === 'SELECT') { input.focus(); }
+
+    function finish(ok) {
+        var val = null;
+        if (hasInput) { val = ok ? document.getElementById('sdInput').value : null; }
+        else { val = ok; }
+        ov.remove();
+        if (callback) callback(val);
+    }
+    document.getElementById('sdOk').onclick = function(){ finish(true); };
+    var c = document.getElementById('sdCancel');
+    if (c) c.onclick = function(){ finish(false); };
+    if (input && input.tagName === 'INPUT') {
+        input.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); finish(true); } });
+    }
+    ov.addEventListener('click', function(e){ if (e.target === ov) { ov.remove(); if (callback) callback(hasInput ? null : false); } });
+}
+
+
+
+
   // 🔬 TEMPORARY DIAGNOSTIC — removes the guesswork
 async function ssDiagnose() {
     var report = '🔬 DIAGNOSTIC REPORT\n\n';
