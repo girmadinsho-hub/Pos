@@ -1317,14 +1317,14 @@ async function checkMasterPinStatus() {
     var storedPinHash = localStorage.getItem('masterPinHash');
 
     if (!storedPinHash) {
-        var newPin = prompt("🔐 Create a 4-digit Master App PIN:");
-        if (newPin && newPin.length === 4) {
+        var newPin = await prompt('🔐 CREATE YOUR APP PIN\n\nThis is an EXTRA lock for this device (separate from your password).\n\nChoose any 4 digits you will remember:');
+        if (newPin && String(newPin).length === 4) {
             localStorage.setItem('masterPinHash', sha256(newPin));
             if (appPinScreen) appPinScreen.style.display = 'none';
             if (mainPanel) mainPanel.style.display = 'block';
             initMasterPanel();
         } else {
-            alert("❌ PIN must be exactly 4 digits.");
+            alert('❌ The App PIN must be exactly 4 digits.\n\nExample: 2580\n\nThis is NOT your password — it is a quick extra lock.');
             masterLogout();
         }
     } else {
@@ -1334,7 +1334,6 @@ async function checkMasterPinStatus() {
         if (pinInput) { pinInput.value = ''; pinInput.focus(); }
     }
 }
-
 async function changeMasterPin() {
     var oldPin = prompt("Enter your CURRENT 4-digit App PIN:");
     if (sha256(oldPin) !== localStorage.getItem('masterPinHash')) { alert("❌ Incorrect current PIN."); return; }
