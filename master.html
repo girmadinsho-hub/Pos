@@ -614,20 +614,28 @@ async function changePlanV2(licenseId) {
 async function loadPaymentHistory() {
     var el = document.getElementById('paymentHistoryList');
     if (!el) return;
-    const { data, error } = await supabaseClient.from('payments').select('*').order('created_at', { ascending: false }).limit(50);
-    if (error) { el.innerHTML = '<p style="color:#f44336;">Load failed.</p>'; return; }
-    if (!data || data.length === 0) { el.innerHTML = '<p style="color:#94a3b8;">No payments recorded yet.</p>'; return; }
-    var total = 0;
-    var html = data.map(function(p) {
-        total += Number(p.amount || 0);
-        return '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #444;font-size:13px;">' +
-            '<span>🏪 ' + sanitize(p.shop_name) + ' · ' + (p.action === 'extend' ? '📅 +' + p.days + 'd' : '🔄 ' + p.plan_name) + '</span>' +
-            '<span><b style="color:#4caf50;">' + p.amount + ' Br</b> · ' + (p.payment_method || '') + ' · ' + new Date(p.created_at).toLocaleDateString() + '</span></div>';
-    }).join('');
-    html += '<div style="text-align:right;font-size:16px;font-weight:bold;color:#4caf50;margin-top:10px;">Total recorded: ' + total.toFixed(2) + ' Br</div>';
-    el.innerHTML = html;
+    el.innerHTML = '<p style="color:#94a3b8;">Loading…</p>';
+    try {
+        const { data, error } = await supabaseClient.from('payments').select('*').order('created_at', { ascending: false }).limit(50);
+        if (error) throw error;
+        if (!data || data.length === 0) {
+            el.innerHTML = '<p style="color:#94a3b8;">No payments recorded yet.</p>';
+            return;
+        }
+        var total = 0;
+        var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+        var html = data.map(function(p) {
+            total += Number(p.amount || 0);
+            return '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;padding:10px 0;border-bottom:1px solid #444;font-size:13px;">' +
+                '<span>🏪 ' + esc(p.shop_name) + ' · ' + (p.action === 'extend' ? '📅 +' + (p.days || 0) + 'd' : '🔄 ' + (p.plan_name || '')) + '</span>' +
+                '<span><b style="color:#4caf50;">' + (p.amount || 0) + ' Br</b> · ' + (p.payment_method || '') + ' · ' + new Date(p.created_at).toLocaleDateString() + '</span></div>';
+        }).join('');
+        html += '<div style="text-align:right;font-size:17px;font-weight:bold;color:#4caf50;margin-top:10px;">💰 Total: ' + total.toFixed(2) + ' Br</div>';
+        el.innerHTML = html;
+    } catch(e) {
+        el.innerHTML = '<p style="color:#f44336;">❌ Load failed: ' + e.message + '</p>';
+    }
 }
-
 // Revenue summary (feeds CEO dashboard)
 function loadRevenueSummary() {
     var active = 0, expiring = 0, expired = 0;
@@ -1610,4 +1618,4 @@ async function ssDiagnose() {
 </script>
 </body>
 </html>
-  
+ 
