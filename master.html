@@ -1,170 +1,142 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>SmartShop Pro – Master Admin</title>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <style>
-        body{font-family:Arial;background:#1a1a2e;color:#fff;padding:20px}
-        .card{background:#2a2a3e;border-radius:12px;padding:20px;margin-bottom:15px}
-        h2{color:#4caf50;cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin:0 0 10px 0}
-        h2 .arrow{font-size:14px;transition:0.3s;display:inline-block}
-        h2 .arrow.open{transform:rotate(90deg)}
-        .card-body.collapsed{max-height:0!important;overflow:hidden;padding:0!important;margin:0!important}
-        table{width:100%;border-collapse:collapse;font-size:13px}
-        th{background:#333;padding:10px;text-align:left}
-        td{padding:10px;border-bottom:1px solid #444}
-        .btn{padding:8px 15px;border:none;border-radius:5px;cursor:pointer;font-weight:bold;margin:2px;font-size:12px}
-        .btn-green{background:#4caf50;color:#fff}
-        .btn-red{background:#f44336;color:#fff}
-        .btn-blue{background:#1a73e8;color:#fff}
-        .btn-yellow{background:#f59e0b;color:#000}
-        .btn-purple{background:#8b5cf6;color:#fff}
-        .status-active{color:#4caf50}
-        .status-warning{color:#ff9800}
-        .status-expired{color:#f44336}
-        input,select,textarea{padding:10px;border:1px solid #555;border-radius:5px;background:#333;color:#fff;width:100%;margin:5px 0;font-size:14px}
-        #loginSection{text-align:center}
-        #loginSection input{text-align:center;font-size:18px}
-        .shop-inactive{opacity:0.5}
-        .filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
-        .filter-bar input,.filter-bar select{width:auto;flex:1;min-width:120px}
-        .checkbox-col{width:30px;text-align:center}
-        .bulk-actions{display:flex;gap:8px;align-items:center;margin-bottom:10px}
-        .bulk-actions button{flex:1}
-        .actions-row{display:flex;gap:4px;flex-wrap:nowrap;white-space:nowrap}
-        .actions-row .btn{flex:0 0 auto}
-        .loading{text-align:center;padding:20px;color:#94a3b8}
+<meta name="theme-color" content="#1a1a2e">
+<title>SmartShop Pro – Master Admin</title>
+<style>
+* { box-sizing: border-box; }
+body { font-family: Arial, sans-serif; background: #1a1a2e; color: #fff; margin: 0; padding: 0; overflow-x: hidden; }
+.card { background: #2a2a3e; border-radius: 12px; padding: 20px; margin-bottom: 15px; }
+.card-title { color: #4caf50; cursor: pointer; display: flex; justify-content: space-between; align-items: center; margin: 0 0 10px 0; font-size: 15px; }
+h2 .arrow, .card-title .arrow { font-size: 14px; transition: 0.3s; display: inline-block; }
+.arrow.open { transform: rotate(90deg); }
+.card-body.collapsed { max-height: 0 !important; overflow: hidden; padding: 0 !important; margin: 0 !important; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #333; padding: 10px; text-align: left; }
+td { padding: 10px; border-bottom: 1px solid #444; vertical-align: top; }
+.btn { padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin: 3px; font-size: 13px; }
+.btn-green { background: #4caf50; color: #fff; }
+.btn-red { background: #f44336; color: #fff; }
+.btn-blue { background: #1a73e8; color: #fff; }
+.btn-yellow { background: #f59e0b; color: #000; }
+.btn-purple { background: #8b5cf6; color: #fff; }
+.btn-outline { background: transparent; color: #94a3b8; border: 1px solid #475569; }
+.status-active { color: #4caf50; }
+.status-warning { color: #ff9800; }
+.status-expired { color: #f44336; }
+input, select, textarea { padding: 10px; border: 1px solid #555; border-radius: 8px; background: #333; color: #fff; width: 100%; margin: 5px 0; font-size: 14px; }
+label { font-size: 12px; color: #94a3b8; }
+.filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.filter-bar input, .filter-bar select { width: auto; flex: 1; min-width: 120px; }
+.table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.header { width: 100%; padding: 12px 15px; position: sticky; top: 0; z-index: 1000; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, #0f172a, #1e3a8a); box-shadow: 0 2px 10px rgba(0,0,0,.4); }
+.sidebar { position: fixed; top: 0; left: -280px; width: 280px; max-width: 85vw; height: 100%; background: #2a2a3e; z-index: 2000; overflow-y: auto; transition: left 0.3s ease; box-shadow: 2px 0 10px rgba(0,0,0,0.3); }
+.sidebar.open { left: 0; }
+.sidebar-tab { padding: 15px 20px; cursor: pointer; font-weight: 600; color: #94a3b8; border-left: 4px solid transparent; }
+.sidebar-tab.active { background: #1e3a8a; color: #fff; border-left: 4px solid #4caf50; }
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1999; }
+.sidebar-overlay.show { display: block; }
+#splashScreen { position: fixed; inset: 0; background: linear-gradient(135deg, #0f172a, #1e3a8a); display: flex; align-items: center; justify-content: center; z-index: 99999; transition: opacity 0.8s; }
+#loadingScreen { display: none; position: fixed; inset: 0; background: linear-gradient(135deg, #1e3a8a, #2563eb); z-index: 10000; flex-direction: column; align-items: center; justify-content: center; }
+#loginSection { display: none; position: fixed; inset: 0; background: linear-gradient(135deg, #0f172a, #1e3a8a); align-items: center; justify-content: center; z-index: 9999; }
+#appPinScreen { display: none; position: fixed; inset: 0; background: linear-gradient(135deg, #1e3a8a, #2563eb); z-index: 10001; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; }
+.login-box { background: #fff; border-radius: 16px; padding: 28px; width: 90%; max-width: 380px; text-align: center; color: #1e293b; }
+.login-box input { background: #f8fafc; border: 2px solid #e2e8f0; color: #1e293b; }
+.master-tab-content { width: 100%; }
+.loading { text-align: center; padding: 20px; color: #94a3b8; }
 
-        * { box-sizing: border-box !important; }
-        body { margin: 0 !important; padding: 0 !important; overflow-x: hidden !important; width: 100% !important; }
-        .header { width: 100% !important; padding: 12px !important; position: sticky !important; top: 0 !important; z-index: 1000 !important; display: flex !important; justify-content: space-between !important; align-items: center !important; box-sizing: border-box !important; }
-        .sidebar { width: 280px !important; max-width: 85vw !important; }
-        .container, .main-content-wrapper { padding: 10px !important; width: 100% !important; max-width: 100% !important; margin: 0 !important; box-sizing: border-box !important; }
-        .card { width: 100% !important; padding: 15px !important; margin-bottom: 15px !important; box-sizing: border-box !important; }
-        input, select, textarea { width: 100% !important; padding: 12px !important; box-sizing: border-box !important; margin-bottom: 8px !important; }
-        button { box-sizing: border-box !important; }
-        .table-wrapper, .excel-table-container { width: 100% !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-        table { min-width: 600px !important; width: 100% !important; }
-        .flex-row { display: flex !important; flex-wrap: wrap !important; gap: 8px !important; }
-        .flex-row > * { flex: 1 1 45% !important; }
-        #sidebar { position: fixed !important; top: 0 !important; left: -280px !important; width: 280px !important; height: 100% !important; background: #fff !important; z-index: 2000 !important; overflow-y: auto !important; transition: left 0.3s ease !important; box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important; }
-        #sidebar.open { left: 0 !important; }
-        #sidebarOverlay { display: none !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; background: rgba(0,0,0,0.5) !important; z-index: 1999 !important; }
-        #sidebarOverlay.show { display: block !important; }
-        .master-tab-content { width: 100% !important; }
-
-        .standard-dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 99999; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s ease; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .standard-dialog-box { background: #fff; border-radius: 16px; padding: 24px; width: 90%; max-width: 400px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; animation: slideUp 0.25s ease; }
-        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .standard-dialog-icon { font-size: 48px; margin-bottom: 12px; }
-        .standard-dialog-title { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
-        .standard-dialog-message { font-size: 14px; color: #64748b; margin-bottom: 20px; line-height: 1.5; white-space: pre-wrap; }
-        .standard-dialog-input { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 15px; margin-bottom: 16px; text-align: center; outline: none; }
-        .standard-dialog-input:focus { border-color: #2563eb; }
-        .standard-dialog-buttons { display: flex; gap: 10px; justify-content: center; }
-        .standard-dialog-btn { padding: 10px 24px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; flex: 1; }
-        .standard-dialog-btn:active { transform: scale(0.97); }
-        .standard-dialog-btn-primary { background: #2563eb !important; color: #fff !important; }
-        .standard-dialog-btn-secondary { background: #e2e8f0 !important; color: #334155 !important; border: 1px solid #cbd5e1 !important; }
-        .standard-dialog-btn-danger { background: #ef4444 !important; color: #fff !important; }
-        .standard-dialog-btn-success { background: #10b981 !important; color: #fff !important; }
-    
-         /* ═══ STANDARD DIALOGS ═══ */
-.standard-dialog-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.6); z-index:99999; display:flex; align-items:center; justify-content:center; animation:sdFade .2s ease; }
-@keyframes sdFade { from{opacity:0} to{opacity:1} }
-.standard-dialog-box { background:#fff; border-radius:16px; padding:24px; width:90%; max-width:400px; box-shadow:0 20px 60px rgba(0,0,0,.3); text-align:center; animation:sdUp .25s ease; }
-@keyframes sdUp { from{transform:translateY(30px);opacity:0} to{transform:translateY(0);opacity:1} }
-.standard-dialog-icon { font-size:44px; margin-bottom:10px; }
-.standard-dialog-title { font-size:17px; font-weight:800; color:#1e293b; margin-bottom:8px; }
-.standard-dialog-message { font-size:15px; color:#475569; margin-bottom:18px; line-height:1.6; white-space:pre-wrap; word-break:break-word; overflow-wrap:break-word; overflow-y:auto; max-height:45vh; text-align:left; }
-.standard-dialog-box { background:#fff; border-radius:16px; padding:24px; width:90%; max-width:400px; max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.3); text-align:center; animation:sdUp .25s ease; }
-.standard-dialog-select { width:100%; padding:13px; border:2px solid #e2e8f0; border-radius:10px; font-size:16px; margin-bottom:16px; background:#fff; color:#1e293b; outline:none; }.standard-dialog-input { width:100%; padding:13px; border:2px solid #e2e8f0; border-radius:10px; font-size:16px; margin-bottom:16px; text-align:center; outline:none; }
-.standard-dialog-input:focus { border-color:#2563eb; }
-.standard-dialog-buttons { display:flex; gap:10px; }
-.standard-dialog-btn { padding:12px 22px; border:none; border-radius:10px; font-size:15px; font-weight:700; cursor:pointer; flex:1; }
-.standard-dialog-btn-primary { background:#2563eb; color:#fff; }
-.standard-dialog-btn-secondary { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
-    
-    </style>
+/* ═══ STANDARD DIALOG SYSTEM ═══ */
+.standard-dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,.6); z-index: 99999; display: flex; align-items: center; justify-content: center; animation: sdFade .2s ease; }
+@keyframes sdFade { from { opacity: 0; } to { opacity: 1; } }
+.standard-dialog-box { background: #fff; border-radius: 16px; padding: 24px; width: 90%; max-width: 400px; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); text-align: center; animation: sdUp .25s ease; }
+@keyframes sdUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.standard-dialog-icon { font-size: 44px; margin-bottom: 10px; }
+.standard-dialog-title { font-size: 17px; font-weight: 800; color: #1e293b; margin-bottom: 8px; }
+.standard-dialog-message { font-size: 15px; color: #475569; margin-bottom: 18px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; overflow-wrap: break-word; overflow-y: auto; max-height: 45vh; text-align: left; }
+.standard-dialog-input { width: 100%; padding: 13px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; margin-bottom: 16px; text-align: center; outline: none; color: #1e293b; background: #fff; }
+.standard-dialog-input:focus { border-color: #2563eb; }
+.standard-dialog-select { width: 100%; padding: 13px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 16px; margin-bottom: 16px; background: #fff; color: #1e293b; outline: none; }
+.standard-dialog-buttons { display: flex; gap: 10px; }
+.standard-dialog-btn { padding: 12px 22px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; flex: 1; }
+.standard-dialog-btn-primary { background: #2563eb; color: #fff; }
+.standard-dialog-btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+</style>
 </head>
 <body>
 
-<!-- 1. Splash Screen -->
-<div id="splashScreen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#0f172a,#1e3a8a); display:flex; align-items:center; justify-content:center; z-index:99999; transition:opacity 0.8s;">
-    <div style="text-align:center; color:white;">
-        <div style="font-size:40px; margin-bottom:10px;">👑</div>
-        <h1 style="font-size:32px; font-weight:800; letter-spacing:1px;">SmartShop Pro</h1>
-        <p style="font-size:14px; opacity:0.8; margin-top:5px;">Master Administration</p>
+<!-- ═══ SPLASH ═══ -->
+<div id="splashScreen">
+    <div style="text-align: center; color: white;">
+        <div style="font-size: 40px; margin-bottom: 10px;">👑</div>
+        <h1 style="font-size: 32px; font-weight: 800;">SmartShop Pro</h1>
+        <p style="font-size: 14px; opacity: 0.8; margin-top: 5px;">Master Administration</p>
     </div>
 </div>
 
-<!-- 2. Loading Progress Screen -->
-<div id="loadingScreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#0f172a,#1e3a8a); z-index:10000; flex-direction:column; align-items:center; justify-content:center;">
-    <div style="text-align:center; color:white;">
-        <div style="font-size:24px; font-weight:bold; margin-bottom:20px;">Verifying Master Access...</div>
-        <div style="width:80%; max-width:300px; height:10px; background:rgba(255,255,255,0.2); border-radius:10px; overflow:hidden;">
-            <div id="loadingBar" style="width:0%; height:100%; background:white; border-radius:10px; transition: width 0.3s;"></div>
+<!-- ═══ LOADING ═══ -->
+<div id="loadingScreen">
+    <div style="text-align: center; color: white;">
+        <div style="font-size: 22px; font-weight: bold; margin-bottom: 20px;">Verifying Master Access...</div>
+        <div style="width: 80%; max-width: 300px; height: 10px; background: rgba(255,255,255,0.2); border-radius: 10px; overflow: hidden;">
+            <div id="loadingBar" style="width: 0%; height: 100%; background: white; border-radius: 10px; transition: width 0.3s;"></div>
         </div>
-        <div id="loadingPercent" style="margin-top:5px; font-size:14px;">0%</div>
+        <div id="loadingPercent" style="margin-top: 5px; font-size: 14px;">0%</div>
     </div>
 </div>
 
-<!-- 3. Master Login Screen -->
-<div id="loginSection" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#0f172a,#1e3a8a); align-items:center; justify-content:center; z-index:9999;">
-    <div class="card" style="max-width: 400px; margin: 20px; text-align: center; background:#fff;">
-        <div style="font-size:40px; margin-bottom:10px;">👑</div>
-        <h2 style="color:#1e3a8a; margin-bottom:5px;">Master Access</h2>
-        <p style="color:#64748b; font-size:12px; margin-bottom:15px;">Authorized personnel only.</p>
-        <input type="email" id="masterEmail" placeholder="Master Email" style="margin-bottom:10px; width:100%; padding:14px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
-        <input type="password" id="masterPass" placeholder="Password" style="width:100%; padding:14px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
-        <button class="btn btn-green" onclick="masterLogin()" style="width:100%;padding:15px;font-size:16px; margin-top:10px;">Access Panel</button>
+<!-- ═══ LOGIN ═══ -->
+<div id="loginSection">
+    <div class="login-box">
+        <div style="font-size: 40px; margin-bottom: 10px;">👑</div>
+        <h2 style="color: #1e3a8a; margin-bottom: 5px;">Master Access</h2>
+        <p style="color: #64748b; font-size: 12px; margin-bottom: 15px;">Authorized personnel only.</p>
+        <input type="email" id="masterEmail" placeholder="Master Email" style="margin-bottom: 10px;">
+        <input type="password" id="masterPass" placeholder="Password (your account password)">
+        <button class="btn btn-green" onclick="masterLogin()" style="width: 100%; padding: 14px; font-size: 16px; margin-top: 10px; background: #2563eb; color: white;">🔓 Access Panel</button>
     </div>
 </div>
 
-<!-- 4. Master App PIN Screen -->
-<div id="appPinScreen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:linear-gradient(135deg,#0f172a,#1e3a8a); z-index:10001; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; box-sizing:border-box;">
-    <div style="background:#fff; border-radius:20px; padding:30px; max-width:350px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,0.3);">
-        <div style="font-size:40px; margin-bottom:10px;">🔐</div>
-        <h2 style="color:#1e293b; margin-bottom:10px;">Enter App PIN</h2>
-        <p style="color:#64748b; font-size:13px; margin-bottom:20px;">Please enter your 4-digit security PIN to unlock the Master Panel.</p>
-        <input type="password" id="masterPinInput" placeholder="• • • •" maxlength="4" style="text-align:center; font-size:24px; letter-spacing:10px; margin-bottom:15px; width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; box-sizing:border-box;">
-        <button class="btn btn-green" style="width:100%; margin-bottom:10px;" onclick="verifyMasterPin()">🔓 Unlock</button>
-        <button class="btn btn-outline" style="width:100%; color:#ef4444; border-color:#ef4444;" onclick="masterLogout()">Logout</button>
+<!-- ═══ APP PIN ═══ -->
+<div id="appPinScreen">
+    <div class="login-box">
+        <div style="font-size: 40px; margin-bottom: 10px;">🔐</div>
+        <h2 style="color: #1e293b; margin-bottom: 10px;">Enter App PIN</h2>
+        <p style="color: #64748b; font-size: 13px; margin-bottom: 20px;">Your 4-digit extra security PIN (different from your password).</p>
+        <input type="password" id="masterPinInput" placeholder="• • • •" maxlength="4" style="text-align: center; font-size: 24px; letter-spacing: 10px; margin-bottom: 15px; color: #1e293b; border: 2px solid #e2e8f0; background: #f8fafc;">
+        <button class="btn btn-green" style="width: 100%; margin-bottom: 10px; background: #2563eb; color: white;" onclick="verifyMasterPin()">🔓 Unlock</button>
+        <button class="btn btn-outline" style="width: 100%; color: #ef4444; border-color: #ef4444;" onclick="masterLogout()">Logout</button>
     </div>
 </div>
 
-<!-- 5. Main Panel -->
-<div id="mainPanel" style="display:none">
-    <div class="header" style="background:linear-gradient(135deg, #0f172a, #1e3a8a); color:white; padding:15px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:1000;">
-        <button onclick="toggleSidebar()" style="background:none; border:none; color:white; font-size:24px; cursor:pointer;">☰</button>
-        <span style="font-weight:bold;">👑 Master Panel</span>
-        <button onclick="masterLogout()" style="background:rgba(255,255,255,0.2); border:none; color:white; padding:8px 15px; border-radius:8px; cursor:pointer;">🚪</button>
+<!-- ═══ MAIN PANEL ═══ -->
+<div id="mainPanel" style="display: none;">
+    <div class="header">
+        <button onclick="toggleSidebar()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">☰</button>
+        <span style="font-weight: bold;">👑 Master Panel</span>
+        <button onclick="masterLogout()" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer;">🚪</button>
     </div>
 
-    <div id="sidebarOverlay" onclick="closeSidebar()" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1999;"></div>
-
-    <div id="sidebar" style="position:fixed; top:0; left:-280px; width:280px; height:100%; background:#fff; z-index:2000; overflow-y:auto; transition:0.3s; box-shadow:2px 0 10px rgba(0,0,0,0.1);">
-        <div style="padding:20px; font-weight:bold; border-bottom:1px solid #f1f5f9; color:#1e293b;">📋 Master Menu</div>
-        <div style="padding:15px 20px; cursor:pointer; font-weight:600; color:#2563eb; border-left:4px solid #2563eb;" onclick="showMasterTab('tabLicenses')">🔑 Licenses</div>
-        <div style="padding:15px 20px; cursor:pointer; font-weight:600; color:#64748b;" onclick="showMasterTab('tabShops')">🏪 Shops</div>
-        <div style="padding:15px 20px; cursor:pointer; font-weight:600; color:#64748b;" onclick="showMasterTab('tabReports')">📊 Reports & Tools</div>
-        <div style="padding:15px 20px; cursor:pointer; font-weight:600; color:#64748b;" onclick="showMasterTab('tabSettings')">⚙️ Settings</div>
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="closeSidebar()"></div>
+    <div id="sidebar" class="sidebar">
+        <div style="padding: 20px; font-weight: bold; border-bottom: 1px solid #444;">📋 Master Menu</div>
+        <div class="sidebar-tab active" onclick="showMasterTab('tabLicenses')">🔑 Licenses & Payments</div>
+        <div class="sidebar-tab" onclick="showMasterTab('tabShops')">🏪 Shops Command Center</div>
+        <div class="sidebar-tab" onclick="showMasterTab('tabReports')">📊 Reports & Tools</div>
+        <div class="sidebar-tab" onclick="showMasterTab('tabSettings')">⚙️ Settings & Plans</div>
     </div>
 
-	
-    <div style="padding:15px; max-width:1000px; margin:0 auto;">
-                <!-- TAB 1: LICENSES -->
+    <div style="padding: 15px; max-width: 1000px; margin: 0 auto;">
+
+        <!-- ═══ TAB 1: LICENSES ═══ -->
         <div id="tabLicenses" class="master-tab-content">
             <div class="card">
                 <div class="card-title" onclick="toggleCard(this)">🔑 Generate Licence Key <span class="arrow open">▶</span></div>
                 <div class="card-body">
                     <input type="text" id="shopName" placeholder="Shop Name (for new shops)">
                     <input type="text" id="keyPrefix" placeholder="Key Prefix (default: SMART)">
-                    <select id="planType" onchange="onPlanChange()">
-                        <option value="">Loading plans…</option>
-                    </select>
+                    <select id="planType"><option value="">Loading plans…</option></select>
                     <input type="date" id="startDate" title="Leave empty for today">
                     <select id="duration">
                         <option value="30">30 Days</option>
@@ -172,39 +144,28 @@
                         <option value="180">180 Days (15% off)</option>
                         <option value="365">365 Days (20% off)</option>
                     </select>
-                    <button class="btn btn-blue" onclick="generateLicense()" style="width:100%">Generate Single Key</button>
-                    <div id="generatedKey" style="margin-top:10px;padding:10px;background:#333;border-radius:5px;display:none"></div>
+                    <button class="btn btn-blue" onclick="generateLicense()" style="width: 100%;">Generate Single Key</button>
+                    <div id="generatedKey" style="margin-top: 10px; padding: 10px; background: #333; border-radius: 8px; display: none;"></div>
                 </div>
             </div>
-
-          
-
             <div class="card">
                 <div class="card-title" onclick="toggleCard(this)">💰 Payment History <span class="arrow open">▶</span></div>
-                <div class="card-body">
-                    <div id="paymentHistoryList"><p style="color:#94a3b8;">Loading…</p></div>
-                </div>
+                <div class="card-body" id="paymentHistoryList"><p style="color: #94a3b8;">Loading…</p></div>
             </div>
         </div>
 
-        <!-- TAB 2: SHOPS -->
-        <div id="tabShops" class="master-tab-content" style="display:none;">
+        <!-- ═══ TAB 2: SHOPS COMMAND CENTER ═══ -->
+        <div id="tabShops" class="master-tab-content" style="display: none;">
             <div class="card">
-                <div class="card-title" onclick="toggleCard(this)" style="cursor:pointer;">
-                    🏪 Manage Shops — ALL Licenses & Keys <span class="arrow open">▶</span>
-                </div>                <div class="card-body">
-                    <button class="btn btn-blue" onclick="loadShops()" style="margin-bottom:10px">🔄 Refresh</button>
-                    <div class="table-wrapper">
-                        <table id="shopsTable" style="width:100%;border-collapse:collapse;font-size:13px;min-width:600px;">
-                            <tr style="background:#333;color:#fff;"><th style="padding:10px;">Shop Name</th><th style="padding:10px;">Shop ID</th><th style="padding:10px;">Plan</th><th style="padding:10px;">Active</th><th style="padding:10px;">Actions</th></tr>
-                        </table>
-                    </div>
+                <div class="card-title">🏪 All Shops — The Command Center<br><small style="color:#94a3b8; font-weight:400; font-size:11px;">Every shop, license key, expiry & action in one place</small></div>
+                <div class="table-wrapper">
+                    <table id="shopsTable" style="min-width: 800px;"></table>
                 </div>
             </div>
         </div>
 
-        <!-- TAB 3: REPORTS & TOOLS -->
-        <div id="tabReports" class="master-tab-content" style="display:none;">
+        <!-- ═══ TAB 3: REPORTS & TOOLS ═══ -->
+        <div id="tabReports" class="master-tab-content" style="display: none;">
             <div class="card">
                 <div class="card-title" onclick="toggleCard(this)">📊 CEO Dashboard <span class="arrow open">▶</span></div>
                 <div class="card-body"><div id="revenueSummary"></div></div>
@@ -212,9 +173,9 @@
             <div class="card">
                 <div class="card-title" onclick="toggleCard(this)">🔍 Shop Data Snapshot <span class="arrow open">▶</span></div>
                 <div class="card-body">
-                    <div style="display:flex;gap:8px;margin-bottom:10px">
-                        <select id="snapshotShop" style="flex:2"><option value="">Select Shop</option></select>
-                        <button class="btn btn-blue" onclick="loadShopSnapshot()" style="flex:1">📊 Load</button>
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                        <select id="snapshotShop" style="flex: 2;"><option value="">Select Shop</option></select>
+                        <button class="btn btn-blue" onclick="loadShopSnapshot()" style="flex: 1;">📊 Load</button>
                     </div>
                     <div id="snapshotResult"></div>
                 </div>
@@ -222,117 +183,129 @@
             <div class="card">
                 <div class="card-title" onclick="toggleCard(this)">📜 Audit Log <span class="arrow open">▶</span></div>
                 <div class="card-body">
-                    <button class="btn btn-blue" onclick="loadAuditLog()" style="margin-bottom:10px">🔄 Refresh</button>
+                    <button class="btn btn-blue" onclick="loadAuditLog()" style="margin-bottom: 10px;">🔄 Refresh</button>
                     <div class="table-wrapper">
-                        <table id="auditLogTable" style="width:100%;border-collapse:collapse;font-size:13px;min-width:600px;">
-                            <tr style="background:#333;color:#fff;"><th style="padding:10px;">Time</th><th style="padding:10px;">Action</th><th style="padding:10px;">Details</th><th style="padding:10px;width:60px;">Delete</th></tr>
-                        </table>
+                        <table id="auditLogTable" style="min-width: 600px;"><tr style="background:#333;color:#fff;"><th>Time</th><th>Action</th><th>Details</th><th style="width:60px;">Delete</th></tr></table>
                     </div>
                 </div>
             </div>
             <div class="card">
                 <div class="card-title" onclick="toggleCard(this)">🛠️ System Tools <span class="arrow open">▶</span></div>
                 <div class="card-body">
-                    <div style="display:flex;gap:8px;margin-bottom:10px">
+                    <div style="display: flex; gap: 8px; margin-bottom: 10px;">
                         <button class="btn btn-purple" onclick="backupData()">💾 Backup Data</button>
                         <button class="btn btn-purple" onclick="document.getElementById('restoreFileInput').click()">📂 Restore Data</button>
-                        <input type="file" id="restoreFileInput" style="display:none" onchange="restoreData(this)">
+                        <input type="file" id="restoreFileInput" style="display: none;" onchange="restoreData(this)">
                     </div>
-                    <h3 style="color:#ef4444;margin-top:10px;">⚠️ Danger Zone</h3>
-                    <button class="btn btn-red" onclick="cleanupShopData()" style="width:100%;margin-bottom:10px;">🗑️ DELETE ALL SHOP DATA</button>
-                    <button class="btn btn-purple" onclick="findAndCleanGhostShops()" style="width:100%;margin-bottom:10px;">👻 Find & Wipe Ghost Shops</button>
+                    <h3 style="color: #ef4444; margin-top: 10px;">⚠️ Danger Zone</h3>
+                    <button class="btn btn-red" onclick="cleanupShopData()" style="width: 100%; margin-bottom: 10px;">🗑️ DELETE ALL DATA FOR A SHOP</button>
+                    <button class="btn btn-purple" onclick="findAndCleanGhostShops()" style="width: 100%;">👻 Find & Wipe Ghost Shops</button>
                 </div>
             </div>
         </div>
 
-                <!-- TAB 4: SETTINGS -->
-        <div id="tabSettings" class="master-tab-content" style="display:none;">
-
-            <!-- ═══ 🏢 PLAN MANAGER — THE SINGLE SOURCE OF TRUTH ═══ -->
+        <!-- ═══ TAB 4: SETTINGS & PLANS ═══ -->
+        <div id="tabSettings" class="master-tab-content" style="display: none;">
             <div class="card">
                 <div class="card-title">🏢 Plan Manager — Control Everything</div>
-                <p style="font-size:12px; color:#94a3b8; margin-bottom:15px;">All prices, limits, and features for every plan — retail, café, and hotel. Changes apply <b>instantly</b> to new licenses, the customer plan picker, and plan limits. Nothing is hardcoded.</p>
-                <div id="planEditorList"><p style="color:#94a3b8;">Loading plans…</p></div>
-                <button class="btn btn-green" onclick="saveAllPlans()" style="width:100%; padding:14px; font-size:15px;">💾 Save All Plans</button>
+                <p style="font-size: 12px; color: #94a3b8; margin-bottom: 15px;">All prices, limits, features & Enterprise pricing for every plan — retail, café & hotel. Changes apply instantly. Nothing hardcoded.</p>
+                <div id="planEditorList"><p style="color: #94a3b8;">Loading plans…</p></div>
+                <button class="btn btn-green" onclick="saveAllPlans()" style="width: 100%; padding: 14px; font-size: 15px;">💾 Save All Plans</button>
             </div>
-
-            <!-- ⚙️ General Configuration -->
             <div class="card">
                 <div class="card-title">⚙️ General Configuration</div>
-                <label style="font-size:12px; color:#94a3b8;">Default Trial Days (new registrations)</label>
+                <label>Default Trial Days (new registrations)</label>
                 <input type="number" id="globalTrialDaysInput" placeholder="e.g., 30">
                 <button class="btn btn-green" onclick="saveGlobalTrialDays()">💾 Save Configuration</button>
             </div>
-
-            <!-- 🔐 Master Security -->
             <div class="card">
                 <div class="card-title">🔐 Master Security</div>
-                <button class="btn btn-primary" onclick="changeMasterPassword()" style="margin-bottom:8px;">🔑 Change Master Password</button>
+                <button class="btn btn-blue" onclick="changeMasterPassword()" style="margin-bottom: 8px;">🔑 Change Master Password</button>
                 <button class="btn btn-outline" onclick="changeMasterPin()">🔢 Change App PIN</button>
+            </div>
+            <div class="card">
+                <div class="card-title">📞 Support Contacts (All Customer Screens)</div>
+                <label>Phone / WhatsApp (with country code) *</label>
+                <input type="text" id="supportPhoneInput" placeholder="+251973316100" style="margin-bottom: 10px;">
+                <label>Email</label>
+                <input type="email" id="supportEmailInput" placeholder="support@yourapp.com" style="margin-bottom: 10px;">
+                <label>Telegram (optional)</label>
+                <input type="text" id="supportTelegramInput" placeholder="@yourtelegram" style="margin-bottom: 10px;">
+                <label>Facebook (optional)</label>
+                <input type="text" id="supportFacebookInput" placeholder="facebook.com/yourpage" style="margin-bottom: 10px;">
+                <label>Instagram (optional)</label>
+                <input type="text" id="supportInstagramInput" placeholder="@yourinstagram" style="margin-bottom: 10px;">
+                <label>Website (optional)</label>
+                <input type="text" id="supportWebsiteInput" placeholder="https://yourwebsite.com" style="margin-bottom: 10px;">
+                <button class="btn btn-green" onclick="saveSupportContacts()">💾 Save Contacts</button>
             </div>
         </div>
 
-<div class="card">
-    <div class="card-title">📞 Support Contacts (All Screens)</div>
-    <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Change ONCE here — every customer screen (license activation, trial expiry, support buttons) updates automatically.</p>
-
-    <label>📱 Phone / WhatsApp (with country code) *</label>
-    <input type="text" id="supportPhoneInput" placeholder="+251973316100" style="margin-bottom:10px;">
-
-    <label>📧 Email</label>
-    <input type="email" id="supportEmailInput" placeholder="support@yourapp.com" style="margin-bottom:10px;">
-
-    <label>✈️ Telegram (optional)</label>
-    <input type="text" id="supportTelegramInput" placeholder="@yourtelegram" style="margin-bottom:10px;">
-
-    <label>👍 Facebook page (optional)</label>
-    <input type="text" id="supportFacebookInput" placeholder="facebook.com/yourpage" style="margin-bottom:10px;">
-
-    <label>📸 Instagram (optional)</label>
-    <input type="text" id="supportInstagramInput" placeholder="@yourinstagram" style="margin-bottom:10px;">
-
-    <label>🌐 Website (optional)</label>
-    <input type="text" id="supportWebsiteInput" placeholder="https://yourwebsite.com" style="margin-bottom:10px;">
-
-    <button class="btn btn-green" onclick="saveSupportContacts()">💾 Save Contacts</button>
-</div>
-</div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-	<script src="config.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+<script src="config.js"></script>
+
+<!-- ═══════════════════════════════════════════════════════════
+     PART 2 PASTES DIRECTLY BELOW THIS LINE (JavaScript)
+     ═══════════════════════════════════════════════════════════ -->
 <script>
-// ===== SUPABASE INITIALIZATION =====
-const SUPABASE_URL = "https://mtwcdvmdoxzcejzgypdw.supabase.co";
-const SUPABASE_KEY = "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8";
+// ══════════════════════════════════════════════════════════════
+//  SMARTSHOP PRO — MASTER PANEL (Complete Clean Build)
+//  One copy of every function. Zero zombies. Final structure.
+// ══════════════════════════════════════════════════════════════
+
+// ─── Supabase Connection ───
 let supabaseClient = null;
 if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY,{ auth: { flowType: 'implicit' } });
+    supabaseClient = window.supabase.createClient(
+        (typeof SS_CONFIG !== 'undefined' ? SS_CONFIG.SUPABASE_URL : "https://mtwcdvmdoxzcejzgypdw.supabase.co"),
+        (typeof SS_CONFIG !== 'undefined' ? SS_CONFIG.SUPABASE_KEY : "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8"),
+        { auth: { flowType: 'implicit' } }
+    );
     console.log("✅ Supabase Connected in Master!");
 }
 
-  // ═══ STANDARD DIALOG SYSTEM (replaces ugly native dialogs) ═══
-window.alert = function(message) { return sdDialog(message, '⚠️', 'SmartShop Master', null, false); };
+// ══════════════════════════════════════════════════════════════
+//  🎨 SECTION 1: STANDARD DIALOG SYSTEM
+// ══════════════════════════════════════════════════════════════
+window.alert = function(message) { sdDialog(message, '⚠️', 'SmartShop Master', null, false); };
 window.confirm = function(message) { return new Promise(function(res){ sdDialog(message, '❓', 'Please Confirm', res, false); }); };
 window.prompt = function(message, defaultValue, options) {
     return new Promise(function(res){ sdDialog(message, '✏️', 'Input Required', res, true, defaultValue || '', options || null); });
 };
-  function sdDialog(message, icon, title, callback, hasInput, defVal) {
+
+function sdDialog(message, icon, title, callback, hasInput, defVal, options) {
+    var old = document.getElementById('sdDialogOv'); if (old) old.remove();
     var ov = document.createElement('div');
-    ov.className = 'standard-dialog-overlay';
+    ov.className = 'standard-dialog-overlay'; ov.id = 'sdDialogOv';
+    var inputHtml = '';
+    if (hasInput && options && options.length) {
+        inputHtml = '<select class="standard-dialog-select" id="sdInput">' +
+            options.map(function(o){
+                var v = String(o); var lbl = v;
+                if (v.indexOf('|') !== -1) { var parts = v.split('|'); v = parts[0]; lbl = parts[1]; }
+                return '<option value="' + v + '" ' + (String(defVal) === v ? 'selected' : '') + '>' + lbl + '</option>';
+            }).join('') + '</select>';
+    } else if (hasInput) {
+        inputHtml = '<input class="standard-dialog-input" id="sdInput" value="' + String(defVal || '').replace(/"/g, '&quot;') + '">';
+    }
     ov.innerHTML = '<div class="standard-dialog-box">' +
         '<div class="standard-dialog-icon">' + icon + '</div>' +
         '<div class="standard-dialog-title">' + title + '</div>' +
         '<div class="standard-dialog-message">' + message + '</div>' +
-        (hasInput ? '<input class="standard-dialog-input" id="sdInput" value="' + String(defVal || '').replace(/"/g, '&quot;') + '">' : '') +
+        inputHtml +
         '<div class="standard-dialog-buttons">' +
             (callback ? '<button class="standard-dialog-btn standard-dialog-btn-secondary" id="sdCancel">Cancel</button>' : '') +
             '<button class="standard-dialog-btn standard-dialog-btn-primary" id="sdOk">OK</button>' +
         '</div></div>';
     document.body.appendChild(ov);
     var input = document.getElementById('sdInput');
-    if (input) { input.focus(); input.select(); input.addEventListener('keydown', function(e){ if (e.key === 'Enter') finish(true); }); }
+    if (input && input.tagName === 'INPUT') { input.focus(); input.select(); }
+    else if (input) { input.focus(); }
+
     function finish(ok) {
         var val = hasInput ? (ok ? document.getElementById('sdInput').value : null) : ok;
         ov.remove();
@@ -341,628 +314,292 @@ window.prompt = function(message, defaultValue, options) {
     document.getElementById('sdOk').onclick = function(){ finish(true); };
     var c = document.getElementById('sdCancel');
     if (c) c.onclick = function(){ finish(false); };
+    if (input && input.tagName === 'INPUT') {
+        input.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); finish(true); } });
+    }
     ov.addEventListener('click', function(e){ if (e.target === ov) { ov.remove(); if (callback) callback(hasInput ? null : false); } });
 }
 
-// ===== GHOST DATA SCANNER =====
-async function findAndCleanGhostShops() {
-    if (!confirm("Scan database for ghost shops and wipe them?")) return;
-    alert("Scanning... please wait.");
-    
-    var foundIds = new Set();
-    var tablesToScan = ['products', 'sales', 'expenses', 'employees', 'losses', 'orders'];
-    
+// ══════════════════════════════════════════════════════════════
+//  🔐 SECTION 2: AUTH + PIN
+// ══════════════════════════════════════════════════════════════
+async function masterLogin() {
+    const email = document.getElementById('masterEmail').value;
+    const pass = document.getElementById('masterPass').value;
+    if (!email || !pass) return alert('Enter email and password!');
+
+    var loadingScreen = document.getElementById('loadingScreen');
+    var bar = document.getElementById('loadingBar');
+    var percent = document.getElementById('loadingPercent');
+    var progress = 0, interval = null;
+    if (loadingScreen) loadingScreen.style.display = 'flex';
+    if (bar && percent) {
+        interval = setInterval(function() {
+            progress += Math.random() * 10 + 3;
+            if (progress > 90) progress = 90;
+            bar.style.width = progress + '%';
+            percent.textContent = Math.floor(progress) + '%';
+        }, 150);
+    }
     try {
-        for (var i=0; i<tablesToScan.length; i++) {
-            const { data } = await supabaseClient.from(tablesToScan[i]).select('shop_id').limit(500);
-            if (data) data.forEach(function(row) {
-                if (row.shop_id) foundIds.add(row.shop_id);
-            });
-        }
-        
-        var idsArray = Array.from(foundIds);
-        if (idsArray.length === 0) {
-            alert("✅ Good news! No ghost data found.");
-            return;
-        }
-        
-        for (var k=0; k<idsArray.length; k++) {
-            var exactMatch = idsArray[k];
-            if (confirm("FOUND GHOST DATA!\n\nShop ID: " + exactMatch + "\n\nWipe ALL data for this shop?")) {
-                alert("Wiping " + exactMatch + "...");
-                var cols = ['products', 'sales', 'losses', 'expenses', 'employees', 'suppliers', 'purchase_orders', 'loyalty', 'loans', 'bank_accounts', 'bank_transactions', 'notes', 'settings', 'recipes', 'orders'];
-                for (var j=0; j<cols.length; j++) {
-                    await supabaseClient.from(cols[j]).delete().eq('shop_id', exactMatch);
-                }
-                await supabaseClient.from('shops').delete().eq('shop_id', exactMatch);
-                await supabaseClient.from('licenses').delete().eq('shop_id', exactMatch);
-                alert('✅ Ghost shop ' + exactMatch + ' wiped!');
-            }
-        }
-        loadShops();
-    } catch(e) {
-        alert("❌ Scan error: " + e.message);
+        const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
+        if (error) throw new Error(error.message);
+        if (interval) clearInterval(interval);
+        if (bar) bar.style.width = '100%';
+        if (percent) percent.textContent = '100%';
+    } catch (e) {
+        if (interval) clearInterval(interval);
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        alert('❌ Login Failed: ' + e.message);
     }
 }
 
+supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    var loadingScreen = document.getElementById('loadingScreen');
+    var loginSection = document.getElementById('loginSection');
+    var mainPanel = document.getElementById('mainPanel');
+    var appPinScreen = document.getElementById('appPinScreen');
+    if (loadingScreen) loadingScreen.style.display = 'none';
+
+    if (session && session.user) {
+        const { data: masterDoc } = await supabaseClient.from('master_users').select('*').eq('email', session.user.email).single();
+        if (masterDoc && masterDoc.role === 'master') {
+            if (loginSection) loginSection.style.display = 'none';
+            if (mainPanel) mainPanel.style.display = 'none';
+            checkMasterPinStatus();
+        } else {
+            await supabaseClient.auth.signOut();
+            alert('Access Denied. You are not authorized as a Master Admin.');
+        }
+    } else {
+        if (mainPanel) mainPanel.style.display = 'none';
+        if (loginSection) loginSection.style.display = 'flex';
+        if (appPinScreen) appPinScreen.style.display = 'none';
+        document.getElementById('masterEmail').value = '';
+        document.getElementById('masterPass').value = '';
+    }
+});
+
+async function checkMasterPinStatus() {
+    var appPinScreen = document.getElementById('appPinScreen');
+    var mainPanel = document.getElementById('mainPanel');
+    var storedPinHash = localStorage.getItem('masterPinHash');
+
+    if (!storedPinHash) {
+        var newPin = await prompt('🔐 CREATE YOUR APP PIN\n\nThis is an EXTRA lock for this device (separate from your password).\nChoose any 4 digits:');
+        if (newPin && String(newPin).length === 4) {
+            localStorage.setItem('masterPinHash', sha256(newPin));
+            if (appPinScreen) appPinScreen.style.display = 'none';
+            if (mainPanel) mainPanel.style.display = 'block';
+            initMasterPanel();
+        } else {
+            alert('❌ App PIN must be exactly 4 digits (e.g., 2580).\nThis is NOT your password — a quick extra lock.');
+            supabaseClient.auth.signOut();
+        }
+    } else {
+        if (mainPanel) mainPanel.style.display = 'none';
+        if (appPinScreen) appPinScreen.style.display = 'flex';
+        var pinInput = document.getElementById('masterPinInput');
+        if (pinInput) { pinInput.value = ''; pinInput.focus(); }
+    }
+}
+
+function verifyMasterPin() {
+    var input = document.getElementById('masterPinInput').value.trim();
+    if (sha256(input) === localStorage.getItem('masterPinHash')) {
+        document.getElementById('appPinScreen').style.display = 'none';
+        document.getElementById('mainPanel').style.display = 'block';
+        initMasterPanel();
+    } else {
+        alert('❌ Incorrect App PIN.');
+        document.getElementById('masterPinInput').value = '';
+    }
+}
+
+async function changeMasterPin() {
+    var oldPin = await prompt('Enter your CURRENT 4-digit App PIN:');
+    if (sha256(oldPin) !== localStorage.getItem('masterPinHash')) { alert('❌ Incorrect current PIN.'); return; }
+    var newPin = await prompt('Enter your NEW 4-digit App PIN:');
+    if (newPin && String(newPin).length === 4) {
+        localStorage.setItem('masterPinHash', sha256(newPin));
+        alert('✅ Master PIN changed!');
+    } else { alert('❌ PIN must be exactly 4 digits.'); }
+}
+
+async function changeMasterPassword() {
+    var newPass = await prompt('Enter your NEW password (min 6 characters):');
+    if (!newPass || newPass.length < 6) { alert('Password too short.'); return; }
+    try {
+        const { error } = await supabaseClient.auth.updateUser({ password: newPass });
+        if (error) throw error;
+        alert('✅ Master Password changed!');
+    } catch (error) { alert('❌ ' + error.message); }
+}
+
+function masterLogout() { supabaseClient.auth.signOut(); }
+
+// ══════════════════════════════════════════════════════════════
+//  🚀 SECTION 3: PANEL INIT + SPLASH + NAVIGATION
+// ══════════════════════════════════════════════════════════════
+function initMasterPanel() {
+    try {
+        loadShops();
+        loadAuditLog();
+        populateSnapshotDropdown();
+        loadGlobalTrialDays();
+        loadSupportContacts();
+        loadPlanDropdown();
+        loadPlanEditor();
+        loadPaymentHistory();
+        loadRevenueSummary();
+        setupRegistrationAlerts();
+    } catch(e) {
+        var dbg = document.getElementById('planEditorList');
+        if (dbg) dbg.innerHTML = '<p style="color:#ef44336;">❌ initMasterPanel: ' + e.message + '</p>';
+    }
+}
+
+setTimeout(function() {
+    var splash = document.getElementById('splashScreen');
+    if (splash) { splash.style.opacity = '0'; setTimeout(function(){ splash.style.display = 'none'; }, 800); }
+}, 1500);
+setTimeout(function() {
+    var splash = document.getElementById('splashScreen');
+    if (splash && splash.style.display !== 'none') splash.style.display = 'none';
+}, 3000);
+
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('sidebarOverlay').classList.toggle('show');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarOverlay').classList.remove('show');
+}
+function showMasterTab(tabId) {
+    closeSidebar();
+    var tabs = document.querySelectorAll('.master-tab-content');
+    for (var i = 0; i < tabs.length; i++) tabs[i].style.display = 'none';
+    document.getElementById(tabId).style.display = 'block';
+    // Update sidebar active state
+    var sideTabs = document.querySelectorAll('.sidebar-tab');
+    for (var j = 0; j < sideTabs.length; j++) sideTabs[j].classList.remove('active');
+    event.currentTarget.classList.add('active');
+}
 function toggleCard(el) {
     const arrow = el.querySelector('.arrow');
     const body = el.nextElementSibling;
     if (body) { body.classList.toggle('collapsed'); if (arrow) arrow.classList.toggle('open'); }
 }
 
-async function logAction(action, details) {
-    if (!supabaseClient) return;
-    try {
-        await supabaseClient.from('audit_logs').insert([{
-            action: action, details: details, cashier_name: 'Master Admin', timestamp: new Date().toISOString()
-        }]);
-    } catch(e) { console.error("Audit log error:", e.message); }
-}
-
-async function loadAuditLog() {
-    if (!supabaseClient) return;
-    const t = document.getElementById('auditLogTable');
-    t.innerHTML = '<tr style="background:#333;color:#fff;"><th>Time</th><th>Action</th><th>Details</th><th>Delete</th></tr>';
-    
-    try {
-        const { data, error } = await supabaseClient.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(50);
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
-            t.innerHTML += '<tr><td colspan="4" style="padding:20px; text-align:center; color:#94a3b8;">No logs yet.</td></tr>';
-            return;
-        }
-        
-        data.forEach(log => {
-            t.innerHTML += `<tr style="border-bottom:1px solid #333;">
-                <td style="padding:10px;">${new Date(log.timestamp).toLocaleString()}</td>
-                <td style="padding:10px;">${log.action}</td>
-                <td style="padding:10px;">${log.details}</td>
-                <td style="padding:10px; text-align:center;">
-                    <button class="btn btn-red" style="padding:4px 8px; font-size:10px;" onclick="deleteAuditLog('${log.id}')">✖</button>
-                </td>
-            </tr>`;
-        });
-    } catch(e) {
-        console.error("Load audit logs error:", e.message);
-    }
-}
-
-async function deleteAuditLog(id) {
-    if (!confirm('Delete this log entry?')) return;
-    try {
-        await supabaseClient.from('audit_logs').delete().eq('id', id);
-        loadAuditLog(); 
-    } catch(e) { alert('❌ Error: ' + e.message); }
-}
-
-
-
-
-// 📅 EXTEND — works with ANY plan, records payment
-async function extendLicenseV2(licenseId) {
-    var l = allLicenses.find(function(x){ return (x.id === licenseId) || ('trial:' + x.shop_id === licenseId); });
-    if (!l) return;
-
-    var days = parseInt(await prompt('Extend "' + l.shop_name + '" by how many days?\n\n(7 / 30 / 90 / 365)', '30'));
-    if (isNaN(days) || days <= 0) return;
-
-    // Suggest price from the plan
-    var suggestedPrice = 0;
-    try {
-        const { data: pd } = await supabaseClient.from('plans').select('price_monthly, price_yearly').ilike('name', l.plan === 'Trial' ? 'Basic' : l.plan).maybeSingle();
-        if (pd) {
-            if (days >= 365) suggestedPrice = pd.price_yearly || (pd.price_monthly * 12 * 0.8);
-            else suggestedPrice = Math.round(pd.price_monthly * days / 30);
-        }
-    } catch(e) {}
-
-    var amountStr = await prompt('Amount paid (Br):\n(Suggested: ' + suggestedPrice + ' Br for ' + days + ' days)', String(suggestedPrice));
-    var amount = parseFloat(amountStr) || 0;
-    var method = await prompt('Payment method:\n(Telebirr / CBE / Cash / Free)', 'Telebirr');
-    if (method === null) return;
-    if (!await confirm('Extend ' + l.shop_name + ' by ' + days + ' days?\nAmount: ' + amount + ' Br via ' + method)) return;
-
-    try {
-        var newExpiry = new Date(l.expiry_date && new Date(l.expiry_date) > new Date() ? l.expiry_date : new Date());
-        newExpiry.setDate(newExpiry.getDate() + days);
-        var newExpiryStr = newExpiry.toISOString();
-
-        if (l.is_trial) {
-            // Trial shop → generate a real license (converts to paid!)
-            var key = ('SMART-' + (l.plan === 'Trial' ? 'BASIC' : l.plan.toUpperCase()) + '-' + l.shop_id + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
-            await supabaseClient.from('licenses').insert([{
-                shop_name: l.shop_name, shop_id: l.shop_id, plan: 'Basic', key: key,
-                start_date: new Date().toISOString(), expiry_date: newExpiryStr,
-                status: 'active', created_at: new Date().toISOString(),
-                business_type: l.business_type
-            }]);
-            await supabaseClient.from('shops').update({ plan: 'basic' }).eq('shop_id', l.shop_id);
-        } else {
-            await supabaseClient.from('licenses').update({ expiry_date: newExpiryStr }).eq('id', l.id);
-        }
-
-        // Record the payment
-        await supabaseClient.from('payments').insert([{
-            shop_id: l.shop_id, shop_name: l.shop_name, license_id: l.id,
-            action: 'extend', plan_name: l.plan, days: days,
-            amount: amount, payment_method: method, notes: 'Extended ' + days + ' days'
-        }]);
-
-        alert('✅ ' + l.shop_name + ' extended to ' + newExpiry.toLocaleDateString() + '!\nPayment recorded: ' + amount + ' Br (' + method + ')');
-        loadLicenses();
-        loadPaymentHistory();
-        logAction('extend', l.shop_name + ' +' + days + 'd (' + amount + ' Br ' + method + ')');
-    } catch(e) { alert('❌ ' + e.message); }
-}
-
-// 🔄 CHANGE PLAN — upgrade/downgrade instantly
-async function changePlanV2(licenseId) {
-    var l = allLicenses.find(function(x){ return (x.id === licenseId) || ('trial:' + x.shop_id === licenseId); });
-    if (!l) return;
-
-    // Load available plans of the same business type
-    var plans = [];
-    try {
-        const { data } = await supabaseClient.from('plans').select('name, business_type, price_monthly').eq('active', true).eq('business_type', l.business_type).order('display_order');
-        plans = data || [];
-    } catch(e) {}
-    if (!plans.length) { alert('No plans found for this business type.'); return; }
-
-    var list = plans.map(function(p, i){ return (i+1) + '. ' + p.name + ' (' + p.price_monthly + ' Br/mo)'; }).join('\n');
-    var choice = parseInt(await prompt('Change ' + l.shop_name + ' to which plan?\n\n' + list));
-    if (isNaN(choice) || choice < 1 || choice > plans.length) return;
-    var newPlan = plans[choice-1];
-
-    if (!await confirm('Change ' + l.shop_name + ' to ' + newPlan.name + '?')) return;
-
-    try {
-        if (l.is_trial) {
-            var key = ('SMART-' + newPlan.name.toUpperCase() + '-' + l.shop_id + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
-            await supabaseClient.from('licenses').insert([{
-                shop_name: l.shop_name, shop_id: l.shop_id, plan: newPlan.name, key: key,
-                start_date: new Date().toISOString(),
-                expiry_date: new Date(Date.now() + 30*86400000).toISOString(),
-                status: 'active', created_at: new Date().toISOString(),
-                business_type: l.business_type
-            }]);
-            await supabaseClient.from('shops').update({ plan: newPlan.name }).eq('shop_id', l.shop_id);
-        } else {
-            await supabaseClient.from('licenses').update({ plan: newPlan.name }).eq('id', l.id);
-            await supabaseClient.from('shops').update({ plan: newPlan.name }).eq('shop_id', l.shop_id);
-        }
-        await supabaseClient.from('payments').insert([{
-            shop_id: l.shop_id, shop_name: l.shop_name, license_id: l.id,
-            action: 'plan_change', plan_name: newPlan.name, days: 0,
-            amount: 0, payment_method: 'plan_change', notes: 'Plan → ' + newPlan.name
-        }]);
-        alert('✅ ' + l.shop_name + ' is now on ' + newPlan.name + '!');
-        loadLicenses(); loadPaymentHistory();
-        logAction('plan_change', l.shop_name + ' → ' + newPlan.name);
-    } catch(e) { alert('❌ ' + e.message); }
-}
-
-// 💰 PAYMENT HISTORY
-async function loadPaymentHistory() {
-    var el = document.getElementById('paymentHistoryList');
-    if (!el) return;
-    el.innerHTML = '<p style="color:#94a3b8;">Loading…</p>';
-    try {
-        const { data, error } = await supabaseClient.from('payments').select('*').order('created_at', { ascending: false }).limit(50);
-        if (error) throw error;
-        if (!data || data.length === 0) {
-            el.innerHTML = '<p style="color:#94a3b8;">No payments recorded yet.</p>';
-            return;
-        }
-        var total = 0;
-        var esc = function(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
-        var html = data.map(function(p) {
-            total += Number(p.amount || 0);
-            return '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;padding:10px 0;border-bottom:1px solid #444;font-size:13px;">' +
-                '<span>🏪 ' + esc(p.shop_name) + ' · ' + (p.action === 'extend' ? '📅 +' + (p.days || 0) + 'd' : '🔄 ' + (p.plan_name || '')) + '</span>' +
-                '<span><b style="color:#4caf50;">' + (p.amount || 0) + ' Br</b> · ' + (p.payment_method || '') + ' · ' + new Date(p.created_at).toLocaleDateString() + '</span></div>';
-        }).join('');
-        html += '<div style="text-align:right;font-size:17px;font-weight:bold;color:#4caf50;margin-top:10px;">💰 Total: ' + total.toFixed(2) + ' Br</div>';
-        el.innerHTML = html;
-    } catch(e) {
-        el.innerHTML = '<p style="color:#f44336;">❌ Load failed: ' + e.message + '</p>';
-    }
-}
-// Revenue summary (feeds CEO dashboard)
-
-async function loadShopSnapshot() {
-    const sid = document.getElementById('snapshotShop').value;
-    if (!sid) return alert('Select a shop!');
-    
-    const res = document.getElementById('snapshotResult');
-    res.innerHTML = '<div class="loading">Loading snapshot...</div>';
-    
-    try {
-        // Fetch Shop
-        const { data: shopData } = await supabaseClient.from('shops').select('*').eq('shop_id', sid).single();
-        if (!shopData) { res.innerHTML = '<span style="color:#ef4444">Shop not found.</span>'; return; }
-
-        // Fetch Counts (Supabase allows counting)
-        const { count: prodCount } = await supabaseClient.from('products').select('*', { count: 'exact', head: true }).eq('shop_id', sid);
-        const { count: empCount } = await supabaseClient.from('employees').select('*', { count: 'exact', head: true }).eq('shop_id', sid);
-        const { count: salesCount } = await supabaseClient.from('sales').select('*', { count: 'exact', head: true }).eq('shop_id', sid);
-        
-        // Fetch Sales Total & Expenses
-        const { data: salesData } = await supabaseClient.from('sales').select('total, time').eq('shop_id', sid);
-        const { data: expData } = await supabaseClient.from('expenses').select('amount').eq('shop_id', sid);
-        
-        let rev = 0;
-        let lastSaleDate = 'No sales yet';
-        if (salesData) salesData.forEach(s => {
-            rev += s.total || 0;
-            if (s.time) lastSaleDate = new Date(s.time).toLocaleDateString();
-        });
-
-        let exp = 0;
-        if (expData) expData.forEach(e => exp += e.amount || 0);
-        let netProfit = rev - exp;
-
-        const { data: licData } = await supabaseClient.from('licenses').select('*').eq('shop_id', sid).limit(1).single();
-        let licStatus = 'No License', licColor = '#64748b';
-        if (licData) {
-            const days = Math.ceil((new Date(licData.expiry_date) - new Date()) / 86400000);
-            if (days < 0) { licStatus = 'EXPIRED'; licColor = '#ef4444'; }
-            else if (days <= 5) { licStatus = 'Expiring in ' + days + 'd'; licColor = '#f59e0b'; }
-            else { licStatus = 'Active'; licColor = '#10b981'; }
-        }
-
-        res.innerHTML = `
-            <div style="text-align:center; margin-bottom:15px;">
-                <h3 style="margin:0;">${shopData.name || 'Unknown Shop'}</h3>
-                <p style="margin:5px 0; font-size:13px; opacity:0.8;">🔑 License: <b style="color:${licColor}">${licStatus}</b></p>
-            </div>
-            <table style="width:100%; min-width:unset !important; max-width:400px; margin:0 auto; border-collapse:collapse; font-size:14px;">
-                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Total Products</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold;">${prodCount || 0}</td></tr>
-                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Staff Members</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold;">${empCount || 0}</td></tr>
-                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Total Sales Count</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold;">${salesCount || 0}</td></tr>
-                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Last Sale Date</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold;">${lastSaleDate}</td></tr>
-                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Total Revenue</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold; color:#10b981;">Br ${rev.toFixed(2)}</td></tr>
-                <tr><td style="padding:8px; border:1px solid #333; font-weight:600;">Total Expenses</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:bold; color:#ef4444;">Br ${exp.toFixed(2)}</td></tr>
-                <tr><td style="padding:8px; border:1px solid #333; font-weight:700; background:rgba(16,185,129,0.1);">Net Profit</td><td style="padding:8px; border:1px solid #333; text-align:right; font-weight:800; background:rgba(16,185,129,0.1);">Br ${netProfit.toFixed(2)}</td></tr>
-            </table>
-        `;
-    } catch(e) {
-        res.innerHTML = '<span style="color:#ef4444">Error: ' + e.message + '</span>';
-    }
-}
-
-async function backupData() {
-    try {
-        const { data: lics } = await supabaseClient.from('licenses').select('*');
-        const { data: shops } = await supabaseClient.from('shops').select('*');
-        const data = { licenses: lics || [], shops: shops || [] };
-        const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = 'smartshop_backup_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
-        URL.revokeObjectURL(a.href);
-        logAction('backup','Full backup downloaded');
-        alert('✅ Backup downloaded.');
-    } catch(e) { alert('❌ Backup failed: ' + e.message); }
-}
-
-function restoreData(input) {
-    const file = input.files[0]; if (!file) return;
-    if (!confirm('⚠️ Restore will overwrite existing licences and shops. Continue?')) return;
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        try {
-            const data = JSON.parse(e.target.result);
-            if (data.licenses) for (const l of data.licenses) { const {id, ...rest}=l; await supabaseClient.from('licenses').upsert(rest); }
-            if (data.shops) for (const s of data.shops) { const {id, ...rest}=s; await supabaseClient.from('shops').upsert(rest); }
-            alert('✅ Restore complete!'); loadLicenses(); loadShops();
-            logAction('restore','Data restored from file');
-        } catch(err) { alert('❌ Restore failed: '+err.message); }
-    };
-    reader.readAsText(file);
-}
-
-async function cleanupShopData() {
-    var sid = prompt("Enter the EXACT Shop ID you want to wipe completely:");
-    if (!sid) return;
-    if (!confirm('⚠️ DELETE ALL DATA for shop ID: "' + sid + '"?')) return;
-    var finalConfirm = prompt('⚠️ FINAL WARNING: Type the Shop ID again to confirm deletion:');
-    if (finalConfirm !== sid) return alert('Deletion cancelled. IDs did not match.');
-
-    try {
-        alert("Starting deep clean... Please wait.");
-        var cols = ['products', 'sales', 'losses', 'expenses', 'employees', 'suppliers', 'purchase_orders', 'loyalty', 'loans', 'bank_accounts', 'bank_transactions', 'notes', 'settings', 'recipes', 'orders'];
-        for (const col of cols) {
-            await supabaseClient.from(col).delete().eq('shop_id', sid);
-        }
-        await supabaseClient.from('shops').delete().eq('shop_id', sid);
-        await supabaseClient.from('licenses').delete().eq('shop_id', sid);
-        
-        alert('✅ ALL DATA for shop ' + sid + ' has been permanently deleted.');
-        loadShops();
-        logAction('cleanup','Deep cleaned all data for shop ' + sid);
-    } catch(e) { alert('❌ Error during cleanup: ' + e.message); }
-}
-
-// ===== ENTERPRISE PRICING =====
-const ENTERPRISE_PRICES = {
-    "1":{"1":5000,"2":5000,"3":5000,"5":5000,"10":5000,"0":5000},
-    "2":{"1":6000,"2":8000,"3":10000,"5":14000,"10":20000,"0":25000},
-    "3":{"1":8000,"2":11000,"3":14000,"5":20000,"10":28000,"0":35000},
-    "5":{"1":12000,"2":18000,"3":24000,"5":30000,"10":40000,"0":50000},
-    "10":{"1":20000,"2":35000,"3":45000,"5":60000,"10":80000,"0":100000},
-    "0":{"1":30000,"2":50000,"3":70000,"5":100000,"10":150000,"0":200000}
-};
-
-function calculateEnterprisePrice() {
-    const s = document.getElementById('entShops').value;
-    const c = document.getElementById('entCashiers').value;
-    const m = ENTERPRISE_PRICES[s]?.[c] || 5000;
-    document.getElementById('enterprisePriceDisplay').innerHTML = 'Monthly price: <b>'+m.toLocaleString()+' Br</b> (Yearly: '+(m*10).toLocaleString()+' Br)';
-}
-function onPlanChange() {
-    // Enterprise pricing now lives in the Plan Manager — the old
-    // shops/cashiers calculator is retired. Simple pass-through.
-    var sel = document.getElementById('planType');
-    var cfg = document.getElementById('enterpriseConfig');
-    if (cfg) cfg.style.display = 'none';   // always hidden — prices are Master-managed
-}
-  function showBulkGenerate() { document.getElementById('bulkGenerateSection').style.display='block'; }
-
-// ===== KEY GENERATION =====
-async function isShopIdUnique(shopId) {
-    const { data } = await supabaseClient.from('licenses').select('shop_id').eq('shop_id', shopId);
-    return !data || data.length === 0;
-}
-async function generateUniqueShopId(name) {
-    let base = name.toLowerCase().replace(/[^a-z0-9]/g,'').substring(0,20)||'shop'+Date.now().toString(36);
-    let sid = base, counter = 1;
-    while (!(await isShopIdUnique(sid))) { sid = base+counter; counter++; if (counter>100) throw new Error('Cannot generate unique ID'); }
-    return sid;
-}
-async function generateLicense() {
-    const shop = document.getElementById('shopName').value.trim();
-    const plan = document.getElementById('planType').value;
-    const duration = parseInt(document.getElementById('duration').value);
-    const startVal = document.getElementById('startDate').value;
-    const prefix = (document.getElementById('keyPrefix').value.trim()||'SMART').toUpperCase();
-    if (!shop) return alert('Enter shop name!');
-
-    const shopId = await generateUniqueShopId(shop);
-    const key = (prefix+'-'+plan.toUpperCase()+'-'+shopId+'-'+Math.random().toString(36).substr(2,4)).toUpperCase();
-    const now = startVal ? new Date(startVal) : new Date();
-    const expiry = new Date(now.getTime() + duration*86400000);
-    const data = { 
-        shop_name: shop, shop_id: shopId, plan, key, 
-        start_date: now.toISOString(), expiry_date: expiry.toISOString(), status:'active', created_at: new Date().toISOString() 
-    };
-    // ═══ MASTER-CONTROLLED LIMITS — read from the Plan Manager (plans table) ═══
-    // Plan names in the dropdown now match the plans table exactly.
-    // Everything (limits, prices, business type) comes from ONE source of truth.
-    let planDef = null;
-    try {
-        const r = await supabaseClient.from('plans').select('*').ilike('name', plan).limit(1);
-        if (r.data && r.data[0]) planDef = r.data[0];
-    } catch(e) { console.warn('Plan definition lookup failed:', e.message); }
-
-    if (planDef) {
-        data.max_shops = planDef.max_branches || 1;
-        data.max_cashiers_per_shop = planDef.max_cashiers || 999;
-        data.max_products = planDef.max_products || 999999;
-        data.max_tables = planDef.max_tables || 0;
-        data.max_menu_items = planDef.max_menu_items || 0;
-        data.has_stock_mgmt = planDef.has_stock_mgmt !== false;
-        data.price_monthly = planDef.price_monthly || 0;
-        data.price_yearly = planDef.price_yearly || 0;
-        data.business_type = planDef.business_type || 'retail';
-        data.features = planDef.features || [];
-    } else {
-        // Fallback (plan not found in table — shouldn't happen after seeding)
-        data.max_shops = 1;
-        data.max_cashiers_per_shop = 2;
-        data.max_products = 200;
-        data.business_type = 'retail';
-    }
-    await supabaseClient.from('licenses').insert([data]);
-        await supabaseClient.from('shops').upsert({ name: shop, shop_id: shopId, plan, active: true, created_at: now.toISOString() }, { onConflict: 'shop_id' });	logAction('generate',`Generated key for ${shop} (${key})`);
-    
-    let html = '<b>Licence Key:</b> <span style="color:#4caf50;font-size:18px;">'+key+'</span><br>';
-    html += '<b>Shop:</b> '+shop+'<br><b>Shop ID:</b> '+shopId+'<br><b>Plan:</b> '+plan;
-    html += '<br><b>Start:</b> '+now.toLocaleDateString()+'<br><b>Expires:</b> '+expiry.toLocaleDateString();
-    document.getElementById('generatedKey').style.display='block';
-    document.getElementById('generatedKey').innerHTML = html;
-    document.getElementById('shopName').value = '';
-    loadShops(); populateSnapshotDropdown(); loadPaymentHistory();}
-  
-
-async function bulkGenerate() {
-    const names = document.getElementById('bulkShopNames').value.split('\n').filter(n=>n.trim());
-    if (!names.length) return alert('Enter at least one shop name!');
-    const plan = document.getElementById('planType').value, duration = parseInt(document.getElementById('duration').value);
-    const startVal = document.getElementById('startDate').value, prefix = (document.getElementById('keyPrefix').value.trim()||'SMART').toUpperCase();
-    
-    for (const shop of names) {
-        const shopId = await generateUniqueShopId(shop);
-        const key = (prefix+'-'+plan.toUpperCase()+'-'+shopId+'-'+Math.random().toString(36).substr(2,4)).toUpperCase();
-        const now = startVal ? new Date(startVal) : new Date();
-        const expiry = new Date(now.getTime() + duration*86400000);
-        const data = { 
-            shop_name: shop, shop_id: shopId, plan, key, 
-            start_date: now.toISOString(), expiry_date: expiry.toISOString(), status:'active', created_at: new Date().toISOString() 
-        };
-        if (plan==='enterprise') {
-            const s = document.getElementById('entShops').value, c = document.getElementById('entCashiers').value;
-            data.max_shops = s==='0'?999:parseInt(s); data.max_cashiers_per_shop = c==='0'?999:parseInt(c);
-            data.max_products = 999999; data.price_monthly = ENTERPRISE_PRICES[s]?.[c]||5000; data.price_yearly = data.price_monthly*10;
-        } else {
-            data.max_shops = 1; data.max_cashiers_per_shop = plan==='basic'?2:(plan==='standard'?5:10);
-            data.max_products = plan==='basic'?200:(plan==='standard'?1000:10000);
-        }
-        await supabaseClient.from('licenses').insert([data]);
-        await supabaseClient.from('shops').upsert({ name: shop, shop_id: shopId, plan, active: true, created_at: now.toISOString() }, { onConflict: 'shop_id' });    }
-    alert('✅ Generated '+names.length+' licence(s)!');
-    document.getElementById('bulkShopNames').value = ''; document.getElementById('bulkGenerateSection').style.display='none';
-    loadLicenses(); loadShops(); populateSnapshotDropdown(); loadRevenueSummary();
-    logAction('bulk_generate',`Generated ${names.length} licences`);
-}
-
-
-
-async function revokeLicense(licenseId) {
-    if (!confirm('⚠️ Revoke this license? The shop will be locked out immediately.')) return;
-    try {
-        await supabaseClient.from('licenses').update({ expiry_date: new Date().toISOString() }).eq('id', licenseId);
-        alert('⛔ License revoked. Shop is now locked out.');
-        loadLicenses();
-        logAction('revoke', 'Revoked license ' + licenseId);
-    } catch (e) { alert('❌ Error: ' + e.message); }
-}
-
-
-
-
-async function bulkRevoke() {
-    const ids = getSelectedLicenseIds(); if (!ids.length) return alert('Select at least one licence.');
-    if (!confirm(`⚠️ Revoke ${ids.length} licence(s)?`)) return;
-    for (const id of ids) await supabaseClient.from('licenses').update({expiry_date:new Date().toISOString()}).eq('id', id);
-    alert('🔒 Revoked '+ids.length+' licence(s).'); loadLicenses(); logAction('bulk_revoke',`Revoked ${ids.length} licences`);
-}
-
-function exportCSV() {
-    const filtered = getFilteredLicenses();
-    let csv = '\uFEFFShop Name,Shop ID,Plan,Key,Expiry Date,Status\n';
-    filtered.forEach(l=>{
-        const days = Math.ceil((new Date(l.expiry_date)-new Date())/86400000);
-        const status = days>5?'Active':days>0?'Expiring':'Expired';
-        csv += `"${l.shop_name}","${l.shop_id||''}","${l.plan}","${l.key}","${l.expiry_date}","${status}"\n`;
-    });
-    const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
-    const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='licences.csv'; a.click();
-    URL.revokeObjectURL(url); logAction('export_csv','Exported licence list');
-}
-
-async function deleteLicense(id) {
-    const licence = allLicenses.find(l => l.id === id);
-    if (!licence) return alert('Licence not found.');
-    if (!confirm(`⚠️ PERMANENTLY DELETE licence for ${licence.shop_name}?`)) return;
-    try {
-        await supabaseClient.from('licenses').delete().eq('id', id);
-        await supabaseClient.from('shops').delete().eq('shop_id', licence.shop_id);
-        alert('✅ License and Shop permanently deleted.');
-        logAction('delete_license', `Deleted licence for ${licence.shop_name}`);
-        loadLicenses(); loadShops();
-    } catch (e) { alert('❌ Deletion failed: ' + e.message); }
-}
-
 // ══════════════════════════════════════════════════════════════
-//  🏪 SHOPS COMMAND CENTER v3 — readable colors, horizontal actions
+//  🏪 SECTION 4: SHOPS COMMAND CENTER (the one true table)
 // ══════════════════════════════════════════════════════════════
 var _shopLicenses = {};
+var allLicenses = [];
 
 async function loadShops() {
     var container = document.getElementById('shopsTable');
     if (!container) return;
     container.innerHTML = '<tr><td colspan="6" style="padding:20px;text-align:center;color:#94a3b8;">⏳ Loading shops…</td></tr>';
 
-    const { data: shops, error } = await supabaseClient.from('shops').select('*').order('created_at', { ascending: false });
-    if (error) { container.innerHTML = '<tr><td colspan="6" style="padding:20px;color:#f44336;">❌ ' + error.message + '</td></tr>'; return; }
-
-    const { data: lics } = await supabaseClient.from('licenses').select('*').order('created_at', { ascending: false });
-    _shopLicenses = {};
-    (lics || []).forEach(function(l) {
-        if (!_shopLicenses[l.shop_id] || new Date(l.created_at) > new Date(_shopLicenses[l.shop_id].created_at)) {
-            _shopLicenses[l.shop_id] = l;
-        }
-    });
-
-    var typeIcon = { retail: '🛒', cafe: '☕', hotel: '🏨' };
-    var html = '<tr style="background:#1e40af;color:#fff;position:sticky;top:0;">' +
-        '<th style="padding:14px 10px;font-size:14px;text-align:left;">🏪 Shop</th>' +
-        '<th style="padding:14px 10px;font-size:14px;">Type</th>' +
-        '<th style="padding:14px 10px;font-size:14px;">Plan</th>' +
-        '<th style="padding:14px 10px;font-size:14px;">🔑 License Key</th>' +
-        '<th style="padding:14px 10px;font-size:14px;">⏰ Expires</th>' +
-        '<th style="padding:14px 10px;font-size:14px;">' +
-            '<button class="btn btn-green" style="padding:8px 16px;font-size:12px;margin:0;cursor:pointer;" onclick="loadShops();loadPaymentHistory();">🔄 Refresh</button>' +
-        '</th></tr>';
-
-    if (!shops || shops.length === 0) {
-        html += '<tr><td colspan="6" style="padding:20px;text-align:center;color:#94a3b8;">No shops registered yet.</td></tr>';
-    } else {
-        shops.forEach(function(shop, idx) {
-            var lic = _shopLicenses[shop.shop_id];
-            var bizType = shop.business_type || (lic ? lic.business_type : 'retail') || 'retail';
-            var plan = lic ? lic.plan : (shop.plan || 'trial');
-            var key = lic ? lic.key : '—';
-            var expiry = lic ? new Date(lic.expiry_date) : (shop.trial_expires ? new Date(shop.trial_expires) : null);
-
-            var days = expiry ? Math.ceil((expiry - new Date()) / 86400000) : null;
-            var stBg, stText;
-            if (days === null)      { stBg = '#374151'; stText = '—'; }
-            else if (days < 0)      { stBg = '#7f1d1d'; stText = '❌ EXPIRED ' + Math.abs(days) + 'd ago'; }
-            else if (days <= 7)     { stBg = '#78350f'; stText = '⚠️ ' + days + ' days left'; }
-            else                    { stBg = '#14532d'; stText = '✅ ' + days + ' days'; }
-
-            // Row colors: alternating soft blue/white — EASY ON THE EYES
-            var rowBg = (idx % 2 === 0) ? '#1e293b' : '#243244';
-            var trialBadge = (plan === 'trial') ? ' <span style="background:#f59e0b;color:#000;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;">TRIAL</span>' : '';
-            var blockedBadge = shop.blocked ? ' <span style="background:#ef4444;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;">BLOCKED</span>' : '';
-
-            html += '<tr style="background:' + rowBg + ';border-bottom:2px solid #0f172a;">' +
-
-                // SHOP — big, readable
-                '<td style="padding:14px 10px;min-width:170px;">' +
-                    '<b style="font-size:16px;color:#fff;">' + (shop.name || 'Unknown') + trialBadge + blockedBadge + '</b>' +
-                    '<br><span style="color:#93c5fd;font-size:13px;">🆔 ' + shop.shop_id + '</span>' +
-                    '<br><span style="color:#cbd5e1;font-size:12px;">📧 ' + (shop.owner_email || '—') + '</span>' +
-                    '<br><span style="color:#cbd5e1;font-size:12px;">📱 ' + (shop.phone || '—') + '</span>' +
-                '</td>' +
-
-                // TYPE — bold badge style
-                '<td style="padding:14px 10px;text-align:center;">' +
-                    '<span style="background:#1e3a8a;color:#fff;font-size:13px;font-weight:700;padding:6px 10px;border-radius:8px;white-space:nowrap;">' + (typeIcon[bizType] || '🛒') + ' ' + bizType + '</span>' +
-                '</td>' +
-
-                // PLAN — big badge
-                '<td style="padding:14px 10px;text-align:center;">' +
-                    '<span style="background:#312e81;color:#fff;font-size:14px;font-weight:700;padding:6px 12px;border-radius:8px;">' + plan + '</span>' +
-                '</td>' +
-
-                // KEY — green, readable, monospace
-                '<td style="padding:14px 10px;max-width:150px;">' +
-                    '<code style="font-size:12px;color:#4ade80;word-break:break-all;line-height:1.6;background:#0f172a;padding:6px 8px;border-radius:6px;display:inline-block;">' + key + '</code>' +
-                '</td>' +
-
-                // EXPIRY — colored status box
-                '<td style="padding:14px 10px;text-align:center;">' +
-                    '<div style="background:' + stBg + ';border-radius:10px;padding:10px 8px;">' +
-                        '<b style="font-size:14px;color:#fff;">' + stText + '</b>' +
-                        '<br><span style="font-size:12px;color:#e2e8f0;">' + (expiry ? expiry.toLocaleDateString() : '—') + '</span>' +
-                    '</div>' +
-                '</td>' +
-
-                               // ACTIONS — HORIZONTAL row with license delete
-                '<td style="padding:14px 10px;">' +
-                    '<div style="display:flex;gap:5px;justify-content:center;flex-wrap:nowrap;">' +
-                        '<button class="btn btn-green"  style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:50px;" title="Extend days"    onclick="extendShop(\'' + shop.shop_id + '\')">📅</button>' +
-                        '<button class="btn btn-blue"   style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:50px;" title="Change plan"    onclick="changeShopPlan(\'' + shop.shop_id + '\')">🔄</button>' +
-                        '<button class="btn btn-yellow" style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:50px;" title="Generate key"   onclick="generateLicenseFor(\'' + shop.shop_id + '\')">🔑</button>' +
-                        '<button class="btn btn-red"    style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:50px;" title="Block / Unblock" onclick="masterBlockShop(\'' + shop.shop_id + '\',' + !shop.blocked + ')">' + (shop.blocked ? '🔓' : '⛔') + '</button>' +
-                        (lic ? '<button class="btn" style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:50px;background:#7f1d1d;color:#fff;" title="Delete license key" onclick="deleteShopLicense(\'' + shop.shop_id + '\')">🗑️</button>' : '') +
-                    '</div>' +
-                '</td></tr>';
+    try {
+        const { data: shops, error } = await supabaseClient.from('shops').select('*').order('created_at', { ascending: false });
+        if (error) throw error;
+        const { data: lics } = await supabaseClient.from('licenses').select('*').order('created_at', { ascending: false });
+        _shopLicenses = {};
+        (lics || []).forEach(function(l) {
+            if (!_shopLicenses[l.shop_id] || new Date(l.created_at) > new Date(_shopLicenses[l.shop_id].created_at)) {
+                _shopLicenses[l.shop_id] = l;
+            }
         });
+        // Rebuild allLicenses for revenue summary
+        allLicenses = [];
+        (lics || []).forEach(function(l) {
+            var shop = (shops || []).find(function(s){ return s.shop_id === l.shop_id; });
+            allLicenses.push({ id: l.id, shop_name: l.shop_name || (shop ? shop.name : l.shop_id), shop_id: l.shop_id,
+                key: l.key, plan: l.plan, expiry_date: l.expiry_date, is_trial: false });
+        });
+        (shops || []).forEach(function(s) {
+            if (s.plan === 'trial' && !allLicenses.find(function(l){ return l.shop_id === s.shop_id; })) {
+                allLicenses.push({ id: null, shop_name: s.name, shop_id: s.shop_id, key: '(trial)',
+                    plan: 'Trial', expiry_date: s.trial_expires, is_trial: true });
+            }
+        });
+
+        var typeIcon = { retail: '🛒', cafe: '☕', hotel: '🏨' };
+        var html = '<tr style="background:#1e40af;color:#fff;position:sticky;top:0;">' +
+            '<th style="padding:14px 10px;font-size:14px;text-align:left;">🏪 Shop</th>' +
+            '<th style="padding:14px 10px;font-size:14px;">Type</th>' +
+            '<th style="padding:14px 10px;font-size:14px;">Plan</th>' +
+            '<th style="padding:14px 10px;font-size:14px;">🔑 License Key</th>' +
+            '<th style="padding:14px 10px;font-size:14px;">⏰ Expires</th>' +
+            '<th style="padding:14px 10px;font-size:14px;"><button class="btn btn-green" style="padding:8px 16px;font-size:12px;margin:0;cursor:pointer;" onclick="loadShops();loadPaymentHistory();loadRevenueSummary();">🔄 Refresh</button></th></tr>';
+
+        if (!shops || shops.length === 0) {
+            html += '<tr><td colspan="6" style="padding:20px;text-align:center;color:#94a3b8;">No shops registered yet.</td></tr>';
+        } else {
+            shops.forEach(function(shop, idx) {
+                var lic = _shopLicenses[shop.shop_id];
+                var bizType = shop.business_type || (lic ? lic.business_type : 'retail') || 'retail';
+                var plan = lic ? lic.plan : (shop.plan || 'trial');
+                var key = lic ? lic.key : '—';
+                var expiry = lic ? new Date(lic.expiry_date) : (shop.trial_expires ? new Date(shop.trial_expires) : null);
+
+                var days = expiry ? Math.ceil((expiry - new Date()) / 86400000) : null;
+                var stBg, stText;
+                if (days === null)      { stBg = '#374151'; stText = '—'; }
+                else if (days < 0)      { stBg = '#7f1d1d'; stText = '❌ EXPIRED ' + Math.abs(days) + 'd'; }
+                else if (days <= 7)     { stBg = '#78350f'; stText = '⚠️ ' + days + 'd left'; }
+                else                    { stBg = '#14532d'; stText = '✅ ' + days + 'd'; }
+
+                var rowBg = (idx % 2 === 0) ? '#1e293b' : '#243244';
+                var trialBadge = (plan === 'trial') ? ' <span style="background:#f59e0b;color:#000;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;">TRIAL</span>' : '';
+                var blockedBadge = shop.blocked ? ' <span style="background:#ef4444;color:#fff;font-size:10px;font-weight:800;padding:2px 8px;border-radius:10px;">BLOCKED</span>' : '';
+
+                html += '<tr style="background:' + rowBg + ';border-bottom:2px solid #0f172a;">' +
+                    '<td style="padding:14px 10px;min-width:170px;">' +
+                        '<b style="font-size:16px;color:#fff;">' + (shop.name || 'Unknown') + trialBadge + blockedBadge + '</b>' +
+                        '<br><span style="color:#93c5fd;font-size:13px;">🆔 ' + shop.shop_id + '</span>' +
+                        '<br><span style="color:#cbd5e1;font-size:12px;">📧 ' + (shop.owner_email || '—') + '</span>' +
+                        '<br><span style="color:#cbd5e1;font-size:12px;">📱 ' + (shop.phone || '—') + '</span></td>' +
+                    '<td style="padding:14px 10px;text-align:center;"><span style="background:#1e3a8a;color:#fff;font-size:13px;font-weight:700;padding:6px 10px;border-radius:8px;white-space:nowrap;">' + (typeIcon[bizType] || '🛒') + ' ' + bizType + '</span></td>' +
+                    '<td style="padding:14px 10px;text-align:center;"><span style="background:#312e81;color:#fff;font-size:14px;font-weight:700;padding:6px 12px;border-radius:8px;">' + plan + '</span></td>' +
+                    '<td style="padding:14px 10px;max-width:150px;"><code style="font-size:12px;color:#4ade80;word-break:break-all;line-height:1.6;background:#0f172a;padding:6px 8px;border-radius:6px;display:inline-block;">' + key + '</code></td>' +
+                    '<td style="padding:14px 10px;text-align:center;"><div style="background:' + stBg + ';border-radius:10px;padding:10px 8px;">' +
+                        '<b style="font-size:14px;color:#fff;">' + stText + '</b>' +
+                        '<br><span style="font-size:12px;color:#e2e8f0;">' + (expiry ? expiry.toLocaleDateString() : '—') + '</span></div></td>' +
+                    '<td style="padding:14px 10px;">' +
+                        '<div style="display:flex;gap:5px;justify-content:center;flex-wrap:nowrap;">' +
+                            '<button class="btn btn-green"  style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:50px;" title="Extend days" onclick="extendShop(\'' + shop.shop_id + '\')">📅</button>' +
+                            '<button class="btn btn-blue"   style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:50px;" title="Change plan" onclick="changeShopPlan(\'' + shop.shop_id + '\')">🔄</button>' +
+                            '<button class="btn btn-yellow" style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:50px;" title="Generate key" onclick="generateLicenseFor(\'' + shop.shop_id + '\')">🔑</button>' +
+                            '<button class="btn btn-red"    style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:50px;" title="Block/Unblock" onclick="masterBlockShop(\'' + shop.shop_id + '\',' + !shop.blocked + ')">' + (shop.blocked ? '🔓' : '⛔') + '</button>' +
+                            (lic ? '<button class="btn" style="padding:10px 14px;font-size:15px;margin:0;flex:1;min-width:50px;background:#7f1d1d;color:#fff;" title="Delete license" onclick="deleteShopLicense(\'' + shop.shop_id + '\')">🗑️</button>' : '') +
+                        '</div></td></tr>';
+            });
+        }
+        container.innerHTML = html;
+        loadRevenueSummary();
+    } catch(e) {
+        container.innerHTML = '<tr><td colspan="6" style="padding:20px;color:#f44336;">❌ ' + e.message + '</td></tr>';
     }
-    container.innerHTML = html;
 }
 
-// ═══ 📅 EXTEND SHOP — dropdown days + dropdown payment method ═══
+async function getShopRow(shopId) {
+    try {
+        const { data } = await supabaseClient.from('shops').select('*').eq('shop_id', shopId).maybeSingle();
+        return data;
+    } catch(e) { return null; }
+}
+
+// ─── Shop Actions ───
 async function extendShop(shopId) {
     var shop = await getShopRow(shopId);
     var lic = _shopLicenses[shopId];
     var shopName = shop ? shop.name : shopId;
 
-    var days = parseInt(await prompt('Extend "' + shopName + '" — select duration:', '30', ['7|📅 7 days', '30|📅 30 days (1 month)', '90|📅 90 days (3 months)', '180|📅 180 days (6 months)', '365|📅 365 days (1 year)']));
+    var days = parseInt(await prompt('Extend "' + shopName + '" — select duration:', '30', ['7|📅 7 days','30|📅 30 days (1 month)','90|📅 90 days (3 months)','180|📅 180 days (6 months)','365|📅 365 days (1 year)']));
     if (!days) return;
 
     var suggested = 0;
@@ -976,7 +613,7 @@ async function extendShop(shopId) {
     if (amountStr === null || amountStr === undefined) return;
     var amount = parseFloat(amountStr) || 0;
 
-    var method = await prompt('Payment method for ' + amount + ' Br:', 'Telebirr', ['Telebirr|📱 Telebirr', 'CBE|🏦 CBE Birr', 'Cash|💵 Cash', 'Bank|🏛️ Bank Transfer', 'Free|🎁 Free / Promotion']);
+    var method = await prompt('Payment method for ' + amount + ' Br:', 'Telebirr', ['Telebirr|📱 Telebirr','CBE|🏦 CBE Birr','Cash|💵 Cash','Bank|🏛️ Bank Transfer','Free|🎁 Free / Promotion']);
     if (!method) return;
 
     var ok = await confirm('✅ Extend "' + shopName + '" by ' + days + ' days?\n\n💰 Amount: ' + amount + ' Br\n💳 Method: ' + method);
@@ -1013,7 +650,6 @@ async function extendShop(shopId) {
     } catch(e) { alert('❌ ' + e.message); }
 }
 
-// ═══ 🔄 CHANGE PLAN — full dropdown, no typing! ═══
 async function changeShopPlan(shopId) {
     var shop = await getShopRow(shopId);
     var shopName = shop ? shop.name : shopId;
@@ -1049,21 +685,18 @@ async function changeShopPlan(shopId) {
             }]);
         }
         await supabaseClient.from('shops').update({ plan: np.name, business_type: np.business_type }).eq('shop_id', shopId);
-
         await supabaseClient.from('payments').insert([{
             shop_id: shopId, shop_name: shopName,
             action: 'plan_change', plan_name: np.name, days: 0,
             amount: 0, payment_method: 'plan_change', notes: '→ ' + np.name,
             created_at: new Date().toISOString()
         }]);
-
         alert('✅ ' + shopName + ' is now on ' + np.name + ' (' + np.business_type + ')!');
         loadShops(); loadPaymentHistory();
         logAction('plan_change', shopId + ' → ' + np.name);
     } catch(e) { alert('❌ ' + e.message); }
 }
 
-// ═══ 🔑 GENERATE KEY for known shop — dropdown plan + duration ═══
 async function generateLicenseFor(shopId) {
     var shop = await getShopRow(shopId);
     var shopName = shop ? shop.name : shopId;
@@ -1081,7 +714,7 @@ async function generateLicenseFor(shopId) {
     var np = plans.find(function(p){ return p.name === planName; });
     if (!np) return;
 
-    // 🏢 ENTERPRISE: custom branches × cashiers with computed price!
+    // 🏢 ENTERPRISE custom configurator
     var maxShops = 1, maxCashiers = 999, price = np.price_monthly || 0;
     if ((np.name || '').toLowerCase().indexOf('enterprise') !== -1) {
         var branches = parseInt(await prompt('🏢 Number of branches:', '2', ['1|1 shop','2|2 shops','3|3 shops','5|5 shops','7|7 shops','10|10 shops','999|♾️ Unlimited shops']));
@@ -1097,7 +730,7 @@ async function generateLicenseFor(shopId) {
         price = base + Math.max(0, bMult - 1) * perB + Math.max(0, cMult - 1) * perC;
         maxShops = branches; maxCashiers = cashiers;
 
-        var okP = await confirm('🏢 Enterprise Configuration:\n\n🏪 Branches: ' + (branches >= 999 ? 'Unlimited' : branches) + '\n👥 Cashiers/shop: ' + (cashiers >= 999 ? 'Unlimited' : cashiers) + '\n\n💰 Computed price: ' + price + ' Br/month\n\nCreate with this configuration?');
+        var okP = await confirm('🏢 Enterprise Configuration:\n\n🏪 Branches: ' + (branches >= 999 ? 'Unlimited' : branches) + '\n👥 Cashiers/shop: ' + (cashiers >= 999 ? 'Unlimited' : cashiers) + '\n\n💰 Computed price: ' + price + ' Br/month\n\nCreate?');
         if (!okP) return;
     }
 
@@ -1115,364 +748,182 @@ async function generateLicenseFor(shopId) {
             created_at: new Date().toISOString()
         }]);
         await supabaseClient.from('shops').update({ plan: np.name, business_type: np.business_type }).eq('shop_id', shopId);
-
         alert('✅ License for ' + shopName + '!\n\n🔑 ' + key + '\n📋 ' + np.name + (maxShops > 1 ? '\n🏢 ' + (maxShops >= 999 ? 'Unlimited' : maxShops) + ' branches · ' + (maxCashiers >= 999 ? 'Unlimited' : maxCashiers) + ' cashiers' : '') + '\n⏰ ' + days + ' days');
         loadShops();
         logAction('generate_key', shopName + ' → ' + np.name + ' (' + key + ')');
     } catch(e) { alert('❌ ' + e.message); }
 }
-// ═══ 🗑️ DELETE LICENSE — removes the key (shop survives as trial/free) ═══
+
 async function deleteShopLicense(shopId) {
     var shop = await getShopRow(shopId);
     var lic = _shopLicenses[shopId];
-    if (!lic) { alert('No license to delete for this shop.'); return; }
+    if (!lic) { alert('No license to delete.'); return; }
     var shopName = shop ? shop.name : shopId;
 
-    var ok = await confirm('🗑️ DELETE the license key for "' + shopName + '"?\n\n🔑 Key: ' + lic.key + '\n📋 Plan: ' + lic.plan + '\n⏰ Expires: ' + new Date(lic.expiry_date).toLocaleDateString() + '\n\nThe SHOP is NOT deleted — it returns to free/trial status.\nThe customer must get a new key to use paid features.');
+    var ok = await confirm('🗑️ DELETE the license key for "' + shopName + '"?\n\n🔑 ' + lic.key + '\n📋 ' + lic.plan + '\n\nThe SHOP survives — returns to trial/free.');
     if (!ok) return;
-
-    var ok2 = await confirm('🚨 FINAL CONFIRM\n\nDelete key ' + lic.key + ' permanently?');
+    var ok2 = await confirm('🚨 FINAL CONFIRM — delete ' + lic.key + ' permanently?');
     if (!ok2) return;
 
     try {
         await supabaseClient.from('licenses').delete().eq('id', lic.id);
-        // Shop returns to trial state (or free if trial expired)
         await supabaseClient.from('shops').update({ plan: 'trial' }).eq('shop_id', shopId);
-        alert('✅ License deleted!\n\n' + shopName + ' is now on trial/free status.');
+        alert('✅ License deleted! ' + shopName + ' is now trial/free.');
         loadShops();
         logAction('delete_license', shopName + ' key deleted (' + lic.key + ')');
     } catch(e) { alert('❌ ' + e.message); }
 }
 
-  
-// ═══ 📅 EXTEND TRIAL — dropdown ═══
-async function extendTrial(shopId) {
-    var days = parseInt(await prompt('Extend trial by:', '7', ['3|3 days', '7|📅 7 days', '14|14 days', '30|📅 30 days']));
-    if (!days) return;
-    try {
-        const { data: shop } = await supabaseClient.from('shops').select('trial_expires').eq('shop_id', shopId).maybeSingle();
-        var base = (shop && shop.trial_expires && new Date(shop.trial_expires) > new Date()) ? new Date(shop.trial_expires) : new Date();
-        var newDate = new Date(base.getTime() + days * 86400000);
-        const { error } = await supabaseClient.from('shops').update({ trial_expires: newDate.toISOString() }).eq('shop_id', shopId);
-        if (error) throw error;
-        alert('✅ Trial now ends: ' + newDate.toLocaleDateString());
-        loadShops();
-    } catch(e) { alert('❌ ' + e.message); }
-}
-
-// ═══ 🧹 CLEANUP — dropdown-confirmed safety ═══
-async function cleanupShopData() {
-    var sid = await prompt('⚠️ Type the EXACT Shop ID to wipe completely:');
-    if (!sid) return;
-    var ok1 = await confirm('⚠️ DELETE ALL DATA for shop "' + sid + '"?\nProducts, sales, staff — EVERYTHING. This cannot be undone.');
-    if (!ok1) return;
-    var ok2 = await confirm('🚨 FINAL WARNING!\n\nType-to-confirm replaced by double-confirm.\nAre you ABSOLUTELY sure about "' + sid + '"?');
-    if (!ok2) return;
-    try {
-        var cols = ['products','sales','losses','expenses','employees','suppliers','purchase_orders','loyalty','loans','bank_accounts','bank_transactions','notes','settings','recipes','orders','fiscal_receipts','salary_ledger','purchase_orders'];
-        for (var i = 0; i < cols.length; i++) {
-            await supabaseClient.from(cols[i]).delete().eq('shop_id', sid);
-        }
-        await supabaseClient.from('shops').delete().eq('shop_id', sid);
-        await supabaseClient.from('licenses').delete().eq('shop_id', sid);
-        alert('✅ Shop "' + sid + '" completely deleted.');
-        loadShops();
-        logAction('cleanup', 'Deep cleaned: ' + sid);
-    } catch(e) { alert('❌ ' + e.message); }
-}
-
-async function getShopRow(shopId) {
-    try {
-        const { data } = await supabaseClient.from('shops').select('*').eq('shop_id', shopId).maybeSingle();
-        return data;
-    } catch(e) { return null; }
-}
-  
 async function masterBlockShop(shopId, block) {
-    if (!confirm(block ? 'Block this customer?' : 'Unblock?')) return;
+    var ok = await confirm(block ? '⛔ Block this shop? They will be locked out.' : '🔓 Unblock this shop?');
+    if (!ok) return;
     await supabaseClient.from('shops').update({ blocked: block }).eq('shop_id', shopId);
     loadShops();
+    logAction(block ? 'block' : 'unblock', shopId);
 }
-async function extendTrial(shopId) {
-    var days = parseInt(prompt('Add how many days? (e.g. 7, 30, -5 to reduce)', '7'));
-    if (isNaN(days)) return;
+
+// ══════════════════════════════════════════════════════════════
+//  🔑 SECTION 5: KEY GENERATOR (new shops)
+// ══════════════════════════════════════════════════════════════
+async function loadPlanDropdown() {
+    var sel = document.getElementById('planType');
+    if (!sel) return;
     try {
-        const { data: shop } = await supabaseClient.from('shops')
-            .select('trial_expires').eq('shop_id', shopId).maybeSingle();
-        var base = (shop && shop.trial_expires && new Date(shop.trial_expires) > new Date())
-            ? new Date(shop.trial_expires) : new Date();
-        var newDate = new Date(base.getTime() + days * 86400000);
-        const { error } = await supabaseClient.from('shops')
-            .update({ trial_expires: newDate.toISOString() })
-            .eq('shop_id', shopId);
+        const { data, error } = await supabaseClient.from('plans').select('*').eq('active', true).order('display_order');
         if (error) throw error;
-        alert('✅ Trial now ends: ' + newDate.toLocaleDateString());
-        loadShops();
+        var html = '';
+        var groups = { retail: '🛒 Retail', cafe: '☕ Café / Restaurant', hotel: '🏨 Hotel' };
+        ['retail','cafe','hotel'].forEach(function(bt) {
+            var plans = (data || []).filter(function(p){ return p.business_type === bt; });
+            if (!plans.length) return;
+            html += '<optgroup label="' + (groups[bt] || bt) + '">';
+            plans.forEach(function(p) {
+                if (p.is_default_free) return;
+                var price = (p.price_monthly > 0) ? (p.name + ' – ' + p.price_monthly + ' Br/mo') : (p.name + ' – custom');
+                html += '<option value="' + p.name + '">' + price + '</option>';
+            });
+            html += '</optgroup>';
+        });
+        sel.innerHTML = html || '<option value="Basic">Basic</option>';
+    } catch(e) { sel.innerHTML = '<option value="Basic">Basic</option><option value="Standard">Standard</option>'; }
+}
+
+async function isShopIdUnique(shopId) {
+    const { data } = await supabaseClient.from('licenses').select('shop_id').eq('shop_id', shopId);
+    return !data || data.length === 0;
+}
+async function generateUniqueShopId(name) {
+    let base = name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20) || 'shop' + Date.now().toString(36);
+    let sid = base, counter = 1;
+    while (!(await isShopIdUnique(sid))) { sid = base + counter; counter++; if (counter > 100) throw new Error('Cannot generate unique ID'); }
+    return sid;
+}
+
+async function generateLicense() {
+    const shop = document.getElementById('shopName').value.trim();
+    const plan = document.getElementById('planType').value;
+    const duration = parseInt(document.getElementById('duration').value);
+    const startVal = document.getElementById('startDate').value;
+    const prefix = (document.getElementById('keyPrefix').value.trim() || 'SMART').toUpperCase();
+    if (!shop) return alert('Enter shop name!');
+    if (!plan) return alert('Select a plan!');
+
+    const shopId = await generateUniqueShopId(shop);
+    const key = (prefix + '-' + plan.toUpperCase() + '-' + shopId + '-' + Math.random().toString(36).substr(2,4)).toUpperCase();
+    const now = startVal ? new Date(startVal) : new Date();
+    const expiry = new Date(now.getTime() + duration * 86400000);
+    const data = { shop_name: shop, shop_id: shopId, plan, key,
+        start_date: now.toISOString(), expiry_date: expiry.toISOString(),
+        status: 'active', created_at: new Date().toISOString() };
+
+    let planDef = null;
+    try {
+        const r = await supabaseClient.from('plans').select('*').ilike('name', plan).limit(1);
+        if (r.data && r.data[0]) planDef = r.data[0];
+    } catch(e) {}
+
+    if (planDef) {
+        data.max_shops = planDef.max_branches || 1;
+        data.max_cashiers_per_shop = planDef.max_cashiers || 999;
+        data.max_products = planDef.max_products || 999999;
+        data.max_tables = planDef.max_tables || 0;
+        data.max_menu_items = planDef.max_menu_items || 0;
+        data.has_stock_mgmt = planDef.has_stock_mgmt !== false;
+        data.price_monthly = planDef.price_monthly || 0;
+        data.price_yearly = planDef.price_yearly || 0;
+        data.business_type = planDef.business_type || 'retail';
+        data.features = planDef.features || [];
+    } else {
+        data.max_shops = 1; data.max_cashiers_per_shop = 2; data.max_products = 200; data.business_type = 'retail';
+    }
+
+    try {
+        await supabaseClient.from('licenses').insert([data]);
+        await supabaseClient.from('shops').upsert({ name: shop, shop_id: shopId, plan, active: true, created_at: now.toISOString() }, { onConflict: 'shop_id' });
+        logAction('generate', 'Generated key for ' + shop + ' (' + key + ')');
+
+        var html = '<b>Licence Key:</b> <span style="color:#4caf50;font-size:18px;">' + key + '</span><br>' +
+            '<b>Shop:</b> ' + shop + '<br><b>Shop ID:</b> ' + shopId + '<br><b>Plan:</b> ' + plan +
+            '<br><b>Start:</b> ' + now.toLocaleDateString() + '<br><b>Expires:</b> ' + expiry.toLocaleDateString();
+        document.getElementById('generatedKey').style.display = 'block';
+        document.getElementById('generatedKey').innerHTML = html;
+        document.getElementById('shopName').value = '';
+        loadShops(); populateSnapshotDropdown();
     } catch(e) { alert('❌ ' + e.message); }
 }
 
-async function toggleShopActive(docId, makeActive) {
-    if (!confirm(`Are you sure you want to ${makeActive?'activate':'deactivate'} this shop?`)) return;
-    await supabaseClient.from('shops').update({ active: makeActive }).eq('id', docId);
-    alert(`Shop ${makeActive?'activated':'deactivated'}.`); 
-    loadShops();
-    logAction(makeActive?'activate':'deactivate',`Shop ${docId}`);
+async function revokeLicense(licenseId) {
+    var ok = await confirm('⚠️ Revoke this license? The shop will be locked out immediately.');
+    if (!ok) return;
+    try {
+        await supabaseClient.from('licenses').update({ expiry_date: new Date().toISOString() }).eq('id', licenseId);
+        alert('⛔ License revoked.');
+        loadShops();
+        logAction('revoke', 'Revoked license ' + licenseId);
+    } catch (e) { alert('❌ ' + e.message); }
 }
 
-async function deleteShop(docId, name) {
-    if (!confirm(`⚠️ DELETE shop "${name}" permanently?`)) return;
-    await supabaseClient.from('shops').delete().eq('id', docId);
-    alert('✅ Shop deleted.'); 
-    loadShops();
-    logAction('delete_shop',`Deleted shop ${name}`);
+// ══════════════════════════════════════════════════════════════
+//  💰 SECTION 6: PAYMENT HISTORY + REVENUE SUMMARY
+// ══════════════════════════════════════════════════════════════
+async function loadPaymentHistory() {
+    var el = document.getElementById('paymentHistoryList');
+    if (!el) return;
+    el.innerHTML = '<p style="color:#94a3b8;">Loading…</p>';
+    try {
+        const { data, error } = await supabaseClient.from('payments').select('*').order('created_at', { ascending: false }).limit(50);
+        if (error) throw error;
+        if (!data || data.length === 0) { el.innerHTML = '<p style="color:#94a3b8;">No payments recorded yet.</p>'; return; }
+        var total = 0;
+        var esc = function(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+        var html = data.map(function(p) {
+            total += Number(p.amount || 0);
+            return '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;padding:10px 0;border-bottom:1px solid #444;font-size:13px;">' +
+                '<span>🏪 ' + esc(p.shop_name) + ' · ' + (p.action === 'extend' ? '📅 +' + (p.days || 0) + 'd' : '🔄 ' + esc(p.plan_name)) + '</span>' +
+                '<span><b style="color:#4caf50;">' + (p.amount || 0) + ' Br</b> · ' + esc(p.payment_method) + ' · ' + new Date(p.created_at).toLocaleDateString() + '</span></div>';
+        }).join('');
+        html += '<div style="text-align:right;font-size:17px;font-weight:bold;color:#4caf50;margin-top:10px;">💰 Total: ' + total.toFixed(2) + ' Br</div>';
+        el.innerHTML = html;
+    } catch(e) { el.innerHTML = '<p style="color:#f44336;">❌ Load failed: ' + e.message + '</p>'; }
 }
 
-async function populateSnapshotDropdown() {
-    const { data } = await supabaseClient.from('shops').select('shop_id, name').order('name');
-    const sel = document.getElementById('snapshotShop');
-    sel.innerHTML = '<option value="">Select Shop</option>';
-    if (data) data.forEach(d => {
-        sel.innerHTML += `<option value="${d.shop_id}">${d.name || 'Unknown'} (${d.shop_id})</option>`;
+function loadRevenueSummary() {
+    var active = 0, expiring = 0, expired = 0;
+    allLicenses.forEach(function(l) {
+        var days = l.expiry_date ? Math.ceil((new Date(l.expiry_date) - new Date()) / 86400000) : null;
+        if (days === null) return;
+        if (days < 0) expired++;
+        else { if (l.plan !== 'Trial') active++; if (days <= 7) expiring++; }
     });
-}
-
-
-
-
-
-
-
-
-	
-// ===== AUTH & PIN LOGIC =====
-function verifyMasterPin() {
-    var input = document.getElementById('masterPinInput').value.trim();
-    var storedPinHash = localStorage.getItem('masterPinHash');
-    if (sha256(input) === storedPinHash) {
-        document.getElementById('appPinScreen').style.display = 'none';
-        document.getElementById('mainPanel').style.display = 'block';
-        initMasterPanel();
-    } else {
-        alert("❌ Incorrect App PIN.");
-        document.getElementById('masterPinInput').value = '';
-    }
-}
-
-setTimeout(function() {
-    var splash = document.getElementById('splashScreen');
-    if (splash) { splash.style.opacity = '0'; setTimeout(function() { splash.style.display = 'none'; }, 800); }
-}, 1500);
-setTimeout(function() {
-    var splash = document.getElementById('splashScreen');
-    if (splash && splash.style.display !== 'none') splash.style.display = 'none';
-}, 3000);
-
-async function masterLogin() {
-    const email = document.getElementById('masterEmail').value;
-    const pass = document.getElementById('masterPass').value;
-    if (!email || !pass) return alert('Enter email and password!');
-
-    var loadingScreen = document.getElementById('loadingScreen');
-    var bar = document.getElementById('loadingBar');
-    var percent = document.getElementById('loadingPercent');
-    var progress = 0, interval = null;
-    
-    if (loadingScreen) loadingScreen.style.display = 'flex';
-    if (bar && percent) {
-        interval = setInterval(function() {
-            progress += Math.random() * 10 + 3;
-            if (progress > 90) progress = 90;
-            bar.style.width = progress + '%';
-            percent.textContent = Math.floor(progress) + '%';
-        }, 150);
-    }
-
-    try {
-        const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
-        if (error) throw new Error(error.message);
-        if (interval) clearInterval(interval);
-        if (bar) bar.style.width = '100%';
-        if (percent) percent.textContent = '100%';
-    } catch (e) {
-        if (interval) clearInterval(interval);
-        if (loadingScreen) loadingScreen.style.display = 'none';
-        alert('❌ Login Failed: ' + e.message);
-    }
-}
-
-supabaseClient.auth.onAuthStateChange(async (event, session) => {
-    var loadingScreen = document.getElementById('loadingScreen');
-    var loginSection = document.getElementById('loginSection');
-    var mainPanel = document.getElementById('mainPanel');
-    var appPinScreen = document.getElementById('appPinScreen');
-
-    if (loadingScreen) loadingScreen.style.display = 'none';
-
-    if (session && session.user) {
-        const { data: masterDoc } = await supabaseClient.from('master_users').select('*').eq('email', session.user.email).single();
-        if (masterDoc && masterDoc.role === 'master') {
-            if (loginSection) loginSection.style.display = 'none';
-            if (mainPanel) mainPanel.style.display = 'none';
-            checkMasterPinStatus();
-        } else {
-            await supabaseClient.auth.signOut();
-            alert('Access Denied. You are not authorized as a Master Admin.');
-        }
-    } else {
-        if (loadingScreen) loadingScreen.style.display = 'none';
-        if (mainPanel) mainPanel.style.display = 'none';
-        if (loginSection) loginSection.style.display = 'flex';
-        if (appPinScreen) appPinScreen.style.display = 'none';
-        var emailInput = document.getElementById('masterEmail');
-        var passInput = document.getElementById('masterPass');
-        if (emailInput) emailInput.value = '';
-        if (passInput) passInput.value = '';
-    }
-});
-
-async function checkMasterPinStatus() {
-    var appPinScreen = document.getElementById('appPinScreen');
-    var mainPanel = document.getElementById('mainPanel');
-    var storedPinHash = localStorage.getItem('masterPinHash');
-
-    if (!storedPinHash) {
-        var newPin = await prompt('🔐 CREATE YOUR APP PIN\n\nThis is an EXTRA lock for this device (separate from your password).\n\nChoose any 4 digits you will remember:');
-        if (newPin && String(newPin).length === 4) {
-            localStorage.setItem('masterPinHash', sha256(newPin));
-            if (appPinScreen) appPinScreen.style.display = 'none';
-            if (mainPanel) mainPanel.style.display = 'block';
-            initMasterPanel();
-        } else {
-            alert('❌ The App PIN must be exactly 4 digits.\n\nExample: 2580\n\nThis is NOT your password — it is a quick extra lock.');
-            masterLogout();
-        }
-    } else {
-        if (mainPanel) mainPanel.style.display = 'none';
-        if (appPinScreen) appPinScreen.style.display = 'flex';
-        var pinInput = document.getElementById('masterPinInput');
-        if (pinInput) { pinInput.value = ''; pinInput.focus(); }
-    }
-}
-async function changeMasterPin() {
-    var oldPin = prompt("Enter your CURRENT 4-digit App PIN:");
-    if (sha256(oldPin) !== localStorage.getItem('masterPinHash')) { alert("❌ Incorrect current PIN."); return; }
-    var newPin = prompt("Enter your NEW 4-digit App PIN:");
-    if (newPin && newPin.length === 4) {
-        localStorage.setItem('masterPinHash', sha256(newPin));
-        alert("✅ Master PIN changed successfully!");
-    } else {
-        alert("❌ PIN must be exactly 4 digits.");
-    }
-}
-
-async function changeMasterPassword() {
-    var newPass = prompt("Enter your NEW password (min 6 characters):");
-    if (!newPass || newPass.length < 6) { alert("Password too short."); return; }
-    try {
-        const { data, error } = await supabaseClient.auth.updateUser({ password: newPass });
-        if (error) throw error;
-        alert("✅ Master Password changed successfully!");
-    } catch (error) {
-        alert("❌ Error: " + error.message);
-    }
-}
-function initMasterPanel() {
-    try {
-        // 🔬 Direct DOM debug — visible in the Plan Manager card, no alert needed
-        var dbg = document.getElementById('planEditorList');
-        if (dbg) dbg.innerHTML = '<p style="color:#f59e0b;">⏳ initMasterPanel running…</p>';
-
-        loadShops();              // 🏪 THE command center
-        loadAuditLog();
-        populateSnapshotDropdown();
-        loadGlobalTrialDays();
-        loadSupportContacts();
-        loadPlanDropdown();
-        loadPlanEditor();
-        loadPaymentHistory();
-        setupRegistrationAlerts();
-
-        if (dbg) dbg.innerHTML = '<p style="color:#10b981;">✅ All loaders called — plans loading next…</p>';
-    } catch(e) {
-        var dbg2 = document.getElementById('planEditorList');
-        if (dbg2) dbg2.innerHTML = '<p style="color:#ef4444;white-space:pre-wrap;">❌ initMasterPanel CRASHED: ' + e.message + '</p>';
-    }
-}
-// ===== 📢 INSTANT NEW-REGISTRATION ALERTS =====
-function setupRegistrationAlerts() {
-    supabaseClient.channel('new-registrations')
-        .on('postgres_changes', 
-            { event: 'INSERT', schema: 'public', table: 'shops' },
-            function(payload) {
-                var shop = payload.new;
-                var trialEnds = shop.trial_expires ? new Date(shop.trial_expires).toLocaleDateString() : 'unknown';
-                
-                // Sound + popup
-                try {
-                    var ctx = new (window.AudioContext || window.webkitAudioContext)();
-                    [660, 880, 1100].forEach(function(f, i) {
-                        var o = ctx.createOscillator(), g = ctx.createGain();
-                        o.frequency.value = f;
-                        g.gain.setValueAtTime(0.3, ctx.currentTime + i*0.15);
-                        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i*0.15 + 0.3);
-                        o.connect(g); g.connect(ctx.destination);
-                        o.start(ctx.currentTime + i*0.15); o.stop(ctx.currentTime + i*0.15 + 0.32);
-                    });
-                } catch(e) {}
-                try { if (navigator.vibrate) navigator.vibrate([200,100,200]); } catch(e) {}
-
-                alert('🆕 NEW CUSTOMER REGISTERED!\n\n🏪 ' + (shop.name || 'Unknown') +
-                      '\n🆔 Shop ID: ' + shop.shop_id +
-                      '\n📧 ' + (shop.owner_email || 'no email') +
-                      '\n📱 ' + (shop.phone || 'no phone') +
-                      '\n📅 Trial ends: ' + trialEnds);
-                
-                // Refresh the shop list if visible
-                if (typeof loadShops === 'function') loadShops();
-            })
-        .subscribe();
-}
-function masterLogout() { supabaseClient.auth.signOut(); }
-
-// ===== SAAS SETTINGS LOGIC =====
-async function loadGlobalTrialDays() {
-    try {
-        const { data, error } = await supabaseClient.from('global_settings').select('default_trial_days').eq('id', 'globalConfig').single();
-        if (data) document.getElementById('globalTrialDaysInput').value = data.default_trial_days || 30;
-        else document.getElementById('globalTrialDaysInput').value = 30;
-    } catch(e) { console.error("Error loading trial days:", e); document.getElementById('globalTrialDaysInput').value = 30; }
-}
-
-async function saveGlobalTrialDays() {
-    var days = parseInt(document.getElementById('globalTrialDaysInput').value);
-    if (isNaN(days) || days < 1) { alert('Please enter a valid number of days.'); return; }
-    try {
-        const { error } = await supabaseClient.from('global_settings').upsert({ id: 'globalConfig', default_trial_days: days });
-        if (error) throw error;
-        alert('✅ Trial days updated to ' + days + ' days!');
-        logAction('config_update', 'Changed default trial days to ' + days);
-    } catch(e) { alert('❌ Error: ' + e.message); }
+    var el = document.getElementById('revenueSummary');
+    if (el) el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;margin-bottom:15px;">' +
+        '<div style="background:#e6f4ea;padding:12px;border-radius:8px;"><b style="display:block;font-size:22px;color:#10b981;">' + active + '</b><small>Active Paid</small></div>' +
+        '<div style="background:#fef3c7;padding:12px;border-radius:8px;"><b style="display:block;font-size:22px;color:#f59e0b;">' + expiring + '</b><small>Expiring ≤7d</small></div>' +
+        '<div style="background:#fee2e2;padding:12px;border-radius:8px;"><b style="display:block;font-size:22px;color:#ef4444;">' + expired + '</b><small>Expired</small></div></div>';
 }
 
 // ══════════════════════════════════════════════════════════════
-//  🏢 PLAN MANAGER — editable everything, grouped by branch
-// ══════════════════════════════════════════════════════════════
-var SS_ALL_FEATURES = ['dashboard','products','sales','stock','staff','notebook','settings','devices','license','expenses','losses','credits','reports','kitchen','recipes','qrMenu','receipts','intercom','loyalty','suppliers','loans','bank','taxReports','crm','marketing','menuEng','timesheets','forecast','valuation','branches','rooms'];
-var SS_FEATURE_NAMES = {
-    dashboard:'Dashboard', products:'Products', sales:'Sales', stock:'Stock', staff:'Staff',
-    notebook:'Notebook', settings:'Settings', devices:'Devices', license:'License',
-    expenses:'Expenses', losses:'Losses', credits:'Credit customers', reports:'Reports',
-    kitchen:'🍳 Kitchen display', recipes:'Recipes', qrMenu:'QR customer menu', receipts:'Fiscal receipts',
-    intercom:'Staff intercom', loyalty:'Loyalty points', suppliers:'Suppliers/orders',
-    loans:'Loans', bank:'Bank', taxReports:'Tax reports (P&L/Z)',
-    crm:'Customer CRM', marketing:'WhatsApp marketing', menuEng:'Menu engineering',
-    timesheets:'Timesheets', forecast:'Sales forecast', valuation:'Inventory valuation',
-    branches:'🏢 Multi-branch', rooms:'🛏️ Hotel rooms'
-};
-
-
-  // ══════════════════════════════════════════════════════════════
-//  🏢 PLAN MANAGER v3 — errors VISIBLE, Enterprise configurable
+//  🏢 SECTION 7: PLAN MANAGER
 // ══════════════════════════════════════════════════════════════
 var SS_ALL_FEATURES = ['dashboard','products','sales','stock','staff','notebook','settings','devices','license','expenses','losses','credits','reports','kitchen','recipes','qrMenu','receipts','intercom','loyalty','suppliers','loans','bank','taxReports','crm','marketing','menuEng','timesheets','forecast','valuation','branches','rooms'];
 var SS_FEATURE_NAMES = { dashboard:'Dashboard', products:'Products', sales:'Sales', stock:'Stock', staff:'Staff', notebook:'Notebook', settings:'Settings', devices:'Devices', license:'License', expenses:'Expenses', losses:'Losses', credits:'Credit customers', reports:'Reports', kitchen:'🍳 Kitchen display', recipes:'Recipes', qrMenu:'QR customer menu', receipts:'Fiscal receipts', intercom:'Staff intercom', loyalty:'Loyalty points', suppliers:'Suppliers/orders', loans:'Loans', bank:'Bank', taxReports:'Tax reports (P&L/Z)', crm:'Customer CRM', marketing:'WhatsApp marketing', menuEng:'Menu engineering', timesheets:'Timesheets', forecast:'Sales forecast', valuation:'Inventory valuation', branches:'🏢 Multi-branch', rooms:'🛏️ Hotel rooms' };
@@ -1484,55 +935,50 @@ async function loadPlanEditor() {
     try {
         const { data, error } = await supabaseClient.from('plans').select('*').order('display_order');
         if (error) throw error;
-        if (!data || !data.length) { container.innerHTML = '<p style="color:#f59e0b;">No plans found — run the seed SQL.</p>'; return; }
+        if (!data || !data.length) { container.innerHTML = '<p style="color:#f59e0b;">No plans found — run the plans seed SQL.</p>'; return; }
 
         var groups = { retail: '🛒 RETAIL SHOP PLANS', cafe: '☕ CAFÉ / RESTAURANT PLANS', hotel: '🏨 HOTEL PLANS' };
         var html = '';
         ['retail','cafe','hotel'].forEach(function(bt) {
             var plans = data.filter(function(p){ return p.business_type === bt; });
             if (!plans.length) return;
-            html += '<h3 style="color:#4caf50; margin:18px 0 8px 0; font-size:15px; border-bottom:1px solid #333; padding-bottom:6px;">' + (groups[bt] || bt) + '</h3>';
-
+            html += '<h3 style="color:#4caf50;margin:18px 0 8px 0;font-size:15px;border-bottom:1px solid #333;padding-bottom:6px;">' + (groups[bt] || bt) + '</h3>';
             plans.forEach(function(p) {
                 var feats = Array.isArray(p.features) ? p.features : [];
                 var isEnt = (p.name || '').toLowerCase().indexOf('enterprise') !== -1;
-
-                html += '<div style="background:#1e293b; border:1px solid #334155; border-radius:12px; padding:14px; margin-bottom:12px;">' +
-                    '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;">' +
-                        '<input value="' + (p.name || '') + '" id="planName_' + p.id + '" placeholder="Plan name" style="flex:2; min-width:110px; padding:10px; font-weight:bold;">' +
-                        '<input value="' + (p.line || '') + '" id="planLine_' + p.id + '" placeholder="Tagline" style="flex:2; min-width:110px; padding:10px;">' +
+                html += '<div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:14px;margin-bottom:12px;">' +
+                    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">' +
+                        '<input value="' + (p.name || '') + '" id="planName_' + p.id + '" placeholder="Plan name" style="flex:2;min-width:110px;padding:10px;font-weight:bold;">' +
+                        '<input value="' + (p.line || '') + '" id="planLine_' + p.id + '" placeholder="Tagline" style="flex:2;min-width:110px;padding:10px;">' +
                     '</div>' +
-                    '<div style="display:flex; gap:8px; margin-bottom:10px;">' +
-                        '<label style="flex:1; background:#064e3b; border-radius:8px; padding:8px;">💰 Br / Month<input type="number" value="' + (p.price_monthly || 0) + '" id="planPM_' + p.id + '" style="width:100%; padding:10px; font-size:16px; font-weight:bold; margin-top:4px; background:#022c22; color:#4ade80; border:1px solid #10b981; border-radius:8px;"></label>' +
-                        '<label style="flex:1; background:#1e3a8a; border-radius:8px; padding:8px;">📅 Br / Year<input type="number" value="' + (p.price_yearly || 0) + '" id="planPY_' + p.id + '" style="width:100%; padding:10px; font-size:16px; font-weight:bold; margin-top:4px; background:#172554; color:#93c5fd; border:1px solid #3b82f6; border-radius:8px;"></label>' +
+                    '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+                        '<label style="flex:1;background:#064e3b;border-radius:8px;padding:8px;">💰 Br / Month<input type="number" value="' + (p.price_monthly || 0) + '" id="planPM_' + p.id + '" style="width:100%;padding:10px;font-size:16px;font-weight:bold;margin-top:4px;background:#022c22;color:#4ade80;border:1px solid #10b981;border-radius:8px;"></label>' +
+                        '<label style="flex:1;background:#1e3a8a;border-radius:8px;padding:8px;">📅 Br / Year<input type="number" value="' + (p.price_yearly || 0) + '" id="planPY_' + p.id + '" style="width:100%;padding:10px;font-size:16px;font-weight:bold;margin-top:4px;background:#172554;color:#93c5fd;border:1px solid #3b82f6;border-radius:8px;"></label>' +
                     '</div>' +
-                    '<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">' +
+                    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">' +
                         pmLbl(p.id, '📦 Products', 'planProd', p.max_products) +
                         pmLbl(p.id, '👥 Staff', 'planCash', p.max_cashiers) +
                         pmLbl(p.id, '🪑 Tables', 'planTable', p.max_tables || 0) +
                         pmLbl(p.id, '🍽️ Menu items', 'planMenu', p.max_menu_items || 0) +
                         pmLbl(p.id, '🏢 Branches', 'planBr', p.max_branches || 1) +
                     '</div>';
-
-                // 🏢 ENTERPRISE CONFIGURATOR (custom shop×cashier pricing)
                 if (isEnt) {
-                    html += '<div style="background:#4c1d95; border:1px solid #8b5cf6; border-radius:10px; padding:10px; margin:10px 0;">' +
-                        '<b style="color:#c4b5fd; font-size:12px;">🏢 ENTERPRISE CUSTOM PRICING</b>' +
-                        '<p style="font-size:10px; color:#a78bfa; margin:4px 0 8px;">Price = Base + (branches−1)×per-branch + (cashiers−1)×per-cashier</p>' +
-                        '<div style="display:flex; gap:6px;">' +
+                    html += '<div style="background:#4c1d95;border:1px solid #8b5cf6;border-radius:10px;padding:10px;margin:10px 0;">' +
+                        '<b style="color:#c4b5fd;font-size:12px;">🏢 ENTERPRISE CUSTOM PRICING</b>' +
+                        '<p style="font-size:10px;color:#a78bfa;margin:4px 0 8px;">Price = Base + (branches−1)×per-branch + (cashiers−1)×per-cashier</p>' +
+                        '<div style="display:flex;gap:6px;">' +
                             pmLbl(p.id, 'Base price', 'entBase', p.ent_base || 5000) +
                             pmLbl(p.id, '+ per branch', 'entBranch', p.ent_per_branch || 0) +
                             pmLbl(p.id, '+ per cashier', 'entCash', p.ent_per_cashier || 0) +
                         '</div></div>';
                 }
-
-                html += '<label style="display:block; margin:10px 0; font-size:13px; cursor:pointer;">' +
-                        '<input type="checkbox" ' + (p.has_stock_mgmt !== false ? 'checked' : '') + ' id="planStock_' + p.id + '" style="transform:scale(1.3); margin-right:6px;">🛒 Include stock management</label>' +
+                html += '<label style="display:block;margin:10px 0;font-size:13px;cursor:pointer;">' +
+                        '<input type="checkbox" ' + (p.has_stock_mgmt !== false ? 'checked' : '') + ' id="planStock_' + p.id + '" style="transform:scale(1.3);margin-right:6px;">🛒 Include stock management</label>' +
                     '<details style="margin-top:6px;">' +
-                        '<summary style="cursor:pointer; font-size:13px; color:#60a5fa; padding:6px 0;">🔓 Features (' + feats.length + ' unlocked)</summary>' +
-                        '<div style="display:flex; flex-wrap:wrap; gap:4px; padding-top:8px;">' +
+                        '<summary style="cursor:pointer;font-size:13px;color:#60a5fa;padding:6px 0;">🔓 Features (' + feats.length + ' unlocked)</summary>' +
+                        '<div style="display:flex;flex-wrap:wrap;gap:4px;padding-top:8px;">' +
                             SS_ALL_FEATURES.map(function(f) {
-                                return '<label style="display:inline-flex; align-items:center; gap:4px; background:#0f172a; border:1px solid #334155; border-radius:8px; padding:6px 8px; font-size:11px; cursor:pointer;">' +
+                                return '<label style="display:inline-flex;align-items:center;gap:4px;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:6px 8px;font-size:11px;cursor:pointer;">' +
                                     '<input type="checkbox" ' + (feats.indexOf(f) !== -1 ? 'checked' : '') + ' id="planFeat_' + p.id + '_' + f + '" style="transform:scale(1.2);">' +
                                     (SS_FEATURE_NAMES[f] || f) + '</label>';
                             }).join('') +
@@ -1546,12 +992,12 @@ async function loadPlanEditor() {
 }
 
 function pmLbl(id, label, prefix, val) {
-    return '<label style="flex:1; min-width:80px; font-size:11px; color:#94a3b8; font-weight:700;">' + label +
-        '<input type="number" value="' + (val || 0) + '" id="' + prefix + '_' + id + '" style="width:100%; padding:8px; font-size:14px; margin-top:3px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#e2e8f0; box-sizing:border-box;"></label>';
+    return '<label style="flex:1;min-width:80px;font-size:11px;color:#94a3b8;font-weight:700;">' + label +
+        '<input type="number" value="' + (val || 0) + '" id="' + prefix + '_' + id + '" style="width:100%;padding:8px;font-size:14px;margin-top:3px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;box-sizing:border-box;"></label>';
 }
 
 async function saveAllPlans() {
-    var ok = await confirm('💾 Save ALL plan changes?\n\nPrices, limits, Enterprise pricing, and features apply instantly.');
+    var ok = await confirm('💾 Save ALL plan changes?\n\nPrices, limits, Enterprise pricing & features apply instantly.');
     if (!ok) return;
     try {
         const { data } = await supabaseClient.from('plans').select('id').order('display_order');
@@ -1575,7 +1021,6 @@ async function saveAllPlans() {
                 has_stock_mgmt: document.getElementById('planStock_' + id).checked,
                 features: feats
             };
-            // Enterprise custom pricing (if fields exist on this card)
             var eb = document.getElementById('entBase_' + id);
             if (eb) {
                 patch.ent_base = parseFloat(eb.value) || 0;
@@ -1585,13 +1030,201 @@ async function saveAllPlans() {
             const { error } = await supabaseClient.from('plans').update(patch).eq('id', id);
             if (error) throw error;
         }
-        alert('✅ All plans saved! Platform updated everywhere.');
+        alert('✅ All plans saved!');
         loadPlanEditor(); loadPlanDropdown();
-        logAction('plans_updated', 'Plan Manager v3 saved');
+        logAction('plans_updated', 'Plan Manager saved');
     } catch (e) { alert('❌ ' + e.message); }
 }
 
-// ===== SUPPORT CONTACTS (6 PLATFORMS — controls all customer screens) =====
+// ══════════════════════════════════════════════════════════════
+//  📊 SECTION 8: REPORTS TOOLS
+// ══════════════════════════════════════════════════════════════
+async function loadShopSnapshot() {
+    const sid = document.getElementById('snapshotShop').value;
+    if (!sid) return alert('Select a shop!');
+    const res = document.getElementById('snapshotResult');
+    res.innerHTML = '<div class="loading">Loading snapshot...</div>';
+    try {
+        const { data: shopData } = await supabaseClient.from('shops').select('*').eq('shop_id', sid).single();
+        if (!shopData) { res.innerHTML = '<span style="color:#ef4444">Shop not found.</span>'; return; }
+
+        const { count: prodCount } = await supabaseClient.from('products').select('*', { count: 'exact', head: true }).eq('shop_id', sid);
+        const { count: empCount } = await supabaseClient.from('employees').select('*', { count: 'exact', head: true }).eq('shop_id', sid);
+        const { count: salesCount } = await supabaseClient.from('sales').select('*', { count: 'exact', head: true }).eq('shop_id', sid);
+        const { data: salesData } = await supabaseClient.from('sales').select('total, time').eq('shop_id', sid);
+        const { data: expData } = await supabaseClient.from('expenses').select('amount').eq('shop_id', sid);
+
+        let rev = 0, lastSaleDate = 'No sales yet';
+        if (salesData) salesData.forEach(s => { rev += s.total || 0; if (s.time) lastSaleDate = new Date(s.time).toLocaleDateString(); });
+        let exp = 0;
+        if (expData) expData.forEach(e => exp += e.amount || 0);
+        let netProfit = rev - exp;
+
+        const { data: licData } = await supabaseClient.from('licenses').select('*').eq('shop_id', sid).limit(1).single();
+        let licStatus = 'No License', licColor = '#64748b';
+        if (licData) {
+            const days = Math.ceil((new Date(licData.expiry_date) - new Date()) / 86400000);
+            if (days < 0) { licStatus = 'EXPIRED'; licColor = '#ef4444'; }
+            else if (days <= 5) { licStatus = 'Expiring in ' + days + 'd'; licColor = '#f59e0b'; }
+            else { licStatus = 'Active'; licColor = '#10b981'; }
+        }
+
+        res.innerHTML = '<div style="text-align:center;margin-bottom:15px;"><h3 style="margin:0;">' + (shopData.name || 'Unknown Shop') + '</h3>' +
+            '<p style="margin:5px 0;font-size:13px;opacity:.8;">🔑 License: <b style="color:' + licColor + '">' + licStatus + '</b></p></div>' +
+            '<table style="width:100%;max-width:400px;margin:0 auto;border-collapse:collapse;font-size:14px;min-width:unset !important;">' +
+            '<tr><td style="padding:8px;border:1px solid #333;font-weight:600;">Total Products</td><td style="padding:8px;border:1px solid #333;text-align:right;font-weight:bold;">' + (prodCount || 0) + '</td></tr>' +
+            '<tr><td style="padding:8px;border:1px solid #333;font-weight:600;">Staff Members</td><td style="padding:8px;border:1px solid #333;text-align:right;font-weight:bold;">' + (empCount || 0) + '</td></tr>' +
+            '<tr><td style="padding:8px;border:1px solid #333;font-weight:600;">Total Sales Count</td><td style="padding:8px;border:1px solid #333;text-align:right;font-weight:bold;">' + (salesCount || 0) + '</td></tr>' +
+            '<tr><td style="padding:8px;border:1px solid #333;font-weight:600;">Last Sale Date</td><td style="padding:8px;border:1px solid #333;text-align:right;font-weight:bold;">' + lastSaleDate + '</td></tr>' +
+            '<tr><td style="padding:8px;border:1px solid #333;font-weight:600;">Total Revenue</td><td style="padding:8px;border:1px solid #333;text-align:right;font-weight:bold;color:#10b981;">Br ' + rev.toFixed(2) + '</td></tr>' +
+            '<tr><td style="padding:8px;border:1px solid #333;font-weight:600;">Total Expenses</td><td style="padding:8px;border:1px solid #333;text-align:right;font-weight:bold;color:#ef4444;">Br ' + exp.toFixed(2) + '</td></tr>' +
+            '<tr><td style="padding:8px;border:1px solid #333;font-weight:700;background:rgba(16,185,129,0.1);">Net Profit</td><td style="padding:8px;border:1px solid #333;text-align:right;font-weight:800;background:rgba(16,185,129,0.1);">Br ' + netProfit.toFixed(2) + '</td></tr></table>';
+    } catch(e) { res.innerHTML = '<span style="color:#ef4444">Error: ' + e.message + '</span>'; }
+}
+
+async function populateSnapshotDropdown() {
+    const { data } = await supabaseClient.from('shops').select('shop_id, name').order('name');
+    const sel = document.getElementById('snapshotShop');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Select Shop</option>';
+    if (data) data.forEach(d => { sel.innerHTML += '<option value="' + d.shop_id + '">' + (d.name || 'Unknown') + ' (' + d.shop_id + ')</option>'; });
+}
+
+async function loadAuditLog() {
+    const t = document.getElementById('auditLogTable');
+    if (!t) return;
+    t.innerHTML = '<tr style="background:#333;color:#fff;"><th>Time</th><th>Action</th><th>Details</th><th>Delete</th></tr>';
+    try {
+        const { data, error } = await supabaseClient.from('audit_logs').select('*').order('timestamp', { ascending: false }).limit(50);
+        if (error) throw error;
+        if (!data || data.length === 0) { t.innerHTML += '<tr><td colspan="4" style="padding:20px;text-align:center;color:#94a3b8;">No logs yet.</td></tr>'; return; }
+        data.forEach(log => {
+            t.innerHTML += '<tr style="border-bottom:1px solid #333;"><td style="padding:10px;">' + new Date(log.timestamp).toLocaleString() + '</td>' +
+                '<td style="padding:10px;">' + log.action + '</td><td style="padding:10px;">' + log.details + '</td>' +
+                '<td style="padding:10px;text-align:center;"><button class="btn btn-red" style="padding:4px 8px;font-size:10px;" onclick="deleteAuditLog(\'' + log.id + '\')">✖</button></td></tr>';
+        });
+    } catch(e) { console.error("Audit log error:", e.message); }
+}
+
+async function deleteAuditLog(id) {
+    var ok = await confirm('Delete this log entry?');
+    if (!ok) return;
+    await supabaseClient.from('audit_logs').delete().eq('id', id);
+    loadAuditLog();
+}
+
+async function logAction(action, details) {
+    try {
+        await supabaseClient.from('audit_logs').insert([{ action: action, details: details, cashier_name: 'Master Admin', timestamp: new Date().toISOString() }]);
+    } catch(e) { console.error("Audit log error:", e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  🛠️ SECTION 9: SYSTEM TOOLS
+// ══════════════════════════════════════════════════════════════
+async function backupData() {
+    try {
+        const { data: lics } = await supabaseClient.from('licenses').select('*');
+        const { data: shops } = await supabaseClient.from('shops').select('*');
+        const { data: plans } = await supabaseClient.from('plans').select('*');
+        const data = { licenses: lics || [], shops: shops || [], plans: plans || [] };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = 'smartshop_backup_' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+        URL.revokeObjectURL(a.href);
+        logAction('backup', 'Full backup downloaded');
+        alert('✅ Backup downloaded.');
+    } catch(e) { alert('❌ Backup failed: ' + e.message); }
+}
+
+function restoreData(input) {
+    const file = input.files[0]; if (!file) return;
+    alert('⚠️ Restore overwrites licenses, shops & plans.');
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (data.plans) for (const p of data.plans) { const {id, ...rest} = p; await supabaseClient.from('plans').upsert(rest); }
+            if (data.licenses) for (const l of data.licenses) { const {id, ...rest} = l; await supabaseClient.from('licenses').upsert(rest); }
+            if (data.shops) for (const s of data.shops) { const {id, ...rest} = s; await supabaseClient.from('shops').upsert(rest); }
+            alert('✅ Restore complete!');
+            loadShops(); loadPlanEditor(); populateSnapshotDropdown();
+            logAction('restore', 'Data restored from file');
+        } catch(err) { alert('❌ Restore failed: ' + err.message); }
+    };
+    reader.readAsText(file);
+}
+
+async function cleanupShopData() {
+    var sid = await prompt('⚠️ Type the EXACT Shop ID to wipe completely:');
+    if (!sid) return;
+    var ok1 = await confirm('⚠️ DELETE ALL DATA for shop "' + sid + '"?\nProducts, sales, staff — EVERYTHING. Cannot be undone.');
+    if (!ok1) return;
+    var ok2 = await confirm('🚨 FINAL WARNING — absolutely sure about "' + sid + '"?');
+    if (!ok2) return;
+    try {
+        var cols = ['products','sales','losses','expenses','employees','suppliers','purchase_orders','loyalty','loans','bank_accounts','bank_transactions','notes','settings','recipes','orders','fiscal_receipts','salary_ledger','hotel_alerts','folio_charges','guest_stays','rooms'];
+        for (var i = 0; i < cols.length; i++) {
+            await supabaseClient.from(cols[i]).delete().eq('shop_id', sid);
+        }
+        await supabaseClient.from('shops').delete().eq('shop_id', sid);
+        await supabaseClient.from('licenses').delete().eq('shop_id', sid);
+        alert('✅ Shop "' + sid + '" completely deleted.');
+        loadShops();
+        logAction('cleanup', 'Deep cleaned: ' + sid);
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+async function findAndCleanGhostShops() {
+    var ok = await confirm('Scan database for ghost shops and wipe them?');
+    if (!ok) return;
+    alert('Scanning... please wait.');
+    var foundIds = new Set();
+    var tablesToScan = ['products', 'sales', 'expenses', 'employees', 'losses', 'orders'];
+    try {
+        for (var i = 0; i < tablesToScan.length; i++) {
+            const { data } = await supabaseClient.from(tablesToScan[i]).select('shop_id').limit(500);
+            if (data) data.forEach(function(row) { if (row.shop_id) foundIds.add(row.shop_id); });
+        }
+        var idsArray = Array.from(foundIds);
+        if (idsArray.length === 0) { alert('✅ Good news! No ghost data found.'); return; }
+        for (var k = 0; k < idsArray.length; k++) {
+            var exactMatch = idsArray[k];
+            var okWipe = await confirm('FOUND GHOST DATA!\n\nShop ID: ' + exactMatch + '\n\nWipe ALL data for this shop?');
+            if (okWipe) {
+                var cols = ['products','sales','losses','expenses','employees','suppliers','purchase_orders','loyalty','loans','bank_accounts','bank_transactions','notes','settings','recipes','orders'];
+                for (var j = 0; j < cols.length; j++) { await supabaseClient.from(cols[j]).delete().eq('shop_id', exactMatch); }
+                await supabaseClient.from('shops').delete().eq('shop_id', exactMatch);
+                await supabaseClient.from('licenses').delete().eq('shop_id', exactMatch);
+                alert('✅ Ghost shop ' + exactMatch + ' wiped!');
+            }
+        }
+        loadShops();
+    } catch(e) { alert('❌ Scan error: ' + e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ⚙️ SECTION 10: SETTINGS + SUPPORT + ALERTS
+// ══════════════════════════════════════════════════════════════
+async function loadGlobalTrialDays() {
+    try {
+        const { data } = await supabaseClient.from('global_settings').select('default_trial_days').eq('id', 'globalConfig').single();
+        var el = document.getElementById('globalTrialDaysInput');
+        if (el) el.value = (data && data.default_trial_days) || 30;
+    } catch(e) { var el2 = document.getElementById('globalTrialDaysInput'); if (el2) el2.value = 30; }
+}
+
+async function saveGlobalTrialDays() {
+    var days = parseInt(document.getElementById('globalTrialDaysInput').value);
+    if (isNaN(days) || days < 1) { alert('Enter a valid number of days.'); return; }
+    try {
+        const { error } = await supabaseClient.from('global_settings').upsert({ id: 'globalConfig', default_trial_days: days });
+        if (error) throw error;
+        alert('✅ Trial days updated to ' + days + '!');
+        logAction('config_update', 'Trial days → ' + days);
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
 async function loadSupportContacts() {
     try {
         const { data } = await supabaseClient.from('global_settings')
@@ -1624,131 +1257,32 @@ async function saveSupportContacts() {
         if (error) throw error;
         alert('✅ Saved! All customer screens now use these contacts.');
         logAction('support_contacts', 'Updated support contacts');
-    } catch(e) { alert('❌ Error: ' + e.message); }
-}
-	
-// ===== SIDEBAR LOGIC =====
-function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('open');
-    document.getElementById('sidebarOverlay').classList.toggle('show');
-}
-function closeSidebar() {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('sidebarOverlay').classList.remove('show');
-}
-function showMasterTab(tabId) {
-    closeSidebar();
-    var tabs = document.querySelectorAll('.master-tab-content');
-    for (var i = 0; i < tabs.length; i++) tabs[i].style.display = 'none';
-    document.getElementById(tabId).style.display = 'block';
-}
-// 📋 Fill the license generator dropdown from the plans table (both branches)
-async function loadPlanDropdown() {
-    var sel = document.getElementById('planType');
-    if (!sel) return;
-    try {
-        const { data, error } = await supabaseClient.from('plans').select('*').eq('active', true).order('display_order');
-        if (error) throw error;
-        var html = '';
-        var groups = { retail: '🛒 Retail', cafe: '☕ Café / Restaurant', hotel: '🏨 Hotel' };
-        ['retail','cafe','hotel'].forEach(function(bt) {
-            var plans = (data || []).filter(function(p){ return p.business_type === bt; });
-            if (!plans.length) return;
-            html += '<optgroup label="' + (groups[bt] || bt) + '">';
-            plans.forEach(function(p) {
-                if (p.is_default_free) return;   // free plan never needs a key
-                var price = (p.price_monthly > 0) ? (p.name + ' – ' + p.price_monthly + ' Br/mo') : (p.name + ' – custom');
-                html += '<option value="' + p.name + '">' + price + '</option>';
-            });
-            html += '</optgroup>';
-        });
-        sel.innerHTML = html || '<option value="basic">Basic</option>';
-    } catch(e) {
-        sel.innerHTML = '<option value="basic">Basic</option><option value="standard">Standard</option>';
-    }
-}
-  
-
-
-  function sdDialog(message, icon, title, callback, hasInput, defVal, options) {
-    var ov = document.createElement('div');
-    ov.className = 'standard-dialog-overlay';
-    // options = array of strings → dropdown instead of typing!
-    var inputHtml = '';
-    if (hasInput && options && options.length) {
-        inputHtml = '<select class="standard-dialog-select" id="sdInput">' +
-            options.map(function(o){
-                var v = String(o); var lbl = v;
-                if (v.indexOf('|') !== -1) { var parts = v.split('|'); v = parts[0]; lbl = parts[1]; }
-                return '<option value="' + v + '" ' + (String(defVal) === v ? 'selected' : '') + '>' + lbl + '</option>';
-            }).join('') + '</select>';
-    } else if (hasInput) {
-        inputHtml = '<input class="standard-dialog-input" id="sdInput" value="' + String(defVal || '').replace(/"/g, '&quot;') + '">';
-    }
-    ov.innerHTML = '<div class="standard-dialog-box">' +
-        '<div class="standard-dialog-icon">' + icon + '</div>' +
-        '<div class="standard-dialog-title">' + title + '</div>' +
-        '<div class="standard-dialog-message">' + message + '</div>' +
-        inputHtml +
-        '<div class="standard-dialog-buttons">' +
-            (callback ? '<button class="standard-dialog-btn standard-dialog-btn-secondary" id="sdCancel">Cancel</button>' : '') +
-            '<button class="standard-dialog-btn standard-dialog-btn-primary" id="sdOk">OK</button>' +
-        '</div></div>';
-    document.body.appendChild(ov);
-
-    var input = document.getElementById('sdInput');
-    if (input && input.tagName === 'INPUT') { input.focus(); input.select(); }
-    else if (input && input.tagName === 'SELECT') { input.focus(); }
-
-    function finish(ok) {
-        var val = null;
-        if (hasInput) { val = ok ? document.getElementById('sdInput').value : null; }
-        else { val = ok; }
-        ov.remove();
-        if (callback) callback(val);
-    }
-    document.getElementById('sdOk').onclick = function(){ finish(true); };
-    var c = document.getElementById('sdCancel');
-    if (c) c.onclick = function(){ finish(false); };
-    if (input && input.tagName === 'INPUT') {
-        input.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); finish(true); } });
-    }
-    ov.addEventListener('click', function(e){ if (e.target === ov) { ov.remove(); if (callback) callback(hasInput ? null : false); } });
+    } catch(e) { alert('❌ ' + e.message); }
 }
 
-
-
-
-  // 🔬 TEMPORARY DIAGNOSTIC — removes the guesswork
-async function ssDiagnose() {
-    var report = '🔬 DIAGNOSTIC REPORT\n\n';
-    report += 'renderLicenseTableV2: ' + (typeof renderLicenseTableV2) + '\n';
-    report += 'allLicenses loaded: ' + (typeof allLicenses !== 'undefined' ? allLicenses.length : 'variable missing') + '\n\n';
-
-    // Can the browser read the shops?
-    try {
-        const { data: shops, error } = await supabaseClient.from('shops').select('shop_id, name').limit(100);
-        report += 'Browser reads shops: ' + (error ? '❌ ERROR: ' + error.message : '✅ ' + (shops || []).length + ' shops visible') + '\n';
-    } catch(e) { report += 'Browser reads shops: ❌ ' + e.message + '\n'; }
-
-    // Can the browser read licenses?
-    try {
-        const { data: lics, error } = await supabaseClient.from('licenses').select('shop_id').limit(100);
-        report += 'Browser reads licenses: ' + (error ? '❌ ERROR: ' + error.message : '✅ ' + (lics || []).length + ' licenses visible') + '\n';
-    } catch(e) { report += 'Browser reads licenses: ❌ ' + e.message + '\n'; }
-
-    // Master status
-    try {
-        const { data: { user } } = await supabaseClient.auth.getUser();
-        report += 'Logged in as: ' + (user ? user.email : 'nobody') + '\n';
-        const { data: mu } = await supabaseClient.from('master_users').select('role').eq('email', user.email).maybeSingle();
-        report += 'Master role: ' + (mu ? '✅ ' + mu.role : '❌ NOT in master_users!') + '\n';
-    } catch(e) { report += 'Login check failed: ' + e.message + '\n'; }
-
-    alert(report);
-    console.log(report);
+function setupRegistrationAlerts() {
+    supabaseClient.channel('new-registrations')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shops' }, function(payload) {
+            var shop = payload.new;
+            var trialEnds = shop.trial_expires ? new Date(shop.trial_expires).toLocaleDateString() : 'unknown';
+            try {
+                var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                [660, 880, 1100].forEach(function(f, i) {
+                    var o = ctx.createOscillator(), g = ctx.createGain();
+                    o.frequency.value = f;
+                    g.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.3);
+                    o.connect(g); g.connect(ctx.destination);
+                    o.start(ctx.currentTime + i * 0.15); o.stop(ctx.currentTime + i * 0.15 + 0.32);
+                });
+            } catch(e) {}
+            try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch(e) {}
+            alert('🆕 NEW CUSTOMER REGISTERED!\n\n🏪 ' + (shop.name || 'Unknown') +
+                  '\n🆔 ' + shop.shop_id + '\n📧 ' + (shop.owner_email || 'no email') +
+                  '\n📱 ' + (shop.phone || 'no phone') + '\n📅 Trial ends: ' + trialEnds);
+            loadShops();
+        }).subscribe();
 }
 </script>
 </body>
 </html>
- 
