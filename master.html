@@ -1377,21 +1377,27 @@ async function changeMasterPassword() {
     }
 }
 function initMasterPanel() {
-    alert('DEBUG: loadPlanEditor is ' + typeof loadPlanEditor + ' | saveAllPlans is ' + typeof saveAllPlans + ' | pmLbl is ' + typeof pmLbl);
-  
-  
-  loadShops();              // 🏪 THE command center (shops + keys + expiry)
-    loadAuditLog();
-    populateSnapshotDropdown();
-    loadGlobalTrialDays();
-    loadSupportContacts();
-    loadTierSettings();
-    loadPlanDropdown();
-    loadPlanEditor();
-    loadPaymentHistory();     // 💰 now works (esc fix)
-    setupRegistrationAlerts();
-}
+    try {
+        // 🔬 Direct DOM debug — visible in the Plan Manager card, no alert needed
+        var dbg = document.getElementById('planEditorList');
+        if (dbg) dbg.innerHTML = '<p style="color:#f59e0b;">⏳ initMasterPanel running…</p>';
 
+        loadShops();              // 🏪 THE command center
+        loadAuditLog();
+        populateSnapshotDropdown();
+        loadGlobalTrialDays();
+        loadSupportContacts();
+        loadPlanDropdown();
+        loadPlanEditor();
+        loadPaymentHistory();
+        setupRegistrationAlerts();
+
+        if (dbg) dbg.innerHTML = '<p style="color:#10b981;">✅ All loaders called — plans loading next…</p>';
+    } catch(e) {
+        var dbg2 = document.getElementById('planEditorList');
+        if (dbg2) dbg2.innerHTML = '<p style="color:#ef4444;white-space:pre-wrap;">❌ initMasterPanel CRASHED: ' + e.message + '</p>';
+    }
+}
 // ===== 📢 INSTANT NEW-REGISTRATION ALERTS =====
 function setupRegistrationAlerts() {
     supabaseClient.channel('new-registrations')
