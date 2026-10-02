@@ -411,9 +411,9 @@ function initMasterPanel() {
     loadPlanDropdown();
     loadPlanEditor();
     loadPaymentHistory();
+    loadRevenueSummary();
     setupRegistrationAlerts();
-}
-setTimeout(function() {
+}setTimeout(function() {
     var splash = document.getElementById('splashScreen');
     if (splash) { splash.style.opacity = '0'; setTimeout(function(){ splash.style.display = 'none'; }, 800); }
 }, 1500);
@@ -813,16 +813,6 @@ async function generateLicense() {
     } catch(e) { alert('❌ ' + e.message); }
 }
 
-async function revokeLicense(licenseId) {
-    var ok = await confirm('⚠️ Revoke this license? The shop will be locked out immediately.');
-    if (!ok) return;
-    try {
-        await supabaseClient.from('licenses').update({ expiry_date: new Date().toISOString() }).eq('id', licenseId);
-        alert('⛔ License revoked.');
-        loadShops();
-        logAction('revoke', 'Revoked license ' + licenseId);
-    } catch (e) { alert('❌ ' + e.message); }
-}
 
 // ══════════════════════════════════════════════════════════════
 //  💰 SECTION 6: PAYMENT HISTORY + REVENUE SUMMARY
@@ -848,21 +838,35 @@ async function loadPaymentHistory() {
     } catch(e) { el.innerHTML = '<p style="color:#f44336;">❌ Load failed: ' + e.message + '</p>'; }
 }
 
-function loadRevenueSummary() {
-    var active = 0, expiring = 0, expired = 0;
-    allLicenses.forEach(function(l) {
-        var days = l.expiry_date ? Math.ceil((new Date(l.expiry_date) - new Date()) / 86400000) : null;
-        if (days === null) return;
-        if (days < 0) expired++;
-        else { if (l.plan !== 'Trial') active++; if (days <= 7) expiring++; }
-    });
+// 💰 CEO DASHBOARD — live from database
+async function loadRevenueSummary() {
     var el = document.getElementById('revenueSummary');
-    if (el) el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center;margin-bottom:15px;">' +
-        '<div style="background:#e6f4ea;padding:12px;border-radius:8px;"><b style="display:block;font-size:22px;color:#10b981;">' + active + '</b><small>Active Paid</small></div>' +
-        '<div style="background:#fef3c7;padding:12px;border-radius:8px;"><b style="display:block;font-size:22px;color:#f59e0b;">' + expiring + '</b><small>Expiring ≤7d</small></div>' +
-        '<div style="background:#fee2e2;padding:12px;border-radius:8px;"><b style="display:block;font-size:22px;color:#ef4444;">' + expired + '</b><small>Expired</small></div></div>';
+    if (!el) return;
+    el.innerHTML = '<p style="color:#94a3b8;">Loading…</p>';
+    try {
+        var active = 0, expiring = 0, expired = 0, mrr = 0;
+        const { data: lics, error } = await supabaseClient.from('licenses')
+            .select('shop_id, plan, expiry_date, status, price_monthly')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        var seen = {};
+        (lics || []).forEach(function(l) {
+            if (seen[l.shop_id]) return;   // newest license per shop only
+            seen[l.shop_id] = true;
+            if (l.status && l.status !== 'active') return;
+            var days = l.expiry_date ? Math.ceil((new Date(l.expiry_date) - new Date()) / 86400000) : null;
+            if (days === null) return;
+            if (days < 0) { expired++; return; }
+            if ((l.plan || '').toLowerCase() !== 'trial') { active++; mrr += Number(l.price_monthly || 0); }
+            if (days <= 7) expiring++;
+        });
+        el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;text-align:center;margin-bottom:15px;">' +
+            '<div style="background:#064e3b;padding:12px;border-radius:10px;"><b style="display:block;font-size:24px;color:#10b981;">' + active + '</b><small style="color:#a7f3d0;">Active Paid</small></div>' +
+            '<div style="background:#78350f;padding:12px;border-radius:10px;"><b style="display:block;font-size:24px;color:#f59e0b;">' + expiring + '</b><small style="color:#fde68a;">Expiring ≤7d</small></div>' +
+            '<div style="background:#7f1d1d;padding:12px;border-radius:10px;"><b style="display:block;font-size:24px;color:#ef4444;">' + expired + '</b><small style="color:#fecaca;">Expired</small></div>' +
+            '<div style="background:#1e3a8a;padding:12px;border-radius:10px;"><b style="display:block;font-size:24px;color:#93c5fd;">' + mrr.toLocaleString() + ' Br</b><small style="color:#bfdbfe;">Monthly income</small></div></div>';
+    } catch(e) { el.innerHTML = '<p style="color:#f44336;">❌ ' + e.message + '</p>'; }
 }
-
 // ══════════════════════════════════════════════════════════════
 //  🏢 SECTION 7: PLAN MANAGER
 // ══════════════════════════════════════════════════════════════
@@ -1023,6 +1027,24 @@ async function loadShopSnapshot() {
     } catch(e) { res.innerHTML = '<span style="color:#ef4444">Error: ' + e.message + '</span>'; }
 }
 
+  // ═══ 🗑️ DELETE LICENSE — removes the key (shop survives as trial/free) ═══
+async function deleteShopLicense(shopId) {
+    var shop = await getShopRow(shopId);
+    var lic = _shopLicenses[shopId];
+    if (!lic) { alert('No license to delete for this shop.'); return; }
+    var shopName = shop ? shop.name : shopId;
+    var ok = await confirm('🗑️ DELETE the license key for "' + shopName + '"?\n\n🔑 Key: ' + lic.key + '\n📋 Plan: ' + lic.plan + '\n⏰ Expires: ' + new Date(lic.expiry_date).toLocaleDateString() + '\n\nThe SHOP is NOT deleted — it returns to free/trial status.');
+    if (!ok) return;
+    var ok2 = await confirm('🚨 FINAL CONFIRM\n\nDelete key ' + lic.key + ' permanently?');
+    if (!ok2) return;
+    try {
+        await supabaseClient.from('licenses').delete().eq('id', lic.id);
+        await supabaseClient.from('shops').update({ plan: 'trial' }).eq('shop_id', shopId);
+        alert('✅ License deleted!\n\n' + shopName + ' is now on trial/free status.');
+        loadShops();
+        logAction('delete_license', shopName + ' key deleted (' + lic.key + ')');
+    } catch(e) { alert('❌ ' + e.message); }
+}
 async function populateSnapshotDropdown() {
     const { data } = await supabaseClient.from('shops').select('shop_id, name').order('name');
     const sel = document.getElementById('snapshotShop');
