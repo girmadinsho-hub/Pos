@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smartshoppro-v270';
+const CACHE_NAME = 'smartshoppro-v271';
 const urlsToCache = [
   './',
   './index.html',
@@ -6,12 +6,20 @@ const urlsToCache = [
   './pos.html',
   './kitchen.html',
   './menu.html',
+  './hotel.html',
   './master.html',
   './config.js',
   './shared.js',
   './sheet.js',
   './advanced.js',
   './smartcom.js',
+  './ssauth.js',
+  './ssfeatures.js',
+  './ssfiscal.js',
+  './ssperf.js',
+  './ssprint.js',
+  './ssupload.js',
+  './hotel.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -23,9 +31,13 @@ const urlsToCache = [
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      console.log('Opened cache');
-      return cache.addAll(urlsToCache);
+    caches.open(CACHE_NAME).then(async cache => {
+      let ok = 0, fail = [];
+      for (const url of urlsToCache) {
+        try { await cache.add(url); ok++; }
+        catch (e) { fail.push(url); console.warn('Cache missed:', url); }
+      }
+      console.log('SW install: ' + ok + ' cached, ' + fail.length + ' failed', fail);
     })
   );
 });
@@ -33,11 +45,13 @@ self.addEventListener('install', event => {
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        if (response) return response;
-        return fetch(event.request).catch(() => caches.match('./pos.html'));
-      })
+    caches.match(event.request).then(response => {
+      if (response) return response;
+      return fetch(event.request).catch(() => {
+        if (event.request.mode === 'navigate') return caches.match('./pos.html');
+        return new Response('', { status: 504, statusText: 'Offline' });
+      });
+    })
   );
 });
 
