@@ -9906,7 +9906,6 @@ async function savePosSettings() {
         alert('❌ Error saving POS settings: ' + e.message);
     }
 }
-
   
   async function saveShopLevel() {
     var level = document.getElementById('shopLevelSelect').value;
@@ -12955,7 +12954,7 @@ async function loadPeakHours() {
 async function ssRefreshLicenseFromDB() {
     try {
         if (!supabaseClient || !navigator.onLine) return false;
-        if (sessionStorage.getItem('ssLicRefreshed') === '1') return false;  // 🛑 LOOP GUARD
+        if (sessionStorage.getItem('ssLicRefreshed') === '1') return false;
         const { data: lic } = await supabaseClient.from('licenses')
             .select('*').eq('shop_id', getShopId())
             .order('created_at', { ascending: false }).limit(1).maybeSingle();
@@ -12963,12 +12962,23 @@ async function ssRefreshLicenseFromDB() {
         if (lic.status && lic.status !== 'active') return false;
         if (lic.expiry_date && new Date(lic.expiry_date) < new Date()) return false;
 
-        // Normalize EXACTLY like the app reads it — no timestamps, no nulls
+        // 🛡️ PLAN ROW GUARD: only adopt a license whose plan exists for THIS shop's business type.
+        // Otherwise we'd shrink menus (license plan name not found in plans table).
+        var biz = 'retail';
+        try {
+            const { data: shopRow } = await supabaseClient.from('shops')
+                .select('business_type').eq('shop_id', getShopId()).maybeSingle();
+            biz = (shopRow && shopRow.business_type) || 'retail';
+        } catch(e) {}
+        if (biz !== 'hotel' || (lic.plan || '').toLowerCase() !== 'basic') {
+            // allow normal adoption for non-hotel or non-basic names
+        } else {
+            return false; // hotel+Basic mismatch → keep current cache, don't shrink
+        }
+
         var normalized = {
-            plan: lic.plan || 'basic',
-            startDate: lic.start_date || '',
-            expiryDate: lic.expiry_date || '',
-            shopId: lic.shop_id || '',
+            plan: lic.plan || 'basic', startDate: lic.start_date || '',
+            expiryDate: lic.expiry_date || '', shopId: lic.shop_id || '',
             shopName: lic.shop_name || '',
             maxShops: Number(lic.max_shops) || 1,
             maxCashiersPerShop: Number(lic.max_cashiers_per_shop) || 2,
@@ -12977,11 +12987,10 @@ async function ssRefreshLicenseFromDB() {
         var fresh = JSON.stringify(normalized);
         if (fresh === localStorage.getItem('smartshop_license')) return false;
         localStorage.setItem('smartshop_license', fresh);
-        sessionStorage.setItem('ssLicRefreshed', '1');   // guard armed BEFORE any reload
+        sessionStorage.setItem('ssLicRefreshed', '1');
         return true;
     } catch(e) { return false; }
-}
-  
+}  
 // ===== FINAL STARTUP =====
 function init() {
       ssRefreshLicenseFromDB().then(function(changed){ if (changed) location.reload(); });
