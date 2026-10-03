@@ -9843,7 +9843,10 @@ function loadShopsList() {
             container.innerHTML = '<p style="color:#f44336;">Error loading branches.</p>';
         }
     })();
-}// ===== DELETE PRODUCT =====
+}
+  
+  
+  // ===== DELETE PRODUCT =====
 			async function deleteProduct(productId) {
     if (!await confirm('Delete this product permanently?')) return;
     try {
@@ -9865,49 +9868,19 @@ function loadShopsList() {
 }						
 	
 async function savePosSettings() {
-       // 🔒 TAX RULE: tax type decides everything (TOT → always 0 & off)
+    // 🔒 TAX RULE: tax type decides everything (TOT → always 0 & off)
     var brandTaxType = (document.getElementById('brandTaxType') ? document.getElementById('brandTaxType').value : 'TOT');
     var isVatShop = (brandTaxType === 'VAT');
-    var enableTaxFinal = isVatShop && document.getElementById('settingEnableTax').checked;   // only VAT shops can enable
+    var enableTaxFinal = isVatShop && document.getElementById('settingEnableTax').checked;
     var taxRateFinal = isVatShop ? (parseFloat(document.getElementById('settingTaxRate').value) || 0) : 0;
     var taxNameFinal = isVatShop ? (document.getElementById('settingTaxName').value.trim() || 'VAT') : 'TOT';
 
-        var payload = {
+    var payload = {
         shop_id: getShopId(),
-        // 🏨 Hotel = café tools internally + hotel system via business_type
         shop_type: document.getElementById('settingShopType').value === 'hotel' ? 'cafe' : document.getElementById('settingShopType').value,
         enable_tax: enableTaxFinal,
         tax_name: taxNameFinal,
         tax_rate: taxRateFinal,
-        negotiate_price: document.getElementById('settingNegotiatePrice').checked,
-        bulk_pricing: document.getElementById('settingBulkPricing').checked,
-        enable_discount: document.getElementById('settingEnableDiscount').checked
-    };
-      var kotEl = document.getElementById('settingKotMode');
-    if (kotEl) payload.kot_print_mode = kotEl.value;
-
-    try {
-        if (supabaseClient) {
-            const { error } = await supabaseClient.from('settings')
-                .upsert(payload, { onConflict: 'shop_id', returning: 'minimal' });
-            if (error) throw error;
-        }
-        
-        if (typeof applyShopTypeUI === 'function') applyShopTypeUI(payload.shop_type);
-      // 🔒 Broadcast tax lock to any open POS devices (they reload settings via realtime)
-      alert(t('posSettingsSaved'));
-    } catch(e) {
-        alert('❌ Error saving POS settings: ' + e.message);
-    }
-}
-async function savePosSettings() {
-    var payload = {
-        shop_id: getShopId(),
-        // 🏨 Hotel = café tools internally + hotel system via business_type
-        shop_type: document.getElementById('settingShopType').value === 'hotel' ? 'cafe' : document.getElementById('settingShopType').value,
-        enable_tax: document.getElementById('settingEnableTax').checked,
-        tax_name: document.getElementById('settingTaxName').value.trim() || 'Tax',
-        tax_rate: parseFloat(document.getElementById('settingTaxRate').value) || 0,
         negotiate_price: document.getElementById('settingNegotiatePrice').checked,
         bulk_pricing: document.getElementById('settingBulkPricing').checked,
         enable_discount: document.getElementById('settingEnableDiscount').checked
@@ -9917,14 +9890,11 @@ async function savePosSettings() {
 
     try {
         if (supabaseClient) {
-            // 1. Save the settings (shop_type: hotel stored internally as 'cafe')
             const { error } = await supabaseClient.from('settings')
                 .upsert(payload, { onConflict: 'shop_id', returning: 'minimal' });
             if (error) throw error;
 
-            // 2. 🏨 BUSINESS TYPE — the master identity (hotel/retail/cafe)
-            //    Hotel selected → business_type='hotel' (activates rooms + hotel staff)
-            //    Anything else  → business_type follows the selection
+            // 🏨 BUSINESS TYPE — master identity (hotel → rooms + hotel staff activate)
             var selValue = document.getElementById('settingShopType').value;
             var newBizType = (selValue === 'hotel') ? 'hotel' : selValue;
             await supabaseClient.from('shops').update({ business_type: newBizType }).eq('shop_id', getShopId());
@@ -9935,7 +9905,10 @@ async function savePosSettings() {
     } catch(e) {
         alert('❌ Error saving POS settings: ' + e.message);
     }
-}				async function saveShopLevel() {
+}
+
+  
+  async function saveShopLevel() {
     var level = document.getElementById('shopLevelSelect').value;
     try {
         if (supabaseClient) {
