@@ -12951,33 +12951,6 @@ async function loadPeakHours() {
     }
 }
 
-	// ═══ K7: REFRESH LICENSE CACHE FROM DB AT STARTUP ═══
-// Master renews → customer just reopens the app. No key re-typing.
-async function ssRefreshLicenseFromDB() {
-    try {
-        if (!supabaseClient || !navigator.onLine) return false;
-        const { data: lic } = await supabaseClient.from('licenses')
-            .select('*').eq('shop_id', getShopId())
-            .order('created_at', { ascending: false }).limit(1).maybeSingle();
-        if (!lic) return false;                                   // no license row → leave as-is
-        if (lic.status && lic.status !== 'active') return false;  // revoked → lockout rules handle it
-        if (lic.expiry_date && new Date(lic.expiry_date) < new Date()) return false; // expired → lockout handles it
-
-        var fresh = JSON.stringify({
-            plan: lic.plan, startDate: lic.start_date, expiryDate: lic.expiry_date,
-            shopId: lic.shop_id, shopName: lic.shop_name,
-            maxShops: Number(lic.max_shops) || 1,
-            maxCashiersPerShop: Number(lic.max_cashiers_per_shop) || 2,
-            maxProducts: Number(lic.max_products) || 999999
-        });
-        var old = localStorage.getItem('smartshop_license');
-        if (fresh === old) return false;                          // already correct → no reload
-
-        saveLicense(JSON.parse(fresh));
-        return true;                                              // cache updated → one reload
-    } catch(e) { console.warn('License refresh skipped:', e.message); return false; }
-}
-
 // ═══ K7 v2: REFRESH LICENSE — loop-proof (max 1 reload per session) ═══
 async function ssRefreshLicenseFromDB() {
     try {
