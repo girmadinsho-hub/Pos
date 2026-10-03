@@ -8890,8 +8890,31 @@ function getShopGPS() {
     );
 }
 
-// ===== LOAD SHOP BRANDING FORM =====
+// ═══ LOAD POS SETTINGS — restores saved tax/feature toggles (was missing!) ═══
+async function loadPosSettings() {
+    try {
+        const { data, error } = await supabaseClient.from('settings').select('*').eq('shop_id', getShopId()).maybeSingle();
+        if (error) throw error;
+        if (!data) return;
 
+        var st = data.shop_type || 'retail';
+        try {
+            const { data: shopRow } = await supabaseClient.from('shops').select('business_type').eq('shop_id', getShopId()).maybeSingle();
+            if (shopRow && shopRow.business_type === 'hotel') st = 'hotel';
+        } catch(e) {}
+        if (document.getElementById('settingShopType')) document.getElementById('settingShopType').value = st;
+        if (document.getElementById('settingKotMode')) document.getElementById('settingKotMode').value = data.kot_print_mode || 'digital';
+        if (document.getElementById('settingTaxName')) document.getElementById('settingTaxName').value = data.tax_name || '';
+        if (document.getElementById('settingTaxRate')) document.getElementById('settingTaxRate').value = data.tax_rate || 0;
+        if (document.getElementById('settingEnableTax')) document.getElementById('settingEnableTax').checked = !!data.enable_tax;
+        if (document.getElementById('settingNegotiatePrice')) document.getElementById('settingNegotiatePrice').checked = !!data.negotiate_price;
+        if (document.getElementById('settingBulkPricing')) document.getElementById('settingBulkPricing').checked = !!data.bulk_pricing;
+        if (document.getElementById('settingEnableDiscount')) document.getElementById('settingEnableDiscount').checked = !!data.enable_discount;
+    } catch(e) { console.warn('Load POS settings:', e.message); }
+}
+
+
+  
 async function loadBrandingForm() {
     try {
         const { data, error } = await supabaseClient.from('settings').select('*').eq('shop_id', getShopId()).maybeSingle();
