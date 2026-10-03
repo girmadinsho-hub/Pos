@@ -14,3 +14,7 @@ ADMIN.HTML FULLY READ (13073 ln). All core files now read.
 NEW CRITICALS: K1 savePosSettings x2→TOT tax rule DEAD; K2 getFilteredDetailedSales x2→Detailed filters DEAD; K3 addProduct/staff NO plan-limit check (verify+fix); K4 dupeditCreditModal id; K5 window.onload x6; K6 appLang hoisting
 advanced.js ~50% dead in admin (staff/expense/daily-summary views overridden inline)
 PLAN: R surgical fixes → B admin-clean.html tab-by-tab → C pos → D advanced de-zombie
+HOTEL UNLOCKED: stale license cache was the lock → re-activation refreshed it →hotel plan features loaded (plan row exists — no SQL needed)
+Fix A (exit door law: tabs 13/14 never locked) — [CONFIRM APPLIED / still to apply]
+K7 v2 real test: renewal → reopen → auto-updated? [PENDING]
+NEXT QUEUE: Phase R — K1 savePosSettings merge → K2 dead filter copy → K3 plan limits→ K4 dup modal. Then admin-clean build (role engine built into skeleton from day one)
