@@ -10,3 +10,7 @@ NEXT: Wave 2 = delete dead code in master (~420 lines) → then ad
 
 MASTER.HTML: CLEAN ✅ (~1270 lines, 0 zombies). Plan Manager healed, CEO Dashboard live (4 boxes),await-confirms fixed, 💣 deleteShopForever + eraseShopData added, deleteShopLicense restored,cleanupShopData rebuilt on eraseShopData. sw.js bumped through v408+
 NEXT: read sheet.js + advanced.js + hotel.js → then admin.html full read (~14 chunks) →ONE report → build admin-clean.html tab-by-tab
+ADMIN.HTML FULLY READ (13073 ln). All core files now read.
+NEW CRITICALS: K1 savePosSettings x2→TOT tax rule DEAD; K2 getFilteredDetailedSales x2→Detailed filters DEAD; K3 addProduct/staff NO plan-limit check (verify+fix); K4 dupeditCreditModal id; K5 window.onload x6; K6 appLang hoisting
+advanced.js ~50% dead in admin (staff/expense/daily-summary views overridden inline)
+PLAN: R surgical fixes → B admin-clean.html tab-by-tab → C pos → D advanced de-zombie
