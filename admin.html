@@ -12951,9 +12951,36 @@ async function loadPeakHours() {
     }
 }
 
-	// ═══ K7: REFRESH LICENSE CACHE FROM DB AT STARTUP ═══
-// Master renews → customer just reopens the app. No key re-typing.
+// ═══ K7 v2: REFRESH LICENSE — loop-proof (max 1 reload per session) ═══
 async function ssRefreshLicenseFromDB() {
+    try {
+        if (!supabaseClient || !navigator.onLine) return false;
+        if (sessionStorage.getItem('ssLicRefreshed') === '1') return false;  // 🛑 LOOP GUARD
+        const { data: lic } = await supabaseClient.from('licenses')
+            .select('*').eq('shop_id', getShopId())
+            .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (!lic) return false;
+        if (lic.status && lic.status !== 'active') return false;
+        if (lic.expiry_date && new Date(lic.expiry_date) < new Date()) return false;
+
+        // Normalize EXACTLY like the app reads it — no timestamps, no nulls
+        var normalized = {
+            plan: lic.plan || 'basic',
+            startDate: lic.start_date || '',
+            expiryDate: lic.expiry_date || '',
+            shopId: lic.shop_id || '',
+            shopName: lic.shop_name || '',
+            maxShops: Number(lic.max_shops) || 1,
+            maxCashiersPerShop: Number(lic.max_cashiers_per_shop) || 2,
+            maxProducts: Number(lic.max_products) || 999999
+        };
+        var fresh = JSON.stringify(normalized);
+        if (fresh === localStorage.getItem('smartshop_license')) return false;
+        localStorage.setItem('smartshop_license', fresh);
+        sessionStorage.setItem('ssLicRefreshed', '1');   // guard armed BEFORE any reload
+        return true;
+    } catch(e) { return false; }
+}() {
     try {
         if (!supabaseClient || !navigator.onLine) return false;
         const { data: lic } = await supabaseClient.from('licenses')
