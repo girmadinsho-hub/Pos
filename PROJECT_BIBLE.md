@@ -18,3 +18,9 @@ HOTEL UNLOCKED: stale license cache was the lock → re-activation refreshed it 
 Fix A (exit door law: tabs 13/14 never locked) — [CONFIRM APPLIED / still to apply]
 K7 v2 real test: renewal → reopen → auto-updated? [PENDING]
 NEXT QUEUE: Phase R — K1 savePosSettings merge → K2 dead filter copy → K3 plan limits→ K4 dup modal. Then admin-clean build (role engine built into skeleton from day one)
+ROOT CAUSE CONFIRMED BY CAPTAIN: license plan name must exist in the shop'sbusiness-type plan group. Wrong-group key = menus shrink. Correct = full.
+Master RULE: always generate keys from the shop's own business-type group
+Fix 1 (extend-in-place) RECOMMENDED — prevents extend from inventing 'Basic'
+Fix 2 (plan-row guard) — SKIPPED by Captain decision (clean rebuild will own it)
+K7 status: works when plan names match; manual activation = reliable fallback
+QUEUE: Phase R → K1 savePosSettings merge (tax law) → K2 → K3 → K4
