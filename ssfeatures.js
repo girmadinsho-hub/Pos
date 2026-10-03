@@ -82,11 +82,13 @@ function ssIsCafe() { return SS_PLAN.businessType === 'cafe'; }
 function ssHasStockMgmt() { return SS_PLAN.name === 'Trial' ? true : SS_PLAN.hasStockMgmt; }
 
 function ssTabAllowed(tabNum) {
+    // 🚪 EXIT DOOR LAW: Settings (13) + License (14) are NEVER plan-locked.
+    // Locking them traps paying customers outside their own upgrade path.
+    if (tabNum === 13 || tabNum === 14) return true;
     var feature = SS_TAB_FEATURES[tabNum];
     if (!feature) return true;
     return ssHasFeature(feature);
 }
-
 // ═══ APPLY ═══
 async function ssApplyPlanVisibility() {
     await ssLoadPlan();
