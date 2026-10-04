@@ -2484,6 +2484,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
         </div>
     </div>
 
+  
        <!-- POS Features (WITH TAX CONFIG) -->
     <div class="card">
         <div class="card-title" onclick="toggleCard(this)">🔧 Shop Type & POS Features <span class="arrow open">▶</span></div>
@@ -2515,9 +2516,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
             </div>
 
             <p style="font-size:12px;color:#888">Enable or disable features on the cashier screen.</p>
-            <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1f5f9">
-                <span>🧾 Enable Tax</span><input type="checkbox" id="settingEnableTax" onchange="savePosSettings()">
-            </div>
+            
             <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f1f5f9">
                 <span>✏️ Negotiate Price</span><input type="checkbox" id="settingNegotiatePrice" onchange="savePosSettings()">
             </div>
@@ -2581,19 +2580,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
             <label>💵 Currency Symbol</label>
             <input type="text" class="form-input" id="brandCurrency" placeholder="e.g., $, €, Br, ₹" maxlength="3">
             
-					               <!-- FISCAL SETTINGS -->
-            <label>🧾 Tax Identification Number (TIN)</label>
-            <input type="text" class="form-input" id="brandTin" placeholder="e.g., 0001234567">
-            
-            <label>📊 VAT Registration Number</label>
-            <input type="text" class="form-input" id="brandVat" placeholder="e.g., 600123456">
-
-           
-            <label>🏛️ Tax Registration Type</label>
-            <select class="form-select" id="brandTaxType">
-                <option value="TOT">TOT — Turnover Tax (small business)</option>
-                <option value="VAT">VAT — Value Added Tax (registered)</option>
-            </select>
+					            
 
 	   <button class="btn btn-primary" onclick="saveShopBranding()">💾 Save</button>
 
@@ -8913,7 +8900,26 @@ async function loadPosSettings() {
     } catch(e) { console.warn('Load POS settings:', e.message); }
 }
 
-
+// ═══ ONE-SAVE TAX CONFIG — writes everything in ONE database write ═══
+async function saveTaxConfig() {
+    var taxType = document.getElementById('brandTaxType') ? document.getElementById('brandTaxType').value : 'TOT';
+    var isVat = (taxType === 'VAT');
+    var payload = {
+        shop_id: getShopId(),
+        tax_type: taxType,
+        tin_number: document.getElementById('brandTin') ? document.getElementById('brandTin').value.trim() : '',
+        vat_number: document.getElementById('brandVat') ? document.getElementById('brandVat').value.trim() : '',
+        enable_tax: isVat && document.getElementById('settingEnableTax') ? document.getElementById('settingEnableTax').checked : false,
+        tax_name: isVat ? (document.getElementById('settingTaxName') ? document.getElementById('settingTaxName').value.trim() || 'VAT' : 'VAT') : 'TOT',
+        tax_rate: isVat ? (parseFloat(document.getElementById('settingTaxRate') ? document.getElementById('settingTaxRate').value : 0) || 0) : 0
+    };
+    try {
+        const { error } = await supabaseClient.from('settings')
+            .upsert(payload, { onConflict: 'shop_id', returning: 'minimal' });
+        if (error) throw error;
+        alert('✅ Tax configuration saved!' + (isVat ? '\nVAT ' + payload.tax_rate + '% — POS will charge it.' : '\nTOT shop: tax stays OFF (law).'));
+    } catch(e) { alert('❌ ' + e.message); }
+}
   
 async function loadBrandingForm() {
     try {
@@ -8952,14 +8958,6 @@ async function resetShopData() {
 }
 
 
-
-
-
-
-
-
-
-	
 
 // ===== LICENSE =====
 function loadLicenseInfo() {
