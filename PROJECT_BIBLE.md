@@ -561,3 +561,5 @@ PHASE B: modularized (v4-dashboard.js + v4-products.js, registry V4_TAB_LOADERS)
 Products P1+P2 ✅: full Edit Modal, add-form bulk/modifiers/menu, CSS kit restored(scroll law, resize, dialogs). Excel-switch bug fixed (fresh setData on every switch)
 NEXT: P3 detail+bin card → P4 scanner/CSV/filters → P5 tools → then Sales (Step 4)
 LAW: new code goes INTO module files, never the shell
+P3 ✅: Product Detail card + Bin Card (stock ledger: movements + legacy salesdeduped by invoice + losses + purchases, in/out totals). 📋 buttons in table+list.
+Products ~90%. NEXT: P4 (scanner, CSV, unit filter, sort selector, maximize,inline unit/cat/barcode edit, menu toggle button) → then P5 tools → Products 100%+1%
