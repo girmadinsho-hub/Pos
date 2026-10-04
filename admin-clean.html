@@ -76,7 +76,54 @@ body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
     <button class="btn btn-o" onclick="adminLogout()" style="color:var(--bad);border-color:var(--bad)">Logout</button>
   </div>
 </div>
-
+<!-- ═══ DASHBOARD TEMPLATE (clean, v4) ═══ -->
+<template id="tab0HTML">
+<div id="tab0" class="tab-content">
+  <div class="card">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="period-btn active" data-p="daily" onclick="loadDashboardV4('daily',this)">📅 Today</button>
+      <button class="period-btn" data-p="weekly" onclick="loadDashboardV4('weekly',this)">📅 Week</button>
+      <button class="period-btn" data-p="monthly" onclick="loadDashboardV4('monthly',this)">📅 Month</button>
+      <button class="period-btn" data-p="yearly" onclick="loadDashboardV4('yearly',this)">📅 Year</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+      <div class="stat-card" style="border-left:5px solid #3b82f6"><div class="stat-label">💰 Revenue</div><div class="stat-value" id="v4statRevenue">—</div><div class="stat-sub" id="v4statRevenueSub"></div></div>
+      <div class="stat-card" style="border-left:5px solid #10b981"><div class="stat-label">📈 Gross Profit</div><div class="stat-value" id="v4statGrossProfit">—</div><div class="stat-sub" id="v4statProfitSub"></div></div>
+      <div class="stat-card" style="border-left:5px solid #f59e0b"><div class="stat-label">💸 Expenses</div><div class="stat-value" id="v4statExpenses">—</div><div class="stat-sub" id="v4statExpensesSub"></div></div>
+      <div class="stat-card" style="border-left:5px solid #8b5cf6"><div class="stat-label">💎 Net Profit</div><div class="stat-value" id="v4statNetProfit">—</div><div class="stat-sub" id="v4statNetSub"></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px">
+      <div class="stat-card" style="border-left:5px solid #ef4444"><div class="stat-label">💳 Credit Due</div><div class="stat-value" id="v4statCreditDue">—</div></div>
+      <div class="stat-card" style="border-left:5px solid #f97316"><div class="stat-label">⚠️ Low Stock</div><div class="stat-value" id="v4statLowStock">—</div></div>
+      <div class="stat-card" style="border-left:5px solid #ec4899"><div class="stat-label">🔔 Salary Alerts</div><div class="stat-value" id="v4statSalaryAlerts">—</div></div>
+      <div class="stat-card" style="border-left:5px solid #14b8a6"><div class="stat-label">🏦 Open Loans</div><div class="stat-value" id="v4statOpenLoans">—</div></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:280px">
+      <div class="card-title">📈 Sales (7 Days)</div>
+      <div style="height:220px"><canvas id="v4salesChart"></canvas></div>
+    </div>
+    <div class="card" style="flex:1;min-width:280px">
+      <div class="card-title">💳 Payment Methods</div>
+      <div style="height:220px"><canvas id="v4payChart"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🕒 Recent Sales</div>
+    <div id="v4recentSales" style="max-height:220px;overflow-y:auto;font-size:13px">Loading…</div>
+  </div>
+</div>
+</template>
+<style>
+.stat-card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+body.dark .stat-card{background:#1e293b}
+.stat-value{font-size:20px;font-weight:800}
+.stat-label{font-size:10px;color:#64748b;font-weight:700}
+.stat-sub{font-size:10px;color:#94a3b8}
+.period-btn{padding:9px 14px;border:2px solid #e2e8f0;border-radius:30px;font-size:12px;background:#fff;cursor:pointer;font-weight:700}
+.period-btn.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+</style>
 <!-- MAIN -->
 <div id="mainApp" style="display:none">
   <div class="header">
@@ -98,6 +145,7 @@ body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
 <script src="config.js"></script>
 <script src="sheet.js"></script>
@@ -145,6 +193,11 @@ function buildSidebar() {
   TABS.forEach(function(t) {
     sh += '<div class="sidebar-tab" id="stab' + t.n + '" onclick="selectTab(' + t.n + ',this)">' +
           '<span>' + t.icon + '</span><span>' + t.label + '</span></div>';
+    if (t.n === 0) {
+      ch += document.getElementById('tab0HTML') ? document.getElementById('tab0HTML').innerHTML
+           : '<div id="tab0" class="tab-content"><div class="card"><div class="placeholder"><b>📊</b>Dashboard loading…</div></div></div>';
+      return; // skip default
+    }
     ch += '<div id="tab' + t.n + '" class="tab-content"><div class="card"><div class="placeholder">' +
           '<b>' + t.icon + '</b><b style="font-size:16px">' + t.label + '</b><br>' +
           '<span style="font-size:12px">🚧 Porting soon — arrives in a later step of the build.</span>' +
@@ -293,7 +346,137 @@ supabaseClient.auth.onAuthStateChange(async function(event, session) {
     showScreen('loginScreen');
   }
 });
+// ═════════════════════════════════════════════════════════
+//  DASHBOARD v4 — clean, server-powered, split-payment aware
+// ═════════════════════════════════════════════════════════
+var v4salesChart = null, v4payChart = null, v4period = 'daily';
 
+function v4periodStart(p) {
+  var now = new Date();
+  if (p === 'daily')   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (p === 'weekly')  return new Date(now.getTime() - 7*86400000);
+  if (p === 'monthly') return new Date(now.getTime() - 30*86400000);
+  return new Date(now.getTime() - 365*86400000);
+}
+
+async function loadDashboardV4(period, btn) {
+  v4period = period || v4period;
+  document.querySelectorAll('.period-btn').forEach(function(b){ b.classList.toggle('active', btn ? b === btn : false); });
+
+  var start = v4periodStart(v4period);
+  var jobs = [];
+
+  // 1. Revenue + payment split (server summary — Package 4)
+  jobs.push(ssFetchDailySummary(start, null).then(function(rows){
+    var rev = 0, pay = { cash:0, card:0, mobile:0, credit:0 };
+    rows.forEach(function(d){
+      if (new Date(d.date + 'T12:00:00') < start) return;
+      rev += d.total; pay.cash += d.cash; pay.card += d.card; pay.mobile += d.mobile; pay.credit += d.credit;
+    });
+    v4set('v4statRevenue', fmtMoney(rev));
+    v4drawPay(pay);
+    v4drawSales7(rows);
+    return rev;
+  }).catch(function(){ return 0; }));
+
+  // 2. Profit + credit due (small targeted query)
+  jobs.push(supabaseClient.from('sales')
+    .select('profit, total, payment_method, paid_at')
+    .eq('shop_id', getShopId()).eq('voided', false)
+    .gte('time', start.toISOString())
+    .then(function(pr){
+      var gp = 0, cd = 0;
+      (pr.data || []).forEach(function(s){
+        gp += Number(s.profit || 0);
+        if (s.payment_method === 'credit' && !s.paid_at) cd += Number(s.total || 0);
+      });
+      v4set('v4statGrossProfit', fmtMoney(gp));
+      v4set('v4statCreditDue', fmtMoney(cd));
+      var rev = Number(document.getElementById('v4statRevenue').textContent.replace(/[^0-9.]/g,'')) || 0;
+      v4set('v4statProfitSub', rev > 0 ? (gp / rev * 100).toFixed(1) + '% margin' : '');
+      return gp;
+    }).catch(function(){ return 0; }));
+
+  // 3. Expenses + losses (cache-independent, direct)
+  jobs.push(Promise.all([
+    supabaseClient.from('expenses').select('amount').eq('shop_id', getShopId()).gte('date', start.toISOString().slice(0,10)),
+    supabaseClient.from('losses').select('total_loss').eq('shop_id', getShopId()).gte('time', start.toISOString())
+  ]).then(function(res){
+    var te = 0; ((res[0].data)||[]).forEach(function(e){ te += Number(e.amount||0); });
+    var tl = 0; ((res[1].data)||[]).forEach(function(l){ tl += Number(l.total_loss||0); });
+    v4set('v4statExpenses', fmtMoney(te));
+    v4set('v4statExpensesSub', tl > 0 ? 'Losses: ' + fmtMoney(tl) : '');
+    var gp = Number(document.getElementById('v4statGrossProfit').textContent.replace(/[^0-9.]/g,'')) || 0;
+    v4set('v4statNetProfit', fmtMoney(gp - tl - te));
+    v4set('v4statNetSub', (gp - tl - te) >= 0 ? '👍 Healthy' : '👎 Loss');
+    return te;
+  }).catch(function(){ return 0; }));
+
+  // 4. Alerts: low stock / salary / loans
+  jobs.push(Promise.all([
+    supabaseClient.from('products').select('stock, reorder_level, is_virtual').eq('shop_id', getShopId()),
+    supabaseClient.from('employees').select('salary, status').eq('shop_id', getShopId()).eq('status', 'active'),
+    supabaseClient.from('loans').select('status').eq('shop_id', getShopId()).eq('status', 'open')
+  ]).then(function(res){
+    var low = ((res[0].data)||[]).filter(function(p){ return !p.is_virtual && (p.stock||0) <= (p.reorder_level||5); }).length;
+    var monthlySalary = ((res[1].data)||[]).reduce(function(s,e){ return s + (e.salary||0); }, 0);
+    v4set('v4statLowStock', low);
+    v4set('v4statSalaryAlerts', ((res[1].data)||[]).length ? Math.ceil(monthlySalary / Math.max(1,((res[1].data)||[]).length)) > 0 ? '📅' : '✅' : '✅');
+    v4set('v4statOpenLoans', ((res[2].data)||[]).length);
+    return true;
+  }).catch(function(){ return false; }));
+
+  // 5. Recent sales
+  jobs.push(supabaseClient.from('sales')
+    .select('time, total, payment_method, items, cashier_name')
+    .eq('shop_id', getShopId()).eq('voided', false)
+    .order('time', { ascending: false }).limit(8)
+    .then(function(rr){
+      var html = ((rr.data)||[]).map(function(s){
+        var items = (s.items||[]).map(function(i){ return i.name + '×' + i.qty; }).join(', ');
+        return '<div style="padding:6px 0;border-bottom:1px solid #f1f5f9"><b>' +
+          new Date(s.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '</b> ' +
+          sanitize(items || 'Sale') + ' – <b>' + fmtMoney(s.total) + '</b> (' + (s.payment_method||'') + ')</div>';
+      }).join('');
+      document.getElementById('v4recentSales').innerHTML = html || 'No sales yet.';
+      return true;
+    }).catch(function(){ return false; }));
+
+  await Promise.all(jobs);   // 🚀 all at once — no sleep hacks in v4
+}
+
+function v4set(id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt; }
+
+function v4drawSales7(rows) {
+  var ctx = document.getElementById('v4salesChart');
+  if (!ctx || typeof Chart === 'undefined') return;
+  var days = [];
+  for (var i = 6; i >= 0; i--) { var d = new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0);
+    days.push({ key: d.toISOString().slice(0,10), label: d.toLocaleDateString('en-US',{weekday:'short'}), total: 0 }); }
+  (rows||[]).forEach(function(r){ var day = days.find(function(x){ return x.key === r.date; }); if (day) day.total += r.total; });
+  if (v4salesChart) v4salesChart.destroy();
+  v4salesChart = new Chart(ctx, { type:'bar', data:{ labels: days.map(function(d){return d.label;}),
+    datasets:[{ label:'Revenue', data: days.map(function(d){return d.total;}), backgroundColor:'#3b82f6', borderRadius:8 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } } });
+}
+
+function v4drawPay(pay) {
+  var ctx = document.getElementById('v4payChart');
+  if (!ctx || typeof Chart === 'undefined') return;
+  if (v4payChart) v4payChart.destroy();
+  v4payChart = new Chart(ctx, { type:'doughnut',
+    data:{ labels:['Cash','Card','Mobile','Credit'],
+      datasets:[{ data:[pay.cash, pay.card, pay.mobile, pay.credit],
+        backgroundColor:['#10b981','#3b82f6','#f59e0b','#ef4444'], borderWidth:0 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } } });
+}
+
+// ── TAB HOOKUP (fires when Dashboard opens) ──
+var _v4selectTab = selectTab;
+selectTab = function(i, el) {
+  _v4selectTab(i, el);
+  if (i === 0) loadDashboardV4(v4period, document.querySelector('.period-btn.active'));
+};
 // ── INIT (one init chain — no window.onload fights, ever) ──
 function init() {
   document.getElementById('verBadge').textContent = APP_VERSION.split('-')[0];
@@ -301,6 +484,7 @@ function init() {
   document.getElementById('langSelect').value = appLang;
   changeLanguage(appLang);
   buildSidebar();
+    loadDashboardV4('daily', null).catch(function(e){ console.warn('Dashboard:', e.message); });
   if (typeof ssLoadPlan === 'function') ssLoadPlan().then(function(){ applyPlanVisibility(); });
   else applyPlanVisibility();
   if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
