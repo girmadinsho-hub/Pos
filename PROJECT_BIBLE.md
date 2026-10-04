@@ -551,3 +551,9 @@ PHASE B STEP 1 DEPLOYED: admin-clean.html skeleton LIVE (login→auth→PIN→si
 BUG FOUND IN OWN BUILD: getLicense was page-local in classic, called in v4 → badge stuck '…'→ fixed: proper home declared in v4 + try/catch armor on visibility loop
 LAW RE-PROVEN: one function one home — even the pilot bleeds by it once
 NEXT: Step 2 Dashboard port (after badge verify)
+🏗️ PHASE B — IN PROGRESS
+STEP 1 ✅: admin-clean.html skeleton LIVE. DB-first license (any browser=truth),plan+exit-door+hotel rules active, version on screen, owner-only (roles = Phase C)
+Cross-browser proof: incognito → 🏨 Hotel + full menus from DB
+sw.js: './admin-clean.html' added to cache list; CACHE bumped each deploy
+K4 verified: single editCreditModal ✅ · Workflow law: GitHub = only edit room
+NEXT: STEP 2 — Dashboard port (KPIs server-powered, charts, zero zombies)
