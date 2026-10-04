@@ -269,6 +269,22 @@ supabaseClient.auth.onAuthStateChange(async function(event, session) {
     if (!shopId) { alert('🛟 No shop found on this account.\nFull setup-recovery ports in a later step — use the classic admin to register.'); await supabaseClient.auth.signOut(); return; }
     // 2. Shop row → plan engine fuel
     try { const { data: row } = await supabaseClient.from('shops').select('*').eq('shop_id', shopId).maybeSingle(); window.__currentShopRow = row || null; } catch(e) {}
+        // 🚀 DB-FIRST LICENSE — any browser, fresh login = true plan (no cache dependence)
+    try {
+        const { data: lic } = await supabaseClient.from('licenses')
+            .select('*').eq('shop_id', shopId)
+            .order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (lic && (!lic.status || lic.status === 'active') && lic.expiry_date && new Date(lic.expiry_date) > new Date()) {
+            localStorage.setItem('smartshop_license', JSON.stringify({
+                plan: lic.plan || 'basic', startDate: lic.start_date || '',
+                expiryDate: lic.expiry_date || '', shopId: lic.shop_id || shopId,
+                shopName: lic.shop_name || '',
+                maxShops: Number(lic.max_shops) || 1,
+                maxCashiersPerShop: Number(lic.max_cashiers_per_shop) || 2,
+                maxProducts: Number(lic.max_products) || 999999
+            }));
+        }
+    } catch(e) { console.warn('DB-first license skipped:', e.message); }
     // 3. PIN gate → app
     showScreen(null); document.getElementById('mainApp').style.display = 'none';
     checkAppPinStatus();
