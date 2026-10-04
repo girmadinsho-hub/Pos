@@ -6855,24 +6855,6 @@ function ssUpdateDetailedLoadMoreBtn() {
     if (btn) btn.style.display = SS_PERF.detailedHasMore ? 'block' : 'none';
 }
 
-async function getFilteredDetailedSales() {
-    // Use already-loaded rows; fetch first page only if cache is empty
-    var rows = (SS_PERF.detailedCache.length > 0)
-        ? SS_PERF.detailedCache
-        : await ssFetchDetailedPage(false);
-    ssUpdateDetailedLoadMoreBtn();
-    var filtered = rows;
-    if (detailedPaymentFilter) filtered = filtered.filter(function(s){ return s.paymentMethod === detailedPaymentFilter; });
-    if (detailedCashierFilter) filtered = filtered.filter(function(s){ return (s.cashierName || '') === detailedCashierFilter; });
-    if (detailedShiftFilter) {
-        filtered = filtered.filter(function(s){
-            var hour = new Date(s.time).getHours();
-            var shift = hour >= 6 && hour < 12 ? '☀️ Morning' : (hour >= 12 && hour < 18 ? '🌤 Afternoon' : '🌙 Evening');
-            return shift === detailedShiftFilter;
-        });
-    }
-    return filtered;
-}
 
 async function loadMoreDetailedPage() {
     try {
@@ -6954,10 +6936,25 @@ async function initDetailedExcelTable() {
 }
 
 async function getFilteredDetailedSales() {
-    // 🚀 Paginated mode (Package 4): loads 50 at a time from server
-    return await ssFetchDetailedPage(false);
+    // 🚀 Paginated (Package 4) + client-side filters (restored K2)
+    var rows = (SS_PERF.detailedCache.length > 0)
+        ? SS_PERF.detailedCache
+        : await ssFetchDetailedPage(false);
+    ssUpdateDetailedLoadMoreBtn();
+    var filtered = rows;
+    if (detailedPaymentFilter) filtered = filtered.filter(function(s){ return s.paymentMethod === detailedPaymentFilter; });
+    if (detailedCashierFilter) filtered = filtered.filter(function(s){ return (s.cashierName || '') === detailedCashierFilter; });
+    if (detailedShiftFilter) {
+        filtered = filtered.filter(function(s){
+            var hour = new Date(s.time).getHours();
+            var shift = hour >= 6 && hour < 12 ? '☀️ Morning' : (hour >= 12 && hour < 18 ? '🌤 Afternoon' : '🌙 Evening');
+            return shift === detailedShiftFilter;
+        });
+    }
+    return filtered;
 }
-// Cashier dropdown
+  
+  // Cashier dropdown
 function updateCashierDropdown() {
     var select = document.getElementById('detailedSalesCashierFilter');
     if (!select) return;
