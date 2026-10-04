@@ -2485,7 +2485,43 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
         </div>
     </div>
 
-  
+  <!-- 🧾 UNIFIED TAX & VAT CONFIGURATION — one home, one save -->
+<div class="card">
+    <div class="card-title" onclick="toggleCard(this)">🧾 Tax & VAT Configuration <span class="arrow open">▶</span></div>
+    <div class="card-body">
+        <label>🏛️ Tax Registration Type</label>
+        <select class="form-select" id="brandTaxType">
+            <option value="TOT">TOT — Turnover Tax (small business)</option>
+            <option value="VAT">VAT — Value Added Tax (registered)</option>
+        </select>
+        <p style="font-size:11px;color:#64748b;margin:-4px 0 10px 0;">🔒 Law: TOT shops cannot charge tax (rate locked to 0). Only VAT-registered shops can enable it.</p>
+
+        <label>🧾 Tax Identification Number (TIN)</label>
+        <input type="text" class="form-input" id="brandTin" placeholder="e.g., 0001234567">
+
+        <label>📊 VAT Registration Number</label>
+        <input type="text" class="form-input" id="brandVat" placeholder="e.g., 600123456">
+
+        <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-top:10px;">
+            <div>
+                <label>💵 Tax Name (shown on receipts)</label>
+                <input type="text" class="form-input" id="settingTaxName" placeholder="e.g., VAT">
+            </div>
+            <div>
+                <label>📈 Rate %</label>
+                <input type="number" class="form-input" id="settingTaxRate" placeholder="15" min="0">
+            </div>
+        </div>
+
+        <label style="display:flex; align-items:center; gap:8px; margin-top:12px; cursor:pointer;">
+            <input type="checkbox" id="settingEnableTax">
+            🧾 Charge tax on POS sales
+        </label>
+
+        <button class="btn btn-primary" onclick="saveTaxConfig()" style="margin-top:12px;">💾 Save Tax Configuration</button>
+    </div>
+</div>
+
        <!-- POS Features (WITH TAX CONFIG) -->
     <div class="card">
         <div class="card-title" onclick="toggleCard(this)">🔧 Shop Type & POS Features <span class="arrow open">▶</span></div>
@@ -2509,12 +2545,7 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
                 Paper printing also works offline (Bluetooth printer, battery powered).
             </p>
 
-            <!-- NEW: TAX CONFIGURATION -->
-            <label style="font-size:12px; font-weight:600; color:#475569; display:block; margin-bottom:4px;">🧾 Tax / VAT Configuration</label>
-            <div style="display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:15px;">
-                <input type="text" class="form-input" id="settingTaxName" placeholder="Tax Name (e.g., VAT, GST)" style="font-size:14px;">
-                <input type="number" class="form-input" id="settingTaxRate" placeholder="Rate %" min="0" style="font-size:14px;">
-            </div>
+           
 
             <p style="font-size:12px;color:#888">Enable or disable features on the cashier screen.</p>
             
@@ -2528,18 +2559,6 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
                 <span>🏷️ Enable Discount</span><input type="checkbox" id="settingEnableDiscount" onchange="savePosSettings()">
             </div>
             <button class="btn btn-primary" onclick="savePosSettings()" style="margin-top:10px">💾 Save</button>
-        </div>
-    </div>
-
-    <div class="card">
-        <div class="card-title" onclick="toggleCard(this)">🏪 Shop Level <span class="arrow open">▶</span></div>
-        <div class="card-body">
-            <select class="form-select" id="shopLevelSelect" onchange="saveShopLevel()">
-                <option value="small">🔹 Small (Kiosk)</option>
-                <option value="medium">🔸 Medium (Store)</option>
-                <option value="large">🔷 Large (Supermarket)</option>
-            </select>
-            <p id="shopLevelHint" style="font-size:11px;color:#666"></p>
         </div>
     </div>
 
@@ -8901,8 +8920,7 @@ async function saveTaxConfig() {
         if (error) throw error;
         alert('✅ Tax configuration saved!' + (isVat ? '\nVAT ' + payload.tax_rate + '% — POS will charge it.' : '\nTOT shop: tax stays OFF (law).'));
     } catch(e) { alert('❌ ' + e.message); }
-}
-  
+}  
 async function loadBrandingForm() {
     try {
         const { data, error } = await supabaseClient.from('settings').select('*').eq('shop_id', getShopId()).maybeSingle();
