@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SmartShop Pro v4 — Clean Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<script>window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#7f1d1d;color:#fff;padding:8px;font:12px monospace';d.textContent='❌ '+m+' | L'+l;d.onclick=function(){d.remove()};document.body.appendChild(d);};</script>
+<style>
+:root{--primary:#2563eb;--bg:#f1f5f9;--surface:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--ok:#10b981;--bad:#ef4444}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+body{background:var(--bg);color:var(--text);font-size:15px}
+body.dark{background:#0f172a;color:#e2e8f0}
+body.dark .card{background:#1e293b;border-color:#334155}
+body.dark .sidebar{background:#1e293b}
+body.dark .sidebar-tab{color:#cbd5e1;border-bottom-color:#334155}
+body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
+.screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f172a,#1e3a8a);z-index:5000;flex-direction:column}
+.screen.show{display:flex}
+.box{background:#fff;color:#1e293b;border-radius:20px;padding:28px;width:92%;max-width:380px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.box h1{font-size:22px;color:#1e3a8a;margin-bottom:4px}
+.box p{font-size:12px;color:var(--muted);margin-bottom:14px}
+.box input{width:100%;padding:13px;margin:6px 0;border:2px solid var(--border);border-radius:12px;font-size:15px;outline:none}
+.btn{width:100%;padding:13px;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;margin-top:8px}
+.btn-p{background:var(--primary);color:#fff}.btn-g{background:var(--ok);color:#fff}.btn-o{background:#fff;color:#334155;border:1.5px solid #cbd5e1}
+#loadingBar{width:0%;height:100%;background:#fff;border-radius:10px;transition:width .3s}
+.header{position:sticky;top:0;z-index:1000;background:linear-gradient(135deg,#1e3a8a,#3b82f6);color:#fff;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.header .hbtn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;font-size:15px}
+.header select{max-width:70px;padding:4px;border-radius:8px;border:none;font-size:11px}
+.verbadge{font-size:9px;background:rgba(255,255,255,.25);padding:2px 7px;border-radius:8px;font-weight:700}
+.sidebar{position:fixed;top:0;left:-280px;width:280px;height:100%;background:#fff;z-index:2000;overflow-y:auto;transition:.3s;box-shadow:2px 0 10px rgba(0,0,0,.1)}
+.sidebar.open{left:0}
+.sidebar-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1999;display:none}
+.sidebar-overlay.show{display:block}
+.sidebar-tab{padding:13px 18px;border-bottom:1px solid #f1f5f9;cursor:pointer;font-weight:600;font-size:14px;color:#475569;display:flex;align-items:center;gap:10px;border-left:4px solid transparent}
+.sidebar-tab:hover{background:#f8fafc}
+.sidebar-tab.active{background:#eff6ff;color:var(--primary);border-left-color:var(--primary)}
+.side-foot{padding:14px;font-size:10px;color:var(--muted);text-align:center;line-height:1.6}
+.badge{font-size:9px;font-weight:800;background:var(--primary);color:#fff;padding:2px 8px;border-radius:8px;margin-left:auto}
+.container{padding:12px;max-width:1000px;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px}
+.tab-content{display:none}
+.placeholder{ text-align:center;padding:40px 14px;color:var(--muted)}
+.placeholder b{font-size:40px;display:block;margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="screen show" id="loginScreen">
+  <div class="box">
+    <h1>🏪 SmartShop Pro</h1>
+    <p>Owner Administration · Clean Build v4</p>
+    <input type="email" id="loginEmail" placeholder="Owner Email" autocomplete="off">
+    <input type="password" id="loginPass" placeholder="Password" autocomplete="new-password">
+    <button class="btn btn-p" onclick="adminLogin()">🔓 Sign In</button>
+    <p style="margin-top:10px">🔑 Forgot password? Use the classic admin for now.</p>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="screen" id="loadingScreen">
+  <div style="color:#fff;text-align:center">
+    <div style="font-size:20px;font-weight:800;margin-bottom:14px">SmartShop Pro</div>
+    <div style="width:80%;max-width:280px;height:10px;background:rgba(255,255,255,.2);border-radius:10px;overflow:hidden"><div id="loadingBar"></div></div>
+  </div>
+</div>
+
+<!-- APP PIN -->
+<div class="screen" id="appPinScreen">
+  <div class="box">
+    <div style="font-size:36px">🔐</div>
+    <h1 style="color:#1e293b">Enter App PIN</h1>
+    <p>4-digit security PIN for this device</p>
+    <input type="password" id="appPinInput" maxlength="4" placeholder="• • • •" style="text-align:center;font-size:22px;letter-spacing:8px">
+    <button class="btn btn-p" onclick="verifyAppPin()">🔓 Unlock</button>
+    <button class="btn btn-o" onclick="adminLogout()" style="color:var(--bad);border-color:var(--bad)">Logout</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="mainApp" style="display:none">
+  <div class="header">
+    <button class="hbtn" onclick="toggleSidebar()">☰</button>
+    <span style="font-weight:800">SmartShop Pro <span class="verbadge" id="verBadge">v4</span></span>
+    <span style="display:flex;gap:6px;align-items:center">
+      <button class="hbtn" onclick="toggleDarkMode()">🌓</button>
+      <select id="langSelect" onchange="changeLanguage(this.value)"><option value="en">EN</option><option value="am">አማ</option><option value="om">OR</option></select>
+      <button class="hbtn" onclick="adminLogout()">🚪</button>
+    </span>
+  </div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="sidebar" id="sidebar">
+    <div style="padding:16px;font-weight:800;border-bottom:1px solid #f1f5f9;color:#1e3a8a">📋 Menu <span class="badge" id="planBadge">…</span></div>
+    <div id="sideTabs"></div>
+    <div class="side-foot" id="sideFoot">SmartShop Pro v4.0.0 — Clean Build<br>Step 1/14 · Skeleton</div>
+  </div>
+  <div class="container" id="tabContainer"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+<script src="config.js"></script>
+<script src="sheet.js"></script>
+<script src="shared.js"></script>
+<script src="ssauth.js"></script>
+<script src="ssperf.js"></script>
+<script src="ssfeatures.js"></script>
+<script>
+// ═════════════════════════════════════════════════════════
+//  SMARTSHOP PRO v4 — CLEAN ADMIN · SKELETON (Step 1/14)
+//  Laws: one function one place · data-driven UI · version on screen
+//  Role: OWNER ONLY (Phase C adds roles) · Plan lock ACTIVE via ssfeatures
+// ═════════════════════════════════════════════════════════
+var APP_VERSION = '4.0.0-SKELETON';
+
+// ── TAB MAP (numbers match the classic admin 1:1 for clean porting) ──
+var TABS = [
+  {n:0,  icon:'📊', label:'Dashboard'},
+  {n:1,  icon:'📦', label:'Products'},
+  {n:2,  icon:'💰', label:'Sales'},
+  {n:3,  icon:'📊', label:'Stock'},
+  {n:4,  icon:'💳', label:'Credits'},
+  {n:5,  icon:'📉', label:'Losses'},
+  {n:6,  icon:'👥', label:'Staff'},
+  {n:7,  icon:'💸', label:'Expenses'},
+  {n:8,  icon:'📈', label:'Reports'},
+  {n:9,  icon:'🏭', label:'Suppliers'},
+  {n:18, icon:'🍳', label:'Recipes'},
+  {n:21, icon:'🏨', label:'Hotel'},
+  {n:10, icon:'🎁', label:'Loyalty'},
+  {n:11, icon:'💸', label:'Loans'},
+  {n:12, icon:'🏦', label:'Bank'},
+  {n:15, icon:'📓', label:'Notebook'},
+  {n:19, icon:'💬', label:'Intercom'},
+  {n:13, icon:'⚙️', label:'Settings'},
+  {n:14, icon:'🔑', label:'License'},
+  {n:20, icon:'📱', label:'Devices'},
+  {n:16, icon:'🏪', label:'Shops', ent:true}
+];
+
+// ── SIDEBAR + TAB CONTAINERS (data-driven, replaces 200 lines of HTML) ──
+function buildSidebar() {
+  var st = document.getElementById('sideTabs'), tc = document.getElementById('tabContainer');
+  var sh = '', ch = '';
+  TABS.forEach(function(t) {
+    sh += '<div class="sidebar-tab" id="stab' + t.n + '" onclick="selectTab(' + t.n + ',this)">' +
+          '<span>' + t.icon + '</span><span>' + t.label + '</span></div>';
+    ch += '<div id="tab' + t.n + '" class="tab-content"><div class="card"><div class="placeholder">' +
+          '<b>' + t.icon + '</b><b style="font-size:16px">' + t.label + '</b><br>' +
+          '<span style="font-size:12px">🚧 Porting soon — arrives in a later step of the build.</span>' +
+          '</div></div></div>';
+  });
+  st.innerHTML = sh;
+  tc.innerHTML = ch;
+}
+
+// ── PLAN LOCK (business-type law + plan features, from ssfeatures.js) ──
+function applyPlanVisibility() {
+  TABS.forEach(function(t) {
+    var el = document.getElementById('stab' + t.n);
+    if (!el) return;
+    var show = true;
+    if (t.n === 21) show = (typeof ssHasFeature === 'function' && ssHasFeature('rooms')); // hotel tab → rooms only
+    else if (t.ent) { var lic = getLicense(); show = !!(lic && lic.plan === 'enterprise'); }
+    else if (typeof ssTabAllowed === 'function') show = ssTabAllowed(t.n);   // exit-door law inside (13/14 free)
+    el.style.display = show ? 'flex' : 'none';
+  });
+  var b = document.getElementById('planBadge');
+  if (b && typeof ssPlanLabel === 'function') b.textContent = (typeof ssIsCafe === 'function' && ssIsCafe()) ? '☕ ' + ssPlanLabel() : '🛒 ' + ssPlanLabel();
+}
+
+// ── TAB SWITCH ──
+function selectTab(i, el) {
+  document.querySelectorAll('.tab-content').forEach(function(x){ x.style.display = 'none'; });
+  var target = document.getElementById('tab' + i);
+  if (target) target.style.display = 'block';
+  document.querySelectorAll('.sidebar-tab').forEach(function(x){ x.classList.remove('active'); });
+  if (el) el.classList.add('active');
+  closeSidebar();
+}
+
+// ── SIDEBAR / DARK / LANGUAGE ──
+function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
+function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
+function toggleDarkMode(){ document.body.classList.toggle('dark'); localStorage.setItem('darkMode', document.body.classList.contains('dark')?'1':'0'); }
+
+// ── LOGIN / LOGOUT ──
+async function adminLogin() {
+  var email = document.getElementById('loginEmail').value.trim();
+  var pass = document.getElementById('loginPass').value.trim();
+  if (!email || !pass) { alert('Enter email and password.'); return; }
+  showScreen('loadingScreen');
+  var bar = document.getElementById('loadingBar'), p = 0;
+  var iv = setInterval(function(){ p = Math.min(90, p + Math.random()*10+3); bar.style.width = p+'%'; }, 150);
+  try {
+    const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
+    clearInterval(iv); bar.style.width = '100%';
+    if (error) throw error;
+    // onAuthStateChange opens the app
+  } catch(e) { clearInterval(iv); showScreen('loginScreen'); alert('❌ ' + (e.message === 'Invalid login credentials' ? 'Incorrect email or password.' : e.message)); }
+}
+function adminLogout(){ supabaseClient.auth.signOut(); }
+
+// ── SCREEN HELPER ──
+function showScreen(id){
+  ['loginScreen','loadingScreen','appPinScreen'].forEach(function(s){
+    document.getElementById(s).classList.toggle('show', s === id);
+    document.getElementById(s).style.display = (s === id) ? 'flex' : 'none';
+  });
+  if (id === null) { document.getElementById('mainApp').style.display = 'block'; }
+}
+
+// ── SHOP PICKER (owner with several shops) ──
+function ssShowShopPicker(shops) {
+  showScreen(null);
+  document.getElementById('mainApp').style.display = 'none';
+  var m = document.createElement('div');
+  m.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e3a8a);z-index:6000;display:flex;align-items:center;justify-content:center;padding:20px';
+  var html = '<div class="box"><div style="font-size:34px">🏪</div><h1 style="color:#1e293b">Choose Your Shop</h1><p>This account owns several shops.</p>';
+  shops.forEach(function(s){ html += '<button class="btn btn-o" style="margin-bottom:8px;text-align:left" onclick="ssPickShop(\'' + s.shop_id + '\')">' + (s.name || s.shop_id) + '<br><small style="color:#64748b">' + s.shop_id + '</small></button>'; });
+  html += '<button class="btn btn-o" style="color:var(--bad);border-color:var(--bad)" onclick="supabaseClient.auth.signOut()">Logout</button></div>';
+  m.innerHTML = html; document.body.appendChild(m);
+}
+function ssPickShop(id){ localStorage.setItem('shopId', id); location.reload(); }
+
+// ── APP PIN (sha256, same pattern as classic) ──
+function verifyAppPin() {
+  if (sha256(document.getElementById('appPinInput').value.trim()) === localStorage.getItem('appPinHash')) {
+    document.getElementById('appPinScreen').classList.remove('show'); document.getElementById('appPinScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    init();
+  } else { alert('❌ Incorrect App PIN.'); document.getElementById('appPinInput').value = ''; }
+}
+async function checkAppPinStatus() {
+  var hash = localStorage.getItem('appPinHash');
+  if (!hash) {
+    var pin = await prompt('🔐 Create a 4-digit App PIN for this device:');
+    if (pin && String(pin).length === 4) { localStorage.setItem('appPinHash', sha256(String(pin))); document.getElementById('mainApp').style.display = 'block'; init(); }
+    else { alert('PIN must be exactly 4 digits.'); adminLogout(); }
+  } else { showScreen('appPinScreen'); var i = document.getElementById('appPinInput'); i.value=''; i.focus(); }
+}
+
+// ── AUTH FLOW (simplified skeleton: license lockout ports with License tab step) ──
+supabaseClient.auth.onAuthStateChange(async function(event, session) {
+  if (event === 'PASSWORD_RECOVERY') { showScreen('loginScreen'); alert('📧 Recovery link detected. Full recovery UI ports with the Settings step — use classic admin today.'); return; }
+  if (session && session.user) {
+    // 1. Resolve shop: metadata → device → owned shops
+    var shopId = (session.user.user_metadata && session.user.user_metadata.shopId) || localStorage.getItem('shopId') || '';
+    if (!shopId || shopId === 'default') {
+      try {
+        const { data: mine } = await supabaseClient.from('shops').select('shop_id, name').eq('owner_email', session.user.email).eq('active', true);
+        if (mine && mine.length === 1) { shopId = mine[0].shop_id; localStorage.setItem('shopId', shopId); }
+        else if (mine && mine.length > 1) { ssShowShopPicker(mine); return; }
+      } catch(e) {}
+    }
+    if (!shopId) { alert('🛟 No shop found on this account.\nFull setup-recovery ports in a later step — use the classic admin to register.'); await supabaseClient.auth.signOut(); return; }
+    // 2. Shop row → plan engine fuel
+    try { const { data: row } = await supabaseClient.from('shops').select('*').eq('shop_id', shopId).maybeSingle(); window.__currentShopRow = row || null; } catch(e) {}
+    // 3. PIN gate → app
+    showScreen(null); document.getElementById('mainApp').style.display = 'none';
+    checkAppPinStatus();
+  } else {
+    document.getElementById('mainApp').style.display = 'none';
+    showScreen('loginScreen');
+  }
+});
+
+// ── INIT (one init chain — no window.onload fights, ever) ──
+function init() {
+  document.getElementById('verBadge').textContent = APP_VERSION.split('-')[0];
+  document.getElementById('sideFoot').innerHTML = 'SmartShop Pro ' + APP_VERSION + '<br>Step 1/14 · Skeleton';
+  document.getElementById('langSelect').value = appLang;
+  changeLanguage(appLang);
+  buildSidebar();
+  if (typeof ssLoadPlan === 'function') ssLoadPlan().then(function(){ applyPlanVisibility(); });
+  else applyPlanVisibility();
+  if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
+}
+</script>
+</body>
+</html>
