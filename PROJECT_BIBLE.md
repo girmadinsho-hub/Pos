@@ -24,3 +24,12 @@ Fix 1 (extend-in-place) RECOMMENDED — prevents extend from inventing 'Basic'
 Fix 2 (plan-row guard) — SKIPPED by Captain decision (clean rebuild will own it)
 K7 status: works when plan names match; manual activation = reliable fallback
 QUEUE: Phase R → K1 savePosSettings merge (tax law) → K2 → K3 → K4
+)
+📅 PHASE R COMPLETE
+K1: savePosSettings merged (dead copy deleted) → TOT/VAT law restored
+Fix A: loadPosSettings added (was missing! settings never loaded back)
+Fix B: unified 🧾 Tax & VAT card (one card, one saveTaxConfig), scattered fields removed
+Earlier: K7v2 license refresh, extend-in-place (master), exit-door law (ssfeatures 13/14)
+Hotel unlocked: correct-group key → full menus. Master rule: generate key from shop's own type group
+REMAINING: K2 (getFilteredDetailedSales dead copy → filters dead), K3 (addProduct/staff noplan-limit check — verify then fix), K4 (dup editCreditModal id)
+THEN: Phase B admin-clean.html (role engine in skeleton day one)
