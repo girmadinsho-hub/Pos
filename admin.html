@@ -821,6 +821,7 @@ body.dark .submenu-item.active { background:#1e3a8a; color:#fff; }
         <button class="btn btn-outline" style="width:100%;" onclick="adminLogout()">Logout</button>
     </div>
 </div>
+       
 	<!-- Edit Credit Modal -->
 <div class="modal" id="editCreditModal">
     <div class="modal-content" style="max-width: 400px;">
@@ -2776,26 +2777,6 @@ if (localStorage.getItem('darkMode')==='1') document.body.classList.add('dark');
     </div>
 </div>
 
-<!-- Edit Credit Modal -->
-<div class="modal" id="editCreditModal">
-    <div class="modal-content" style="max-width: 400px;">
-        <div class="card-title">✏️ Edit Credit Sale</div>
-        
-        <label>Customer Name</label>
-        <input type="text" class="form-input" id="editCreditName" placeholder="Customer Name">
-        
-        <label>Customer Phone</label>
-        <input type="text" class="form-input" id="editCreditPhone" placeholder="Customer Phone">
-        
-        <label>Total Amount</label>
-        <input type="number" class="form-input" id="editCreditAmount" placeholder="0.00" step="0.01">
-        
-        <div class="flex-row" style="margin-top: 10px;">
-            <button class="btn btn-success" onclick="saveEditedCredit()">💾 Save</button>
-            <button class="btn btn-outline" onclick="document.getElementById('editCreditModal').classList.remove('active')">Cancel</button>
-        </div>
-    </div>
-</div>
 
 <!-- Edit Employee Modal -->
 <div class="modal" id="editEmployeeModal">
@@ -4714,7 +4695,11 @@ async function addProduct() {
     var useBulk = safeChecked('enableBulkPricing') && bulkQty1 > 0;
 
     if (!name) { alert('Product name is required.'); return; }
-
+    // 🛡️ PLAN LIMIT — Master-controlled (ssfeatures.js)
+    if (typeof ssCanAddProduct === 'function' && !ssCanAddProduct(products.length)) {
+        alert('⚠️ Product limit reached for your plan (' + (typeof ssPlanLabel === 'function' ? ssPlanLabel() : '') + ').\n\nUpgrade: License tab → activate a bigger key, or contact your provider.');
+        return;
+    }
     if (isVirtual) {
         if (price <= 0) { alert('Selling price is required for virtual products.'); return; }
         stock = 0; cost = 0; sellDirectly = true;
@@ -12828,7 +12813,11 @@ async function submitNewEmployeeFinal() {
 
     var duplicate = employeesCache.find(function(e) { return e.name.toLowerCase() === name.toLowerCase(); });
     if (duplicate) { alert('⚠️ An employee with this name already exists!'); return; }
-
+         // 🛡️ PLAN LIMIT — Master-controlled (ssfeatures.js)
+    if (typeof ssCanAddStaff === 'function' && !ssCanAddStaff(employeesCache.length)) {
+        alert('⚠️ Staff limit reached for your plan (' + (typeof ssPlanLabel === 'function' ? ssPlanLabel() : '') + ').\n\nUpgrade: License tab → activate a bigger key, or contact your provider.');
+        return;
+    }
     var hashedPin = null, pinSalt = null;
     if (password) {
         pinSalt = ssRandomSalt();
