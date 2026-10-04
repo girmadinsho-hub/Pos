@@ -148,8 +148,12 @@ body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
   <div class="card">
     <div class="card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       📦 Products <span class="v4-badge" id="v4prodCount">0</span>
-      <span style="margin-left:auto;display:flex;gap:6px">
-        <button class="v4-chip" onclick="v4ProductExport()">📥 XLSX</button>
+      <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="v4-chip active" id="v4pvExcel" onclick="v4ProductView('excel')">📊 Excel</button>
+        <button class="v4-chip" id="v4pvList" onclick="v4ProductView('list')">📋 List</button>
+        <button class="v4-chip" id="v4pvGrid" onclick="v4ProductView('grid')">⊞ Grid</button>
+        <button class="v4-chip" onclick="v4ProductExport()">📥</button>
+        <button class="v4-chip" onclick="v4ProductPrint()">🖨️</button>
         <button class="v4-chip" onclick="v4RefreshProducts()">🔄</button>
       </span>
     </div>
@@ -164,7 +168,9 @@ body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
         <option value="dual">🥚 Dual</option>
       </select>
     </div>
-    <div id="v4productExcel"></div>
+        <div id="v4productExcel"></div>
+    <div id="v4productList" style="display:none;max-height:60vh;overflow-y:auto"></div>
+    <div id="v4productGrid" style="display:none;max-height:60vh;overflow-y:auto"></div>
   </div>
 </div>
 </template>
@@ -285,6 +291,7 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 <script src="ssauth.js"></script>
 <script src="ssperf.js"></script>
 <script src="ssfeatures.js"></script>
+  <script src="ssupload.js"></script>
 <script>
 // ═════════════════════════════════════════════════════════
 //  SMARTSHOP PRO v4 — CLEAN ADMIN · SKELETON (Step 1/14)
@@ -292,6 +299,10 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 //  Role: OWNER ONLY (Phase C adds roles) · Plan lock ACTIVE via ssfeatures
 // ═════════════════════════════════════════════════════════
 var APP_VERSION = '4.0.0-SKELETON';
+  // 🛡️ CURRENCY GUARD — sheet.js render needs this (normally from shared.js; belt+braces)
+if (typeof window.appCurrencySymbol === 'undefined' || !window.appCurrencySymbol) {
+    window.appCurrencySymbol = localStorage.getItem('appCurrencySymbol') || 'Br ';
+}
 
 // ── TAB MAP (numbers match the classic admin 1:1 for clean porting) ──
 var TABS = [
@@ -613,7 +624,7 @@ var _v4selectTab = selectTab;
 selectTab = function(i, el) {
   _v4selectTab(i, el);
   if (i === 0) loadDashboardV4(v4period, document.querySelector('.period-btn.active'));
-  if (i === 1) v4RenderProductTable();
+  if (i === 1) { if (v4prodView === 'excel') v4RenderProductTable(); else if (v4prodView === 'list') v4RenderProductList(true); else v4RenderProductGrid(true); }
 };
 
   // ═════════════════════════════════════════════════════════
@@ -744,16 +755,33 @@ function v4FillCatFilter() {
   sel.innerHTML = '<option value="">All Categories</option>' + cats.map(function(c){ return '<option>' + c + '</option>'; }).join('');
 }
 
-function v4RenderProductTable() {
+function v4FilteredProducts() {
   var q = (document.getElementById('v4prodSearch') || {value:''}).value.toLowerCase();
   var cf = (document.getElementById('v4prodCatFilter') || {value:''}).value;
   var tf = (document.getElementById('v4prodTypeFilter') || {value:''}).value;
-  var filtered = v4products.filter(function(p){
+  return v4products.filter(function(p){
     if (q && p.name.toLowerCase().indexOf(q) === -1 && !(p.barcode && p.barcode.toLowerCase().indexOf(q) !== -1)) return false;
     if (cf && p.category !== cf) return false;
     if (tf && p.type !== tf) return false;
     return true;
   });
+}
+
+async function v4CellEdit(item, col, newVal) {
+  var dbCol = { name:'name', stock:'stock', price:'price', costPrice:'cost_price' }[col];
+  var val = (col === 'name') ? String(newVal).trim() : (parseFloat(newVal) || 0);
+  if (col === 'name' && !val) return;
+  try {
+    var upd = {}; upd[dbCol] = val;
+    const { error } = await supabaseClient.from('products').update(upd).eq('firebase_id', item.id);
+    if (error) throw error;
+    item[col] = val;
+    if (col === 'stock' || col === 'price') { if (window.v4productTable) window.v4productTable.render(); }
+  } catch(e) { alert('❌ ' + e.message); }
+}
+
+function v4RenderProductTable() {
+  var filtered = v4FilteredProducts();
   var cnt = document.getElementById('v4prodCount'); if (cnt) cnt.textContent = filtered.length;
 
   if (!window.v4productTable) {
@@ -761,19 +789,23 @@ function v4RenderProductTable() {
       data: filtered,
       columns: [
         { title:'#', width:'36px', render:function(i,h,x){ return x+1; } },
-        { title:'Product', field:'name', width:'140px', render:function(i,h){ return h ? '<b>'+sanitize(i.name)+'</b>' : i.name; } },
+        { title:'Product', field:'name', width:'150px', render:function(i,h){ return h ? '<b>'+sanitize(i.name)+'</b>' : i.name; },
+          editable:true, inputType:'text', onEdit:function(i,v){ return v4CellEdit(i,'name',v); } },
         { title:'Type', width:'92px', render:function(i,h){ return v4TypeBadge(i.type); }, filterable:true },
-        { title:'Stock', width:'60px', align:'center', render:function(i,h){
+        { title:'Stock', width:'64px', align:'center', render:function(i,h){
             if (i.isVirtual) return h ? '<span style="color:#94a3b8">—</span>' : '';
             var c = i.stock === 0 ? '#dc2626' : (i.stock <= i.reorderLevel ? '#ea580c' : '#059669');
             return h ? '<b style="color:'+c+'">'+i.stock+'</b>' : i.stock;
-          }, total:true, totalValue:function(i){ return i.isVirtual?0:i.stock; }, totalFormat:function(s){ return s+' units'; } },
-        { title:'Cost', width:'80px', align:'right', render:function(i,h){ return h?fmtMoney(i.costPrice):i.costPrice; } },
-        { title:'Price', width:'90px', align:'right', render:function(i,h){ return h?'<b>'+fmtMoney(i.price)+'</b>':i.price; },
-          total:true, totalValue:function(i){ return i.price * (i.isVirtual?1:i.stock); }, totalFormat:function(s){ return fmtMoney(s); } },
+          }, total:true, totalValue:function(i){ return i.isVirtual?0:i.stock; }, totalFormat:function(s){ return s+' units'; },
+          editable:function(i){ return !i.isVirtual; }, inputType:'number', onEdit:function(i,v){ return v4CellEdit(i,'stock',v); } },
+        { title:'Cost', width:'84px', align:'right', render:function(i,h){ return h?fmtMoney(i.costPrice):i.costPrice; },
+          editable:true, inputType:'number', onEdit:function(i,v){ return v4CellEdit(i,'costPrice',v); } },
+        { title:'Price', width:'94px', align:'right', render:function(i,h){ return h?'<b>'+fmtMoney(i.price)+'</b>':i.price; },
+          total:true, totalValue:function(i){ return i.price * (i.isVirtual?1:i.stock); }, totalFormat:function(s){ return fmtMoney(s); },
+          editable:true, inputType:'number', onEdit:function(i,v){ return v4CellEdit(i,'price',v); } },
         { title:'Unit', field:'unit', width:'60px' },
         { title:'Category', field:'category', width:'90px', filterable:true },
-        { title:'Actions', width:'150px', render:function(i,h){
+        { title:'Actions', width:'90px', render:function(i,h){
             if (!h) return '';
             return '<button class="btn-mini edit" onclick="v4EditProduct(\''+i.id+'\')">✏️</button> ' +
                    '<button class="btn-mini delete" onclick="v4DeleteProduct(\''+i.id+'\')">🗑️</button>';
@@ -782,11 +814,105 @@ function v4RenderProductTable() {
       emptyMessage: 'No products yet — add your first one above!',
       showSearch: false, showFontSlider: true
     });
+    v4InitPinch();
   } else {
     window.v4productTable.setData(filtered);
   }
 }
 
+// 🤏 PINCH-TO-ZOOM — two fingers apart/closer on the table
+function v4InitPinch() {
+  var wrap = document.querySelector('#v4productExcel .modern-sheet-table-wrapper');
+  if (!wrap || wrap.dataset.pinch) return;
+  wrap.dataset.pinch = '1';
+  var d0 = 0, f0 = 14;
+  wrap.addEventListener('touchstart', function(e){
+    if (e.touches.length === 2) {
+      d0 = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      f0 = (window.v4productTable && window.v4productTable.currentFontSize) || 14;
+    }
+  }, {passive:true});
+  wrap.addEventListener('touchmove', function(e){
+    if (e.touches.length === 2 && window.v4productTable && d0 > 0) {
+      e.preventDefault();
+      var d = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+      window.v4productTable.currentFontSize = Math.max(10, Math.min(24, Math.round(f0 * d / d0)));
+      window.v4productTable.render();
+    }
+  }, {passive:false});
+}
+
+// 📋 LIST VIEW
+function v4RenderProductList(reset) {
+  var c = document.getElementById('v4productList'); if (!c) return;
+  var data = v4FilteredProducts();
+  var per = 20, page = reset ? 1 : (v4ListPage || 1);
+  var totalPages = Math.ceil(data.length / per) || 1;
+  if (page > totalPages) page = totalPages;
+  var items = data.slice((page-1)*per, page*per);
+  var html = items.map(function(p){
+    return '<div class="product-row" style="padding:10px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:8px">' +
+      '<div style="flex:1"><b>' + sanitize(p.name) + '</b> ' + v4TypeBadge(p.type) +
+      '<br><small style="color:#64748b">Stock: ' + (p.isVirtual?'—':p.stock) + ' ' + p.unit + ' | Cost: ' + fmtMoney(p.costPrice) + '</small></div>' +
+      '<b style="color:#2563eb;font-size:16px">' + fmtMoney(p.price) + '</b>' +
+      '<button class="btn-mini edit" onclick="v4EditProduct(\''+p.id+'\')">✏️</button></div>';
+  }).join('');
+  if (page < totalPages) html += '<div style="text-align:center;padding:10px"><button class="v4-chip" onclick="v4ListPage++;v4RenderProductList(false)">⬇ Load More</button></div>';
+  c.innerHTML = html || '<div class="placeholder">No products found.</div>';
+}
+
+// ⊞ GRID VIEW
+function v4RenderProductGrid(reset) {
+  var c = document.getElementById('v4productGrid'); if (!c) return;
+  var data = v4FilteredProducts();
+  var per = 12, page = reset ? 1 : (v4GridPage || 1);
+  var totalPages = Math.ceil(data.length / per) || 1;
+  if (page > totalPages) page = totalPages;
+  var items = data.slice((page-1)*per, page*per);
+  var html = items.map(function(p){
+    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px">' +
+      '<b style="font-size:14px">' + sanitize(p.name) + '</b> ' + v4TypeBadge(p.type) +
+      '<div style="color:#2563eb;font-weight:800;font-size:18px;margin:4px 0">' + fmtMoney(p.price) + '</div>' +
+      '<small style="color:#64748b">Stock: ' + (p.isVirtual?'—':p.stock) + ' ' + p.unit + ' | Cost: ' + fmtMoney(p.costPrice) + '</small>' +
+      '<div style="margin-top:8px;display:flex;gap:6px"><button class="btn-mini edit" style="flex:1" onclick="v4EditProduct(\''+p.id+'\')">✏️</button>' +
+      '<button class="btn-mini delete" style="flex:1" onclick="v4DeleteProduct(\''+p.id+'\')">🗑️</button></div></div>';
+  }).join('');
+  if (page < totalPages) html += '<div style="grid-column:1/-1;text-align:center;padding:10px"><button class="v4-chip" onclick="v4GridPage++;v4RenderProductGrid(false)">⬇ Load More</button></div>';
+  c.style.display = 'grid'; c.style.gridTemplateColumns = 'repeat(2,1fr)'; c.style.gap = '10px';
+  c.innerHTML = html || '<div class="placeholder" style="grid-column:1/-1">No products found.</div>';
+}
+
+// 🖨️ PRINT — the current filtered list, clean paper layout
+function v4ProductPrint() {
+  var data = v4FilteredProducts();
+  if (!data.length) { alert('Nothing to print.'); return; }
+  var w = window.open('', '_blank', 'width=420,height=650');
+  if (!w) { alert('Allow popups to print.'); return; }
+  var rows = data.map(function(p,i){
+    return '<tr><td>'+(i+1)+'</td><td><b>'+sanitize(p.name)+'</b></td><td>'+p.type+'</td><td style="text-align:right">'+(p.isVirtual?'—':p.stock)+'</td><td style="text-align:right">'+fmtMoney(p.costPrice)+'</td><td style="text-align:right">'+fmtMoney(p.price)+'</td></tr>';
+  }).join('');
+  w.document.write('<html><head><title>Product List</title><style>body{font-family:monospace;padding:14px;font-size:12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:5px}th{background:#eee}</style></head><body>' +
+    '<h3 style="text-align:center">📦 Product List — ' + data.length + ' items</h3><table><tr><th>#</th><th>Product</th><th>Type</th><th>Stock</th><th>Cost</th><th>Price</th></tr>' + rows + '</table></body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); }, 400);
+}
+
+// view switcher
+var v4prodView = 'excel', v4ListPage = 1, v4GridPage = 1;
+function v4ProductView(view) {
+  v4prodView = view;
+  var map = { excel:'v4pvExcel', list:'v4pvList', grid:'v4pvGrid' };
+  Object.keys(map).forEach(function(k){ var el = document.getElementById(map[k]); if (el) el.classList.toggle('active', k === view); });
+  var ex = document.getElementById('v4productExcel'), li = document.getElementById('v4productList'), gr = document.getElementById('v4productGrid');
+  if (!ex || !li || !gr) return;
+  ex.style.display = view === 'excel' ? 'block' : 'none';
+  li.style.display = view === 'list' ? 'block' : 'none';
+  gr.style.display = view === 'grid' ? 'grid' : 'none';
+  v4ListPage = 1; v4GridPage = 1;
+  if (view === 'excel') v4RenderProductTable();
+  else if (view === 'list') v4RenderProductList(true);
+  else v4RenderProductGrid(true);
+}
 function v4ProductExport(){ if (window.v4productTable) window.v4productTable.exportXLSX(); }
 
 async function v4DeleteProduct(id) {
