@@ -297,3 +297,9 @@ Earlier: K7v2 license refresh, extend-in-place (master), exit-door law (ssfeatur
 Hotel unlocked: correct-group key → full menus. Master rule: generate key from shop's own type group
 REMAINING: K2 (getFilteredDetailedSales dead copy → filters dead), K3 (addProduct/staff noplan-limit check — verify then fix), K4 (dup editCreditModal id)
 THEN: Phase B admin-clean.html (role engine in skeleton day one)
+FIX B LIVE: unified 🧾 Tax & VAT card working (TIN/VAT/type/rate/enable one-save) — verified on device
+ROOT CAUSE OF DRIFT FOUND BY CAPTAIN: dual editing (Acode + GitHub) with separate sw bumps
+WORKFLOW LAW: GitHub web = only edit room. Acode = read/search only. Incognito = truth-check
+Shop Level card = fossil (replaced by Plans system) — DELETE pending
+K4 (dup editCreditModal) — test result never reported (interrupted by drift saga) — VERIFY
+NEXT: verify K4 → Phase R complete → Phase B build plan for approval (role engine in skeleton)
