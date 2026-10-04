@@ -8,6 +8,7 @@ const urlsToCache = [
   './menu.html',
   './hotel.html',
   './master.html',
+  './admin-clean.html',
   './config.js',
   './shared.js',
   './sheet.js',
