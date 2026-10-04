@@ -557,3 +557,7 @@ Cross-browser proof: incognito → 🏨 Hotel + full menus from DB
 sw.js: './admin-clean.html' added to cache list; CACHE bumped each deploy
 K4 verified: single editCreditModal ✅ · Workflow law: GitHub = only edit room
 NEXT: STEP 2 — Dashboard port (KPIs server-powered, charts, zero zombies)
+PHASE B: modularized (v4-dashboard.js + v4-products.js, registry V4_TAB_LOADERS)
+Products P1+P2 ✅: full Edit Modal, add-form bulk/modifiers/menu, CSS kit restored(scroll law, resize, dialogs). Excel-switch bug fixed (fresh setData on every switch)
+NEXT: P3 detail+bin card → P4 scanner/CSV/filters → P5 tools → then Sales (Step 4)
+LAW: new code goes INTO module files, never the shell
