@@ -155,20 +155,33 @@ function buildSidebar() {
 }
 
 // ── PLAN LOCK (business-type law + plan features, from ssfeatures.js) ──
-function applyPlanVisibility() {
-  TABS.forEach(function(t) {
-    var el = document.getElementById('stab' + t.n);
-    if (!el) return;
-    var show = true;
-    if (t.n === 21) show = (typeof ssHasFeature === 'function' && ssHasFeature('rooms')); // hotel tab → rooms only
-    else if (t.ent) { var lic = getLicense(); show = !!(lic && lic.plan === 'enterprise'); }
-    else if (typeof ssTabAllowed === 'function') show = ssTabAllowed(t.n);   // exit-door law inside (13/14 free)
-    el.style.display = show ? 'flex' : 'none';
-  });
-  var b = document.getElementById('planBadge');
-  if (b && typeof ssPlanLabel === 'function') b.textContent = (typeof ssIsCafe === 'function' && ssIsCafe()) ? '☕ ' + ssPlanLabel() : '🛒 ' + ssPlanLabel();
+// ── LICENSE CACHE GETTER — proper home in v4 (classic admin keeps its own copy) ──
+function getLicense() {
+    try { return JSON.parse(localStorage.getItem('smartshop_license') || 'null'); }
+    catch(e) { return null; }
 }
 
+// ── PLAN LOCK (business-type law + plan features, from ssfeatures.js) ──
+function applyPlanVisibility() {
+    TABS.forEach(function(t) {
+        var el = document.getElementById('stab' + t.n);
+        if (!el) return;
+        var show = true;
+        try {
+            if (t.n === 21) show = (typeof ssHasFeature === 'function' && ssHasFeature('rooms'));
+            else if (t.ent) { var lic = getLicense(); show = !!(lic && lic.plan === 'enterprise'); }
+            else if (typeof ssTabAllowed === 'function') show = ssTabAllowed(t.n);
+        } catch(e) { console.warn('Tab visibility:', t.n, e.message); }
+        el.style.display = show ? 'flex' : 'none';
+    });
+    var b = document.getElementById('planBadge');
+    if (b) {
+        var lbl = (typeof ssPlanLabel === 'function') ? ssPlanLabel() : '…';
+        var ico = '🛒';
+        try { ico = (typeof ssIsCafe === 'function' && (ssIsCafe() || (window.__currentShopRow && window.__currentShopRow.business_type === 'hotel'))) ? '🏨' : '🛒'; } catch(e) {}
+        b.textContent = ico + ' ' + lbl;
+    }
+}
 // ── TAB SWITCH ──
 function selectTab(i, el) {
   document.querySelectorAll('.tab-content').forEach(function(x){ x.style.display = 'none'; });
