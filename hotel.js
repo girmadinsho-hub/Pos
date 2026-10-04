@@ -199,26 +199,31 @@ function htlPayModal(stayId, due) {
 }
 
 async function htlCheckout(stayId, due, method) {
-    if (!await confirm('Collect ' + htlMoney(due) + ' (' + method + ') and check out?')) return;
+    due = Number(due) || 0;
+    if (due < 0) {
+        var refund = Math.abs(due);
+        if (!await confirm('💰 Deposit EXCEEDS charges by ' + htlMoney(refund) + '.\n\nCheckout WITHOUT recording a sale?\n(Refund ' + htlMoney(refund) + ' to the guest in cash.)')) return;
+    } else {
+        if (!await confirm('Collect ' + htlMoney(due) + ' (' + method + ') and check out?')) return;
+    }
     try {
-        // 1. Record as SALE (dashboards + reports + fiscal all see it!)
-        await supabaseClient.from('sales').insert([{
-            items: [{ name: 'Hotel room settlement', qty: 1, price: Number(due), subtotal: Number(due) }],
-            subtotal: Number(due), discount: 0, tax: 0, total: Number(due), profit: 0,
-            payment_method: method, payments: [{ method: method, amount: Number(due) }],
-            shop_id: getShopId(),
-            cashier_id: localStorage.getItem('hotelStaffId') || 'reception',
-            cashier_name: localStorage.getItem('hotelStaffName') || 'Reception',
-            shift_id: 'hotel', time: new Date().toISOString(),
-            note: 'Hotel checkout', invoice_no: 'HTL-' + Date.now().toString().slice(-8),
-            order_type: 'Room Stay'
-        }]);
-        // 2. Close the stay + room → cleaning
+        if (due > 0) {
+            await supabaseClient.from('sales').insert([{
+                items: [{ name: 'Hotel room settlement', qty: 1, price: due, subtotal: due }],
+                subtotal: due, discount: 0, tax: 0, total: due, profit: 0,
+                payment_method: method, payments: [{ method: method, amount: due }],
+                shop_id: getShopId(),
+                cashier_id: localStorage.getItem('hotelStaffId') || 'reception',
+                cashier_name: localStorage.getItem('hotelStaffName') || 'Reception',
+                shift_id: 'hotel', time: new Date().toISOString(),
+                note: 'Hotel checkout', invoice_no: 'HTL-' + Date.now().toString().slice(-8),
+                order_type: 'Room Stay'
+            }]);
+        }
         const { data: stay } = await supabaseClient.from('guest_stays').select('room_id, guest_name').eq('id', stayId).single();
         await supabaseClient.from('guest_stays').update({ status: 'checked_out', actual_checkout: new Date().toISOString() }).eq('id', stayId);
         var room = HTL.rooms.find(r => r.id === stay.room_id);
         await supabaseClient.from('rooms').update({ status: 'cleaning' }).eq('id', stay.room_id);
-        // 3. 🔔 GUARD ALERT — guest leaving
         await supabaseClient.from('hotel_alerts').insert([{
             shop_id: getShopId(), alert_type: 'checkout',
             room_number: room ? room.room_number : '?', guest_name: stay.guest_name,
@@ -226,10 +231,9 @@ async function htlCheckout(stayId, due, method) {
         }]);
         htlCloseModal('payModal');
         await htlLoad(); htlRenderReception();
-        alert('✅ Checked out! Payment recorded.\nRoom → 🧹 Cleaning · Guard notified 🔔');
+        alert('✅ Checked out!' + (due <= 0 ? '\n💰 Deposit covered all charges — no sale recorded.' : '\nPayment recorded.') + '\nRoom → 🧹 Cleaning · Guard notified 🔔');
     } catch(e) { alert('❌ ' + e.message); }
 }
-
 // ═══ QUICK CHARGE / EXTEND ═══
 async function htlQuickCharge(stayId) {
     var amt = parseFloat(await prompt('Charge amount:'));
