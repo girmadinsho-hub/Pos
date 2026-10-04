@@ -76,6 +76,114 @@ body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
     <button class="btn btn-o" onclick="adminLogout()" style="color:var(--bad);border-color:var(--bad)">Logout</button>
   </div>
 </div>
+  <!-- ═══ PRODUCTS TEMPLATE (clean, v4 — 4-type law) ═══ -->
+<template id="tab1HTML">
+<div id="tab1" class="tab-content">
+
+  <!-- ADD PRODUCT -->
+  <div class="card">
+    <div class="card-title" onclick="v4ToggleCard(this)">➕ Add Product <span class="arrow">▶</span></div>
+    <div class="card-body" style="display:none">
+      <label>📦 Product Name</label>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:8px">
+        <input class="v4-in" id="v4prodName" placeholder="Enter product name">
+        <select class="v4-in" id="v4prodUnit">
+          <option value="">Unit</option>
+          <option>kg</option><option>gram</option><option>litre</option><option>ml</option>
+          <option>piece</option><option>packet</option><option>dozen</option><option>box</option>
+          <option>bottle</option><option>can</option><option>pair</option><option>set</option>
+          <option>roll</option><option>bundle</option><option>meter</option><option>cup</option><option>glass</option><option>spoon</option><option>dish</option>
+        </select>
+      </div>
+
+      <label>🏷️ Product Type — the 4-type law</label>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px" id="v4typeCards">
+        <div class="v4-type active" data-t="sell" onclick="v4PickType('sell')">🛒 <b>Sell Direct</b><small>Menu + stock + 2 prices</small></div>
+        <div class="v4-type" data-t="raw" onclick="v4PickType('raw')">🧪 <b>Raw Material</b><small>Hidden — recipes only</small></div>
+        <div class="v4-type" data-t="virtual" onclick="v4PickType('virtual')">🍔 <b>Prepared</b><small>Menu + price, no stock</small></div>
+        <div class="v4-type" data-t="dual" onclick="v4PickType('dual')">🥚 <b>Dual Use</b><small>Sell AND recipe</small></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><label>💵 Selling Price *</label><input type="number" class="v4-in" id="v4prodPrice" placeholder="0"></div>
+        <div id="v4costWrap"><label>💰 Cost Price</label><input type="number" class="v4-in" id="v4prodCost" placeholder="0"></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="v4stockWrap">
+        <div><label>📊 Stock Qty</label><input type="number" class="v4-in" id="v4prodStock" placeholder="0"></div>
+        <div><label>⚠️ Low Stock Alert</label><input type="number" class="v4-in" id="v4prodReorder" value="5"></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="v4extraWrap">
+        <div><label>📂 Category</label><input class="v4-in" id="v4prodCategory" placeholder="e.g., Beverages"></div>
+        <div><label>📅 Expiry (optional)</label><input type="date" class="v4-in" id="v4prodExpiry"></div>
+      </div>
+
+      <div id="v4stationWrap">
+        <label>🍳 Prep Station (kitchen routing)</label>
+        <select class="v4-in" id="v4prodStation">
+          <option value="Kitchen">🍳 Kitchen</option>
+          <option value="Bar">🍹 Bar / Cold</option>
+          <option value="Coffee">☕ Coffee / Hot</option>
+        </select>
+      </div>
+
+      <label>🖼️ Image (optional)</label>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="v4-in" id="v4prodImage" placeholder="URL or upload" style="flex:1">
+        <button class="v4-btn sm" style="width:auto" onclick="document.getElementById('v4prodImgFile').click()">📁</button>
+        <input type="file" id="v4prodImgFile" accept="image/*" style="display:none" onchange="ssUploadProductImage(this,'v4prodImage')">
+      </div>
+
+      <label>🏷️ Barcode</label>
+      <div style="display:flex;gap:8px">
+        <input class="v4-in" id="v4prodBarcode" placeholder="Scan or type" style="flex:1">
+      </div>
+
+      <button class="v4-btn g" onclick="v4AddProduct()">✅ Add Product</button>
+    </div>
+  </div>
+
+  <!-- PRODUCT LIST -->
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      📦 Products <span class="v4-badge" id="v4prodCount">0</span>
+      <span style="margin-left:auto;display:flex;gap:6px">
+        <button class="v4-chip" onclick="v4ProductExport()">📥 XLSX</button>
+        <button class="v4-chip" onclick="v4RefreshProducts()">🔄</button>
+      </span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <input class="v4-in" id="v4prodSearch" placeholder="🔍 Search name or barcode…" style="flex:2;min-width:120px" oninput="v4RenderProductTable()">
+      <select class="v4-in" id="v4prodCatFilter" style="flex:1;min-width:90px" onchange="v4RenderProductTable()"><option value="">All Categories</option></select>
+      <select class="v4-in" id="v4prodTypeFilter" style="flex:1;min-width:90px" onchange="v4RenderProductTable()">
+        <option value="">All Types</option>
+        <option value="sell">🛒 Sell</option>
+        <option value="raw">🧪 Raw</option>
+        <option value="virtual">🍔 Prepared</option>
+        <option value="dual">🥚 Dual</option>
+      </select>
+    </div>
+    <div id="v4productExcel"></div>
+  </div>
+</div>
+</template>
+<style>
+.v4-in{width:100%;padding:11px 13px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;margin:3px 0 9px 0;background:#fff;color:#0f172a;outline:none}
+.v4-in:focus{border-color:#2563eb}
+label{font-size:11px;font-weight:800;color:#475569;display:block;margin-top:4px}
+.v4-type{border:2px solid #e2e8f0;border-radius:12px;padding:10px;cursor:pointer;text-align:center;background:#fff}
+.v4-type small{display:block;font-size:9px;color:#64748b;margin-top:3px}
+.v4-type.active{border-color:#2563eb;background:#eff6ff}
+.v4-btn{width:100%;padding:13px;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;margin-top:10px}
+.v4-btn.g{background:#10b981;color:#fff}.v4-btn.p{background:#2563eb;color:#fff}
+.v4-btn.sm{padding:11px;background:#2563eb;color:#fff;margin:0}
+.v4-chip{padding:7px 12px;border-radius:20px;border:1px solid #cbd5e1;background:#fff;font-size:11px;font-weight:700;cursor:pointer}
+.v4-badge{background:#2563eb;color:#fff;font-size:10px;font-weight:800;padding:2px 9px;border-radius:9px}
+body.dark .v4-in{background:#0f172a;border-color:#475569;color:#f1f5f9}
+body.dark .v4-type{background:#1e293b;border-color:#334155}
+body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
+</style>
 <!-- ═══ DASHBOARD TEMPLATE (clean, v4) ═══ -->
 <template id="tab0HTML">
 <div id="tab0" class="tab-content">
@@ -86,13 +194,12 @@ body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
       <button class="period-btn" data-p="monthly" onclick="loadDashboardV4('monthly',this)">📅 Month</button>
       <button class="period-btn" data-p="yearly" onclick="loadDashboardV4('yearly',this)">📅 Year</button>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
-      <div class="stat-card" style="border-left:5px solid #3b82f6"><div class="stat-label">💰 Revenue</div><div class="stat-value" id="v4statRevenue">—</div><div class="stat-sub" id="v4statRevenueSub"></div></div>
+      <div class="kpi-main" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">      <div class="stat-card" style="border-left:5px solid #3b82f6"><div class="stat-label">💰 Revenue</div><div class="stat-value" id="v4statRevenue">—</div><div class="stat-sub" id="v4statRevenueSub"></div></div>
       <div class="stat-card" style="border-left:5px solid #10b981"><div class="stat-label">📈 Gross Profit</div><div class="stat-value" id="v4statGrossProfit">—</div><div class="stat-sub" id="v4statProfitSub"></div></div>
       <div class="stat-card" style="border-left:5px solid #f59e0b"><div class="stat-label">💸 Expenses</div><div class="stat-value" id="v4statExpenses">—</div><div class="stat-sub" id="v4statExpensesSub"></div></div>
       <div class="stat-card" style="border-left:5px solid #8b5cf6"><div class="stat-label">💎 Net Profit</div><div class="stat-value" id="v4statNetProfit">—</div><div class="stat-sub" id="v4statNetSub"></div></div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px">
+    <div class="kpi-alert" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px">
       <div class="stat-card" style="border-left:5px solid #ef4444"><div class="stat-label">💳 Credit Due</div><div class="stat-value" id="v4statCreditDue">—</div></div>
       <div class="stat-card" style="border-left:5px solid #f97316"><div class="stat-label">⚠️ Low Stock</div><div class="stat-value" id="v4statLowStock">—</div></div>
       <div class="stat-card" style="border-left:5px solid #ec4899"><div class="stat-label">🔔 Salary Alerts</div><div class="stat-value" id="v4statSalaryAlerts">—</div></div>
@@ -116,13 +223,38 @@ body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
 </div>
 </template>
 <style>
-.stat-card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-body.dark .stat-card{background:#1e293b}
-.stat-value{font-size:20px;font-weight:800}
-.stat-label{font-size:10px;color:#64748b;font-weight:700}
-.stat-sub{font-size:10px;color:#94a3b8}
-.period-btn{padding:9px 14px;border:2px solid #e2e8f0;border-radius:30px;font-size:12px;background:#fff;cursor:pointer;font-weight:700}
+/* ═══ v4 DASHBOARD — original look, one home ═══ */
+.stat-card{background:#fff;border-radius:18px;padding:18px;text-align:center;border-left:6px solid #3b82f6;box-shadow:0 4px 12px rgba(0,0,0,.05)}
+.stat-value{font-size:26px;font-weight:800;line-height:1.2}
+.stat-label{font-size:11px;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
+.stat-sub{font-size:11px;color:#94a3b8;margin-top:3px}
+/* KPI row 1 — the classic gradients */
+.kpi-main .stat-card:nth-child(1){background:linear-gradient(135deg,#eff6ff,#dbeafe);border-left-color:#3b82f6}
+.kpi-main .stat-card:nth-child(2){background:linear-gradient(135deg,#ecfdf5,#d1fae5);border-left-color:#10b981}
+.kpi-main .stat-card:nth-child(3){background:linear-gradient(135deg,#fffbeb,#fef3c7);border-left-color:#f59e0b}
+.kpi-main .stat-card:nth-child(4){background:linear-gradient(135deg,#f5f3ff,#ede9fe);border-left-color:#8b5cf6}
+/* Alert row — classic tints (border colors stay inline) */
+.kpi-alert .stat-card:nth-child(1){background:linear-gradient(135deg,#fef2f2,#fee2e2)}
+.kpi-alert .stat-card:nth-child(2){background:linear-gradient(135deg,#fff7ed,#ffedd5)}
+.kpi-alert .stat-card:nth-child(3){background:linear-gradient(135deg,#fdf2f8,#fce7f3)}
+.kpi-alert .stat-card:nth-child(4){background:linear-gradient(135deg,#f0fdfa,#ccfbf1)}
+/* Dark mode */
+body.dark .stat-card{box-shadow:0 4px 12px rgba(0,0,0,.3)}
+body.dark .kpi-main .stat-card:nth-child(1){background:linear-gradient(135deg,#172554,#1e3a8a)}
+body.dark .kpi-main .stat-card:nth-child(2){background:linear-gradient(135deg,#064e3b,#065f46)}
+body.dark .kpi-main .stat-card:nth-child(3){background:linear-gradient(135deg,#78350f,#92400e)}
+body.dark .kpi-main .stat-card:nth-child(4){background:linear-gradient(135deg,#312e81,#3730a3)}
+body.dark .kpi-alert .stat-card:nth-child(1){background:linear-gradient(135deg,#450a0a,#7f1d1d)}
+body.dark .kpi-alert .stat-card:nth-child(2){background:linear-gradient(135deg,#7c2d12,#9a3412)}
+body.dark .kpi-alert .stat-card:nth-child(3){background:linear-gradient(135deg,#831843,#9d174d)}
+body.dark .kpi-alert .stat-card:nth-child(4){background:linear-gradient(135deg,#134e4a,#115e59)}
+body.dark .stat-value{color:#f1f5f9}
+body.dark .stat-label{color:#94a3b8}
+body.dark .stat-sub{color:#94a3b8}
+.period-btn{padding:10px 16px;border:2px solid #e2e8f0;border-radius:30px;font-size:13px;background:#fff;cursor:pointer;font-weight:700}
 .period-btn.active{background:#3b82f6;color:#fff;border-color:#3b82f6}
+body.dark .period-btn{background:#334155;color:#e2e8f0;border-color:#475569}
+body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 </style>
 <!-- MAIN -->
 <div id="mainApp" style="display:none">
@@ -197,6 +329,11 @@ function buildSidebar() {
       ch += document.getElementById('tab0HTML') ? document.getElementById('tab0HTML').innerHTML
            : '<div id="tab0" class="tab-content"><div class="card"><div class="placeholder"><b>📊</b>Dashboard loading…</div></div></div>';
       return; // skip default
+    }
+        if (t.n === 1) {
+      ch += document.getElementById('tab1HTML') ? document.getElementById('tab1HTML').innerHTML
+           : '<div id="tab1" class="tab-content"><div class="card"><div class="placeholder"><b>📦</b>Products loading…</div></div></div>';
+      return;
     }
     ch += '<div id="tab' + t.n + '" class="tab-content"><div class="card"><div class="placeholder">' +
           '<b>' + t.icon + '</b><b style="font-size:16px">' + t.label + '</b><br>' +
@@ -476,7 +613,219 @@ var _v4selectTab = selectTab;
 selectTab = function(i, el) {
   _v4selectTab(i, el);
   if (i === 0) loadDashboardV4(v4period, document.querySelector('.period-btn.active'));
+  if (i === 1) v4RenderProductTable();
 };
+
+  // ═════════════════════════════════════════════════════════
+//  PRODUCTS v4 — 4-type law · plan limits · ModernSheet
+// ═════════════════════════════════════════════════════════
+var v4products = [];
+var v4curType = 'sell';
+var v4productTable = null;
+
+function v4PickType(t) {
+  v4curType = t;
+  document.querySelectorAll('.v4-type').forEach(function(c){ c.classList.toggle('active', c.dataset.t === t); });
+  // 🎯 THE CAPTAIN'S LAW: hide what the type doesn't need
+  var price = document.getElementById('v4prodPrice');
+  var costW = document.getElementById('v4costWrap');
+  var stockW = document.getElementById('v4stockWrap');
+  var extraW = document.getElementById('v4extraWrap');
+  var stationW = document.getElementById('v4stationWrap');
+  var cost = document.getElementById('v4prodCost');
+  var stock = document.getElementById('v4prodStock');
+  // sell: everything. raw: cost+stock, NO sell price needed visible but keep for future; virtual: price+station ONLY. dual: everything.
+  stockW.style.display = (t === 'virtual') ? 'none' : 'grid';
+  extraW.style.display = (t === 'virtual') ? 'none' : 'grid';
+  stationW.style.display = (t === 'sell' || t === 'dual') ? 'none' : (t === 'virtual' ? 'block' : 'none');
+  if (t === 'virtual') { costW.style.display = 'none'; stock.value = 0; }
+  else { costW.style.display = 'block'; }
+  if (t === 'raw') { price.parentElement.style.display = 'none'; }
+  else { price.parentElement.style.display = 'block'; }
+}
+
+function v4g(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function v4n(id){ var el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; }
+
+async function v4AddProduct() {
+  var name = v4g('v4prodName');
+  if (!name) { alert('Product name is required.'); return; }
+
+  // 🛡️ PLAN LIMIT (Master's law)
+  if (typeof ssCanAddProduct === 'function' && !ssCanAddProduct(v4products.length)) {
+    alert('⚠️ Product limit reached for your plan (' + (typeof ssPlanLabel === 'function' ? ssPlanLabel() : '') + ').\n\nUpgrade: License tab.');
+    return;
+  }
+
+  var dup = v4products.some(function(p){ return (p.name||'').toLowerCase() === name.toLowerCase(); });
+  if (dup) { alert('⚠️ A product with this name already exists.'); return; }
+
+  var t = v4curType;
+  var price = v4n('v4prodPrice'), cost = v4n('v4prodCost'), stock = v4n('v4prodStock');
+
+  // Type validations
+  if ((t === 'sell' || t === 'dual' || t === 'virtual') && price <= 0) { alert('Selling price is required for this type.'); return; }
+  if (t === 'raw' && cost <= 0) { alert('Cost price is required for raw materials.'); return; }
+  if ((t === 'sell' || t === 'raw' || t === 'dual') && stock <= 0 && t !== 'dual') { if (t !== 'dual') { alert('Stock quantity is required for this type.'); return; } }
+  if (t === 'dual' && cost <= 0) { alert('Dual-use needs cost price (it is also an ingredient).'); return; }
+  if (t === 'virtual') { stock = 0; }
+
+  // 🗺️ Map UI type → DB flags (same columns as v3 — bridge law respected)
+  var isVirtual = (t === 'virtual');
+  var sellDirectly = (t === 'sell' || t === 'dual' || t === 'virtual');
+
+  var rec = {
+    firebase_id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
+    shop_id: getShopId(), name: name,
+    price: price, cost_price: cost, stock: stock,
+    unit: v4g('v4prodUnit') || 'piece',
+    barcode: v4g('v4prodBarcode'),
+    category: v4g('v4prodCategory') || 'General',
+    is_virtual: isVirtual, sell_directly: sellDirectly,
+    is_available_on_menu: (t !== 'raw'),
+    reorder_level: v4n('v4prodReorder') || 5,
+    expiry_date: v4g('v4prodExpiry') || null,
+    image_url: v4g('v4prodImage'),
+    station: v4g('v4prodStation') || 'Kitchen',
+    sold_count: 0, modifiers: []
+  };
+
+  try {
+    const { error } = await supabaseClient.from('products').insert([rec]);
+    if (error) throw error;
+    v4products.push(v4MapProduct(rec));
+    v4RenderProductTable(); v4FillCatFilter();
+    // reset form
+    ['v4prodName','v4prodPrice','v4prodCost','v4prodStock','v4prodCategory','v4prodBarcode','v4prodImage','v4prodExpiry'].forEach(function(id){ var el = document.getElementById(id); if (el) el.value=''; });
+    var rl = document.getElementById('v4prodReorder'); if (rl) rl.value = '5';
+    v4PickType('sell');
+    alert('✅ "' + name + '" added!');
+  } catch(e) { alert('❌ ' + e.message); }
+}
+
+function v4MapProduct(p) {
+  var t = 'sell';
+  if (p.is_virtual) t = 'virtual';
+  else if (p.sell_directly === false) t = 'raw';
+  else if (p.is_virtual === false && p.sell_directly !== false && p._dual) t = 'dual';
+  return {
+    id: p.firebase_id || p.id, name: p.name, price: Number(p.price)||0, costPrice: Number(p.cost_price)||0,
+    stock: Number(p.stock)||0, unit: p.unit||'piece', barcode: p.barcode||'', category: p.category||'General',
+    isVirtual: !!p.is_virtual, sellDirectly: p.sell_directly !== false,
+    reorderLevel: Number(p.reorder_level)||5, expiryDate: p.expiry_date||'', imageUrl: p.image_url||'',
+    station: p.station||'Kitchen', soldCount: Number(p.sold_count)||0,
+    type: t, menuVisible: p.is_available_on_menu !== false
+  };
+}
+
+function v4TypeBadge(t) {
+  var m = { sell:['🛒 Sell','#eff6ff','#1d4ed8'], raw:['🧪 Raw','#fef3c7','#92400e'],
+            virtual:['🍔 Prepared','#ede9fe','#5b21b6'], dual:['🥚 Dual','#d1fae5','#065f46'] };
+  var x = m[t] || m.sell;
+  return '<span style="background:' + x[1] + ';color:' + x[2] + ';font-size:10px;font-weight:800;padding:3px 8px;border-radius:8px;white-space:nowrap">' + x[0] + '</span>';
+}
+
+async function v4LoadProducts() {
+  try {
+    const { data, error } = await supabaseClient.from('products').select('*').eq('shop_id', getShopId());
+    if (error) throw error;
+    v4products = (data || []).map(v4MapProduct);
+    v4FillCatFilter(); v4RenderProductTable();
+  } catch(e) { console.warn('Products load:', e.message); }
+}
+function v4RefreshProducts(){ v4LoadProducts(); }
+
+function v4FillCatFilter() {
+  var sel = document.getElementById('v4prodCatFilter');
+  if (!sel) return;
+  var cats = [];
+  v4products.forEach(function(p){ if (p.category && cats.indexOf(p.category) === -1) cats.push(p.category); });
+  cats.sort();
+  sel.innerHTML = '<option value="">All Categories</option>' + cats.map(function(c){ return '<option>' + c + '</option>'; }).join('');
+}
+
+function v4RenderProductTable() {
+  var q = (document.getElementById('v4prodSearch') || {value:''}).value.toLowerCase();
+  var cf = (document.getElementById('v4prodCatFilter') || {value:''}).value;
+  var tf = (document.getElementById('v4prodTypeFilter') || {value:''}).value;
+  var filtered = v4products.filter(function(p){
+    if (q && p.name.toLowerCase().indexOf(q) === -1 && !(p.barcode && p.barcode.toLowerCase().indexOf(q) !== -1)) return false;
+    if (cf && p.category !== cf) return false;
+    if (tf && p.type !== tf) return false;
+    return true;
+  });
+  var cnt = document.getElementById('v4prodCount'); if (cnt) cnt.textContent = filtered.length;
+
+  if (!window.v4productTable) {
+    window.v4productTable = new ModernSheet('v4productExcel', {
+      data: filtered,
+      columns: [
+        { title:'#', width:'36px', render:function(i,h,x){ return x+1; } },
+        { title:'Product', field:'name', width:'140px', render:function(i,h){ return h ? '<b>'+sanitize(i.name)+'</b>' : i.name; } },
+        { title:'Type', width:'92px', render:function(i,h){ return v4TypeBadge(i.type); }, filterable:true },
+        { title:'Stock', width:'60px', align:'center', render:function(i,h){
+            if (i.isVirtual) return h ? '<span style="color:#94a3b8">—</span>' : '';
+            var c = i.stock === 0 ? '#dc2626' : (i.stock <= i.reorderLevel ? '#ea580c' : '#059669');
+            return h ? '<b style="color:'+c+'">'+i.stock+'</b>' : i.stock;
+          }, total:true, totalValue:function(i){ return i.isVirtual?0:i.stock; }, totalFormat:function(s){ return s+' units'; } },
+        { title:'Cost', width:'80px', align:'right', render:function(i,h){ return h?fmtMoney(i.costPrice):i.costPrice; } },
+        { title:'Price', width:'90px', align:'right', render:function(i,h){ return h?'<b>'+fmtMoney(i.price)+'</b>':i.price; },
+          total:true, totalValue:function(i){ return i.price * (i.isVirtual?1:i.stock); }, totalFormat:function(s){ return fmtMoney(s); } },
+        { title:'Unit', field:'unit', width:'60px' },
+        { title:'Category', field:'category', width:'90px', filterable:true },
+        { title:'Actions', width:'150px', render:function(i,h){
+            if (!h) return '';
+            return '<button class="btn-mini edit" onclick="v4EditProduct(\''+i.id+'\')">✏️</button> ' +
+                   '<button class="btn-mini delete" onclick="v4DeleteProduct(\''+i.id+'\')">🗑️</button>';
+          }, filterable:false }
+      ],
+      emptyMessage: 'No products yet — add your first one above!',
+      showSearch: false, showFontSlider: true
+    });
+  } else {
+    window.v4productTable.setData(filtered);
+  }
+}
+
+function v4ProductExport(){ if (window.v4productTable) window.v4productTable.exportXLSX(); }
+
+async function v4DeleteProduct(id) {
+  if (!await confirm('Delete this product permanently?')) return;
+  try {
+    const { error } = await supabaseClient.from('products').delete().eq('firebase_id', id);
+    if (error) throw error;
+    v4products = v4products.filter(function(p){ return p.id !== id; });
+    v4RenderProductTable(); v4FillCatFilter();
+    alert('✅ Product deleted.');
+  } catch(e) { alert('❌ ' + e.message); }
+}
+
+// Edit — opens a prompt-driven quick editor (full modal arrives in polish step)
+async function v4EditProduct(id) {
+  var p = v4products.find(function(x){ return x.id === id; });
+  if (!p) return;
+  var newName = await prompt('Product name:', p.name); if (!newName) return;
+  var newPrice = parseFloat(await prompt('Selling price:', p.price)); if (isNaN(newPrice)) return;
+  var newCost = parseFloat(await prompt('Cost price:', p.costPrice)); if (isNaN(newCost)) return;
+  var newStock = parseFloat(await prompt('Stock qty:', p.stock)); if (isNaN(newStock)) return;
+  if (!await confirm('Update "' + newName + '"?\nPrice ' + fmtMoney(newPrice) + ' · Cost ' + fmtMoney(newCost) + ' · Stock ' + newStock)) return;
+  try {
+    const { error } = await supabaseClient.from('products').update({
+      name: newName, price: newPrice, cost_price: newCost, stock: newStock
+    }).eq('firebase_id', id);
+    if (error) throw error;
+    p.name = newName; p.price = newPrice; p.costPrice = newCost; p.stock = newStock;
+    v4RenderProductTable();
+    alert('✅ Updated.');
+  } catch(e) { alert('❌ ' + e.message); }
+}
+
+function v4ToggleCard(titleEl) {
+  var body = titleEl.nextElementSibling;
+  var arrow = titleEl.querySelector('.arrow');
+  if (body) body.style.display = (body.style.display === 'none') ? 'block' : 'none';
+  if (arrow) arrow.classList.toggle('open');
+}
 // ── INIT (one init chain — no window.onload fights, ever) ──
 function init() {
   document.getElementById('verBadge').textContent = APP_VERSION.split('-')[0];
@@ -484,6 +833,7 @@ function init() {
   document.getElementById('langSelect').value = appLang;
   changeLanguage(appLang);
   buildSidebar();
+    v4LoadProducts();
     loadDashboardV4('daily', null).catch(function(e){ console.warn('Dashboard:', e.message); });
   if (typeof ssLoadPlan === 'function') ssLoadPlan().then(function(){ applyPlanVisibility(); });
   else applyPlanVisibility();
