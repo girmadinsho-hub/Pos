@@ -356,6 +356,7 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
       </span>
     </div>
     <div id="v4sumPeriods" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+       <button class="period-btn" onclick="v4SumPeriod('all',this)">All</button>
       <button class="period-btn active" onclick="v4SumPeriod('daily',this)">Daily</button>
       <button class="period-btn" onclick="v4SumPeriod('weekly',this)">Weekly</button>
       <button class="period-btn" onclick="v4SumPeriod('monthly',this)">Monthly</button>
@@ -367,7 +368,13 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
   </div>
 
   <div class="card">
-    <div class="card-title">📋 Detailed Sales <span class="v4-badge" id="v4detCount">0</span></div>
+    <div class="card-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">📋 Detailed Sales <span class="v4-badge" id="v4detCount">0</span>
+      <span id="v4detViews" style="margin-left:auto;display:flex;gap:5px">
+        <button class="v4-chip active" onclick="v4DetView('excel',this)">📊</button>
+        <button class="v4-chip" onclick="v4DetView('list',this)">📋</button>
+        <button class="v4-chip" onclick="v4DetView('grid',this)">⊞</button>
+      </span></div>  
+    
     <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
       <select class="v4-in" id="v4dPay" style="flex:1;min-width:90px;height:34px;padding:6px;margin:0;font-size:12px" onchange="v4RenderDetailed()">
         <option value="">All Payments</option><option value="cash">💵 Cash</option><option value="card">💳 Card</option><option value="mobile">📱 Mobile</option><option value="credit">📝 Credit</option><option value="split">🧾 Split</option>
@@ -377,7 +384,10 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
       </select>
       <select class="v4-in" id="v4dCashier" style="flex:1;min-width:100px;height:34px;padding:6px;margin:0;font-size:12px" onchange="v4RenderDetailed()"><option value="">All Cashiers</option></select>
     </div>
-    <div id="v4detExcel"></div>
+    
+        <div id="v4detExcel"></div>
+    <div id="v4detList" style="display:none"></div>
+    <div id="v4detGrid" style="display:none"></div>
     <div style="text-align:center;padding:8px"><button class="v4-chip" id="v4detMore" style="display:none" onclick="v4LoadMoreDetailed()">⬇ Load 50 More Sales</button></div>
   </div>
 
@@ -402,9 +412,11 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
       </span>
     </div>
     <select class="v4-in" style="max-width:140px" onchange="v4S.cperiod=this.value;v4RenderCashier()">
-      <option value="today">Today</option><option value="week">Week</option><option value="month" selected>Month</option><option value="year">Year</option>
+      <option value="today">Today</option><option value="week">Week</option><option value="all">All</option><option value="month" selected>Month</option><option value="year">Year</option>
     </select>
-    <div id="v4cashExcel"></div>
+        <div id="v4cashExcel"></div>
+    <div id="v4cashList" style="display:none"></div>
+    <div id="v4cashGrid" style="display:none"></div>
   </div>
 
   <div class="card">
@@ -417,9 +429,11 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
       </span>
     </div>
     <select class="v4-in" style="max-width:140px" onchange="v4S.tperiod=this.value;v4RenderTop()">
-      <option value="today">Today</option><option value="week">Week</option><option value="month" selected>Month</option><option value="year">Year</option>
+      <option value="today">Today</option><option value="week">Week</option><option value="all">All</option><option value="month" selected>Month</option><option value="year">Year</option>
     </select>
-    <div id="v4topExcel"></div>
+        <div id="v4topExcel"></div>
+    <div id="v4topList" style="display:none"></div>
+    <div id="v4topGrid" style="display:none"></div>
   </div>
 </div>
 </template>
