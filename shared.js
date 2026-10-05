@@ -1,3 +1,5 @@
+// ===== GLOBAL CURRENCY FORMATTER =====
+var appCurrencySymbol = localStorage.getItem('appCurrencySymbol') || 'Br ';
 function fmtMoney(amount) {
     return appCurrencySymbol + Number(amount || 0).toFixed(2);
 }
@@ -136,7 +138,31 @@ window.prompt = function(message, defaultValue) {
 // Firebase is officially removed. We use Supabase 100%.
 let db = null;
 let auth = null;
-
+// ═══ DATE FORMAT — v4 home (Ethiopian calendar aware) ═══
+var ETH_MONTHS = ['መስከረም','ጥቅምት','ህዳር','ታህሳስ','ጥር','የካቲት','መጋቢት','ሚያዚያ','ግንቦት','ሰኔ','ሐምሌ','ነሐሴ','ጳጉሜ'];
+function ethiopianFromGregorian(gDate) {
+  var d = new Date(gDate); var year = d.getFullYear();
+  var ethNewYear = new Date(year, 8, ((year % 4 === 0 && year % 100 !== 0) || year % 400 === 0) ? 12 : 11);
+  var refNewYear = (d < ethNewYear) ? new Date(year - 1, 8, ((year - 1) % 4 === 0 && (year - 1) % 100 !== 0) || (year - 1) % 400 === 0 ? 12 : 11) : ethNewYear;
+  var ethYear = (d < ethNewYear) ? year - 8 : year - 7;
+  var ethDay = Math.floor((d - refNewYear) / 86400000) + 1;
+  var ethMonth = 0;
+  for (var i = 0; i < 13; i++) { if (ethDay <= 30) { ethMonth = i; break; } ethDay -= 30; }
+  if (ethDay > 30) ethDay = 30;
+  return { year: ethYear, month: ethMonth, day: ethDay, monthName: ETH_MONTHS[ethMonth] };
+}
+function formatDate(ds, incTime) {
+  if (!ds) return '';
+  var d = new Date(ds); if (isNaN(d.getTime())) return ds;
+  var cal = localStorage.getItem('calendarSystem') || 'gregorian';
+  if (cal === 'ethiopian') {
+    var e = ethiopianFromGregorian(d);
+    var s = e.day + ' ' + e.monthName + ' ' + e.year;
+    if (incTime) s += ' ' + d.toLocaleTimeString();
+    return s;
+  }
+  return incTime ? d.toLocaleString() : d.toLocaleDateString();
+}
 // ===== UNIVERSAL HELPERS =====
 function getShopId(){return localStorage.getItem('shopId')||'default';}
 function saveShopId(id){localStorage.setItem('shopId',id);}
@@ -907,8 +933,8 @@ const SUPABASE_URL = SS_CONFIG.SUPABASE_URL;
 const SUPABASE_KEY = SS_CONFIG.SUPABASE_KEY;
 let supabaseClient = null; 
 if (typeof window.supabase !== 'undefined') {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-    console.log("✅ Supabase Connected!");
+   supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: 'implicit' } });
+  console.log("✅ Supabase Connected!");
 } else {
     console.error("❌ Supabase library not loaded.");
 }
