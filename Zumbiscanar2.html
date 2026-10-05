@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zombie Scanner v3</title>
+<style>
+  body{font-family:monospace;padding:16px;background:#111;color:#0f0;}
+  h1{font-size:18px} p{color:#888;font-size:12px}
+  select,input,button{padding:12px;font-size:16px;margin:4px 0;width:100%;max-width:420px;display:block;box-sizing:border-box;border-radius:6px;}
+  button{background:#0f0;color:#000;border:none;font-weight:bold;}
+  .half{width:48%!important;display:inline-block!important;}
+  pre{white-space:pre-wrap;word-break:break-all;background:#000;padding:10px;border:1px solid #333;font-size:12px;max-height:70vh;overflow:auto;}
+</style>
+</head>
+<body>
+<h1>🧟 Zombie Scanner v3</h1>
+<p>Read-only tool. Nothing changed, nothing uploaded. Reads the LIVE deployed truth.</p>
+
+<select id="fileSel">
+  <option>admin.html</option>
+  <option>admin-clean.html</option>
+  <option>pos.html</option>
+  <option>advanced.js</option>
+  <option>shared.js</option>
+  <option>master.html</option>
+  <option>index.html</option>
+  <option>kitchen.html</option>
+  <option>menu.html</option>
+  <option>hotel.html</option>
+  <option>hotel.js</option>
+  <option>smartcom.js</option>
+  <option>ssauth.js</option>
+  <option>ssfeatures.js</option>
+  <option>ssfiscal.js</option>
+  <option>ssperf.js</option>
+  <option>ssprint.js</option>
+  <option>ssupload.js</option>
+  <option>sheet.js</option>
+  <option>config.js</option>
+  <option>sw.js</option>
+  <option>v4-dashboard.js</option>
+  <option>v4-products.js</option>
+  <option>v4-sales.js</option>
+</select>
+<input id="customFile" placeholder="…or type any filename (e.g. v4-stock.js)">
+
+<button onclick="copyWhole()">📋 Copy WHOLE file (small files)</button>
+<button onclick="copyNext()">⏭️ Copy NEXT 300 lines (chunk feeder)</button>
+<div>
+  <input type="number" id="fromLn" class="half" placeholder="from line">
+  <input type="number" id="toLn" class="half" placeholder="to line">
+</div>
+<button onclick="copyRange()">📋 Copy LINES range</button>
+<button onclick="scan()">🧟 Scan functions (dup + dead)</button>
+<button onclick="scanIds()">🏷️ Scan duplicate HTML ids</button>
+<button onclick="copyLast()">📋 Copy LAST result</button>
+<pre id="out">Pick a file, then choose an action.</pre>
+
+<script>
+let cache='', fname='', lastResult='', chunkPos={};
+function target(){
+  const c=document.getElementById('customFile').value.trim();
+  return c || document.getElementById('fileSel').value;
+}
+async function load(){
+  fname=target();
+  document.getElementById('out').textContent='Fetching '+fname+' ...';
+  const res=await fetch(fname+'?t='+Date.now());
+  if(!res.ok) throw new Error('HTTP '+res.status+' — not found at this address');
+  cache=await res.text();
+  const n=cache.split('\n').length;
+  document.getElementById('out').textContent='✅ Loaded '+fname+' — '+n+' lines.';
+  return n;
+}
+async function copy(text,msg){
+  try{ await navigator.clipboard.writeText(text); alert(msg); }
+  catch(e){ document.getElementById('out').textContent=text; alert('Copy blocked — text shown below. Long-press → Select All → Copy.'); }
+}
+function hdr(a,b){ return 'FILE: '+fname+' | LINES '+a+'-'+b+' (part)\n\n'; }
+
+async function copyWhole(){
+  try{ const n=await load(); await copy('FILE: '+fname+' (WHOLE)\n\n'+cache,'WHOLE file copied ('+n+' lines). Paste it in the chat.'); }
+  catch(e){ document.getElementById('out').textContent='ERROR: '+e.message; }
+}
+async function copyNext(){
+  try{
+    const total=await load();
+    let a=chunkPos[fname]||1;
+    if(a>total){ chunkPos[fname]=1; a=1; alert('Reached the end — chunk position reset to line 1. Press again.'); return; }
+    const b=Math.min(a+299,total);
+    chunkPos[fname]=b+1;
+    await copy(hdr(a,b)+cache.split('\n').slice(a-1,b).join('\n'),'Chunk copied: lines '+a+'-'+b+' of '+total+'.\nNext press → '+(b+1)+'-'+Math.min(b+300,total)+'.');
+  }catch(e){ document.getElementById('out').textContent='ERROR: '+e.message; }
+}
+async function copyRange(){
+  try{
+    const total=await load();
+    const a=parseInt(document.getElementById('fromLn').value)||1;
+    let b=parseInt(document.getElementById('toLn').value)||0;
+    if(b<=0||b>total) b=total;
+    await copy(hdr(a,b)+cache.split('\n').slice(a-1,b).join('\n'),'Lines '+a+'-'+b+' copied. Paste it in the chat.');
+  }catch(e){ document.getElementById('out').textContent='ERROR: '+e.message; }
+}
+async function scan(){
+  try{
+    await load();
+    const lines=cache.split('\n');
+    const map={};
+    lines.forEach((ln,i)=>{
+      let m=ln.match(/function\s+([A-Za-z_$][\w$]*)\s*\(/);
+      if(m){(map[m[1]]=map[m[1]]||[]).push(i+1);return;}
+      m=ln.match(/(?:window\.)?([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?function\s*\(/);
+      if(m){(map[m[1]]=map[m[1]]||[]).push(i+1);return;}
+      m=ln.match(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)\s*=>|[A-Za-z_$][\w$]*\s*=>)/);
+      if(m){(map[m[1]]=map[m[1]]||[]).push(i+1);}
+    });
+    const names=Object.keys(map).sort();
+    const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const dups=names.filter(n=>map[n].length>1);
+    const dead=names.filter(n=>{
+      const re=new RegExp('\\b'+esc(n)+'(?=[^\\w]|$)','g');
+      return (cache.match(re)||[]).length<=map[n].length;
+    });
+    let r='SCAN: '+fname+' | '+lines.length+' lines | unique functions: '+names.length+'\n';
+    r+='============================\n';
+    r+='⚠️ DUPLICATED DEFINITIONS: '+dups.length+'\n';
+    dups.forEach(n=>{r+='⚠️ '+n+'  x'+map[n].length+'  @ lines '+map[n].join(', ')+'\n';});
+    r+='\n🔇 DEAD CANDIDATES (never referenced elsewhere in THIS file): '+dead.length+'\n';
+    r+='   ⚠️ may still be called from OTHER files or HTML onclick — Captain verifies before any action\n';
+    dead.forEach(n=>{r+='🔇 '+n+'  @ line '+map[n].join(', ')+'\n';});
+    r+='\n============================\nALL FUNCTIONS:\n';
+    names.forEach(n=>{r+=n+(map[n].length>1?' (x'+map[n].length+' @'+map[n].join(',')+')':'')+'\n';});
+    lastResult=r;
+    document.getElementById('out').textContent=r;
+  }catch(e){ document.getElementById('out').textContent='ERROR: '+e.message+'\n\nOpen from the live site, not phone storage.'; }
+}
+async function scanIds(){
+  try{
+    await load();
+    const lines=cache.split('\n');
+    const map={};
+    lines.forEach((ln,i)=>{
+      const re=/\bid\s*=\s*["']([^"']+)["']/g; let m;
+      while((m=re.exec(ln))) (map[m[1]]=map[m[1]]||[]).push(i+1);
+    });
+    const dups=Object.keys(map).filter(k=>map[k].length>1).sort();
+    let r='ID SCAN: '+fname+' | unique ids: '+Object.keys(map).length+' | DUPLICATE ids: '+dups.length+'\n============================\n';
+    if(!dups.length) r+='✅ CLEAN — no duplicate ids.';
+    dups.forEach(k=>{r+='⚠️ id="'+k+'"  x'+map[k].length+'  @ lines '+map[k].join(', ')+'\n';});
+    lastResult=r;
+    document.getElementById('out').textContent=r;
+  }catch(e){ document.getElementById('out').textContent='ERROR: '+e.message; }
+}
+async function copyLast(){
+  if(!lastResult){ alert('Nothing scanned yet. Run a scan first.'); return; }
+  await copy(lastResult,'Last result copied. Paste it in the chat.');
+}
+</script>
+</body>
+</html>
