@@ -42,6 +42,70 @@ body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
 .placeholder{ text-align:center;padding:40px 14px;color:var(--muted)}
 .placeholder b{font-size:40px;display:block;margin-bottom:8px}
 </style>
+<style>
+/* ═══ MODERNSHEET KIT — v3 quality restored ═══ */
+.modern-sheet-wrapper{background:#fff;border-radius:12px;border:1px solid #dadce0;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+body.dark .modern-sheet-wrapper{background:#1e293b;border-color:#334155}
+.modern-sheet-toolbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #dadce0;background:#f8f9fa;flex-wrap:wrap}
+body.dark .modern-sheet-toolbar{background:#0f172a;border-color:#334155}
+.modern-sheet-toolbar input[type="text"]{flex:1;min-width:120px;padding:6px 12px;border:1px solid #dadce0;border-radius:20px;font-size:13px;background:#fff;outline:none}
+body.dark .modern-sheet-toolbar input[type="text"]{background:#334155;border-color:#475569;color:#e2e8f0}
+.modern-sheet-toolbar button{padding:6px 12px;border:1px solid #dadce0;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;font-weight:500;white-space:nowrap}
+body.dark .modern-sheet-toolbar button{background:#334155;border-color:#475569;color:#e2e8f0}
+/* 🔑 SCROLL LAW: horizontal swipe scrolls ONLY the table — never the page */
+.modern-sheet-table-wrapper{overflow:auto;max-height:60vh;position:relative;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.modern-sheet-table{width:max-content;min-width:100%;border-collapse:collapse;table-layout:auto}
+.modern-sheet-table thead{position:sticky;top:0;z-index:10}
+.modern-sheet-table th{background:#f8f9fa;color:#202124;font-weight:600;padding:8px 12px;text-align:left;white-space:nowrap;border-bottom:2px solid #dadce0;border-right:1px solid #e8eaed;cursor:pointer;user-select:none;position:relative}
+body.dark .modern-sheet-table th{background:#0f172a;color:#e2e8f0;border-bottom-color:#475569;border-right-color:#334155}
+.modern-sheet-table th:hover{background:#e8eaed}
+body.dark .modern-sheet-table th:hover{background:#1e293b}
+.modern-sheet-table td{padding:6px 12px;border-bottom:1px solid #e8eaed;border-right:1px solid #f1f3f4;white-space:nowrap;color:#202124}
+body.dark .modern-sheet-table td{border-bottom-color:#334155;border-right-color:#1e293b;color:#e2e8f0}
+.modern-sheet-table tbody tr:nth-child(even){background:#f8f9fa}
+body.dark .modern-sheet-table tbody tr:nth-child(even){background:#1a2332}
+.modern-sheet-table tbody tr:hover{background:#e8f0fe}
+body.dark .modern-sheet-table tbody tr:hover{background:#1e3a5f}
+.modern-sheet-table .total-row{font-weight:700;background:#e6f4ea!important;border-top:2px solid #34a853}
+body.dark .modern-sheet-table .total-row{background:#065f46!important}
+.modern-sheet-table .empty-row td{text-align:center;padding:40px;color:#9aa0a6;font-style:italic}
+.modern-sheet-resize-handle{position:absolute;top:0;right:0;width:14px;height:100%;cursor:col-resize;z-index:5}
+.modern-sheet-resize-handle::before{content:'';position:absolute;top:0;left:-16px;width:44px;height:100%}
+.modern-sheet-resize-handle:hover{background:#1a73e8;opacity:.3}
+.modern-sheet-table th.frozen,.modern-sheet-table td.frozen{position:sticky;left:0;z-index:2;background:inherit}
+.modern-sheet-table th.frozen{z-index:11}
+.modern-sheet-footer{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;border-top:1px solid #dadce0;background:#f8f9fa;font-size:11px;color:#5f6368}
+body.dark .modern-sheet-footer{background:#0f172a;border-color:#334155;color:#94a3b8}
+.modern-sheet-context-menu,.modern-sheet-filter-dropdown{position:fixed;background:#fff;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.2);z-index:9999;min-width:180px;padding:6px 0;font-size:13px}
+body.dark .modern-sheet-context-menu,body.dark .modern-sheet-filter-dropdown{background:#1e293b;color:#e2e8f0}
+.modern-sheet-context-menu div,.modern-sheet-filter-dropdown label{padding:8px 16px;cursor:pointer;display:block}
+.modern-sheet-context-menu div:hover,.modern-sheet-filter-dropdown label:hover{background:#e8f0fe}
+body.dark .modern-sheet-context-menu div:hover,body.dark .modern-sheet-filter-dropdown label:hover{background:#334155}
+.modern-sheet-filter-dropdown{max-height:200px;overflow-y:auto;padding:8px}
+.modern-sheet-filter-dropdown label{display:flex;align-items:center;gap:8px;padding:4px 8px}
+/* ═══ STANDARD DIALOGS — proper centered dialogs (was unstyled) ═══ */
+#mainApp{overflow-x:hidden}
+.standard-dialog-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;animation:sdFade .2s ease}
+@keyframes sdFade{from{opacity:0}to{opacity:1}}
+.standard-dialog-box{background:#fff;border-radius:16px;padding:24px;width:90%;max-width:400px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;animation:sdUp .25s ease}
+@keyframes sdUp{from{transform:translateY(30px);opacity:0}to{transform:translateY(0);opacity:1}}
+.standard-dialog-icon{font-size:44px;margin-bottom:10px}
+.standard-dialog-title{font-size:17px;font-weight:800;color:#1e293b;margin-bottom:8px}
+.standard-dialog-message{font-size:15px;color:#475569;margin-bottom:18px;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:45vh;overflow-y:auto;text-align:left}
+.standard-dialog-input{width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:10px;font-size:16px;margin-bottom:16px;text-align:center;outline:none}
+.standard-dialog-input:focus{border-color:#2563eb}
+.standard-dialog-buttons{display:flex;gap:10px}
+.standard-dialog-btn{padding:12px 22px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;flex:1}
+.standard-dialog-btn:active{transform:scale(.97)}
+.standard-dialog-btn-primary{background:#2563eb;color:#fff}
+.standard-dialog-btn-secondary{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}
+/* maximize (v3 parity) */
+.maximized-card{position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;z-index:9000!important;margin:0!important;border-radius:0!important;background:#f8fafc!important;overflow-y:auto!important;padding:12px!important}
+body.dark .maximized-card{background:#0f172a!important}
+
+  
+</style>
+  
 </head>
 <body>
 
@@ -137,15 +201,37 @@ body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
 
       <label>🏷️ Barcode</label>
       <div style="display:flex;gap:8px">
-        <input class="v4-in" id="v4prodBarcode" placeholder="Scan or type" style="flex:1">
+      <button class="v4-btn sm" style="width:auto;background:#0d64f0" onclick="v4StartScanner('v4prodBarcode')">📷</button>
+        
       </div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="v4prodMenu" checked> 📱 Show on Customer QR Menu</label>
+
+      <label style="margin-top:8px"><input type="checkbox" id="v4bulkChk" onchange="document.getElementById('v4bulkF').style.display=this.checked?'block':'none'"> 📦 Bulk Pricing (quantity discounts)</label>
+      <div id="v4bulkF" style="display:none;background:#fffbeb;border:1px dashed #f59e0b;border-radius:10px;padding:10px;margin-bottom:8px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <input type="number" class="v4-in" id="v4bulkQty1" placeholder="Min Qty 1" style="margin:0">
+          <input type="number" class="v4-in" id="v4bulkPrice1" placeholder="Price 1" style="margin:0">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <input type="number" class="v4-in" id="v4bulkQty2" placeholder="Min Qty 2" style="margin:0">
+          <input type="number" class="v4-in" id="v4bulkPrice2" placeholder="Price 2" style="margin:0">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          <input type="number" class="v4-in" id="v4bulkQty3" placeholder="Min Qty 3" style="margin:0">
+          <input type="number" class="v4-in" id="v4bulkPrice3" placeholder="Price 3" style="margin:0">
+        </div>
+      </div>
+
+      <label>🛠️ Modifiers & Add-ons (e.g., Extras, Sugar, Size)</label>
+      <div id="v4addModBox"></div>
+      <button class="v4-chip" style="width:100%;margin-top:2px" onclick="v4naAddGroup()">+ Add Modifier Group</button>
 
       <button class="v4-btn g" onclick="v4AddProduct()">✅ Add Product</button>
     </div>
   </div>
 
   <!-- PRODUCT LIST -->
-  <div class="card">
+  < class="card" id="v4prodTableCard">
     <div class="card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       📦 Products <span class="v4-badge" id="v4prodCount">0</span>
       <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
@@ -154,20 +240,26 @@ body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
         <button class="v4-chip" id="v4pvGrid" onclick="v4ProductView('grid')">⊞ Grid</button>
         <button class="v4-chip" onclick="v4ProductExport()">📥</button>
         <button class="v4-chip" onclick="v4ProductPrint()">🖨️</button>
+        <button class="v4-chip" onclick="v4ToggleProductMaximize()">⛶</button>
+        <button class="v4-chip" onclick="v4ImportCSV()">📂⬆</button>
+        <button class="v4-chip" onclick="v4ExportCSV()">📄⬇</button>
         <button class="v4-chip" onclick="v4RefreshProducts()">🔄</button>
       </span>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-      <input class="v4-in" id="v4prodSearch" placeholder="🔍 Search name or barcode…" style="flex:2;min-width:120px" oninput="v4RenderProductTable()">
-      <select class="v4-in" id="v4prodCatFilter" style="flex:1;min-width:90px" onchange="v4RenderProductTable()"><option value="">All Categories</option></select>
-      <select class="v4-in" id="v4prodTypeFilter" style="flex:1;min-width:90px" onchange="v4RenderProductTable()">
-        <option value="">All Types</option>
-        <option value="sell">🛒 Sell</option>
-        <option value="raw">🧪 Raw</option>
-        <option value="virtual">🍔 Prepared</option>
-        <option value="dual">🥚 Dual</option>
+    
+            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px">
+      <input class="v4-in" id="v4prodSearch" placeholder="🔍 Search…" style="flex:2;min-width:100px;max-width:160px;padding:7px 10px;margin:0;font-size:12px;height:34px;box-sizing:border-box">
+      <select class="v4-in" id="v4prodCatFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:120px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()"><option value="">All Categories</option></select>
+      <select class="v4-in" id="v4prodUnitFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:100px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()"><option value="">All Units</option></select>
+      <select class="v4-in" id="v4prodTypeFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:110px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()">
+        <option value="">Type</option><option value="sell">🛒</option><option value="raw">🧪</option><option value="virtual">🍔</option><option value="dual">🥚</option>
+      </select>
+      <select class="v4-in" id="v4prodSort" style="flex:0 0 auto;min-width:0;width:auto;max-width:100px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()">
+        <option value="name-asc">A-Z</option><option value="name-desc">Z-A</option>
+        <option value="price-desc">Price↑</option><option value="price-asc">Price↓</option><option value="popular">Popular</option>
       </select>
     </div>
+    
         <div id="v4productExcel"></div>
     <div id="v4productList" style="display:none;max-height:60vh;overflow-y:auto"></div>
     <div id="v4productGrid" style="display:none;max-height:60vh;overflow-y:auto"></div>
@@ -262,6 +354,12 @@ body.dark .stat-sub{color:#94a3b8}
 body.dark .period-btn{background:#334155;color:#e2e8f0;border-color:#475569}
 body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 </style>
+<!-- Scanner overlay -->
+<div id="v4scanContainer" style="display:none;position:fixed;inset:0;background:#000;z-index:9500;align-items:center;justify-content:center">
+  <button onclick="v4StopScanner()" style="position:absolute;top:20px;right:20px;background:#fff;border:none;padding:10px 14px;border-radius:50%;font-size:18px">✖</button>
+  <div id="v4scanVideo" style="width:95%;max-width:480px"></div>
+</div>
+  
 <!-- MAIN -->
 <div id="mainApp" style="display:none">
   <div class="header">
@@ -281,7 +379,7 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
   </div>
   <div class="container" id="tabContainer"></div>
 </div>
-
+<script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
@@ -292,6 +390,9 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 <script src="ssperf.js"></script>
 <script src="ssfeatures.js"></script>
   <script src="ssupload.js"></script>
+  <script>window.V4_TAB_LOADERS = {};</script>
+<script src="v4-dashboard.js"></script>
+<script src="v4-products.js"></script>
 <script>
 // ═════════════════════════════════════════════════════════
 //  SMARTSHOP PRO v4 — CLEAN ADMIN · SKELETON (Step 1/14)
@@ -391,6 +492,7 @@ function selectTab(i, el) {
   document.querySelectorAll('.sidebar-tab').forEach(function(x){ x.classList.remove('active'); });
   if (el) el.classList.add('active');
   closeSidebar();
+  if (V4_TAB_LOADERS[i]) { try { V4_TAB_LOADERS[i](); } catch(e) { console.warn('Tab loader ' + i + ':', e.message); } }
 }
 
 // ── SIDEBAR / DARK / LANGUAGE ──
@@ -494,458 +596,15 @@ supabaseClient.auth.onAuthStateChange(async function(event, session) {
     showScreen('loginScreen');
   }
 });
-// ═════════════════════════════════════════════════════════
-//  DASHBOARD v4 — clean, server-powered, split-payment aware
-// ═════════════════════════════════════════════════════════
-var v4salesChart = null, v4payChart = null, v4period = 'daily';
 
-function v4periodStart(p) {
-  var now = new Date();
-  if (p === 'daily')   return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (p === 'weekly')  return new Date(now.getTime() - 7*86400000);
-  if (p === 'monthly') return new Date(now.getTime() - 30*86400000);
-  return new Date(now.getTime() - 365*86400000);
-}
 
-async function loadDashboardV4(period, btn) {
-  v4period = period || v4period;
-  document.querySelectorAll('.period-btn').forEach(function(b){ b.classList.toggle('active', btn ? b === btn : false); });
 
-  var start = v4periodStart(v4period);
-  var jobs = [];
 
-  // 1. Revenue + payment split (server summary — Package 4)
-  jobs.push(ssFetchDailySummary(start, null).then(function(rows){
-    var rev = 0, pay = { cash:0, card:0, mobile:0, credit:0 };
-    rows.forEach(function(d){
-      if (new Date(d.date + 'T12:00:00') < start) return;
-      rev += d.total; pay.cash += d.cash; pay.card += d.card; pay.mobile += d.mobile; pay.credit += d.credit;
-    });
-    v4set('v4statRevenue', fmtMoney(rev));
-    v4drawPay(pay);
-    v4drawSales7(rows);
-    return rev;
-  }).catch(function(){ return 0; }));
 
-  // 2. Profit + credit due (small targeted query)
-  jobs.push(supabaseClient.from('sales')
-    .select('profit, total, payment_method, paid_at')
-    .eq('shop_id', getShopId()).eq('voided', false)
-    .gte('time', start.toISOString())
-    .then(function(pr){
-      var gp = 0, cd = 0;
-      (pr.data || []).forEach(function(s){
-        gp += Number(s.profit || 0);
-        if (s.payment_method === 'credit' && !s.paid_at) cd += Number(s.total || 0);
-      });
-      v4set('v4statGrossProfit', fmtMoney(gp));
-      v4set('v4statCreditDue', fmtMoney(cd));
-      var rev = Number(document.getElementById('v4statRevenue').textContent.replace(/[^0-9.]/g,'')) || 0;
-      v4set('v4statProfitSub', rev > 0 ? (gp / rev * 100).toFixed(1) + '% margin' : '');
-      return gp;
-    }).catch(function(){ return 0; }));
 
-  // 3. Expenses + losses (cache-independent, direct)
-  jobs.push(Promise.all([
-    supabaseClient.from('expenses').select('amount').eq('shop_id', getShopId()).gte('date', start.toISOString().slice(0,10)),
-    supabaseClient.from('losses').select('total_loss').eq('shop_id', getShopId()).gte('time', start.toISOString())
-  ]).then(function(res){
-    var te = 0; ((res[0].data)||[]).forEach(function(e){ te += Number(e.amount||0); });
-    var tl = 0; ((res[1].data)||[]).forEach(function(l){ tl += Number(l.total_loss||0); });
-    v4set('v4statExpenses', fmtMoney(te));
-    v4set('v4statExpensesSub', tl > 0 ? 'Losses: ' + fmtMoney(tl) : '');
-    var gp = Number(document.getElementById('v4statGrossProfit').textContent.replace(/[^0-9.]/g,'')) || 0;
-    v4set('v4statNetProfit', fmtMoney(gp - tl - te));
-    v4set('v4statNetSub', (gp - tl - te) >= 0 ? '👍 Healthy' : '👎 Loss');
-    return te;
-  }).catch(function(){ return 0; }));
 
-  // 4. Alerts: low stock / salary / loans
-  jobs.push(Promise.all([
-    supabaseClient.from('products').select('stock, reorder_level, is_virtual').eq('shop_id', getShopId()),
-    supabaseClient.from('employees').select('salary, status').eq('shop_id', getShopId()).eq('status', 'active'),
-    supabaseClient.from('loans').select('status').eq('shop_id', getShopId()).eq('status', 'open')
-  ]).then(function(res){
-    var low = ((res[0].data)||[]).filter(function(p){ return !p.is_virtual && (p.stock||0) <= (p.reorder_level||5); }).length;
-    var monthlySalary = ((res[1].data)||[]).reduce(function(s,e){ return s + (e.salary||0); }, 0);
-    v4set('v4statLowStock', low);
-    v4set('v4statSalaryAlerts', ((res[1].data)||[]).length ? Math.ceil(monthlySalary / Math.max(1,((res[1].data)||[]).length)) > 0 ? '📅' : '✅' : '✅');
-    v4set('v4statOpenLoans', ((res[2].data)||[]).length);
-    return true;
-  }).catch(function(){ return false; }));
 
-  // 5. Recent sales
-  jobs.push(supabaseClient.from('sales')
-    .select('time, total, payment_method, items, cashier_name')
-    .eq('shop_id', getShopId()).eq('voided', false)
-    .order('time', { ascending: false }).limit(8)
-    .then(function(rr){
-      var html = ((rr.data)||[]).map(function(s){
-        var items = (s.items||[]).map(function(i){ return i.name + '×' + i.qty; }).join(', ');
-        return '<div style="padding:6px 0;border-bottom:1px solid #f1f5f9"><b>' +
-          new Date(s.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) + '</b> ' +
-          sanitize(items || 'Sale') + ' – <b>' + fmtMoney(s.total) + '</b> (' + (s.payment_method||'') + ')</div>';
-      }).join('');
-      document.getElementById('v4recentSales').innerHTML = html || 'No sales yet.';
-      return true;
-    }).catch(function(){ return false; }));
-
-  await Promise.all(jobs);   // 🚀 all at once — no sleep hacks in v4
-}
-
-function v4set(id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt; }
-
-function v4drawSales7(rows) {
-  var ctx = document.getElementById('v4salesChart');
-  if (!ctx || typeof Chart === 'undefined') return;
-  var days = [];
-  for (var i = 6; i >= 0; i--) { var d = new Date(); d.setDate(d.getDate()-i); d.setHours(0,0,0,0);
-    days.push({ key: d.toISOString().slice(0,10), label: d.toLocaleDateString('en-US',{weekday:'short'}), total: 0 }); }
-  (rows||[]).forEach(function(r){ var day = days.find(function(x){ return x.key === r.date; }); if (day) day.total += r.total; });
-  if (v4salesChart) v4salesChart.destroy();
-  v4salesChart = new Chart(ctx, { type:'bar', data:{ labels: days.map(function(d){return d.label;}),
-    datasets:[{ label:'Revenue', data: days.map(function(d){return d.total;}), backgroundColor:'#3b82f6', borderRadius:8 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } } } });
-}
-
-function v4drawPay(pay) {
-  var ctx = document.getElementById('v4payChart');
-  if (!ctx || typeof Chart === 'undefined') return;
-  if (v4payChart) v4payChart.destroy();
-  v4payChart = new Chart(ctx, { type:'doughnut',
-    data:{ labels:['Cash','Card','Mobile','Credit'],
-      datasets:[{ data:[pay.cash, pay.card, pay.mobile, pay.credit],
-        backgroundColor:['#10b981','#3b82f6','#f59e0b','#ef4444'], borderWidth:0 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } } });
-}
-
-// ── TAB HOOKUP (fires when Dashboard opens) ──
-var _v4selectTab = selectTab;
-selectTab = function(i, el) {
-  _v4selectTab(i, el);
-  if (i === 0) loadDashboardV4(v4period, document.querySelector('.period-btn.active'));
-  if (i === 1) { if (v4prodView === 'excel') v4RenderProductTable(); else if (v4prodView === 'list') v4RenderProductList(true); else v4RenderProductGrid(true); }
-};
-
-  // ═════════════════════════════════════════════════════════
-//  PRODUCTS v4 — 4-type law · plan limits · ModernSheet
-// ═════════════════════════════════════════════════════════
-var v4products = [];
-var v4curType = 'sell';
-var v4productTable = null;
-
-function v4PickType(t) {
-  v4curType = t;
-  document.querySelectorAll('.v4-type').forEach(function(c){ c.classList.toggle('active', c.dataset.t === t); });
-  // 🎯 THE CAPTAIN'S LAW: hide what the type doesn't need
-  var price = document.getElementById('v4prodPrice');
-  var costW = document.getElementById('v4costWrap');
-  var stockW = document.getElementById('v4stockWrap');
-  var extraW = document.getElementById('v4extraWrap');
-  var stationW = document.getElementById('v4stationWrap');
-  var cost = document.getElementById('v4prodCost');
-  var stock = document.getElementById('v4prodStock');
-  // sell: everything. raw: cost+stock, NO sell price needed visible but keep for future; virtual: price+station ONLY. dual: everything.
-  stockW.style.display = (t === 'virtual') ? 'none' : 'grid';
-  extraW.style.display = (t === 'virtual') ? 'none' : 'grid';
-  stationW.style.display = (t === 'sell' || t === 'dual') ? 'none' : (t === 'virtual' ? 'block' : 'none');
-  if (t === 'virtual') { costW.style.display = 'none'; stock.value = 0; }
-  else { costW.style.display = 'block'; }
-  if (t === 'raw') { price.parentElement.style.display = 'none'; }
-  else { price.parentElement.style.display = 'block'; }
-}
-
-function v4g(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
-function v4n(id){ var el = document.getElementById(id); return el ? (parseFloat(el.value) || 0) : 0; }
-
-async function v4AddProduct() {
-  var name = v4g('v4prodName');
-  if (!name) { alert('Product name is required.'); return; }
-
-  // 🛡️ PLAN LIMIT (Master's law)
-  if (typeof ssCanAddProduct === 'function' && !ssCanAddProduct(v4products.length)) {
-    alert('⚠️ Product limit reached for your plan (' + (typeof ssPlanLabel === 'function' ? ssPlanLabel() : '') + ').\n\nUpgrade: License tab.');
-    return;
-  }
-
-  var dup = v4products.some(function(p){ return (p.name||'').toLowerCase() === name.toLowerCase(); });
-  if (dup) { alert('⚠️ A product with this name already exists.'); return; }
-
-  var t = v4curType;
-  var price = v4n('v4prodPrice'), cost = v4n('v4prodCost'), stock = v4n('v4prodStock');
-
-  // Type validations
-  if ((t === 'sell' || t === 'dual' || t === 'virtual') && price <= 0) { alert('Selling price is required for this type.'); return; }
-  if (t === 'raw' && cost <= 0) { alert('Cost price is required for raw materials.'); return; }
-  if ((t === 'sell' || t === 'raw' || t === 'dual') && stock <= 0 && t !== 'dual') { if (t !== 'dual') { alert('Stock quantity is required for this type.'); return; } }
-  if (t === 'dual' && cost <= 0) { alert('Dual-use needs cost price (it is also an ingredient).'); return; }
-  if (t === 'virtual') { stock = 0; }
-
-  // 🗺️ Map UI type → DB flags (same columns as v3 — bridge law respected)
-  var isVirtual = (t === 'virtual');
-  var sellDirectly = (t === 'sell' || t === 'dual' || t === 'virtual');
-
-  var rec = {
-    firebase_id: 'prod_' + Date.now() + '_' + Math.random().toString(36).substr(2,5),
-    shop_id: getShopId(), name: name,
-    price: price, cost_price: cost, stock: stock,
-    unit: v4g('v4prodUnit') || 'piece',
-    barcode: v4g('v4prodBarcode'),
-    category: v4g('v4prodCategory') || 'General',
-    is_virtual: isVirtual, sell_directly: sellDirectly,
-    is_available_on_menu: (t !== 'raw'),
-    reorder_level: v4n('v4prodReorder') || 5,
-    expiry_date: v4g('v4prodExpiry') || null,
-    image_url: v4g('v4prodImage'),
-    station: v4g('v4prodStation') || 'Kitchen',
-    sold_count: 0, modifiers: []
-  };
-
-  try {
-    const { error } = await supabaseClient.from('products').insert([rec]);
-    if (error) throw error;
-    v4products.push(v4MapProduct(rec));
-    v4RenderProductTable(); v4FillCatFilter();
-    // reset form
-    ['v4prodName','v4prodPrice','v4prodCost','v4prodStock','v4prodCategory','v4prodBarcode','v4prodImage','v4prodExpiry'].forEach(function(id){ var el = document.getElementById(id); if (el) el.value=''; });
-    var rl = document.getElementById('v4prodReorder'); if (rl) rl.value = '5';
-    v4PickType('sell');
-    alert('✅ "' + name + '" added!');
-  } catch(e) { alert('❌ ' + e.message); }
-}
-
-function v4MapProduct(p) {
-  var t = 'sell';
-  if (p.is_virtual) t = 'virtual';
-  else if (p.sell_directly === false) t = 'raw';
-  else if (p.is_virtual === false && p.sell_directly !== false && p._dual) t = 'dual';
-  return {
-    id: p.firebase_id || p.id, name: p.name, price: Number(p.price)||0, costPrice: Number(p.cost_price)||0,
-    stock: Number(p.stock)||0, unit: p.unit||'piece', barcode: p.barcode||'', category: p.category||'General',
-    isVirtual: !!p.is_virtual, sellDirectly: p.sell_directly !== false,
-    reorderLevel: Number(p.reorder_level)||5, expiryDate: p.expiry_date||'', imageUrl: p.image_url||'',
-    station: p.station||'Kitchen', soldCount: Number(p.sold_count)||0,
-    type: t, menuVisible: p.is_available_on_menu !== false
-  };
-}
-
-function v4TypeBadge(t) {
-  var m = { sell:['🛒 Sell','#eff6ff','#1d4ed8'], raw:['🧪 Raw','#fef3c7','#92400e'],
-            virtual:['🍔 Prepared','#ede9fe','#5b21b6'], dual:['🥚 Dual','#d1fae5','#065f46'] };
-  var x = m[t] || m.sell;
-  return '<span style="background:' + x[1] + ';color:' + x[2] + ';font-size:10px;font-weight:800;padding:3px 8px;border-radius:8px;white-space:nowrap">' + x[0] + '</span>';
-}
-
-async function v4LoadProducts() {
-  try {
-    const { data, error } = await supabaseClient.from('products').select('*').eq('shop_id', getShopId());
-    if (error) throw error;
-    v4products = (data || []).map(v4MapProduct);
-    v4FillCatFilter(); v4RenderProductTable();
-  } catch(e) { console.warn('Products load:', e.message); }
-}
-function v4RefreshProducts(){ v4LoadProducts(); }
-
-function v4FillCatFilter() {
-  var sel = document.getElementById('v4prodCatFilter');
-  if (!sel) return;
-  var cats = [];
-  v4products.forEach(function(p){ if (p.category && cats.indexOf(p.category) === -1) cats.push(p.category); });
-  cats.sort();
-  sel.innerHTML = '<option value="">All Categories</option>' + cats.map(function(c){ return '<option>' + c + '</option>'; }).join('');
-}
-
-function v4FilteredProducts() {
-  var q = (document.getElementById('v4prodSearch') || {value:''}).value.toLowerCase();
-  var cf = (document.getElementById('v4prodCatFilter') || {value:''}).value;
-  var tf = (document.getElementById('v4prodTypeFilter') || {value:''}).value;
-  return v4products.filter(function(p){
-    if (q && p.name.toLowerCase().indexOf(q) === -1 && !(p.barcode && p.barcode.toLowerCase().indexOf(q) !== -1)) return false;
-    if (cf && p.category !== cf) return false;
-    if (tf && p.type !== tf) return false;
-    return true;
-  });
-}
-
-async function v4CellEdit(item, col, newVal) {
-  var dbCol = { name:'name', stock:'stock', price:'price', costPrice:'cost_price' }[col];
-  var val = (col === 'name') ? String(newVal).trim() : (parseFloat(newVal) || 0);
-  if (col === 'name' && !val) return;
-  try {
-    var upd = {}; upd[dbCol] = val;
-    const { error } = await supabaseClient.from('products').update(upd).eq('firebase_id', item.id);
-    if (error) throw error;
-    item[col] = val;
-    if (col === 'stock' || col === 'price') { if (window.v4productTable) window.v4productTable.render(); }
-  } catch(e) { alert('❌ ' + e.message); }
-}
-
-function v4RenderProductTable() {
-  var filtered = v4FilteredProducts();
-  var cnt = document.getElementById('v4prodCount'); if (cnt) cnt.textContent = filtered.length;
-
-  if (!window.v4productTable) {
-    window.v4productTable = new ModernSheet('v4productExcel', {
-      data: filtered,
-      columns: [
-        { title:'#', width:'36px', render:function(i,h,x){ return x+1; } },
-        { title:'Product', field:'name', width:'150px', render:function(i,h){ return h ? '<b>'+sanitize(i.name)+'</b>' : i.name; },
-          editable:true, inputType:'text', onEdit:function(i,v){ return v4CellEdit(i,'name',v); } },
-        { title:'Type', width:'92px', render:function(i,h){ return v4TypeBadge(i.type); }, filterable:true },
-        { title:'Stock', width:'64px', align:'center', render:function(i,h){
-            if (i.isVirtual) return h ? '<span style="color:#94a3b8">—</span>' : '';
-            var c = i.stock === 0 ? '#dc2626' : (i.stock <= i.reorderLevel ? '#ea580c' : '#059669');
-            return h ? '<b style="color:'+c+'">'+i.stock+'</b>' : i.stock;
-          }, total:true, totalValue:function(i){ return i.isVirtual?0:i.stock; }, totalFormat:function(s){ return s+' units'; },
-          editable:function(i){ return !i.isVirtual; }, inputType:'number', onEdit:function(i,v){ return v4CellEdit(i,'stock',v); } },
-        { title:'Cost', width:'84px', align:'right', render:function(i,h){ return h?fmtMoney(i.costPrice):i.costPrice; },
-          editable:true, inputType:'number', onEdit:function(i,v){ return v4CellEdit(i,'costPrice',v); } },
-        { title:'Price', width:'94px', align:'right', render:function(i,h){ return h?'<b>'+fmtMoney(i.price)+'</b>':i.price; },
-          total:true, totalValue:function(i){ return i.price * (i.isVirtual?1:i.stock); }, totalFormat:function(s){ return fmtMoney(s); },
-          editable:true, inputType:'number', onEdit:function(i,v){ return v4CellEdit(i,'price',v); } },
-        { title:'Unit', field:'unit', width:'60px' },
-        { title:'Category', field:'category', width:'90px', filterable:true },
-        { title:'Actions', width:'90px', render:function(i,h){
-            if (!h) return '';
-            return '<button class="btn-mini edit" onclick="v4EditProduct(\''+i.id+'\')">✏️</button> ' +
-                   '<button class="btn-mini delete" onclick="v4DeleteProduct(\''+i.id+'\')">🗑️</button>';
-          }, filterable:false }
-      ],
-      emptyMessage: 'No products yet — add your first one above!',
-      showSearch: false, showFontSlider: true
-    });
-    v4InitPinch();
-  } else {
-    window.v4productTable.setData(filtered);
-  }
-}
-
-// 🤏 PINCH-TO-ZOOM — two fingers apart/closer on the table
-function v4InitPinch() {
-  var wrap = document.querySelector('#v4productExcel .modern-sheet-table-wrapper');
-  if (!wrap || wrap.dataset.pinch) return;
-  wrap.dataset.pinch = '1';
-  var d0 = 0, f0 = 14;
-  wrap.addEventListener('touchstart', function(e){
-    if (e.touches.length === 2) {
-      d0 = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-      f0 = (window.v4productTable && window.v4productTable.currentFontSize) || 14;
-    }
-  }, {passive:true});
-  wrap.addEventListener('touchmove', function(e){
-    if (e.touches.length === 2 && window.v4productTable && d0 > 0) {
-      e.preventDefault();
-      var d = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
-      window.v4productTable.currentFontSize = Math.max(10, Math.min(24, Math.round(f0 * d / d0)));
-      window.v4productTable.render();
-    }
-  }, {passive:false});
-}
-
-// 📋 LIST VIEW
-function v4RenderProductList(reset) {
-  var c = document.getElementById('v4productList'); if (!c) return;
-  var data = v4FilteredProducts();
-  var per = 20, page = reset ? 1 : (v4ListPage || 1);
-  var totalPages = Math.ceil(data.length / per) || 1;
-  if (page > totalPages) page = totalPages;
-  var items = data.slice((page-1)*per, page*per);
-  var html = items.map(function(p){
-    return '<div class="product-row" style="padding:10px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:8px">' +
-      '<div style="flex:1"><b>' + sanitize(p.name) + '</b> ' + v4TypeBadge(p.type) +
-      '<br><small style="color:#64748b">Stock: ' + (p.isVirtual?'—':p.stock) + ' ' + p.unit + ' | Cost: ' + fmtMoney(p.costPrice) + '</small></div>' +
-      '<b style="color:#2563eb;font-size:16px">' + fmtMoney(p.price) + '</b>' +
-      '<button class="btn-mini edit" onclick="v4EditProduct(\''+p.id+'\')">✏️</button></div>';
-  }).join('');
-  if (page < totalPages) html += '<div style="text-align:center;padding:10px"><button class="v4-chip" onclick="v4ListPage++;v4RenderProductList(false)">⬇ Load More</button></div>';
-  c.innerHTML = html || '<div class="placeholder">No products found.</div>';
-}
-
-// ⊞ GRID VIEW
-function v4RenderProductGrid(reset) {
-  var c = document.getElementById('v4productGrid'); if (!c) return;
-  var data = v4FilteredProducts();
-  var per = 12, page = reset ? 1 : (v4GridPage || 1);
-  var totalPages = Math.ceil(data.length / per) || 1;
-  if (page > totalPages) page = totalPages;
-  var items = data.slice((page-1)*per, page*per);
-  var html = items.map(function(p){
-    return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px">' +
-      '<b style="font-size:14px">' + sanitize(p.name) + '</b> ' + v4TypeBadge(p.type) +
-      '<div style="color:#2563eb;font-weight:800;font-size:18px;margin:4px 0">' + fmtMoney(p.price) + '</div>' +
-      '<small style="color:#64748b">Stock: ' + (p.isVirtual?'—':p.stock) + ' ' + p.unit + ' | Cost: ' + fmtMoney(p.costPrice) + '</small>' +
-      '<div style="margin-top:8px;display:flex;gap:6px"><button class="btn-mini edit" style="flex:1" onclick="v4EditProduct(\''+p.id+'\')">✏️</button>' +
-      '<button class="btn-mini delete" style="flex:1" onclick="v4DeleteProduct(\''+p.id+'\')">🗑️</button></div></div>';
-  }).join('');
-  if (page < totalPages) html += '<div style="grid-column:1/-1;text-align:center;padding:10px"><button class="v4-chip" onclick="v4GridPage++;v4RenderProductGrid(false)">⬇ Load More</button></div>';
-  c.style.display = 'grid'; c.style.gridTemplateColumns = 'repeat(2,1fr)'; c.style.gap = '10px';
-  c.innerHTML = html || '<div class="placeholder" style="grid-column:1/-1">No products found.</div>';
-}
-
-// 🖨️ PRINT — the current filtered list, clean paper layout
-function v4ProductPrint() {
-  var data = v4FilteredProducts();
-  if (!data.length) { alert('Nothing to print.'); return; }
-  var w = window.open('', '_blank', 'width=420,height=650');
-  if (!w) { alert('Allow popups to print.'); return; }
-  var rows = data.map(function(p,i){
-    return '<tr><td>'+(i+1)+'</td><td><b>'+sanitize(p.name)+'</b></td><td>'+p.type+'</td><td style="text-align:right">'+(p.isVirtual?'—':p.stock)+'</td><td style="text-align:right">'+fmtMoney(p.costPrice)+'</td><td style="text-align:right">'+fmtMoney(p.price)+'</td></tr>';
-  }).join('');
-  w.document.write('<html><head><title>Product List</title><style>body{font-family:monospace;padding:14px;font-size:12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:5px}th{background:#eee}</style></head><body>' +
-    '<h3 style="text-align:center">📦 Product List — ' + data.length + ' items</h3><table><tr><th>#</th><th>Product</th><th>Type</th><th>Stock</th><th>Cost</th><th>Price</th></tr>' + rows + '</table></body></html>');
-  w.document.close(); w.focus();
-  setTimeout(function(){ w.print(); }, 400);
-}
-
-// view switcher
-var v4prodView = 'excel', v4ListPage = 1, v4GridPage = 1;
-function v4ProductView(view) {
-  v4prodView = view;
-  var map = { excel:'v4pvExcel', list:'v4pvList', grid:'v4pvGrid' };
-  Object.keys(map).forEach(function(k){ var el = document.getElementById(map[k]); if (el) el.classList.toggle('active', k === view); });
-  var ex = document.getElementById('v4productExcel'), li = document.getElementById('v4productList'), gr = document.getElementById('v4productGrid');
-  if (!ex || !li || !gr) return;
-  ex.style.display = view === 'excel' ? 'block' : 'none';
-  li.style.display = view === 'list' ? 'block' : 'none';
-  gr.style.display = view === 'grid' ? 'grid' : 'none';
-  v4ListPage = 1; v4GridPage = 1;
-  if (view === 'excel') v4RenderProductTable();
-  else if (view === 'list') v4RenderProductList(true);
-  else v4RenderProductGrid(true);
-}
-function v4ProductExport(){ if (window.v4productTable) window.v4productTable.exportXLSX(); }
-
-async function v4DeleteProduct(id) {
-  if (!await confirm('Delete this product permanently?')) return;
-  try {
-    const { error } = await supabaseClient.from('products').delete().eq('firebase_id', id);
-    if (error) throw error;
-    v4products = v4products.filter(function(p){ return p.id !== id; });
-    v4RenderProductTable(); v4FillCatFilter();
-    alert('✅ Product deleted.');
-  } catch(e) { alert('❌ ' + e.message); }
-}
-
-// Edit — opens a prompt-driven quick editor (full modal arrives in polish step)
-async function v4EditProduct(id) {
-  var p = v4products.find(function(x){ return x.id === id; });
-  if (!p) return;
-  var newName = await prompt('Product name:', p.name); if (!newName) return;
-  var newPrice = parseFloat(await prompt('Selling price:', p.price)); if (isNaN(newPrice)) return;
-  var newCost = parseFloat(await prompt('Cost price:', p.costPrice)); if (isNaN(newCost)) return;
-  var newStock = parseFloat(await prompt('Stock qty:', p.stock)); if (isNaN(newStock)) return;
-  if (!await confirm('Update "' + newName + '"?\nPrice ' + fmtMoney(newPrice) + ' · Cost ' + fmtMoney(newCost) + ' · Stock ' + newStock)) return;
-  try {
-    const { error } = await supabaseClient.from('products').update({
-      name: newName, price: newPrice, cost_price: newCost, stock: newStock
-    }).eq('firebase_id', id);
-    if (error) throw error;
-    p.name = newName; p.price = newPrice; p.costPrice = newCost; p.stock = newStock;
-    v4RenderProductTable();
-    alert('✅ Updated.');
-  } catch(e) { alert('❌ ' + e.message); }
-}
-
+  
 function v4ToggleCard(titleEl) {
   var body = titleEl.nextElementSibling;
   var arrow = titleEl.querySelector('.arrow');
@@ -959,8 +618,8 @@ function init() {
   document.getElementById('langSelect').value = appLang;
   changeLanguage(appLang);
   buildSidebar();
-    v4LoadProducts();
-    loadDashboardV4('daily', null).catch(function(e){ console.warn('Dashboard:', e.message); });
+  loadDashboardV4('daily', null).catch(function(e){ console.warn('Dashboard:', e.message); });
+  v4LoadProducts();
   if (typeof ssLoadPlan === 'function') ssLoadPlan().then(function(){ applyPlanVisibility(); });
   else applyPlanVisibility();
   if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
