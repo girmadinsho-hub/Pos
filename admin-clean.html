@@ -34,6 +34,14 @@ body.dark .sidebar-tab.active{background:#1e3a8a;color:#fff}
 .sidebar-tab{padding:13px 18px;border-bottom:1px solid #f1f5f9;cursor:pointer;font-weight:600;font-size:14px;color:#475569;display:flex;align-items:center;gap:10px;border-left:4px solid transparent}
 .sidebar-tab:hover{background:#f8fafc}
 .sidebar-tab.active{background:#eff6ff;color:var(--primary);border-left-color:var(--primary)}
+  .sidebar-tab.has-sub .sub-arrow{margin-left:auto;font-size:11px;opacity:.6;transition:transform .2s}
+.sidebar-tab.has-sub .sub-arrow.open{transform:rotate(90deg);opacity:1}
+.submenu{background:#f8fafc}
+body.dark .submenu{background:#0f172a}
+.submenu-item{padding:10px 16px 10px 34px;cursor:pointer;font-size:13px;font-weight:500;color:#64748b;border-left:3px solid transparent}
+.submenu-item:hover{background:#eff6ff;color:#1e293b;border-left-color:#93c5fd}
+body.dark .submenu-item{color:#94a3b8}
+body.dark .submenu-item:hover{background:#1e3a8a;color:#fff}
 .side-foot{padding:14px;font-size:10px;color:var(--muted);text-align:center;line-height:1.6}
 .badge{font-size:9px;font-weight:800;background:var(--primary);color:#fff;padding:2px 8px;border-radius:8px;margin-left:auto}
 .container{padding:12px;max-width:1000px;margin:0 auto}
@@ -99,6 +107,41 @@ body.dark .modern-sheet-context-menu div:hover,body.dark .modern-sheet-filter-dr
 .standard-dialog-btn:active{transform:scale(.97)}
 .standard-dialog-btn-primary{background:#2563eb;color:#fff}
 .standard-dialog-btn-secondary{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}
+  /* ═══ DARK MODE TEXT LAW — no dark-on-dark, ever ═══ */
+body.dark{color:#f1f5f9}
+body.dark .card-title{color:#f1f5f9}
+body.dark label{color:#cbd5e1}
+body.dark .placeholder{color:#94a3b8}
+body.dark .placeholder b{color:#e2e8f0}
+/* Products: labels, type cards, chips, notes */
+body.dark .v4-type{color:#e2e8f0}
+body.dark .v4-type small{color:#94a3b8}
+body.dark .v4-type.active{color:#60a5fa}
+body.dark .v4-chip{background:#334155;color:#e2e8f0;border-color:#475569}
+body.dark .v4-chip.active{background:#2563eb!important;color:#fff!important}
+body.dark .v4-badge{background:#2563eb;color:#fff}
+body.dark .v4sw-body{background:#1e293b;color:#e2e8f0}
+body.dark .v4sw-body small{color:#94a3b8}
+body.dark .btn-mini{background:#334155;color:#e2e8f0;border-color:#475569}
+body.dark .btn-mini.edit:hover{background:#1e3a8a;color:#60a5fa}
+body.dark .btn-mini.delete:hover{background:#7f1d1d;color:#fca5a5}
+/* stat sub-labels on gradient cards */
+body.dark .stat-sub{color:#cbd5e1}
+/* dialogs live on white boxes — keep their text dark */
+body.dark .standard-dialog-box{color:#1e293b}
+/* modals we build (edit/detail/tools) keep white body + dark text */
+body.dark #v4emModal > div,
+body.dark #v4detailModal > div,
+body.dark #v4binModal > div,
+body.dark #v4transferModal > div,
+body.dark #v4stockCountModal > div,
+body.dark #v4restockModal > div,
+body.dark #v4varPriceModal > div,
+body.dark #v4photoModal{color:#1e293b;background:#fff}
+body.dark #v4emModal label,
+body.dark #v4detailModal label,
+body.dark #v4detailModal td,
+body.dark #v4varPriceModal label{color:#475569}
 /* maximize (v3 parity) */
 .maximized-card{position:fixed!important;top:0!important;left:0!important;width:100vw!important;height:100vh!important;z-index:9000!important;margin:0!important;border-radius:0!important;background:#f8fafc!important;overflow-y:auto!important;padding:12px!important}
 body.dark .maximized-card{background:#0f172a!important}
@@ -222,6 +265,13 @@ body.dark .maximized-card{background:#0f172a!important}
         </div>
       </div>
 
+            <label style="margin-top:8px"><input type="checkbox" id="v4varChk" onchange="document.getElementById('v4varF').style.display=this.checked?'block':'none'"> 🎨 Has Variants (colors, sizes…)</label>
+      <div id="v4varF" style="display:none;background:#fdf2f8;border:1px dashed #ec4899;border-radius:10px;padding:10px;margin-bottom:8px">
+        <div id="v4varRows"></div>
+        <button class="v4-chip" style="width:100%;margin-top:4px" onclick="v4varAddRow()">+ Add Attribute (e.g., Color, Size)</button>
+        <small id="v4varPreview" style="display:block;margin-top:6px;color:#db2777;font-weight:700"></small>
+      </div>
+
       <label>🛠️ Modifiers & Add-ons (e.g., Extras, Sugar, Size)</label>
       <div id="v4addModBox"></div>
       <button class="v4-chip" style="width:100%;margin-top:2px" onclick="v4naAddGroup()">+ Add Modifier Group</button>
@@ -229,10 +279,15 @@ body.dark .maximized-card{background:#0f172a!important}
       <button class="v4-btn g" onclick="v4AddProduct()">✅ Add Product</button>
     </div>
   </div>
-
+  
+  <!-- TOOLS (v3 parity) -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+    <button class="v4-chip" style="flex:1;background:#0d64f0;color:#fff;border:none" onclick="v4OpenTransfer()">🚚 Transfer</button>
+    <button class="v4-chip" style="flex:1;background:#8b5cf6;color:#fff;border:none" onclick="v4OpenStockCount()">🧮 Stock Count</button>
+    <button class="v4-chip" style="flex:1;background:#dc2626;color:#fff;border:none" onclick="v4OpenRestock()">🚨 Restock</button>
+  </div>
   <!-- PRODUCT LIST -->
-  < class="card" id="v4prodTableCard">
-    <div class="card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<div class="card" id="v4prodTableCard">    <div class="card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       📦 Products <span class="v4-badge" id="v4prodCount">0</span>
       <span style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
         <button class="v4-chip active" id="v4pvExcel" onclick="v4ProductView('excel')">📊 Excel</button>
@@ -240,6 +295,7 @@ body.dark .maximized-card{background:#0f172a!important}
         <button class="v4-chip" id="v4pvGrid" onclick="v4ProductView('grid')">⊞ Grid</button>
         <button class="v4-chip" onclick="v4ProductExport()">📥</button>
         <button class="v4-chip" onclick="v4ProductPrint()">🖨️</button>
+        <button class="v4-chip" id="v4lowChip" onclick="v4ToggleLow()">🚨 Low</button>
         <button class="v4-chip" onclick="v4ToggleProductMaximize()">⛶</button>
         <button class="v4-chip" onclick="v4ImportCSV()">📂⬆</button>
         <button class="v4-chip" onclick="v4ExportCSV()">📄⬇</button>
@@ -277,11 +333,96 @@ label{font-size:11px;font-weight:800;color:#475569;display:block;margin-top:4px}
 .v4-btn.g{background:#10b981;color:#fff}.v4-btn.p{background:#2563eb;color:#fff}
 .v4-btn.sm{padding:11px;background:#2563eb;color:#fff;margin:0}
 .v4-chip{padding:7px 12px;border-radius:20px;border:1px solid #cbd5e1;background:#fff;font-size:11px;font-weight:700;cursor:pointer}
+  .v4-chip.active{background:#2563eb!important;color:#fff!important;border-color:#2563eb!important}
+.v4sw-body{background:#fff}
+body.dark .v4sw-body{background:#1e293b}
 .v4-badge{background:#2563eb;color:#fff;font-size:10px;font-weight:800;padding:2px 9px;border-radius:9px}
 body.dark .v4-in{background:#0f172a;border-color:#475569;color:#f1f5f9}
 body.dark .v4-type{background:#1e293b;border-color:#334155}
 body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
 </style>
+  
+  <!-- ═══ SALES TEMPLATE (clean, v4) ═══ -->
+<template id="tab2HTML">
+<div id="tab2" class="tab-content">
+
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      📅 Sales Summaries
+      <span id="v4sumViews" style="margin-left:auto;display:flex;gap:5px">
+        <button class="v4-chip active" onclick="v4SumView('excel',this)">📊</button>
+        <button class="v4-chip" onclick="v4SumView('list',this)">📋</button>
+        <button class="v4-chip" onclick="v4SumView('grid',this)">⊞</button>
+      </span>
+    </div>
+    <div id="v4sumPeriods" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="period-btn active" onclick="v4SumPeriod('daily',this)">Daily</button>
+      <button class="period-btn" onclick="v4SumPeriod('weekly',this)">Weekly</button>
+      <button class="period-btn" onclick="v4SumPeriod('monthly',this)">Monthly</button>
+      <button class="period-btn" onclick="v4SumPeriod('yearly',this)">Yearly</button>
+    </div>
+    <div id="v4sumExcel"></div>
+    <div id="v4sumList" style="display:none"></div>
+    <div id="v4sumGrid" style="display:none"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 Detailed Sales <span class="v4-badge" id="v4detCount">0</span></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <select class="v4-in" id="v4dPay" style="flex:1;min-width:90px;height:34px;padding:6px;margin:0;font-size:12px" onchange="v4RenderDetailed()">
+        <option value="">All Payments</option><option value="cash">💵 Cash</option><option value="card">💳 Card</option><option value="mobile">📱 Mobile</option><option value="credit">📝 Credit</option><option value="split">🧾 Split</option>
+      </select>
+      <select class="v4-in" id="v4dShift" style="flex:1;min-width:90px;height:34px;padding:6px;margin:0;font-size:12px" onchange="v4RenderDetailed()">
+        <option value="">All Shifts</option><option value="☀️ Morning">☀️ Morning</option><option value="🌤 Afternoon">🌤 Afternoon</option><option value="🌙 Evening">🌙 Evening</option>
+      </select>
+      <select class="v4-in" id="v4dCashier" style="flex:1;min-width:100px;height:34px;padding:6px;margin:0;font-size:12px" onchange="v4RenderDetailed()"><option value="">All Cashiers</option></select>
+    </div>
+    <div id="v4detExcel"></div>
+    <div style="text-align:center;padding:8px"><button class="v4-chip" id="v4detMore" style="display:none" onclick="v4LoadMoreDetailed()">⬇ Load 50 More Sales</button></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📦 Item Detail</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <select class="v4-in" id="v4iShift" style="flex:1;min-width:100px;height:34px;padding:6px;margin:0;font-size:12px" onchange="v4RenderItemDetail(true)">
+        <option value="">All Shifts</option><option value="Morning">☀️ Morning</option><option value="Afternoon">🌤 Afternoon</option><option value="Evening">🌙 Evening</option>
+      </select>
+      <select class="v4-in" id="v4iCashier" style="flex:1;min-width:110px;height:34px;padding:6px;margin:0;font-size:12px" onchange="v4RenderItemDetail(true)"><option value="">All Cashiers</option></select>
+    </div>
+    <div id="v4itemDetail"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      👥 Cashier Performance
+      <span id="v4cashViews" style="margin-left:auto;display:flex;gap:5px">
+        <button class="v4-chip active" onclick="v4CashView('excel',this)">📊</button>
+        <button class="v4-chip" onclick="v4CashView('list',this)">📋</button>
+        <button class="v4-chip" onclick="v4CashView('grid',this)">⊞</button>
+      </span>
+    </div>
+    <select class="v4-in" style="max-width:140px" onchange="v4S.cperiod=this.value;v4RenderCashier()">
+      <option value="today">Today</option><option value="week">Week</option><option value="month" selected>Month</option><option value="year">Year</option>
+    </select>
+    <div id="v4cashExcel"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      🏆 Top Products
+      <span id="v4topViews" style="margin-left:auto;display:flex;gap:5px">
+        <button class="v4-chip active" onclick="v4TopView('excel',this)">📊</button>
+        <button class="v4-chip" onclick="v4TopView('list',this)">📋</button>
+        <button class="v4-chip" onclick="v4TopView('grid',this)">⊞</button>
+      </span>
+    </div>
+    <select class="v4-in" style="max-width:140px" onchange="v4S.tperiod=this.value;v4RenderTop()">
+      <option value="today">Today</option><option value="week">Week</option><option value="month" selected>Month</option><option value="year">Year</option>
+    </select>
+    <div id="v4topExcel"></div>
+  </div>
+</div>
+</template>
 <!-- ═══ DASHBOARD TEMPLATE (clean, v4) ═══ -->
 <template id="tab0HTML">
 <div id="tab0" class="tab-content">
@@ -367,6 +508,7 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
     <span style="font-weight:800">SmartShop Pro <span class="verbadge" id="verBadge">v4</span></span>
     <span style="display:flex;gap:6px;align-items:center">
       <button class="hbtn" onclick="toggleDarkMode()">🌓</button>
+      <select id="shopSwitcher" onchange="v4SwitchShop(this.value)" style="display:none;max-width:95px;padding:4px;border-radius:8px;border:none;font-size:11px"></select>
       <select id="langSelect" onchange="changeLanguage(this.value)"><option value="en">EN</option><option value="am">አማ</option><option value="om">OR</option></select>
       <button class="hbtn" onclick="adminLogout()">🚪</button>
     </span>
@@ -393,6 +535,7 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
   <script>window.V4_TAB_LOADERS = {};</script>
 <script src="v4-dashboard.js"></script>
 <script src="v4-products.js"></script>
+  <script src="v4-sales.js"></script>
 <script>
 // ═════════════════════════════════════════════════════════
 //  SMARTSHOP PRO v4 — CLEAN ADMIN · SKELETON (Step 1/14)
@@ -408,8 +551,19 @@ if (typeof window.appCurrencySymbol === 'undefined' || !window.appCurrencySymbol
 // ── TAB MAP (numbers match the classic admin 1:1 for clean porting) ──
 var TABS = [
   {n:0,  icon:'📊', label:'Dashboard'},
-  {n:1,  icon:'📦', label:'Products'},
-  {n:2,  icon:'💰', label:'Sales'},
+  {n:1,  icon:'📦', label:'Products', sub:[
+    {label:'➕ Add Product', act:'addProduct'},
+    {label:'🚚 Transfer to Branch', act:'transfer'},
+    {label:'🧮 Physical Stock Count', act:'stockCount'},
+    {label:'🚨 Low Stock & Restock', act:'restock'}
+  ]},
+  {n:2,  icon:'💰', label:'Sales', sub:[
+    {label:'📅 Summaries', act:'sum'},
+    {label:'📋 Detailed Sales', act:'detailed'},
+    {label:'📦 Item Detail', act:'itemDetail'},
+    {label:'👤 Cashier Performance', act:'cashier'},
+    {label:'🏆 Top Products', act:'top'}
+  ]},
   {n:3,  icon:'📊', label:'Stock'},
   {n:4,  icon:'💳', label:'Credits'},
   {n:5,  icon:'📉', label:'Losses'},
@@ -435,19 +589,19 @@ function buildSidebar() {
   var st = document.getElementById('sideTabs'), tc = document.getElementById('tabContainer');
   var sh = '', ch = '';
   TABS.forEach(function(t) {
-    sh += '<div class="sidebar-tab" id="stab' + t.n + '" onclick="selectTab(' + t.n + ',this)">' +
-          '<span>' + t.icon + '</span><span>' + t.label + '</span></div>';
-    if (t.n === 0) {
-      ch += document.getElementById('tab0HTML') ? document.getElementById('tab0HTML').innerHTML
-           : '<div id="tab0" class="tab-content"><div class="card"><div class="placeholder"><b>📊</b>Dashboard loading…</div></div></div>';
-      return; // skip default
+    var hasSub = t.sub && t.sub.length;
+    sh += '<div class="sidebar-tab' + (hasSub ? ' has-sub' : '') + '" id="stab' + t.n + '" onclick="sideTabClick(' + t.n + ', this)">' +
+          '<span>' + t.icon + '</span><span style="flex:1">' + t.label + '</span>' +
+          (hasSub ? '<span class="sub-arrow" id="sarrow' + t.n + '">▸</span>' : '') + '</div>';
+    if (hasSub) {
+      sh += '<div class="submenu" id="sub' + t.n + '" style="display:none">' +
+        t.sub.map(function(s) {
+          return '<div class="submenu-item" onclick="event.stopPropagation();v4SubAction(\'' + s.act + '\')">' + s.label + '</div>';
+        }).join('') + '</div>';
     }
-        if (t.n === 1) {
-      ch += document.getElementById('tab1HTML') ? document.getElementById('tab1HTML').innerHTML
-           : '<div id="tab1" class="tab-content"><div class="card"><div class="placeholder"><b>📦</b>Products loading…</div></div></div>';
-      return;
-    }
-    ch += '<div id="tab' + t.n + '" class="tab-content"><div class="card"><div class="placeholder">' +
+        var tpl = document.getElementById('tab' + t.n + 'HTML');
+    ch += tpl ? tpl.innerHTML
+        : '<div id="tab' + t.n + '" class="tab-content"><div class="card"><div class="placeholder">' +
           '<b>' + t.icon + '</b><b style="font-size:16px">' + t.label + '</b><br>' +
           '<span style="font-size:12px">🚧 Porting soon — arrives in a later step of the build.</span>' +
           '</div></div></div>';
@@ -456,7 +610,57 @@ function buildSidebar() {
   tc.innerHTML = ch;
 }
 
-// ── PLAN LOCK (business-type law + plan features, from ssfeatures.js) ──
+// ── sidebar behavior: 1st tap opens tab (accordion stays), sub-items fire actions ──
+var v4openSub = null;
+function sideTabClick(n, el) {
+  var t = TABS.find(function(x){ return x.n === n; });
+  if (t && t.sub && t.sub.length) {
+    // toggle accordion; open tab content too (first-tap law, v3 parity)
+    var sub = document.getElementById('sub' + n);
+    var opening = sub.style.display === 'none';
+    document.querySelectorAll('.submenu').forEach(function(s){ s.style.display = 'none'; });
+    document.querySelectorAll('.sub-arrow').forEach(function(a){ a.textContent = '▸'; a.classList.remove('open'); });
+    if (opening) {
+      sub.style.display = 'block';
+      var ar = document.getElementById('sarrow' + n); if (ar) { ar.textContent = '▾'; ar.classList.add('open'); }
+      if (el && !el.classList.contains('active')) selectTab(n, el);
+      var sb = document.getElementById('sidebar'); if (sb && !sb.classList.contains('open')) sb.classList.add('open');
+      var ov = document.getElementById('sidebarOverlay'); if (ov) ov.classList.add('show');
+    } else if (el && el.classList.contains('active')) {
+      closeSidebar();   // 2nd tap on an open parent = go to tab & close
+    }
+    return;
+  }
+  selectTab(n, el);
+}
+
+// ── sub-menu actions (v3 parity: same jumps & modals) ──
+function v4SubAction(act) {
+  closeSidebar();
+  try {
+    switch(act) {
+      case 'addProduct':
+        selectTab(1, document.getElementById('stab1'));
+        setTimeout(function() {
+          var card = document.querySelector('#tab1 .card');
+          if (card) {
+            card.scrollIntoView({ behavior:'smooth', block:'start' });
+            var body = card.querySelector('.card-body');
+            if (body && body.style.display === 'none') v4ToggleCard(card.querySelector('.card-title'));
+          }
+        }, 250);
+        break;
+      case 'transfer':    selectTab(1, document.getElementById('stab1')); setTimeout(v4OpenTransfer, 250); break;
+      case 'stockCount':  selectTab(1, document.getElementById('stab1')); setTimeout(v4OpenStockCount, 250); break;
+      case 'restock':     selectTab(1, document.getElementById('stab1')); setTimeout(v4OpenRestock, 250); break;
+      case 'sum':         selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.querySelector('#tab2 .card'); if (c) c.scrollIntoView({behavior:'smooth'}); }, 250); break;
+      case 'detailed':    selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4detExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
+      case 'itemDetail':  selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4itemDetail'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
+      case 'cashier':     selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4cashExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
+      case 'top':         selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4topExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
+    }
+  } catch(e) { console.warn('Sub action:', e.message); }
+}
 // ── LICENSE CACHE GETTER — proper home in v4 (classic admin keeps its own copy) ──
 function getLicense() {
     try { return JSON.parse(localStorage.getItem('smartshop_license') || 'null'); }
@@ -475,6 +679,8 @@ function applyPlanVisibility() {
             else if (typeof ssTabAllowed === 'function') show = ssTabAllowed(t.n);
         } catch(e) { console.warn('Tab visibility:', t.n, e.message); }
         el.style.display = show ? 'flex' : 'none';
+              var sm = document.getElementById('sub' + t.n);
+        if (sm) sm.style.display = 'none';   // collapsed with parent; reopens on tap
     });
     var b = document.getElementById('planBadge');
     if (b) {
@@ -498,7 +704,27 @@ function selectTab(i, el) {
 // ── SIDEBAR / DARK / LANGUAGE ──
 function toggleSidebar(){ document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sidebarOverlay').classList.toggle('show'); }
 function closeSidebar(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); }
-function toggleDarkMode(){ document.body.classList.toggle('dark'); localStorage.setItem('darkMode', document.body.classList.contains('dark')?'1':'0'); }
+
+  // ── SHOP SWITCHER — visible when owner has 2+ shops ──
+function v4InitSwitcher() {
+  var sel = document.getElementById('shopSwitcher');
+  if (!sel) return;
+  var shops = window.__v4MyShops || [];
+  if (shops.length < 2) { sel.style.display = 'none'; return; }
+  var cur = getShopId();
+  sel.innerHTML = shops.map(function(s){ return '<option value="' + s.shop_id + '"' + (s.shop_id === cur ? ' selected' : '') + '>' + (s.name || s.shop_id) + '</option>'; }).join('');
+  sel.style.display = 'inline-block';
+}
+async function v4SwitchShop(id) {
+  if (!id || id === getShopId()) return;
+  var s = (window.__v4MyShops || []).find(function(x){ return x.shop_id === id; });
+  if (!await confirm('Switch to "' + (s ? s.name : id) + '"?\nThe page reloads with that shop.')) {
+    document.getElementById('shopSwitcher').value = getShopId(); return;
+  }
+  localStorage.setItem('shopId', id);
+  location.reload();
+}
+  function toggleDarkMode(){ document.body.classList.toggle('dark'); localStorage.setItem('darkMode', document.body.classList.contains('dark')?'1':'0'); }
 
 // ── LOGIN / LOGOUT ──
 async function adminLogin() {
@@ -559,20 +785,32 @@ async function checkAppPinStatus() {
 // ── AUTH FLOW (simplified skeleton: license lockout ports with License tab step) ──
 supabaseClient.auth.onAuthStateChange(async function(event, session) {
   if (event === 'PASSWORD_RECOVERY') { showScreen('loginScreen'); alert('📧 Recovery link detected. Full recovery UI ports with the Settings step — use classic admin today.'); return; }
+
   if (session && session.user) {
-    // 1. Resolve shop: metadata → device → owned shops
+       // 1. ALWAYS fetch my owned shops (ownership truth > cache truth)
+    var myShops = [];
+    try {
+      const { data: mine } = await supabaseClient.from('shops').select('shop_id, name, plan, business_type').eq('owner_email', session.user.email).eq('active', true);
+      myShops = mine || [];
+    } catch(e) {}
+
+    // 2. Cached shop is valid ONLY if it is MINE
     var shopId = (session.user.user_metadata && session.user.user_metadata.shopId) || localStorage.getItem('shopId') || '';
-    if (!shopId || shopId === 'default') {
-      try {
-        const { data: mine } = await supabaseClient.from('shops').select('shop_id, name').eq('owner_email', session.user.email).eq('active', true);
-        if (mine && mine.length === 1) { shopId = mine[0].shop_id; localStorage.setItem('shopId', shopId); }
-        else if (mine && mine.length > 1) { ssShowShopPicker(mine); return; }
-      } catch(e) {}
+    var cachedOk = shopId && myShops.some(function(s){ return s.shop_id === shopId; });
+
+    // 3. Route: 0 shops → recovery · 1 shop → silent · >1 → picker if cache invalid
+    if (myShops.length === 0) {
+      alert('🛟 No shop found on this account.\nUse the classic admin (admin.html) to register — full recovery ports with the Settings step.');
+      await supabaseClient.auth.signOut(); return;
     }
-    if (!shopId) { alert('🛟 No shop found on this account.\nFull setup-recovery ports in a later step — use the classic admin to register.'); await supabaseClient.auth.signOut(); return; }
-    // 2. Shop row → plan engine fuel
+    if (myShops.length === 1) { shopId = myShops[0].shop_id; localStorage.setItem('shopId', shopId); }
+    else if (!cachedOk) { window.__v4MyShops = myShops; ssShowShopPicker(myShops); return; }
+    else { window.__v4MyShops = myShops; }   // valid cache → keep; switcher lives in header
+
+    // 4. Shop row → plan engine fuel
     try { const { data: row } = await supabaseClient.from('shops').select('*').eq('shop_id', shopId).maybeSingle(); window.__currentShopRow = row || null; } catch(e) {}
-        // 🚀 DB-FIRST LICENSE — any browser, fresh login = true plan (no cache dependence)
+        // 4.5 🚀 DB-FIRST LICENSE — restored (was eaten by the auth rewrite).
+    // Truth from DB before the plan engine reads any cache.
     try {
         const { data: lic } = await supabaseClient.from('licenses')
             .select('*').eq('shop_id', shopId)
@@ -588,9 +826,11 @@ supabaseClient.auth.onAuthStateChange(async function(event, session) {
             }));
         }
     } catch(e) { console.warn('DB-first license skipped:', e.message); }
-    // 3. PIN gate → app
+    // 5. PIN gate → app
     showScreen(null); document.getElementById('mainApp').style.display = 'none';
     checkAppPinStatus();
+
+  
   } else {
     document.getElementById('mainApp').style.display = 'none';
     showScreen('loginScreen');
@@ -618,6 +858,7 @@ function init() {
   document.getElementById('langSelect').value = appLang;
   changeLanguage(appLang);
   buildSidebar();
+  v4InitSwitcher();
   loadDashboardV4('daily', null).catch(function(e){ console.warn('Dashboard:', e.message); });
   v4LoadProducts();
   if (typeof ssLoadPlan === 'function') ssLoadPlan().then(function(){ applyPlanVisibility(); });
