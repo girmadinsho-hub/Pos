@@ -563,3 +563,74 @@ NEXT: P3 detail+bin card → P4 scanner/CSV/filters → P5 tools → then Sales 
 LAW: new code goes INTO module files, never the shell
 P3 ✅: Product Detail card + Bin Card (stock ledger: movements + legacy salesdeduped by invoice + losses + purchases, in/out totals). 📋 buttons in table+list.
 Products ~90%. NEXT: P4 (scanner, CSV, unit filter, sort selector, maximize,inline unit/cat/barcode edit, menu toggle button) → then P5 tools → Products 100%+1%
+
+
+
+
+
+
+SMARTSHOP PRO — COMPLETE PROJECT BRIEFING
+For: Any New Adviser / Future Session · Prepared by: The Pilot (Senior Engineer) · With: The Captain (Founder & CEO)
+1️⃣ THE VISION (Captain's Law — never changes)
+One platform, every business level — from kiosk to supermarket to multi-branch enterprise, from small café to 5-star hotel. Customers upgrade as they grow (plan system, Master-controlled). The app shows each user only what they use: business type (retail/cafe/hotel) × plan (what they pay) × role (cashier/waiter/chef/reception/cleaner/guard) × place (admin/pos/kitchen/menu/hotel-desk). Simple enough for anyone, powerful enough for banks and VAT-registered institutions (ERCA fiscal receipts, TIN/VAT on every receipt, gapless numbering).
+
+Founder profile: extraordinary product vision, works entirely from a phone (Acode + GitHub web), zero coding background. Communicates in simple language; needs complete copy-paste blocks. His market instincts are excellent — trust his feature decisions. He is the CEO and the test lab.
+
+2️⃣ THE PLATFORM (what exists today)
+Live URL: https://girmadinsho-hub.github.io/Pos/ · Hosting: GitHub Pages · Backend: Supabase (RLS-secured) · ~27,000+ lines
+Apps: index (launcher) · admin (owner) · pos (cashier) · kitchen (chef) · menu (QR customer) · hotel (reception/cleaner/guard) · master (platform owner HQ)
+Engines: shared.js (i18n EN/AM/OM, dialogs, offline sync) · ssauth (PBKDF2 PINs) · ssfeatures (plan visibility) · ssperf (server-side summaries) · ssfiscal (ERCA receipts) · ssprint (BLE/USB thermal) · ssupload · sheet.js (ModernSheet — Excel-like table) · smartcom (chat/calls)
+Security done: RLS everywhere, salted PINs, device lock, license checks, one-device-one-shop, master_users whitelist
+Master's law: ALL plans/prices/limits live in the plans table (editable via Master's Plan Manager) — nothing hardcoded
+3️⃣ WHERE WE ARE — TWO GENERATIONS RUNNING SIDE BY SIDE
+v3 (classic) — admin.html 13,073 ln
+v4 (clean) — admin-clean.html + modules
+State	Fully working, but 28 zombie-duplicate groups, tangled after 8 months of remote patches	The future — being built tab-by-tab
+Role	Runs the real business meanwhile	Sandbox until full parity, then becomes THE admin
+
+Why rebuild: every critical bug (dead tax law, dead filters, silent duplicates) was born from copy-paste duplication. Cure = new clean house, not repairing the old one. Captain's iron rule: ZERO feature loss — 100%+N% parity, every function tested by HIM before it counts.
+
+✅ v4 COMPLETED & CAPTAIN-TESTED
+Skeleton: login → auth → ownership-validated shop resolution (picker if needed) → header shop switcher (2+ shops) → App PIN → data-driven sidebar with sub-menus (accordion) → plan badge · DB-first license (any browser shows the true plan — kills the stale-cache disease family) · version number on screen
+Dashboard module (v4-dashboard.js): gradient KPIs, charts, split-payment aware
+Products module (v4-products.js): 100+5% — 4-type law (Sell/Raw/Prepared/Dual) with smart field hiding, plan limits, full Edit Modal (bulk pricing, modifiers, add-stock w/ purchase log), Variants (T-Shirt Color×Size → auto-generated linked products + price finisher), Bin Card ledger, detail card, camera scanner, CSV import/export, filters (cat/unit/type/sort), thumbnails, pinch-zoom, print, swipe actions, photo viewer, low-stock chip, Transfer/StockCount/Restock tools, dark-mode law
+Sales module (v4-sales.js): summaries (All/Daily/Weekly/Monthly/Yearly × Excel/List/Grid), Detailed Sales (filters + server pagination 50/page), Item Detail (paginated 30/page), Cashier Performance & Top Products (bounded queries), Fold + Lazy Loading (cards collapsed ▸, render on first open — speed law), self-healing tables
+🏗️ IN PROGRESS (current session edge)
+Sales finishing: duplicate-sidebar hunt (sideTabs must exist ONCE), Cashier/Top data-provider restore delivered, Item Detail pagination delivered — awaiting Captain's final test report.
+
+⏭️ REMAINING ROADMAP
+Step 5–13: port Stock, Credits, Losses, Staff/Payroll, Expenses, Reports, Suppliers, Recipes, Settings/License/Devices/Hotel — each into its own v4-*.js module, each with parity checklist
+Step 14: cutover — v3 renamed to backup
+Phase C: POS rebuild + role engine (ssroles.js — the four-lock vision)
+Phase D: advanced.js cleanup, kitchen/menu polish, Play Store (PWABuilder), Chapa/Telebirr automation, ERCA certification (founder's business step)
+4️⃣ THE METHODOLOGY (how we work — proven laws)
+Captain approves every change — inform BEFORE acting; nothing silent
+One change → Captain tests → PASS/FAIL → next (his phone = the test lab)
+Complete copy-paste blocks only — each with 📄 FILE · 🔍 FIND-keyword · 👀 YOU'LL-SEE · ✂️ ACTION
+One function = one home (module files; admin-clean.html = shell only; new module = + sw.js cache entry same day)
+Cache ritual every deploy: sw.js CACHE_NAME +1 → commit → close ALL tabs → open → close → open (the #1 trap of this project)
+GitHub web = the only edit room (Acode = read/search; prevents file drift)
+Speed law: no unbounded queries — server aggregates (RPC buckets), hard caps, screens paginate (Load More / Prev-Next)
+Dark-mode law: every surface styled both themes, no dark-on-dark
+Duplicate law: anything found twice → verified keeper → delete the dead twin (Captain informed)
+PARITY_CHECKLIST.md in repo — a row turns ✅ only by Captain's test; v3 stays alive until every row passes
+PROJECT_BIBLE.md = session memory: paste it at every new session start
+Never patch blind — if an anchor doesn't match, STOP, send the zone
+5️⃣ CRITICAL FACTS FOR ANY NEW ADVISER
+Bugs live in v3 — we don't clean them, we leave them behind. Never "fix" classic admin except P0 surgical cases (already done: K1/K2/K3/K4, K7 license refresh, extend-in-place, unified Tax & VAT card)
+Known data quirk: one Br -1000 hotel sale (deposit>charges, since guarded in both hotel.js/hotel.html) — harmless, ignorable
+Known trap: service worker cache staleness (hence the ritual) · Acode local files can be stale — trust GitHub
+Key people/data: founder = girmadinsho@gmail.com (master) · test shops: sagure (hotel, has real sales data), friendscoffee-dajt (customer: biniassefa03@gmail.com) · test cashiers: Teshome, Hana, Hotel Desk…
+Money model: 500–2,000 Br/month tiers, hotel ~5,000 Br, Enterprise custom · next business steps: first 10 customers, Chapa/Telebirr auto-license, ERCA docs
+6️⃣ THE PROMISE ON THE TABLE
+The Captain committed months of diligent work to make this world-class and add features without limit. The Pilot's promise in return: nothing vanishes, everything improves, every step proven by the Captain's own tests — the world will clap for what the app DOES, and v4 does everything v3 does, faster, cleaner, plus powers v3 never had.
+
+This briefing is the complete truth of a 9-month journey built entirely from a phone. Treat it with respect. — The Pilot 🏛️🤝
+
+Captain: save this into PROJECT_BIBLE.md — it IS our memory now. 📖
+
+
+
+
+
+Send a Message
