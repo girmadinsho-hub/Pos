@@ -386,7 +386,43 @@ function v4ProductView(view) {
   } catch(e) {
     alert('⚠️ View switch error: ' + e.message);   // no more silent failures — we SEE it
   }
-}function v4ProductExport(){ if (window.v4productTable) window.v4productTable.exportXLSX(); }
+}
+
+async function v4DeleteProduct(id) {
+  var p = v4products.find(function(x){ return x.id === id; });
+  if (!p) return;
+
+  // 🎨 VARIANT GROUP — offer whole-group delete when siblings exist
+  var siblings = p.variantGroup
+    ? v4products.filter(function(x){ return x.variantGroup === p.variantGroup; })
+    : [];
+  if (siblings.length > 1) {
+    var whole = await confirm('🎨 "' + p.name + '" is one of ' + siblings.length + ' variants.\n\nDelete the ENTIRE group (' + siblings.length + ' products)?\n\nOK = delete ALL variants\nCancel = delete only this one');
+    if (whole) {
+      if (!await confirm('⚠️ FINAL WARNING\n\nDelete all ' + siblings.length + ' variants permanently?')) return;
+      try {
+        for (var i = 0; i < siblings.length; i++) {
+          const { error } = await v4ById(supabaseClient.from('products').delete(), siblings[i].id);
+          if (error) throw error;
+        }
+        v4products = v4products.filter(function(x){ return x.variantGroup !== p.variantGroup; });
+        v4RenderProductTable(); v4FillCatFilter();
+        alert('✅ Variant group deleted (' + siblings.length + ' products).');
+        return;
+      } catch(e) { alert('❌ ' + e.message); return; }
+    }
+  }
+
+  if (!await confirm('Delete "' + p.name + '" permanently?')) return;
+  try {
+    const { error } = await v4ById(supabaseClient.from('products').delete(), id);
+    if (error) throw error;
+    v4products = v4products.filter(function(x){ return x.id !== id; });
+    v4RenderProductTable(); v4FillCatFilter();
+    alert('✅ Product deleted.' + (siblings.length > 1 ? '\n(' + (siblings.length - 1) + ' sibling variant(s) remain.)' : ''));
+  } catch(e) { alert('❌ ' + e.message); }
+}
+function v4ProductExport(){ if (window.v4productTable) window.v4productTable.exportXLSX(); }
 
 
 
