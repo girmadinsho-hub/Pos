@@ -151,6 +151,28 @@ Paste both files into the repo (5 minutes, two commits).
 Then do the 3 Sales tests on your phone (sidebar / Cashier+Top / Item Detail) — one line each: PASS or FAIL.
 Reply here with the results. 3× PASS = Step 5 Stock opens with its parity checklist + first copy-paste block, exactly as promised.
 The memory is now permanent, Captain. Nothing we learned can ever vanish. 🚀
+📄 One small thing before you rest — Bible update
+Close today properly so tomorrow starts clean. GitHub → PROJECT_BIBLE.md → ✏️ → add this at the bottom:
+
+SESSION LOG — Stock & Credits Day
+Full code read COMPLETE (23/23 files) → see CODE_MAP.md
+Products sealed: duplicate-push bug fixed, import guard,variant-group delete, honest failure state, station parity
+Sales 95% sealed. PENDING (logged, not forgotten): Cashierfold-card auto-render — workaround: change period dropdown.Fix in a future fold-system pass (all fold cards at once).
+Stock sealed at 180%: alerts, valuation, ABC, cover days,expiry manager, sleeping stock, smart restock + WhatsApp
+NEW LAW: UI-2 = button-modal design (health strip + biggrouped buttons + table) — standard for ALL v4 modules
+Credits v2: CAPTAIN'S LAW = settle keeps record visible(✅ PAID badge, collected-today/month counters); delete isthe ONLY removal
+NEW LAW: scan-verify after every paste (scanner 🧟 confirmsfunction exists → then cache ritual → then test)
+Standing grant: +50% world-class powers on every module
+NEXT: Step 7 Losses → Step 8 Expenses (quick wins, samepattern) → then Staff/Payroll (the big one)
+Then rest, Captain. The monster that was admin.html is being left behind one sealed module at a time — and today was the biggest single day of the rebuild.
+
+When you return: 6 Credits tests, then say the word — "Losses" — and the quick-win row continues. 🏗️
+
+
+
+
+
+Send a Message
 
 
 
