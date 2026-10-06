@@ -24,8 +24,7 @@ function v4PickType(t) {
   // sell: everything. raw: cost+stock, NO sell price needed visible but keep for future; virtual: price+station ONLY. dual: everything.
   stockW.style.display = (t === 'virtual') ? 'none' : 'grid';
   extraW.style.display = (t === 'virtual') ? 'none' : 'grid';
-  stationW.style.display = (t === 'sell' || t === 'dual') ? 'none' : (t === 'virtual' ? 'block' : 'none');
-  if (t === 'virtual') { costW.style.display = 'none'; stock.value = 0; }
+stationW.style.display = (t === 'raw') ? 'none' : 'block';  if (t === 'virtual') { costW.style.display = 'none'; stock.value = 0; }
   else { costW.style.display = 'block'; }
   if (t === 'raw') { price.parentElement.style.display = 'none'; }
   else { price.parentElement.style.display = 'block'; }
@@ -51,17 +50,18 @@ async function v4AddProduct() {
   var price = v4n('v4prodPrice'), cost = v4n('v4prodCost'), stock = v4n('v4prodStock');
   var wantVariants = (document.getElementById('v4varChk') || {checked:false}).checked;
 
-  
-  // Type validations
+  // Type validations (clean — no dead twins)
   if ((t === 'sell' || t === 'dual' || t === 'virtual') && price <= 0) { alert('Selling price is required for this type.'); return; }
   if (t === 'raw' && cost <= 0) { alert('Cost price is required for raw materials.'); return; }
-  if ((t === 'sell' || t === 'raw' || t === 'dual') && stock <= 0 && t !== 'dual') { if (t !== 'dual') { alert('Stock quantity is required for this type.'); return; } }
+  if ((t === 'sell' || t === 'raw') && stock <= 0) { alert('Stock quantity is required for this type.'); return; }
   if (t === 'dual' && cost <= 0) { alert('Dual-use needs cost price (it is also an ingredient).'); return; }
   if (t === 'virtual') { stock = 0; }
 
   // 🗺️ Map UI type → DB flags (same columns as v3 — bridge law respected)
   var isVirtual = (t === 'virtual');
   var sellDirectly = (t === 'sell' || t === 'dual' || t === 'virtual');
+  var menuCb = document.getElementById('v4prodMenu');
+  var onMenu = (t !== 'raw') && (menuCb ? menuCb.checked : true);   // 🔒 raw NEVER on the customer menu
   var useBulk = (document.getElementById('v4bulkChk') || {checked:false}).checked && v4n('v4bulkQty1') > 0;
   var bulkQty1 = v4n('v4bulkQty1'), bulkPrice1 = v4n('v4bulkPrice1');
   var bulkQty2 = v4n('v4bulkQty2'), bulkPrice2 = v4n('v4bulkPrice2');
@@ -74,13 +74,12 @@ async function v4AddProduct() {
     barcode: v4g('v4prodBarcode'),
     category: v4g('v4prodCategory') || 'General',
     is_virtual: isVirtual, sell_directly: sellDirectly,
-    is_available_on_menu: (t !== 'raw'),
+    is_available_on_menu: onMenu,   // ✅ ONE home — duplicate key removed
     reorder_level: v4n('v4prodReorder') || 5,
     expiry_date: v4g('v4prodExpiry') || null,
     image_url: v4g('v4prodImage'),
     station: v4g('v4prodStation') || 'Kitchen',
     sold_count: 0,
-    is_available_on_menu: (function(){ var cb = document.getElementById('v4prodMenu'); return cb ? cb.checked : true; })(),
     modifiers: v4naCleanMods(),
     bulk_qty_1: useBulk ? bulkQty1 : null, bulk_price_1: useBulk ? bulkPrice1 : null,
     bulk_qty_2: useBulk && bulkQty2 > 0 ? bulkQty2 : null, bulk_price_2: useBulk && bulkQty2 > 0 ? bulkPrice2 : null,
@@ -90,32 +89,29 @@ async function v4AddProduct() {
   try {
     if (wantVariants) {
       var okVar = await v4AddProductWithVariants(rec, price, cost, stock);
-      if (!okVar) return;
+      if (!okVar) return;                 // variants already inserted & pushed inside
     } else {
       const { error } = await supabaseClient.from('products').insert([rec]);
       if (error) throw error;
-      v4products.push(v4MapProduct(rec));
+      v4products.push(v4MapProduct(rec)); // ✅ pushed EXACTLY ONCE — no ghost, no double row
       v4RenderProductTable(); v4FillCatFilter();
     }
-    v4products.push(v4MapProduct(rec));
-    v4RenderProductTable(); v4FillCatFilter();
     // reset form
     ['v4prodName','v4prodPrice','v4prodCost','v4prodStock','v4prodCategory','v4prodBarcode','v4prodImage','v4prodExpiry'].forEach(function(id){ var el = document.getElementById(id); if (el) el.value=''; });
     var rl = document.getElementById('v4prodReorder'); if (rl) rl.value = '5';
     v4PickType('sell');
 
-        var vchk = document.getElementById('v4varChk'); if (vchk) vchk.checked = false;
-        var vf = document.getElementById('v4varF'); if (vf) vf.style.display = 'none';
-        v4varRows = []; v4varRender();
-        var bchk = document.getElementById('v4bulkChk'); if (bchk) bchk.checked = false;
+    var vchk = document.getElementById('v4varChk'); if (vchk) vchk.checked = false;
+    var vf = document.getElementById('v4varF'); if (vf) vf.style.display = 'none';
+    v4varRows = []; v4varRender();
+    var bchk = document.getElementById('v4bulkChk'); if (bchk) bchk.checked = false;
     var bf = document.getElementById('v4bulkF'); if (bf) bf.style.display = 'none';
     ['v4bulkQty1','v4bulkPrice1','v4bulkQty2','v4bulkPrice2','v4bulkQty3','v4bulkPrice3'].forEach(function(id){ var el = document.getElementById(id); if (el) el.value = ''; });
-    var mcb = document.getElementById('v4prodMenu'); if (mcb) mcb.checked = true;
+    var mcb2 = document.getElementById('v4prodMenu'); if (mcb2) mcb2.checked = true;
     v4addMods = []; v4naRenderMods();
-    alert('✅ "' + name + '" added!');
+    alert('✅ "' + name + '" added!' + (wantVariants ? '\n🎨 Variants created — finish their prices if needed.' : ''));
   } catch(e) { alert('❌ ' + e.message); }
 }
-
 function v4MapProduct(p) {
   var t = 'sell';
   if (p.is_virtual) t = 'virtual';
@@ -149,8 +145,19 @@ async function v4LoadProducts() {
     if (error) throw error;
     v4products = (data || []).map(v4MapProduct);
     v4FillCatFilter(); v4RenderProductTable();
-  } catch(e) { console.warn('Products load:', e.message); }
+  } catch(e) {
+    console.warn('Products load:', e.message);
+    // 🛟 honest failure — never pretend "no products"
+    var cnt = document.getElementById('v4prodCount'); if (cnt) cnt.textContent = '—';
+    var ex = document.getElementById('v4productExcel');
+    if (ex && !window.v4productTable) {
+      ex.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444;font-weight:800">⚠️ Could not load products</div>' +
+        '<div style="text-align:center;font-size:12px;color:#64748b;padding:0 14px">' + sanitize(e.message || 'Network problem — check your connection.') + '</div>' +
+        '<div style="text-align:center;padding:10px"><button class="v4-chip" onclick="v4LoadProducts()">🔄 Retry</button></div>';
+    }
+  }
 }
+
 function v4RefreshProducts(){ v4LoadProducts(); }
 
 function v4FillCatFilter() {
@@ -357,6 +364,7 @@ function v4ToggleLow() {
   else if (v4prodView === 'list') v4RenderProductList(true);
   else v4RenderProductGrid(true);
 }
+
 function v4ProductView(view) {
   try {
     v4prodView = view;
@@ -380,16 +388,7 @@ function v4ProductView(view) {
   }
 }function v4ProductExport(){ if (window.v4productTable) window.v4productTable.exportXLSX(); }
 
-async function v4DeleteProduct(id) {
-  if (!await confirm('Delete this product permanently?')) return;
-  try {
-    const { error } = await supabaseClient.from('products').delete().eq('firebase_id', id);
-    if (error) throw error;
-    v4products = v4products.filter(function(p){ return p.id !== id; });
-    v4RenderProductTable(); v4FillCatFilter();
-    alert('✅ Product deleted.');
-  } catch(e) { alert('❌ ' + e.message); }
-}
+
 
 // ═════════════════════════════════════════════════════════
 //  P1: FULL EDIT MODAL — all fields · 4-type · bulk · modifiers · add-stock
@@ -494,8 +493,7 @@ function v4emApplyType() {
   var show = function(id, v){ var el = document.getElementById(id); if (el) el.style.display = v; };
   show('v4emStockW', t === 'virtual' ? 'none' : 'grid');
   show('v4emExtraW', t === 'virtual' ? 'none' : 'grid');
-  show('v4emStationW', (t === 'raw' || t === 'virtual') ? 'block' : 'none');
-  show('v4emPriceW', t === 'raw' ? 'none' : 'block');
+show('v4emStationW', t === 'raw' ? 'none' : 'block');  show('v4emPriceW', t === 'raw' ? 'none' : 'block');
   show('v4emCostW', t === 'virtual' ? 'none' : 'block');
   show('v4emAddStockW', t === 'virtual' ? 'none' : 'block');
   if (t === 'virtual') { var s = document.getElementById('v4emStock'); if (s) s.value = 0; }
@@ -782,33 +780,54 @@ function v4ImportCSV() {
       var ni = headers.indexOf('name'), ui = headers.indexOf('unit'), si = headers.indexOf('stock'),
           ci = headers.indexOf('cost price'), pi = headers.indexOf('selling price');
       if (ni === -1 || pi === -1) { alert('Header must include: name, unit, stock, cost price, selling price'); return; }
-      var rows = [];
+
+      var rows = [], seenInFile = {}, skippedDup = 0;
       for (var i = 1; i < lines.length; i++) {
         var cols = lines[i].split(',');
         var nm = cols[ni] ? cols[ni].replace(/"/g,'').trim() : '';
         var pr = parseFloat(cols[pi]) || 0;
-        if (nm && pr > 0) rows.push({
+        if (!nm || pr <= 0) continue;
+        var key = nm.toLowerCase();
+        // 🛡️ skip duplicates: already in the shop OR twice in this file
+        var exists = v4products.some(function(p){ return (p.name||'').toLowerCase() === key; });
+        if (exists || seenInFile[key]) { skippedDup++; continue; }
+        seenInFile[key] = true;
+        rows.push({
           firebase_id: 'prod_' + Date.now() + '_' + i, shop_id: getShopId(),
           name: nm, unit: (ui !== -1 ? (cols[ui]||'').replace(/"/g,'').trim() : 'piece'),
           stock: si !== -1 ? (parseFloat(cols[si]) || 0) : 0,
           cost_price: ci !== -1 ? (parseFloat(cols[ci]) || 0) : 0,
-          price: pr, category: 'General', sell_directly: true, is_virtual: false, sold_count: 0
+          price: pr, category: 'General', sell_directly: true, is_virtual: false,
+          is_available_on_menu: true, sold_count: 0
         });
       }
-      if (!rows.length) { alert('No valid rows found.'); return; }
-      if (!await confirm('Import ' + rows.length + ' product(s)?')) return;
+
+      if (!rows.length) {
+        alert(skippedDup > 0
+          ? 'ℹ️ All ' + skippedDup + ' row(s) skipped — those products already exist.\nNothing to import.'
+          : 'No valid rows found. Each row needs a name and a selling price.');
+        return;
+      }
+
+      // 🛡️ PLAN LIMIT — imports count too (Master's law)
+      if (typeof ssCanAddProduct === 'function' && !ssCanAddProduct(v4products.length + rows.length)) {
+        var room = Math.max(0, (typeof SS_PLAN !== 'undefined' && SS_PLAN.maxProducts ? SS_PLAN.maxProducts - v4products.length : 0));
+        alert('⚠️ Plan limit: room for ' + room + ' more product(s), but the file has ' + rows.length + ' valid row(s).\n\nRemove rows or upgrade: License tab.');
+        return;
+      }
+
+      if (!await confirm('Import ' + rows.length + ' product(s)?' + (skippedDup > 0 ? '\n(' + skippedDup + ' duplicate row(s) will be skipped.)' : ''))) return;
       try {
         const { error } = await supabaseClient.from('products').insert(rows);
         if (error) throw error;
-        alert('✅ ' + rows.length + ' products imported!');
+        alert('✅ ' + rows.length + ' product(s) imported!' + (skippedDup > 0 ? '\n' + skippedDup + ' duplicate(s) skipped.' : ''));
         v4LoadProducts();
       } catch(err) { alert('❌ Import failed: ' + err.message); }
     };
     reader.readAsText(file);
   };
   input.click();
-}
-function v4ExportCSV() {
+}function v4ExportCSV() {
   var data = v4FilteredProducts();
   var csv = '\uFEFFName,Unit,Stock,Cost Price,Selling Price,Type,Category,Barcode\n' + data.map(function(p) {
     return '"' + p.name + '",' + p.unit + ',' + (p.isVirtual?0:p.stock) + ',' + p.costPrice + ',' + p.price + ',' + p.type + ',"' + p.category + '","' + p.barcode + '"';
