@@ -547,6 +547,22 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 <script src="v4-dashboard.js"></script>
 <script src="v4-products.js"></script>
   <script src="v4-sales.js"></script>
+  <script src="v4-stock.js"></script>
+  <script src="v4-credits.js"></script>
+  <script src="v4-losses.js"></script>
+  <script src="v4-expenses.js"></script>
+  <script src="v4-staff.js"></script>
+  <script src="v4-suppliers.js"></script>
+  <script src="v4-recipes.js"></script>
+  <script src="v4-hotel.js"></script>
+<script src="v4-reports.js"></script>
+<script src="v4-money.js"></script>
+  <script src="v4-extras.js"></script>
+  <script src="smartcom.js"></script>
+
+
+
+  
 <script>
 // ═════════════════════════════════════════════════════════
 //  SMARTSHOP PRO v4 — CLEAN ADMIN · SKELETON (Step 1/14)
@@ -686,6 +702,13 @@ function applyPlanVisibility() {
         var show = true;
         try {
             if (t.n === 21) show = (typeof ssHasFeature === 'function' && ssHasFeature('rooms'));
+            else if (t.n === 18) {
+                // 🍳 RECIPES — cafés AND hotels have kitchens; plus any plan carrying the feature
+                var biz = (window.__currentShopRow && window.__currentShopRow.business_type) ||
+                          (typeof SS_PLAN !== 'undefined' && SS_PLAN.businessType) || 'retail';
+                show = (biz === 'cafe' || biz === 'hotel') ||
+                       (typeof ssHasFeature === 'function' && ssHasFeature('recipes'));
+            }     
             else if (t.ent) { var lic = getLicense(); show = !!(lic && lic.plan === 'enterprise'); }
             else if (typeof ssTabAllowed === 'function') show = ssTabAllowed(t.n);
         } catch(e) { console.warn('Tab visibility:', t.n, e.message); }
@@ -864,6 +887,9 @@ function v4ToggleCard(titleEl) {
 }
 // ── INIT (one init chain — no window.onload fights, ever) ──
 function init() {
+    // 🛡️ HEADER LAW: exactly ONE header — any accidental twin dies now
+  var hh = document.querySelectorAll('#mainApp .header');
+  for (var hi = 1; hi < hh.length; hi++) hh[hi].remove();
   document.getElementById('verBadge').textContent = APP_VERSION.split('-')[0];
   document.getElementById('sideFoot').innerHTML = 'SmartShop Pro ' + APP_VERSION + '<br>Step 1/14 · Skeleton';
   document.getElementById('langSelect').value = appLang;
