@@ -453,8 +453,8 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
       <div class="stat-card" style="border-left:5px solid #ef4444"><div class="stat-label">💳 Credit Due</div><div class="stat-value" id="v4statCreditDue">—</div></div>
       <div class="stat-card" style="border-left:5px solid #f97316"><div class="stat-label">⚠️ Low Stock</div><div class="stat-value" id="v4statLowStock">—</div></div>
       <div class="stat-card" style="border-left:5px solid #ec4899"><div class="stat-label">🔔 Salary Alerts</div><div class="stat-value" id="v4statSalaryAlerts">—</div></div>
-      <div class="stat-card" style="border-left:5px solid #14b8a6"><div class="stat-label">🏦 Open Loans</div><div class="stat-value" id="v4statOpenLoans">—</div></div>
-    </div>
+<div class="stat-card" style="border-left:5px solid #14b8a6"><div class="stat-label">🏦 Open Loans</div><div class="stat-value" id="v4statOpenLoans">—</div></div>
+              <div class="stat-card" style="border-left:5px solid #f59e0b"><div class="stat-label">📅 Expiring</div><div class="stat-value" id="v4statExpiring">—</div></div>    </div>
   </div>
   <div style="display:flex;gap:10px;flex-wrap:wrap">
     <div class="card" style="flex:1;min-width:280px">
@@ -559,7 +559,8 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 <script src="v4-money.js"></script>
   <script src="v4-extras.js"></script>
   <script src="smartcom.js"></script>
-<script src="v4-settings.js"></script>
+  <script src="v4-settings.js"></script>
+
 
 
   
@@ -870,13 +871,6 @@ supabaseClient.auth.onAuthStateChange(async function(event, session) {
     showScreen('loginScreen');
   }
 });
-
-
-
-
-
-
-
 
   
 function v4ToggleCard(titleEl) {
