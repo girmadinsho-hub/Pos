@@ -437,40 +437,114 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
 <!-- ═══ DASHBOARD TEMPLATE (clean, v4) ═══ -->
 <template id="tab0HTML">
 <div id="tab0" class="tab-content">
-  <div class="card">
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+
+  <!-- PERIOD SELECTOR + LENS (same line) -->
+  <div class="card" style="padding:12px">
+    <div id="v4LensBar" style="display:none;gap:6px;margin-bottom:8px;"></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="period-btn active" data-p="daily" onclick="loadDashboardV4('daily',this)">📅 Today</button>
       <button class="period-btn" data-p="weekly" onclick="loadDashboardV4('weekly',this)">📅 Week</button>
       <button class="period-btn" data-p="monthly" onclick="loadDashboardV4('monthly',this)">📅 Month</button>
       <button class="period-btn" data-p="yearly" onclick="loadDashboardV4('yearly',this)">📅 Year</button>
     </div>
-      <div class="kpi-main" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">      <div class="stat-card" style="border-left:5px solid #3b82f6"><div class="stat-label">💰 Revenue</div><div class="stat-value" id="v4statRevenue">—</div><div class="stat-sub" id="v4statRevenueSub"></div></div>
+  </div>
+
+  <!-- ⚡ QUICK ACTIONS -->
+  <div class="card" style="padding:10px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+      <button class="v4-chip" style="text-align:center;padding:10px 4px;border:none;background:#10b981;color:#fff;font-weight:800;font-size:10px" onclick="selectTab(1, document.getElementById('stab1'))">📦 Add<br>Product</button>
+      <button class="v4-chip" style="text-align:center;padding:10px 4px;border:none;background:#ef4444;color:#fff;font-weight:800;font-size:10px" onclick="selectTab(7, document.getElementById('stab7'))">💸 Record<br>Expense</button>
+      <button class="v4-chip" style="text-align:center;padding:10px 4px;border:none;background:#7c3aed;color:#fff;font-weight:800;font-size:10px" onclick="selectTab(6, document.getElementById('stab6'))">💰 Pay<br>Salary</button>
+      <button class="v4-chip" style="text-align:center;padding:10px 4px;border:none;background:#f59e0b;color:#fff;font-weight:800;font-size:10px" onclick="selectTab(5, document.getElementById('stab5'))">📉 Record<br>Loss</button>
+    </div>
+  </div>
+
+  <!-- KPI ROW 1 -->
+  <div class="card" style="padding:12px">
+    <div class="kpi-main" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">
+      <div class="stat-card" style="border-left:5px solid #3b82f6"><div class="stat-label">💰 Revenue</div><div class="stat-value" id="v4statRevenue">—</div><div class="stat-sub" id="v4statRevenueSub"></div><div id="v4statRevenueCompare" style="font-size:11px;margin-top:2px"></div></div>
       <div class="stat-card" style="border-left:5px solid #10b981"><div class="stat-label">📈 Gross Profit</div><div class="stat-value" id="v4statGrossProfit">—</div><div class="stat-sub" id="v4statProfitSub"></div></div>
       <div class="stat-card" style="border-left:5px solid #f59e0b"><div class="stat-label">💸 Expenses</div><div class="stat-value" id="v4statExpenses">—</div><div class="stat-sub" id="v4statExpensesSub"></div></div>
       <div class="stat-card" style="border-left:5px solid #8b5cf6"><div class="stat-label">💎 Net Profit</div><div class="stat-value" id="v4statNetProfit">—</div><div class="stat-sub" id="v4statNetSub"></div></div>
     </div>
-    <div class="kpi-alert" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px">
-      <div class="stat-card" style="border-left:5px solid #ef4444"><div class="stat-label">💳 Credit Due</div><div class="stat-value" id="v4statCreditDue">—</div></div>
-      <div class="stat-card" style="border-left:5px solid #f97316"><div class="stat-label">⚠️ Low Stock</div><div class="stat-value" id="v4statLowStock">—</div></div>
-      <div class="stat-card" style="border-left:5px solid #ec4899"><div class="stat-label">🔔 Salary Alerts</div><div class="stat-value" id="v4statSalaryAlerts">—</div></div>
-      <div class="stat-card" style="border-left:5px solid #14b8a6"><div class="stat-label">🏦 Open Loans</div><div class="stat-value" id="v4statOpenLoans">—</div></div>
-       <div class="stat-card" style="border-left:5px solid #f59e0b"><div class="stat-label">📅 Expiring</div><div class="stat-value" id="v4statExpiring">—</div></div>  
+    <!-- KPI ROW 2: Alerts -->
+    <div class="kpi-alert" style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px">
+      <div class="stat-card" style="border-left:5px solid #ef4444;padding:10px 6px"><div class="stat-label">💳 Credit</div><div class="stat-value" id="v4statCreditDue" style="font-size:16px">—</div></div>
+      <div class="stat-card" style="border-left:5px solid #f97316;padding:10px 6px"><div class="stat-label">⚠️ Low</div><div class="stat-value" id="v4statLowStock" style="font-size:16px">—</div></div>
+      <div class="stat-card" style="border-left:5px solid #ec4899;padding:10px 6px"><div class="stat-label">🔔 Salary</div><div class="stat-value" id="v4statSalaryAlerts" style="font-size:16px">—</div></div>
+      <div class="stat-card" style="border-left:5px solid #f59e0b;padding:10px 6px"><div class="stat-label">📅 Expiring</div><div class="stat-value" id="v4statExpiring" style="font-size:16px">—</div></div>
+      <div class="stat-card" style="border-left:5px solid #14b8a6;padding:10px 6px"><div class="stat-label">🏦 Loans</div><div class="stat-value" id="v4statOpenLoans" style="font-size:16px">—</div></div>
     </div>
   </div>
+
+  <!-- 🧠 SMART INSIGHTS -->
+  <div class="card" style="padding:12px">
+    <div class="card-title" style="font-size:13px">🧠 Smart Insights <small style="font-size:10px;color:#94a3b8">— tap to act</small></div>
+    <div id="v4insights"></div>
+  </div>
+
+  <!-- 🏨 HOTEL OCCUPANCY (hotels only) -->
+  <div class="card" id="v4occupancyCard" style="display:none;padding:12px">
+    <div class="card-title" style="font-size:13px">🏨 Room Occupancy (Live)</div>
+    <div id="v4occupancy"></div>
+  </div>
+
+  <!-- CHARTS: Sales + Payment side by side -->
   <div style="display:flex;gap:10px;flex-wrap:wrap">
     <div class="card" style="flex:1;min-width:280px">
       <div class="card-title">📈 Sales (7 Days)</div>
-      <div style="height:220px"><canvas id="v4salesChart"></canvas></div>
+      <div style="height:200px"><canvas id="v4salesChart"></canvas></div>
     </div>
     <div class="card" style="flex:1;min-width:280px">
       <div class="card-title">💳 Payment Methods</div>
-      <div style="height:220px"><canvas id="v4payChart"></canvas></div>
+      <div style="height:200px"><canvas id="v4payChart"></canvas></div>
     </div>
   </div>
-  <div class="card">
-    <div class="card-title">🕒 Recent Sales</div>
-    <div id="v4recentSales" style="max-height:220px;overflow-y:auto;font-size:13px">Loading…</div>
+
+  <!-- 🪑 ACTIVE TABLES + 🍳 KITCHEN side by side -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:250px">
+      <div class="card-title">🪑 Active Tables (Cafe Floor)</div>
+      <div id="v4activeTables" style="max-height:160px;overflow-y:auto"></div>
+    </div>
+    <div class="card" style="flex:1;min-width:250px">
+      <div class="card-title">🍳 Kitchen Live Status</div>
+      <div id="v4kitchenStatus"></div>
+    </div>
   </div>
+
+  <!-- ⏰ PEAK HOURS + 🤖 FORECAST side by side -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:280px">
+      <div class="card-title">⏰ Peak Hour Analysis (30 Days)</div>
+      <div id="v4peakHours" style="max-height:200px;overflow-y:auto;font-size:11px"></div>
+    </div>
+    <div class="card" style="flex:1;min-width:250px">
+      <div class="card-title">🤖 Smart Forecast (Tomorrow)</div>
+      <div id="v4forecast"></div>
+    </div>
+  </div>
+
+  <!-- 💸 EXPENSE BREAKDOWN -->
+  <div class="card">
+    <div class="card-title">💸 Expense Breakdown</div>
+    <div style="height:220px"><canvas id="v4expenseChart"></canvas></div>
+  </div>
+
+  <!-- 🕒 RECENT SALES + 👥 CASHIER side by side -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:280px">
+      <div class="card-title" style="display:flex;align-items:center;gap:6px">🕒 Recent Sales
+        <button class="v4-chip" style="font-size:9px;padding:4px 10px;margin-left:auto" onclick="v4DailySummaryWA()">📤</button>
+      </div>
+      <div id="v4recentSales" style="max-height:200px;overflow-y:auto;font-size:13px">Loading…</div>
+    </div>
+    <div class="card" style="flex:1;min-width:250px">
+      <div class="card-title">👥 Cashier Breakdown</div>
+      <div id="v4salesBreakdown" style="max-height:200px;overflow-y:auto;font-size:13px">Loading…</div>
+    </div>
+  </div>
+
 </div>
 </template>
 <style>
@@ -561,7 +635,7 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
   <script src="v4-extras.js"></script>
   <script src="smartcom.js"></script>
   <script src="v4-settings.js"></script>
-
+<script src="v4-license-guard.js"></script>
 
 
   
