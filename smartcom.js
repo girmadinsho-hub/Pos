@@ -1021,9 +1021,9 @@ function scNotifySound() {
 // 🏗️ PART 10 — V4 ADMIN TAB BUILDER (builds full chat in admin-clean)
 // ================================================================
 function scBuildV4Tab() {
-    var tab = document.getElementById('tab19');
-    if (!tab || tab.dataset.scBuilt === '1') return;
-    tab.dataset.scBuilt = '1';
+       var tab = document.getElementById('tab19');
+    if (!tab) return;
+    tab.dataset.scBuilt = '1';   // 🔄 ALWAYS rebuild — buildSidebar may have wiped us
     tab.innerHTML =
         '<style>' +
         '.scB{max-width:82%;padding:10px 14px;border-radius:15px;font-size:14px;line-height:1.4;word-wrap:break-word;margin-bottom:8px;}' +
