@@ -54,6 +54,7 @@ function scRecipientSelect() {
 // ================================================================
 // 🎨 PART 1 — THE SMART INPUT BAR
 // ================================================================
+
 function scBuildBar() {
     var area = scInputArea();
     if (!area || document.getElementById('scBar')) return;
@@ -63,32 +64,38 @@ function scBuildBar() {
 
     var bar = document.createElement('div');
     bar.id = 'scBar';
-    bar.style.cssText = 'display:flex;gap:4px;align-items:flex-end;flex-wrap:nowrap;';
+    bar.style.cssText = 'display:flex;flex-direction:column;gap:4px;width:100%;box-sizing:border-box;';
     bar.innerHTML =
-        '<button id="scEmojiBtn" title="Emoji" style="width:36px;height:36px;min-width:36px;border:none;border-radius:50%;background:#f59e0b;color:white;font-size:16px;cursor:pointer;flex-shrink:0;">😊</button>' +
-        '<button id="scCallBtn" title="Voice call" style="width:36px;height:36px;min-width:36px;border:none;border-radius:50%;background:#059669;color:white;font-size:15px;cursor:pointer;flex-shrink:0;">📞</button>' +
-        '<button id="scVideoBtn" title="Video call" style="width:36px;height:36px;min-width:36px;border:none;border-radius:50%;background:#7c3aed;color:white;font-size:15px;cursor:pointer;flex-shrink:0;">📹</button>' +
-        '<button id="scPhotoBtn" title="Send photo" style="width:36px;height:36px;min-width:36px;border:none;border-radius:50%;background:#7c3aed;color:white;font-size:14px;cursor:pointer;flex-shrink:0;">📷</button>' +
-        '<button id="scFileBtn" title="Send file" style="width:36px;height:36px;min-width:36px;border:none;border-radius:50%;background:#0891b2;color:white;font-size:14px;cursor:pointer;flex-shrink:0;">📎</button>' +
-        '<button id="scLocBtn" title="Share location" style="width:36px;height:36px;min-width:36px;border:none;border-radius:50%;background:#10b981;color:white;font-size:14px;cursor:pointer;flex-shrink:0;">📍</button>' +
-        '<button id="scMicBtn" title="Hold to record" style="width:36px;height:36px;min-width:36px;border:none;border-radius:50%;background:#ef4444;color:white;font-size:14px;cursor:pointer;flex-shrink:0;">🎤</button>' +
-        '<div style="flex:1;min-width:0;position:relative;">' +
-        '<textarea id="scText" rows="1" placeholder="Message..." style="width:100%;box-sizing:border-box;padding:9px 42px 9px 12px;border:1px solid #cbd5e1;border-radius:18px;font-size:14px;outline:none;resize:none;line-height:1.4;max-height:100px;background:#fff;color:#1e293b;font-family:inherit;display:block;">' +
-        (SC.replyTo ? '↩ Replying: ' + SC.replyTo.message.substring(0, 30) + '...\n' : '') + '</textarea>' +
-        (SC.replyTo ? '<div id="scReplyBar" style="background:#eff6ff;border-radius:8px;padding:4px 10px;font-size:11px;color:#2563eb;margin-bottom:2px;">↩ Replying to <b>' + (SC.replyTo.sender_name || '?') + '</b> <span onclick="scClearReply()" style="float:right;cursor:pointer;color:#ef4444;">✖</span></div>' : '') +
-        '<button id="scSendBtn" style="position:absolute;right:3px;bottom:3px;width:30px;height:30px;border:none;border-radius:50%;background:#2563eb;color:white;font-size:12px;font-weight:bold;cursor:pointer;">➤</button>' +
+        // ── ROW 1: media buttons (scrollable, compact) ──
+        '<div style="display:flex;gap:3px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;width:100%;">' +
+        '<button id="scEmojiBtn" title="Emoji" style="width:34px;height:34px;min-width:34px;border:none;border-radius:50%;background:#f59e0b;color:white;font-size:15px;cursor:pointer;flex-shrink:0;">😊</button>' +
+        '<button id="scCallBtn" title="Voice call" style="width:34px;height:34px;min-width:34px;border:none;border-radius:50%;background:#059669;color:white;font-size:14px;cursor:pointer;flex-shrink:0;">📞</button>' +
+        '<button id="scVideoBtn" title="Video call" style="width:34px;height:34px;min-width:34px;border:none;border-radius:50%;background:#7c3aed;color:white;font-size:14px;cursor:pointer;flex-shrink:0;">📹</button>' +
+        '<button id="scPhotoBtn" title="Send photo" style="width:34px;height:34px;min-width:34px;border:none;border-radius:50%;background:#7c3aed;color:white;font-size:13px;cursor:pointer;flex-shrink:0;">📷</button>' +
+        '<button id="scFileBtn" title="Send file" style="width:34px;height:34px;min-width:34px;border:none;border-radius:50%;background:#0891b2;color:white;font-size:13px;cursor:pointer;flex-shrink:0;">📎</button>' +
+        '<button id="scLocBtn" title="Share location" style="width:34px;height:34px;min-width:34px;border:none;border-radius:50%;background:#10b981;color:white;font-size:13px;cursor:pointer;flex-shrink:0;">📍</button>' +
+        '<button id="scMicBtn" title="Hold to record voice" style="width:34px;height:34px;min-width:34px;border:none;border-radius:50%;background:#ef4444;color:white;font-size:13px;cursor:pointer;flex-shrink:0;">🎤</button>' +
+        '</div>' +
+        // ── ROW 2: reply bar (only when replying) ──
+        '<div id="scReplyBar" style="display:' + (SC.replyTo ? 'flex' : 'none') + ';align-items:center;gap:6px;background:#eff6ff;border-radius:8px;padding:5px 10px;font-size:11px;color:#2563eb;width:100%;box-sizing:border-box;">' +
+        '<span style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">↩ Replying to <b>' + (SC.replyTo ? (SC.replyTo.sender_name || '?') : '') + '</b></span>' +
+        '<span onclick="scClearReply()" style="cursor:pointer;color:#ef4444;font-weight:bold;flex-shrink:0;">✖</span>' +
+        '</div>' +
+        // ── ROW 3: TEXTAREA — full width left-to-right, grows upward ──
+        '<div style="display:flex;align-items:flex-end;gap:4px;width:100%;box-sizing:border-box;">' +
+        '<textarea id="scText" rows="1" placeholder="Message..." style="flex:1 1 auto;width:100%;min-width:120px;box-sizing:border-box;padding:10px 14px;border:1px solid #cbd5e1;border-radius:18px;font-size:14px;outline:none;resize:none;line-height:1.4;max-height:120px;min-height:40px;background:#fff;color:#1e293b;font-family:inherit;display:block;transition:height .1s;"></textarea>' +
+        '<button id="scSendBtn" style="width:40px;height:40px;min-width:40px;border:none;border-radius:50%;background:#2563eb;color:white;font-size:15px;font-weight:bold;cursor:pointer;flex-shrink:0;">➤</button>' +
         '</div>';
     area.appendChild(bar);
 
     document.getElementById('scSendBtn').onclick = function() {
         var ti = document.getElementById('scText');
         var txt = ti.value.trim();
-        // strip reply prefix if present
         if (SC.replyTo && txt.indexOf('↩ Replying:') === 0) {
             txt = txt.split('\n').slice(1).join('\n').trim();
         }
         if (!txt) return;
-        ti.value = ''; ti.style.height = 'auto';
+        ti.value = ''; ti.style.height = 'auto'; ti.style.height = '40px';
         var reply = SC.replyTo; scClearReply();
         scSend({ message: txt, media_type: null, media_data: null, media_duration: null, reply_to: reply });
     };
@@ -98,40 +105,34 @@ function scBuildBar() {
             document.getElementById('scSendBtn').click();
         }
     });
+    // auto-grow: starts 1 line, grows upward with each line, max 120px
     document.getElementById('scText').addEventListener('input', function() {
         var t = this;
         t.style.height = 'auto';
-        t.style.height = Math.min(t.scrollHeight, 100) + 'px';
+        t.style.height = Math.min(Math.max(t.scrollHeight, 40), 120) + 'px';
     });
 
-    // Emoji picker
     document.getElementById('scEmojiBtn').onclick = function() { scEmojiToggle(); };
-
-    // Photo
     document.getElementById('scPhotoBtn').onclick = function() {
         var fi = document.createElement('input');
         fi.type = 'file'; fi.accept = 'image/*';
         fi.onchange = function() { if (this.files && this.files[0]) scPhoto(this.files[0]); };
         fi.click();
     };
-    // File
     document.getElementById('scFileBtn').onclick = function() {
         var fi = document.createElement('input');
         fi.type = 'file';
         fi.onchange = function() { scFile(this.files[0]); };
         fi.click();
     };
-    // Location
     document.getElementById('scLocBtn').onclick = function() { scShareLocation(); };
 
-    // Voice: hold to record
     var mic = document.getElementById('scMicBtn');
     mic.addEventListener('touchstart', function(e) { e.preventDefault(); scRecStart(); });
     mic.addEventListener('touchend', function(e) { e.preventDefault(); scRecStop(); });
     mic.addEventListener('mousedown', function() { scRecStart(); });
     mic.addEventListener('mouseup', function() { scRecStop(); });
 
-    // Calls
     document.getElementById('scCallBtn').onclick = function() { scCallFromChat(false); };
     document.getElementById('scVideoBtn').onclick = function() { scCallFromChat(true); };
 }
@@ -1052,8 +1053,7 @@ function scBuildV4Tab() {
         '<button class="scQR" onclick="scQuickSend(\'📦 Need stock check please\')">📦 Stock check</button>' +
         '<button class="scQR" onclick="scQuickSend(\'💰 Please send daily report\')">💰 Daily report</button>' +
         '</div>' +
-        '<div class="chat-input-area" style="display:flex;flex-direction:column;gap:4px;">' +
-        '<select id="scRecipient" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;width:100%">' +
+        '<div class="chat-input-area" style="display:flex;flex-direction:column;gap:4px;width:100%;padding:8px 10px;border-top:1px solid #e2e8f0;background:#fff;box-sizing:border-box;">' +        '<select id="scRecipient" style="padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;width:100%">' +
         '<option value="All">📢 Everyone</option>' +
         '<option value="Cashier">💻 Cashier Only</option>' +
         '<option value="Kitchen">👨‍🍳 Kitchen Only</option>' +
