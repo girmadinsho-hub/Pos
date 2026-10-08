@@ -23,9 +23,6 @@ const urlsToCache = [
   './v4-reports.js',
 './v4-money.js',
 './v4-extras.js',
-
-
-  
   './config.js',
   './shared.js',
   './sheet.js',
