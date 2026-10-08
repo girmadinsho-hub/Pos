@@ -306,8 +306,17 @@ function scSend(p) {
         msg.recipient = 'Direct'; msg.recipient_id = val; msg.recipient_name = nm;
     }
 
-    supabaseClient.from('chat_messages').insert([msg]).then(function(r) {
+       supabaseClient.from('chat_messages').insert([msg]).then(function(r) {
         if (r.error) alert('❌ Send failed: ' + r.error.message);
+        else {
+            // ⚡ INSTANT RENDER — show my own message immediately
+            // (don't wait for the realtime round-trip)
+            var instantMsg = Object.assign({}, msg, {
+                id: r.data && r.data[0] ? r.data[0].id : ('tmp_' + Date.now()),
+                created_at: new Date().toISOString()
+            });
+            scBubble(instantMsg);
+        }
     });
 }
 
@@ -1152,16 +1161,22 @@ function scBoot() {
 
     // message listener — sound + unread on new messages
     supabaseClient.channel('sc-msgs-' + SC.shop)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'shop_id=eq.' + SC.shop },
+               .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'shop_id=eq.' + SC.shop },
             function(payload) {
                 var msg = payload.new;
-                if (msg.sender_name !== SC.name) {
-                    scNotifySound();
-                    try { if (navigator.vibrate) navigator.vibrate(100); } catch(e) {}
-                    // render if chat open
-                    var c = scContainer();
-                    if (c && c.offsetParent !== null) scBubble(msg);
-                }
+                // skip my own — already rendered instantly by scSend
+                if (msg.sender_name === SC.name) return;
+                scNotifySound();
+                try { if (navigator.vibrate) navigator.vibrate(100); } catch(e) {}
+                // render if chat open
+                var c = scContainer();
+                if (c && c.offsetParent !== null) scBubble(msg);
+            })
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: 'shop_id=eq.' + SC.shop },
+            function(payload) {
+                // re-render on updates (reactions, read receipts, replies)
+                var c = scContainer();
+                if (c && c.offsetParent !== null) scRerender();
             })
         .subscribe();
 }
