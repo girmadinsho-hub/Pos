@@ -1023,7 +1023,10 @@ function scNotifySound() {
 function scBuildV4Tab() {
        var tab = document.getElementById('tab19');
     if (!tab) return;
-    tab.dataset.scBuilt = '1';   // 🔄 ALWAYS rebuild — buildSidebar may have wiped us
+    // 🛡️ SMART GUARD: rebuild ONLY if our chat was wiped (placeholder is back).
+    // If scChatMessages still exists, our chat is ALIVE — don't touch it!
+    // (This stops the 1.5s rebuild loop that wipes messages and dropdowns.)
+    if (document.getElementById('scChatMessages')) return;
     tab.innerHTML =
         '<style>' +
         '.scB{max-width:82%;padding:10px 14px;border-radius:15px;font-size:14px;line-height:1.4;word-wrap:break-word;margin-bottom:8px;}' +
