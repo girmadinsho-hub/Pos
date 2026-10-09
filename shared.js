@@ -23,16 +23,16 @@ function showAlert(message, title, callback) {
     document.body.appendChild(overlay);
 
     document.getElementById('dialogOkBtn').onclick = function() {
-        document.body.removeChild(overlay);
+        if (overlay.parentNode) overlay.remove();
         if (callback) callback();
     };
 
     overlay.addEventListener('click', function(e) {
-        if (e.target === overlay) {
-            document.body.removeChild(overlay);
-            if (callback) callback();
-        }
-    });
+    if (e.target === overlay) {
+        if (overlay.parentNode) overlay.remove();
+        if (callback) callback();
+    }
+});
 }
 
 // Confirm (OK + Cancel buttons)
@@ -53,16 +53,16 @@ function showConfirm(message, title, callback) {
     document.body.appendChild(overlay);
 
     document.getElementById('dialogOkBtn').onclick = function() {
-        document.body.removeChild(overlay);
+        if (overlay.parentNode) overlay.remove();
         if (callback) callback(true);
     };
     document.getElementById('dialogCancelBtn').onclick = function() {
-        document.body.removeChild(overlay);
+        if (overlay.parentNode) overlay.remove();
         if (callback) callback(false);
     };
     overlay.addEventListener('click', function(e) {
         if (e.target === overlay) {
-            document.body.removeChild(overlay);
+            if (overlay.parentNode) overlay.remove();
             if (callback) callback(false);
         }
     });
@@ -92,23 +92,23 @@ function showPrompt(message, defaultValue, title, callback) {
 
     document.getElementById('dialogOkBtn').onclick = function() {
         var value = input.value;
-        document.body.removeChild(overlay);
+        if (overlay.parentNode) overlay.remove();
         if (callback) callback(value);
     };
     document.getElementById('dialogCancelBtn').onclick = function() {
-        document.body.removeChild(overlay);
+        if (overlay.parentNode) overlay.remove();
         if (callback) callback(null);
     };
     overlay.addEventListener('click', function(e) {
         if (e.target === overlay) {
-            document.body.removeChild(overlay);
+            if (overlay.parentNode) overlay.remove();
             if (callback) callback(null);
         }
     });
     input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             var value = input.value;
-            document.body.removeChild(overlay);
+            if (overlay.parentNode) overlay.remove();
             if (callback) callback(value);
         }
     });
