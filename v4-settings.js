@@ -1,4 +1,4 @@
-// ═════════════════════════════════════════════════════════
+ // ═════════════════════════════════════════════════════════
 //  SMARTSHOP PRO v4 — SETTINGS MODULE v2 (tab13 + tab14)
 //  v2 fixes: shop name visible · instant save-refresh ·
 //  VAT box auto-hides for TOT · password/PIN full flow with
@@ -673,6 +673,11 @@ function v4seEnsureLicenseUI() {
     '<hr style="margin:14px 0;border-color:#e2e8f0;">' +
     '<p style="font-size:12px;color:#64748b;">⚠️ <b>Remove Licence &amp; Use Free Plan</b><br>This limits your shop to <b>15 products</b> and <b>1 cashier</b>.</p>' +
     '<button class="v4-btn" style="background:#fff;color:#ef4444;border:2px solid #ef4444;" onclick="v4seRemoveLicense()">🗑️ Remove Licence (Free Plan)</button>' +
+        '<hr style="margin:14px 0;border-color:#e2e8e0;">' +
+    '<div class="card-title" style="font-size:14px">🔑 License Key Vault</div>' +
+    '<p style="font-size:11px;color:#64748b;margin:4px 0 8px 0;">Save your license keys here — they stay on this device even if you switch plans. Tap 🔓 to instantly use a saved key.</p>' +
+    '<div id="seVaultList"></div>' +
+    '<button class="v4-btn p" onclick="v4seVaultAdd()">➕ Save a Key</button>' +
     '</div>';
 }
 
@@ -743,6 +748,60 @@ async function v4seActivateLicense() {
   } catch(e) { alert('❌ Activation failed: ' + e.message); }
 }
 
+// ═══ LICENSE KEY VAULT (owner saves keys for reference) ═══
+function v4seVaultGet() {
+  try { return JSON.parse(localStorage.getItem('v4seVault_' + getShopId()) || '[]'); } catch(e) { return []; }
+}
+function v4seVaultSet(list) { localStorage.setItem('v4seVault_' + getShopId(), JSON.stringify(list)); }
+function v4seVaultAdd() {
+  var key = prompt('🔑 Enter the license key to save:');
+  if (!key) return;
+  key = key.trim().toUpperCase();
+  var note = prompt('📝 Optional note (e.g., "bought Oct 2025", "renewal key"):') || '';
+  var list = v4seVaultGet();
+  if (list.some(function(k){ return k.key === key; })) { alert('This key is already saved.'); return; }
+  list.push({ key: key, note: note, saved_at: new Date().toISOString() });
+  v4seVaultSet(list);
+  v4seVaultRender();
+  alert('✅ Key saved to your vault!');
+}
+function v4seVaultDel(i) {
+  var list = v4seVaultGet();
+  if (i >= 0 && i < list.length) {
+    list.splice(i, 1);
+    v4seVaultSet(list);
+    v4seVaultRender();
+  }
+}
+function v4seVaultCopy(key) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(key).then(function(){ alert('📋 Key copied:\n' + key); });
+  } else { alert('Key: ' + key); }
+}
+function v4seVaultRender() {
+  var el = document.getElementById('seVaultList');
+  if (!el) return;
+  var list = v4seVaultGet();
+  if (!list.length) {
+    el.innerHTML = '<p style="font-size:11px;color:#94a3b8;padding:6px 0">No keys saved yet. Save your license keys here so you always have them.</p>';
+    return;
+  }
+  var html = '';
+  list.forEach(function(k, i) {
+    html += '<div style="display:flex;align-items:center;gap:6px;padding:8px 0;border-bottom:1px solid #f1f5f9">' +
+      '<div style="flex:1;min-width:0">' +
+        '<code style="font-size:11px;color:#4ade80;word-break:break-all;background:#0f172a;padding:4px 8px;border-radius:6px;display:inline-block">' + sanitize(k.key) + '</code>' +
+        (k.note ? '<br><small style="font-size:10px;color:#64748b">' + sanitize(k.note) + '</small>' : '') +
+        '<br><small style="font-size:9px;color:#94a3b8">saved ' + new Date(k.saved_at).toLocaleDateString() + '</small>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0">' +
+        '<button class="btn-mini" onclick="v4seVaultCopy(\'' + k.key + '\')" title="Copy key">📋</button>' +
+        '<button class="btn-mini" onclick="document.getElementById(\'liKey\').value=\'' + k.key + '\'" title="Use this key">🔓</button>' +
+        '<button class="btn-mini delete" onclick="v4seVaultDel(' + i + ')">🗑️</button>' +
+      '</div></div>';
+  });
+  el.innerHTML = html;
+}
 async function v4seRemoveLicense() {
   var reason = await prompt('🗑️ Remove Licence & switch to free plan?\n\nWhy are you removing it?');
   if (reason === null) return;
@@ -776,4 +835,5 @@ V4_TAB_LOADERS[13] = function() {
 V4_TAB_LOADERS[14] = function() {
   v4seEnsureLicenseUI();
   v4seLoadLicense();
+  v4seVaultRender();
 };
