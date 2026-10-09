@@ -56,9 +56,14 @@ function v4seEnsureUI() {
     '.v4seBtnTx{flex:1;min-width:0;}' +
     '.v4seBtnTx b{display:block;font-size:13px;line-height:1.2;}' +
     '.v4seBtnTx small{display:block;font-size:10px;opacity:.9;line-height:1.3;margin-top:2px;}' +
+    '.se-fold{cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;}' +
+    '.se-fold .se-arrow{font-size:14px;transition:transform .2s;color:#94a3b8;flex-shrink:0;margin-left:8px;}' +
+    '.se-fold .se-arrow.open{transform:rotate(90deg);}' +
+    '.se-body{display:block;}' +
+    '.se-body.folded{display:none;}' +
     '</style>' +
 
-    // ═══ SHOP IDENTITY (name + ID visible) ═══
+    // ═══ SHOP IDENTITY (name + ID visible — NOT foldable, always seen) ═══
     '<div class="card" style="padding:14px;background:#eff6ff;border:2px solid #2563eb;">' +
     '<div class="card-title">🏪 Your Shop</div>' +
     '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">' +
@@ -71,14 +76,15 @@ function v4seEnsureUI() {
     '<p style="font-size:11px;color:#64748b;margin-top:6px;">Use this ID when connecting POS/Kitchen devices — or just sign in with your email (auto-detected).</p>' +
     '</div>' +
 
-    // ═══ BRANDING (instant refresh) ═══
+    // ═══ BRANDING (foldable) ═══
     '<div class="card">' +
-    cat('🏪 Shop Identity & Branding', 'Your shop name appears on receipts, the customer menu, and the header above. Currency symbol shows on every price in the app.') +
+    '<div class="card-title se-fold" onclick="v4seFold(this)">🏪 Shop Identity & Branding <span class="se-arrow open">▶</span></div>' +
+    '<div class="se-body">' +
+    '<p style="font-size:11px;color:#94a3b8;margin:4px 0 8px 0;">Your shop name appears on receipts, the customer menu, and the header above. Currency symbol shows on every price in the app.</p>' +
     row('seShopName', 'Shop Name *', 'text', 'e.g., Sagure Hotel') +
     row('seShopPhone', 'Phone (for receipts & WhatsApp)', 'text', '+251...') +
     row('seShopAddress', 'Address (printed on receipts)', 'text', 'City, area') +
     row('seCurrency', 'Currency Symbol', 'text', 'Br, $, €') +
-    // GPS
     '<label style="font-size:11px;font-weight:800;color:#475569;display:block;margin-bottom:2px;">📍 Shop GPS Location (for staff attendance geofencing)</label>' +
     '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">' +
     '<input type="text" class="v4-in" id="seShopLat" placeholder="Latitude" style="flex:1;padding:9px;font-size:13px">' +
@@ -88,10 +94,13 @@ function v4seEnsureUI() {
     '<p style="font-size:10px;color:#94a3b8;margin:-2px 0 8px 0;">GPS lets you verify staff clock-in location. Tap "Get GPS" while standing at your shop.</p>' +
     '<button class="v4-btn p" onclick="v4seSaveBranding()">💾 Save Branding</button>' +
     '</div>' +
+    '</div>' +
 
-    // ═══ TAX (TOT hides VAT box) ═══
+    // ═══ TAX (foldable) ═══
     '<div class="card">' +
-    cat('🏛️ Tax Configuration', 'TOT shops (small business) cannot charge VAT — the tax fields hide automatically. VAT-registered shops enter their TIN and VAT numbers.') +
+    '<div class="card-title se-fold" onclick="v4seFold(this)">🏛️ Tax Configuration <span class="se-arrow open">▶</span></div>' +
+    '<div class="se-body">' +
+    '<p style="font-size:11px;color:#94a3b8;margin:4px 0 8px 0;">TOT shops (small business) cannot charge VAT — the tax fields hide automatically. VAT-registered shops enter their TIN and VAT numbers.</p>' +
     '<select class="v4-in" id="seTaxType" onchange="v4seTaxTypeChange()" style="margin-bottom:8px">' +
     '<option value="TOT">TOT — Turnover Tax (small business)</option>' +
     '<option value="VAT">VAT — Value Added Tax (registered)</option>' +
@@ -107,10 +116,13 @@ function v4seEnsureUI() {
     '</div>' +
     '<button class="v4-btn p" style="margin-top:8px" onclick="v4seSaveTax()">💾 Save Tax Configuration</button>' +
     '</div>' +
+    '</div>' +
 
-    // ═══ SHOP TYPE & POS FEATURES ═══
+    // ═══ SHOP TYPE & POS FEATURES (foldable) ═══
     '<div class="card">' +
-    cat('🔧 Shop Type & POS Features', 'Your shop type determines which tools appear. Retail = simple selling. Cafe = kitchen + tables + waiters. Hotel = cafe + rooms + full service.') +
+    '<div class="card-title se-fold" onclick="v4seFold(this)">🔧 Shop Type & POS Features <span class="se-arrow open">▶</span></div>' +
+    '<div class="se-body">' +
+    '<p style="font-size:11px;color:#94a3b8;margin:4px 0 8px 0;">Your shop type determines which tools appear. Retail = simple selling. Cafe = kitchen + tables + waiters. Hotel = cafe + rooms + full service.</p>' +
     '<select class="v4-in" id="seShopType" onchange="v4seShopTypeChange()" style="margin-bottom:8px">' +
     '<option value="retail">🛒 Retail / Supermarket (Simple)</option>' +
     '<option value="cafe">☕ Cafe / Restaurant (Kitchen + Tables)</option>' +
@@ -129,19 +141,25 @@ function v4seEnsureUI() {
     toggle('seDiscount', '🏷️ Enable discounts on POS', true) +
     '<button class="v4-btn p" style="margin-top:8px" onclick="v4seSavePos()">💾 Save POS Settings</button>' +
     '</div>' +
+    '</div>' +
 
-    // ═══ CALENDAR ═══
+    // ═══ CALENDAR (foldable) ═══
     '<div class="card">' +
-    cat('📅 Calendar System', 'Choose how dates display across the entire app.') +
+    '<div class="card-title se-fold" onclick="v4seFold(this)">📅 Calendar System <span class="se-arrow open">▶</span></div>' +
+    '<div class="se-body">' +
+    '<p style="font-size:11px;color:#94a3b8;margin:4px 0 8px 0;">Choose how dates display across the entire app.</p>' +
     '<select class="v4-in" id="seCalendar" onchange="v4seSaveCalendar()">' +
     '<option value="gregorian">Gregorian (Standard — Jan, Feb, Mar...)</option>' +
     '<option value="ethiopian">Ethiopian (ቆጸራ — መስከረም, ጥቅምት...)</option>' +
     '</select>' +
     '</div>' +
+    '</div>' +
 
-    // ═══ QR MENU CUSTOMIZER ═══
+    // ═══ QR MENU CUSTOMIZER (foldable) ═══
     '<div class="card">' +
-    cat('📱 Customer QR Menu Design', 'Your customers scan a QR code at their table and see this menu. Design it to match your brand.') +
+    '<div class="card-title se-fold" onclick="v4seFold(this)">📱 Customer QR Menu Design <span class="se-arrow open">▶</span></div>' +
+    '<div class="se-body">' +
+    '<p style="font-size:11px;color:#94a3b8;margin:4px 0 8px 0;">Your customers scan a QR code at their table and see this menu. Design it to match your brand.</p>' +
     row('seMenuWelcome', 'Welcome Message (top of menu)', 'text', 'Welcome to our cafe!') +
     row('seMenuPromo', 'Promotional Text (below welcome)', 'text', 'Try our new Summer Specials!') +
     row('seMenuVideo', 'Video URL (YouTube — plays on menu)', 'text', 'https://youtube.com/watch?v=...') +
@@ -161,10 +179,13 @@ function v4seEnsureUI() {
     '<button class="v4-chip" id="seRemoveBanner" style="display:none;margin-bottom:6px" onclick="v4seRemoveBanner()">🗑️ Remove Image</button>' +
     '<button class="v4-btn p" onclick="v4seSaveMenu()">💾 Save Menu Design</button>' +
     '</div>' +
+    '</div>' +
 
-    // ═══ TABLES & QR ═══
+    // ═══ TABLES & QR (foldable) ═══
     '<div class="card">' +
-    cat('🪑 Tables & QR Codes', 'Add your tables, then generate QR codes. Customers scan the QR at their table to order — no waiter needed.') +
+    '<div class="card-title se-fold" onclick="v4seFold(this)">🪑 Tables & QR Codes <span class="se-arrow open">▶</span></div>' +
+    '<div class="se-body">' +
+    '<p style="font-size:11px;color:#94a3b8;margin:4px 0 8px 0;">Add your tables, then generate QR codes. Customers scan the QR at their table to order — no waiter needed.</p>' +
     '<div id="seTableInputs"></div>' +
     '<div style="display:flex;gap:6px;margin-top:8px">' +
     '<button class="v4-chip" style="flex:1" onclick="v4seAddTableInput()">➕ Add Table</button>' +
@@ -174,30 +195,48 @@ function v4seEnsureUI() {
     '<div id="seQRArea" style="text-align:center;margin-top:12px;display:none"></div>' +
     '<button class="v4-btn" style="background:#334155;margin-top:8px;display:none" id="seQRPrintBtn" onclick="v4sePrintQRSheet()">🖨️ Print QR Sheet (all tables on one page)</button>' +
     '</div>' +
+    '</div>' +
 
-    // ═══ DEVICE LINK CENTER ═══
+    // ═══ DEVICE LINK CENTER (foldable) ═══
     '<div class="card">' +
-    cat('🔗 Device Link Center', 'Connect your POS, Kitchen, and Menu devices. Generate QR codes for each device type — staff scan and are connected instantly.') +
+    '<div class="card-title se-fold" onclick="v4seFold(this)">🔗 Device Link Center <span class="se-arrow open">▶</span></div>' +
+    '<div class="se-body">' +
+    '<p style="font-size:11px;color:#94a3b8;margin:4px 0 8px 0;">Connect your POS, Kitchen, and Menu devices. Generate QR codes for each device type — staff scan and are connected instantly.</p>' +
     '<button class="v4-btn p" onclick="v4seDeviceLinks()">🔗 Open Device Link Center</button>' +
     '<div id="seDeviceArea" style="text-align:center;margin-top:12px;display:none"></div>' +
     '<button class="v4-btn" style="background:#334155;margin-top:8px;display:none" id="seDevicePrintBtn" onclick="v4sePrintDeviceSheet()">🖨️ Print Device QR Sheet</button>' +
     '</div>' +
+    '</div>' +
 
-    // ═══ SECURITY (full password/PIN flow) ═══
+    // ═══ SECURITY (foldable) ═══
     '<div class="card">' +
-    cat('🔐 Account Security', 'Change your login password or your 4-digit App PIN. You will be asked to verify your current one first.') +
+    '<div class="card-title se-fold" onclick="v4seFold(this)">🔐 Account Security <span class="se-arrow open">▶</span></div>' +
+    '<div class="se-body">' +
+    '<p style="font-size:11px;color:#94a3b8;margin:4px 0 8px 0;">Change your login password or your 4-digit App PIN. You will be asked to verify your current one first.</p>' +
     '<button class="v4-btn p" style="margin-bottom:6px" onclick="v4seChangePassword()">🔑 Change Password</button>' +
     '<button class="v4-btn" style="background:#f59e0b" onclick="v4seChangePin()">🔢 Change App PIN</button>' +
     '</div>' +
+    '</div>' +
 
-    // ═══ DANGER ZONE ═══
+    // ═══ DANGER ZONE (foldable) ═══
     '<div class="card" style="border:2px solid #ef4444;">' +
-    cat('🚨 Danger Zone', 'These actions are permanent. Think before tapping.') +
+    '<div class="card-title se-fold" onclick="v4seFold(this)">🚨 Danger Zone <span class="se-arrow open">▶</span></div>' +
+    '<div class="se-body">' +
+    '<p style="font-size:11px;color:#ef4444;margin:4px 0 8px 0;font-weight:600">These actions are permanent. Think before tapping.</p>' +
     '<button class="v4-btn" style="background:#dc2626;margin-bottom:6px" onclick="v4seSystemLock()">🔒 Lock All Staff Devices</button>' +
     '<button class="v4-btn" style="background:#7f1d1d" onclick="v4seResetShop()">🗑️ Delete ALL Shop Data</button>' +
+    '</div>' +
     '</div>';
 }
 
+// ═══ FOLD / UNFOLD ═══
+function v4seFold(titleEl) {
+  var body = titleEl.nextElementSibling;
+  var arrow = titleEl.querySelector('.se-arrow');
+  if (!body) return;
+  body.classList.toggle('folded');
+  if (arrow) arrow.classList.toggle('open');
+}
 // ═══ PASSWORD VISIBILITY TOGGLE ═══
 function v4seTogglePwd(id) {
   var el = document.getElementById(id);
