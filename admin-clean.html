@@ -798,7 +798,20 @@ function applyPlanVisibility() {
         var ico = '🛒';
         try { ico = (typeof ssIsCafe === 'function' && (ssIsCafe() || (window.__currentShopRow && window.__currentShopRow.business_type === 'hotel'))) ? '🏨' : '🛒'; } catch(e) {}
         b.textContent = ico + ' ' + lbl;
+        b.title = 'Shop ID: ' + getShopId();   // long-press to see
     }
+    // 🔑 Shop ID badge (always visible, next to plan)
+    var sidBadge = document.getElementById('shopIdBadge');
+    if (!sidBadge) {
+        var foot = document.querySelector('.sidebar div:first-child');
+        if (foot) {
+            sidBadge = document.createElement('span');
+            sidBadge.id = 'shopIdBadge';
+            sidBadge.style.cssText = 'display:block;font-size:9px;font-weight:700;color:#94a3b8;margin-top:2px;letter-spacing:.5px;';
+            foot.appendChild(sidBadge);
+        }
+    }
+    if (sidBadge) sidBadge.textContent = '🔑 ' + getShopId();
 }
 // ── TAB SWITCH ──
 function selectTab(i, el) {
@@ -956,6 +969,16 @@ function v4ToggleCard(titleEl) {
 }
 // ── INIT (one init chain — no window.onload fights, ever) ──
 function init() {
+  // 🏪 Show which shop you're entering
+  setTimeout(function() {
+    var shopName = (window.__currentShopRow && window.__currentShopRow.name) || getShopId();
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#1e3a8a;color:#fff;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.3);';
+    t.textContent = '🏪 ' + shopName + ' · 🔑 ' + getShopId();
+    document.body.appendChild(t);
+    setTimeout(function(){ t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(function(){ t.remove(); }, 300); }, 2500);
+  }, 500);
+  
     // 🛡️ HEADER LAW: exactly ONE header — any accidental twin dies now
   var hh = document.querySelectorAll('#mainApp .header');
   for (var hi = 1; hi < hh.length; hi++) hh[hi].remove();
