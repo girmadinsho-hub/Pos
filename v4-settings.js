@@ -1,4 +1,4 @@
- // ═════════════════════════════════════════════════════════
+// ═════════════════════════════════════════════════════════
 //  SMARTSHOP PRO v4 — SETTINGS MODULE v2 (tab13 + tab14)
 //  v2 fixes: shop name visible · instant save-refresh ·
 //  VAT box auto-hides for TOT · password/PIN full flow with
@@ -669,7 +669,7 @@ function v4seEnsureLicenseUI() {
     '<label style="font-size:11px;font-weight:800;color:#475569">License Key</label>' +
     '<input class="v4-in" id="liKey" placeholder="Enter license key" style="margin-bottom:8px">' +
     '<button class="v4-btn g" onclick="v4seActivateLicense()">🔓 Activate</button>' +
-    '<button class="v4-btn p" style="background:#f59e0b;margin-top:6px" onclick="v4seContactProvider()">📞 Contact Provider</button>' +
+    '<button class="v4-btn p" style="background:#f59e0b;margin-top:6px" onclick="ssContactProvider()">📞 Contact Provider</button>' +
     '<hr style="margin:14px 0;border-color:#e2e8f0;">' +
     '<p style="font-size:12px;color:#64748b;">⚠️ <b>Remove Licence &amp; Use Free Plan</b><br>This limits your shop to <b>15 products</b> and <b>1 cashier</b>.</p>' +
     '<button class="v4-btn" style="background:#fff;color:#ef4444;border:2px solid #ef4444;" onclick="v4seRemoveLicense()">🗑️ Remove Licence (Free Plan)</button>' +
@@ -812,20 +812,6 @@ async function v4seRemoveLicense() {
   location.reload();
 }
 
-async function v4seContactProvider() {
-  await loadSupportContactsUniversal();
-  var s = window.SUPPORT;
-  var old = document.getElementById('seSupportModal'); if (old) old.remove();
-  var m = document.createElement('div');
-  m.className = 'modal active'; m.id = 'seSupportModal';
-  var html = '<div class="modal-content" style="text-align:center;">';
-  if (s.whatsapp) html += '<a href="https://wa.me/' + s.whatsapp + '" target="_blank" style="display:block;background:#25D366;color:#fff;padding:14px;border-radius:10px;text-decoration:none;font-weight:bold;margin-bottom:8px;">💬 WhatsApp: ' + s.phone + '</a>';
-  if (s.email) html += '<a href="mailto:' + s.email + '" style="display:block;background:#ef4444;color:#fff;padding:14px;border-radius:10px;text-decoration:none;font-weight:bold;margin-bottom:8px;">📧 ' + s.email + '</a>';
-  html += '<button class="v4-btn o" onclick="document.getElementById(\'seSupportModal\').classList.remove(\'active\')">Close</button></div>';
-  m.innerHTML = html;
-  document.body.appendChild(m);
-  m.addEventListener('click', function(e){ if (e.target === m) m.remove(); });
-}
 
 // ── tab loaders ──
 V4_TAB_LOADERS[13] = function() {
