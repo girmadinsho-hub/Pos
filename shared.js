@@ -896,6 +896,7 @@ function t(key) {
   return (langText[appLang] && langText[appLang][key]) || langText['en'][key] || key;
 }
 
+
 function changeLanguage(lc) {
   if (!lc) {
     lc = (typeof appLang !== 'undefined') ? appLang : 'en';
@@ -925,6 +926,38 @@ function changeLanguage(lc) {
   var langSelects = document.querySelectorAll('#langSelect');
   for (var k = 0; k < langSelects.length; k++) {
     langSelects[k].value = lc;
+  }
+}
+
+// ═══ UNIVERSAL CONTACT PROVIDER (one home — works everywhere) ═══
+async function ssContactProvider() {
+  try {
+    if (typeof loadSupportContactsUniversal === 'function') {
+      try { await loadSupportContactsUniversal(); } catch(e2) {}
+    }
+    var s = window.SUPPORT || { phone: '+251973316100', whatsapp: '251973316100', email: 'girmadinsho@gmail.com' };
+    var old = document.getElementById('ssContactModal'); if (old) old.remove();
+    var m = document.createElement('div');
+    m.id = 'ssContactModal';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    var html = '<div style="background:#fff;border-radius:18px;max-width:380px;width:100%;padding:20px;color:#0f172a;text-align:center;">' +
+      '<h3 style="margin-bottom:14px;font-size:17px">📞 Contact Your Provider</h3>';
+    if (s.whatsapp) {
+      var waMsg = encodeURIComponent('Hello! I need help with SmartShop Pro. My Shop ID: ' + (typeof getShopId === 'function' ? getShopId() : 'unknown'));
+      html += '<a href="https://wa.me/' + s.whatsapp + '?text=' + waMsg + '" target="_blank" style="display:block;background:#25D366;color:#fff;padding:14px;border-radius:12px;text-decoration:none;font-weight:bold;margin-bottom:10px;font-size:15px;">💬 WhatsApp: ' + s.phone + '</a>';
+    }
+    if (s.email) {
+      html += '<a href="mailto:' + s.email + '?subject=SmartShop Help" style="display:block;background:#ef4444;color:#fff;padding:14px;border-radius:12px;text-decoration:none;font-weight:bold;margin-bottom:10px;font-size:15px;">📧 ' + s.email + '</a>';
+    }
+    if (!s.whatsapp && s.phone) {
+      html += '<a href="tel:' + s.phone + '" style="display:block;background:#2563eb;color:#fff;padding:14px;border-radius:12px;text-decoration:none;font-weight:bold;margin-bottom:10px;font-size:15px;">📞 ' + s.phone + '</a>';
+    }
+    html += '<button onclick="document.getElementById(\'ssContactModal\').remove()" style="padding:12px 30px;background:#64748b;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;">✖ Close</button></div>';
+    m.innerHTML = html;
+    document.body.appendChild(m);
+    m.addEventListener('click', function(e){ if (e.target === m) m.remove(); });
+  } catch(e) {
+    alert('📞 Contact Your Provider:\n\n💬 WhatsApp: +251973316100\n📧 girmadinsho@gmail.com');
   }
 }
 
