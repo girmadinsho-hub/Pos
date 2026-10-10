@@ -152,12 +152,38 @@ function v4shSwitchTo(shopId) {
 function v4shOpenWizard() {
   v4shCheckLimit('any').then(function(r) {
     if (!r.can) {
-      alert('✨ ' + r.reason + '\n\nUpgrade: License tab → Activate a new key, or contact your provider.');
+      v4shUpgradeDialog(r.reason);
       return;
     }
     v4shWizardStep1();
   });
 }
+// ═══ UPGRADE DIALOG (self-contained — no external depen// ═══ UPGRADE DIALOG (self-contained — no external dependencies) ═══
+function v4shUpgradeDialog(reason) {
+  var old = document.getElementById('v4shUpgDialog'); if (old) old.remove();
+  var m = document.createElement('div');
+  m.id = 'v4shUpgDialog';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8500;overflow-y:auto;padding:14px;display:flex;align-items:center;justify-content:center;';
+  m.innerHTML = '<div style="background:#fff;border-radius:18px;max-width:420px;width:100%;padding:20px;color:#0f172a;text-align:center;">' +
+    '<div style="font-size:44px;margin-bottom:8px">✨</div>' +
+    '<h3 style="margin-bottom:8px;font-size:17px">Upgrade Needed</h3>' +
+    '<p style="font-size:13px;color:#64748b;margin-bottom:16px;line-height:1.5">' + reason + '</p>' +
+    '<button class="v4-btn g" style="margin-bottom:8px" onclick="v4shUpgGoLicense()">🔑 Go to License Tab</button>' +
+    '<button class="v4-btn" style="background:#f59e0b;margin-bottom:8px" onclick="ssContactProvider()">📞 Contact Provider</button>' +
+    '<button class="v4-btn o" onclick="document.getElementById(\'v4shUpgDialog\').remove()">✖ Close</button>' +
+    '</div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e){ if (e.target === m) m.remove(); });
+}function v4shUpgGoLicense() {
+  var m = document.getElementById('v4shUpgDialog'); if (m) m.remove();
+  selectTab(14, document.getElementById('stab14'));
+}
+function v4shUpgContact() {
+  var m = document.getElementById('v4shUpgDialog'); if (m) m.remove();
+  v4shContactProvider();
+}
+
+// ═══ CONTACT PROVIDER (works from anywhere) ═══
 
 function v4shWizardStep1() {
   var m = document.createElement('div');
