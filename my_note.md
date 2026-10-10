@@ -384,5 +384,51 @@ Say "build" and I deliver item by item, starting with the Plan Manager seed SQL 
 
 build.Coffee. We should not categorize with the amount of product, but with the amount of table. We should have to control the cafe with the amount of table they use. Go ahead building by  take the last coment in consdaration.
 
+Remove the device lock — simple fix
+
+
+
+
+
+
+
+
+
+📄 FILE: admin-clean.html
+🔍 FIND: inside registerAccount():
+
+js
+
+  if (localStorage.getItem('deviceRegistered') === 'true') {
+    alert('⛔ This device already registered a shop.\n\nUse the LOGIN screen with your email and password.\nNeed another shop? Create it from Settings → My Shops.');
+    return;
+  }
+✂️ DELETE those 4 lines entirely.
+
+Also find and DELETE this line (inside the same function, near the bottom):
+
+js
+
+    localStorage.setItem('deviceRegistered', 'true');
+🔥 Ritual
+sw.js → CACHE_NAME +1 → commit → close ALL tabs → open → close → open
+
+🧪 Test
+Tap "Create New Account" → no device lock message ✅
+Register with any email → account created ✅
+Test the full trial experience
+PASS = registration is open. We re-add the lock later when you're ready. 🎯
+
+
+
+
+
+Send a Message
+
+
+
+
+
+
 
 
