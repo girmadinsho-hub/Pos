@@ -26,14 +26,37 @@ function v4lgLimit(currentCount, limitType) {
   return currentCount < max;
 }
 
-function v4lgDeny(action, current, limit) {
-  var plan = (typeof ssPlanLabel === 'function') ? ssPlanLabel() : 'your plan';
-  alert('✨ ' + action + ' needs a higher plan.\n\n' +
-    'Your plan: ' + plan + '\n' +
-    'Limit: ' + (limit || '—') + '\n\n' +
-    'Upgrade: License tab → Activate a new key, or contact your provider.');
+async function v4seContactProvider() {
+  try {
+    if (typeof loadSupportContactsUniversal === 'function') {
+      try { await loadSupportContactsUniversal(); } catch(e2) {}
+    }
+    var s = window.SUPPORT || { phone: '+251973316100', whatsapp: '251973316100', email: 'girmadinsho@gmail.com' };
+    var old = document.getElementById('seSupportModal'); if (old) old.remove();
+    var m = document.createElement('div');
+    m.id = 'seSupportModal';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8500;display:flex;align-items:center;justify-content:center;padding:16px;';
+    var html = '<div style="background:#fff;border-radius:18px;max-width:380px;width:100%;padding:20px;color:#0f172a;text-align:center;">' +
+      '<h3 style="margin-bottom:14px;font-size:17px">📞 Contact Your Provider</h3>';
+    if (s.whatsapp) {
+      var waMsg = encodeURIComponent('Hello! I need help with my SmartShop Pro. My Shop ID: ' + getShopId());
+      html += '<a href="https://wa.me/' + s.whatsapp + '?text=' + waMsg + '" target="_blank" style="display:block;background:#25D366;color:#fff;padding:14px;border-radius:12px;text-decoration:none;font-weight:bold;margin-bottom:10px;font-size:15px;">💬 WhatsApp: ' + s.phone + '</a>';
+    }
+    if (s.email) {
+      html += '<a href="mailto:' + s.email + '?subject=SmartShop Help — Shop ' + getShopId() + '" style="display:block;background:#ef4444;color:#fff;padding:14px;border-radius:12px;text-decoration:none;font-weight:bold;margin-bottom:10px;font-size:15px;">📧 ' + s.email + '</a>';
+    }
+    if (!s.whatsapp && s.phone) {
+      html += '<a href="tel:' + s.phone + '" style="display:block;background:#2563eb;color:#fff;padding:14px;border-radius:12px;text-decoration:none;font-weight:bold;margin-bottom:10px;font-size:15px;">📞 Call: ' + s.phone + '</a>';
+    }
+    html += '<button class="v4-btn o" onclick="document.getElementById(\'seSupportModal\').remove()" style="margin-top:4px">✖ Close</button></div>';
+    m.innerHTML = html;
+    document.body.appendChild(m);
+    m.addEventListener('click', function(e){ if (e.target === m) m.remove(); });
+  } catch(e) {
+    // 🛟 fallback — always shows something
+    alert('📞 Contact Your Provider:\n\n💬 WhatsApp: +251973316100\n📧 girmadinsho@gmail.com');
+  }
 }
-
 // ── FEATURE-GATED TOOL OPENER (wrap around v4reOpen, v4stOpen, etc.) ──
 var V4LG_FEATURE_MAP = {
   // Reports
@@ -97,60 +120,6 @@ function v4lgApplySidebar() {
     b.textContent = ico + ' ' + lbl;
   }
 }
-
-// ── WRAP: make v4reOpen (Reports) check features before opening ──
-(function() {
-  if (typeof v4reOpen === 'function' && !window._v4lgWrappedRe) {
-    window._v4lgWrappedRe = true;
-    var orig = v4reOpen;
-    window.v4reOpen = function(tool) {
-      if (!v4lgGate(tool)) return;
-      return orig(tool);
-    };
-  }
-})();
-
-// ── WRAP: make v4stfOpen (Staff tools) check staff limit ──
-(function() {
-  if (typeof v4stfRegister === 'function' && !window._v4lgWrappedStf) {
-    window._v4lgWrappedStf = true;
-    var orig = v4stfRegister;
-    window.v4stfRegister = function() {
-      if (!v4lgLimit(v4stf.data.length, 'staff')) {
-        v4lgDeny('Adding more staff', SS_PLAN ? SS_PLAN.maxCashiers : '?');
-        return;
-      }
-      return orig();
-    };
-  }
-})();
-
-// ── WRAP: make v4AddProduct check product limit ──
-(function() {
-  if (typeof v4AddProduct === 'function' && !window._v4lgWrappedProd) {
-    window._v4lgWrappedProd = true;
-    var orig = v4AddProduct;
-    window.v4AddProduct = function() {
-      if (!v4lgLimit(v4products.length, 'products')) {
-        v4lgDeny('Adding more products', SS_PLAN ? SS_PLAN.maxProducts : '?');
-        return;
-      }
-      return orig();
-    };
-  }
-})();
-
-// ── WRAP: Business Lens only for hotels WITH rooms feature ──
-(function() {
-  if (typeof v4LensEnsure === 'function' && !window._v4lgWrappedLens) {
-    window._v4lgWrappedLens = true;
-    window.v4LensEnsure = function() {
-      if (!v4lgCan('rooms')) return;   // no rooms feature → no lens
-      // call the original (it's been replaced by now)
-      if (typeof v4LensEnsureOrig === 'function') v4LensEnsureOrig();
-    };
-  }
-})();
 
 // ── TRIAL EXPIRY WATCHDOG (runs every 5 min) ──
 function v4lgTrialWatch() {
