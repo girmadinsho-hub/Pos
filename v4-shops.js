@@ -25,46 +25,48 @@ async function v4shLoadMyShops() {
 
 // ═══ LIMIT ENGINE (reads from plans table LIVE — Master's truth) ═══
 async function v4shCheckLimit(newType) {
-  // Count current shops
   var count = v4sh.myShops.length;
+  var email = '';
+  try { const { data: { user } } = await supabaseClient.auth.getUser(); if (user) email = user.email; } catch(e) {}
 
-  // Trial: 1 shop only
+  // TRIAL: 1 per TYPE (not 1 total!)
   if (window.__currentShopRow && window.__currentShopRow.plan === 'trial') {
-    return { can: count < 1, reason: 'Trial allows 1 shop. Activate a plan to add more.' };
+    var shopsPerType = 1;
+    try {
+      const { data: gs } = await supabaseClient.from('global_settings').select('trial_shops_per_type').eq('id', 'globalConfig').maybeSingle();
+      if (gs && gs.trial_shops_per_type > 0) shopsPerType = gs.trial_shops_per_type;
+    } catch(e) {}
+    var sameTypeCount = v4sh.myShops.filter(function(s){ return s.business_type === newType; }).length;
+    if (sameTypeCount >= shopsPerType) {
+      return { can: false, reason: 'Trial allows 1 ' + newType + ' shop. Contact your provider for more.', contactProvider: true, typeFull: newType };
+    }
+    return { can: true, remaining: shopsPerType - sameTypeCount };
   }
 
-  // Free plan: 1 shop only
+  // PAID PLAN: check max_branches
   var lic = (typeof getLicense === 'function') ? getLicense() : null;
   if (!lic) {
-    return { can: count < 1, reason: 'Free plan allows 1 shop. Activate a plan to add more.' };
+    return { can: count < 1, reason: 'Free plan allows 1 shop. Activate a plan for more.' };
   }
-
-  // Paid plan: check max_branches
   var planName = lic.plan;
   try {
     const { data: plan } = await supabaseClient.from('plans').select('max_branches, business_type').ilike('name', planName).maybeSingle();
-    if (!plan) return { can: false, reason: 'Plan "' + planName + '" not found. Contact your provider.' };
-
-    // Type check: does this plan cover this business type?
+    if (!plan) return { can: false, reason: 'Plan "' + planName + '" not found.' };
     if (plan.business_type !== 'retail' && plan.business_type !== newType) {
-      // Enterprise (retail line) covers all types
       if (planName.toLowerCase().indexOf('enterprise') === -1) {
-        return { can: false, reason: 'Plan "' + planName + '" covers ' + plan.business_type + ' shops only. Activate an Enterprise plan for ' + newType + '.' };
+        return { can: false, reason: 'Plan "' + planName + '" covers ' + plan.business_type + ' shops only. Enterprise covers all types.' };
       }
     }
-
-    // Count check
     var maxBranches = plan.max_branches || 1;
-    if (lic.maxShops && lic.maxShops < maxBranches) maxBranches = lic.maxShops;  // most restrictive
+    if (lic.maxShops && lic.maxShops < maxBranches) maxBranches = lic.maxShops;
     if (count >= maxBranches) {
-      return { can: false, reason: 'Plan limit: ' + count + '/' + maxBranches + ' shops used. Upgrade for more.' };
+      return { can: false, reason: 'Plan limit: ' + count + '/' + maxBranches + ' shops used.' };
     }
     return { can: true, remaining: maxBranches - count };
   } catch(e) {
-    return { can: false, reason: 'Could not check plan limits: ' + e.message };
+    return { can: false, reason: 'Could not check plan: ' + e.message };
   }
 }
-
 // ═══ UI — inject "My Shops" card into Settings tab ═══
 function v4shEnsureUI() {
   var settingsTab = document.getElementById('tab13');
