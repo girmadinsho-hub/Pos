@@ -385,11 +385,7 @@ function v4rcBatchText() {
 }
 function v4rcBatchWA() {
   var msg = v4rcBatchText(); if (!msg) return;
-  var phone = prompt('Send batch sheet to which WhatsApp number?\n(Leave empty to copy)', '');
-  if (phone === null) return;
-  phone = String(phone).replace(/[^0-9]/g, '');
-  if (phone) window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
-  else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(function(){ alert('📋 Batch sheet copied!'); });
+  ssShareTo(msg, { title: '🍳 Batch Sheet' });
 }
 function v4rcBatchPrint() {
   var w = window._v4rcBatch; if (!w) return;
@@ -488,12 +484,7 @@ function v4rcOpenView(id) {
 function v4rcChefWA() {
   var w = window._v4rcChef; if (!w) return;
   var r = v4rcRecipe(w.id); if (!r) return;
-  var msg = v4rcChefText(r);
-  var phone = prompt('Send the chef standard to which WhatsApp number?\n(Leave empty to copy)', '');
-  if (phone === null) return;
-  phone = String(phone).replace(/[^0-9]/g, '');
-  if (phone) window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
-  else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(function(){ alert('📋 Chef standard copied!'); });
+  ssShareTo(v4rcChefText(r), { title: '👨‍🍳 Chef Standard — ' + r.productName });
 }
 function v4rcChefPrint() {
   var w = window._v4rcChef; if (!w) return;
