@@ -428,13 +428,8 @@ function v4stfPayslipShare() {
   if (v4stfPenOn()) msg += '- Pension (' + v4stfPensionRate() + '%): ' + fmtMoney(s.pension) + '\n';
   s.custom.forEach(function(d){ msg += '- ' + d.name + ': ' + fmtMoney(d.amount) + '\n'; });
   msg += 'NET PAY: ' + fmtMoney(s.net) + '\n\n— ' + shop;
-  var phone = prompt('Send payslip to which WhatsApp number?\n(Leave empty to copy)', emp.phone || '');
-  if (phone === null) return;
-  phone = String(phone).replace(/[^0-9]/g, '');
-  if (phone) window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
-  else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(function(){ alert('📋 Payslip copied!'); });
+  ssShareTo(msg, { title: '🧾 Payslip — ' + emp.name, phone: emp.phone || '' });
 }
-
 // ═══ ADVANCE ═══
 async function v4stfAdvance(id) {
   var emp = v4stf.data.find(function(x){ return x.id === id; });
