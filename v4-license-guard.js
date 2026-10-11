@@ -104,20 +104,27 @@ function v4lgTrialWatch() {
   var shop = window.__currentShopRow;
   if (shop.plan === 'trial' && shop.trial_expires) {
     var days = Math.ceil((new Date(shop.trial_expires) - new Date()) / 86400000);
+    // 🔒 Hidden until warning_days (Master-adjustable, default 5)
+    var warningDays = 5;
+    // Try to load from global_settings (cached)
+    try {
+      var cached = localStorage.getItem('ss_trial_warning_days');
+      if (cached) warningDays = parseInt(cached) || 5;
+    } catch(e) {}
     if (days <= 0) { v4lgShowPlanPicker(); }
-    else if (days <= 7) { v4lgTrialBanner(days); }
+    else if (days <= warningDays) { v4lgTrialBanner(days); }
+    // else: HIDDEN — no banner, no anxiety
   }
   try {
     var lic = JSON.parse(localStorage.getItem('smartshop_license') || 'null');
     if (lic && lic.expiryDate) {
       var ldays = Math.ceil((new Date(lic.expiryDate) - new Date()) / 86400000);
       if (ldays <= 0) { v4lgShowLockout(); }
-      else if (ldays <= 7) { v4lgLicenseBanner(ldays); }
+      else if (ldays <= warningDays) { v4lgLicenseBanner(ldays); }
+      // else: HIDDEN
     }
   } catch(e) {}
-}
-
-function v4lgTrialBanner(days) {
+}function v4lgTrialBanner(days) {
   var old = document.getElementById('v4lgTrialWarn'); if (old) return;
   var b = document.createElement('div');
   b.id = 'v4lgTrialWarn';
