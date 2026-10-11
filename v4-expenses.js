@@ -684,17 +684,10 @@ function v4exWhatsApp() {
   var a = v4exAnalytics();
   if (!a.count) { alert('No expenses in ' + v4exPeriodLabel() + '.'); return; }
   var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
-  var cats = Object.keys(a.byCat).map(function(k){ return v4exCat(V4EX_CATS[k].label).label + ': ' + fmtMoney(a.byCat[k]); }).join('\n');
+  var cats = Object.keys(a.byCat).map(function(k){ return V4EX_CATS[k].label + ': ' + fmtMoney(a.byCat[k]); }).join('\n');
   var msg = '💸 EXPENSE REPORT — ' + shop + '\n' + v4exPeriodLabel() + '\n\n' +
     'Total spent: ' + fmtMoney(a.total) + ' (' + a.count + ' records)\n\nBy category:\n' + cats + '\n\n— SmartShop Pro';
-  var phone = prompt('Send to which WhatsApp number?\n(Leave empty to just copy)', '');
-  if (phone === null) return;
-  phone = String(phone).replace(/[^0-9]/g, '');
-  if (phone) window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
-  else {
-    if (navigator.clipboard) navigator.clipboard.writeText(msg).then(function(){ alert('📋 Report copied!'); });
-    else alert(msg);
-  }
+  ssShareTo(msg, { title: '💸 Expense Report — ' + shop });
 }
 function v4exPrint() {
   var rows = v4exAnalytics().rows;
