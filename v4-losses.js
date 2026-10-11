@@ -472,14 +472,7 @@ function v4loWhatsApp() {
   var reasons = Object.keys(a.byReason).map(function(r){ return v4loReason(r).label + ': ' + fmtMoney(a.byReason[r]); }).join('\n');
   var msg = '📉 LOSS REPORT — ' + shop + '\n' + v4loPeriodLabel() + '\n\n' +
     'Total lost: ' + fmtMoney(a.total) + ' (' + a.count + ' records)\n\nBy reason:\n' + reasons + '\n\n— SmartShop Pro';
-  var phone = prompt('Send to which WhatsApp number?\n(Leave empty to just copy the report)', '');
-  if (phone === null) return;
-  phone = String(phone).replace(/[^0-9]/g, '');
-  if (phone) window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
-  else {
-    if (navigator.clipboard) navigator.clipboard.writeText(msg).then(function(){ alert('📋 Report copied to clipboard!'); });
-    else alert(msg);
-  }
+  ssShareTo(msg, { title: '📉 Loss Report — ' + shop });
 }
 function v4loPrint() {
   var rows = v4loAnalytics().rows;
