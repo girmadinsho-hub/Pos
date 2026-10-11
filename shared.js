@@ -1284,3 +1284,99 @@ async function syncDeductStockForSale(items, invoiceNo, shopId, cashierId) {
         console.warn('Offline stock deduction failed:', e.message);
     }
 }
+// ═══ UNIVERSAL SHARE ENGINE — WhatsApp · Telegram · SMS · Email ·
+// Native Apps · Copy. Worldwide phone normalization (45+ countries). ═══
+var SS_COUNTRIES = {
+  'ET':['🇪🇹 Ethiopia','251'],'ER':['🇪🇷 Eritrea','291'],'DJ':['🇩🇯 Djibouti','253'],'SO':['🇸🇴 Somalia','252'],
+  'SD':['🇸🇩 Sudan','249'],'EG':['🇪🇬 Egypt','20'],'KE':['🇰🇪 Kenya','254'],'TZ':['🇹🇿 Tanzania','255'],
+  'UG':['🇺🇬 Uganda','256'],'RW':['🇷🇼 Rwanda','250'],'NG':['🇳🇬 Nigeria','234'],'GH':['🇬🇭 Ghana','233'],
+  'ZA':['🇿🇦 S. Africa','27'],'ET2':['🌍 Other',''],'US':['🇺🇸 USA','1'],'CA':['🇨🇦 Canada','1'],
+  'GB':['🇬🇧 UK','44'],'IE':['🇮🇪 Ireland','353'],'DE':['🇩🇪 Germany','49'],'FR':['🇫🇷 France','33'],
+  'IT':['🇮🇹 Italy','39'],'ES':['🇪🇸 Spain','34'],'PT':['🇵🇹 Portugal','351'],'NL':['🇳🇱 Netherlands','31'],
+  'BE':['🇧🇪 Belgium','32'],'CH':['🇨🇭 Switzerland','41'],'AT':['🇦🇹 Austria','43'],'SE':['🇸🇪 Sweden','46'],
+  'NO':['🇳🇴 Norway','47'],'DK':['🇩🇰 Denmark','45'],'FI':['🇫🇮 Finland','358'],'PL':['🇵🇱 Poland','48'],
+  'RU':['🇷🇺 Russia','7'],'UA':['🇺🇦 Ukraine','380'],'TR':['🇹🇷 Türkiye','90'],'AE':['🇦🇪 UAE','971'],
+  'SA':['🇸🇦 Saudi','966'],'QA':['🇶🇦 Qatar','974'],'CN':['🇨🇳 China','86'],'IN':['🇮🇳 India','91'],
+  'PK':['🇵🇰 Pakistan','92'],'JP':['🇯🇵 Japan','81'],'KR':['🇰🇷 S. Korea','82'],'AU':['🇦🇺 Australia','61'],
+  'NZ':['🇳🇿 N. Zealand','64'],'SG':['🇸🇬 Singapore','65'],'MY':['🇲🇾 Malaysia','60'],'ID':['🇮🇩 Indonesia','62'],
+  'TH':['🇹🇭 Thailand','66'],'PH':['🇵🇭 Philippines','63'],'VN':['🇻🇳 Vietnam','84'],'BR':['🇧🇷 Brazil','55']
+};
+function ssIntlPhone(raw, cc) {
+  var s = String(raw || '').trim();
+  if (!s) return '';
+  if (s.charAt(0) === '+') return s.slice(1).replace(/[^0-9]/g, '');
+  var d = s.replace(/[^0-9]/g, '');
+  if (!d) return '';
+  if (d.indexOf('00') === 0) return d.slice(2);
+  if (cc && d.indexOf(cc) === 0 && d.length > cc.length) return d;
+  if (cc && d.charAt(0) === '0') return cc + d.slice(1);
+  if (cc) return cc + d;
+  return d;
+}
+function ssShareTo(message, opts) {
+  opts = opts || {};
+  var ccIso = localStorage.getItem('ssShareCC') || 'ET';
+  var cc = (SS_COUNTRIES[ccIso] || SS_COUNTRIES['ET'])[1];
+  var old = document.getElementById('ssShareModal'); if (old) old.remove();
+  var m = document.createElement('div');
+  m.id = 'ssShareModal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9400;overflow-y:auto;padding:14px;display:flex;align-items:center;justify-content:center;';
+  function btn(id, bg, label) {
+    return '<button id="' + id + '" style="padding:13px 6px;border:none;border-radius:12px;background:' + bg + ';color:#fff;font-weight:800;font-size:12px;cursor:pointer">' + label + '</button>';
+  }
+  var ccOpts = Object.keys(SS_COUNTRIES).map(function(iso){
+    var c = SS_COUNTRIES[iso];
+    return '<option value="' + iso + '"' + (iso === ccIso ? ' selected' : '') + '>' + c[0] + (c[1] ? ' +' + c[1] : '') + '</option>';
+  }).join('');
+  m.innerHTML = '<div style="background:#fff;border-radius:18px;max-width:420px;width:100%;padding:18px;color:#0f172a">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+    '<b style="font-size:17px">' + (opts.title || '📤 Share') + '</b>' +
+    '<button onclick="document.getElementById(\'ssShareModal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer">✖</button></div>' +
+    '<div style="background:#f8fafc;border-radius:10px;padding:10px;font-size:11px;color:#64748b;max-height:90px;overflow-y:auto;white-space:pre-wrap;margin-bottom:10px">' + sanitize(String(message)).substring(0, 300) + (String(message).length > 300 ? '…' : '') + '</div>' +
+    '<label style="font-size:11px;font-weight:800;color:#475569">📞 Phone (optional — for direct send)</label>' +
+    '<div style="display:flex;gap:6px;margin:3px 0 4px 0">' +
+    '<select id="ssShareCC" style="width:140px;padding:9px 6px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:12px;background:#fff">' + ccOpts + '</select>' +
+    '<input id="ssSharePhone" inputmode="tel" placeholder="912 345 678 or +44…" value="' + String(opts.phone || '').replace(/"/g, '&quot;') + '" style="flex:1;min-width:0;padding:9px 10px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;min-width:0">' +
+    '</div>' +
+    '<small style="font-size:10px;color:#94a3b8;display:block;margin-bottom:10px">Local numbers get +<span id="ssShareCCTxt">' + cc + '</span> added automatically. Worldwide: type with + (e.g., +44…).</small>' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">' +
+    btn('ssGoWA', '#25D366', '💬 WhatsApp') +
+    btn('ssGoTG', '#229ED9', '✈️ Telegram') +
+    btn('ssGoSMS', '#2563eb', '📱 SMS') +
+    btn('ssGoEM', '#ea580c', '📧 Email') +
+    (navigator.share ? btn('ssGoNA', '#7c3aed', '📲 Apps…') : '') +
+    btn('ssGoCP', '#64748b', '📋 Copy') +
+    '</div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e){ if (e.target === m) m.remove(); });
+  var sel = document.getElementById('ssShareCC');
+  sel.onchange = function() {
+    ccIso = sel.value; cc = (SS_COUNTRIES[ccIso] || SS_COUNTRIES['ET'])[1];
+    localStorage.setItem('ssShareCC', ccIso);
+    var t = document.getElementById('ssShareCCTxt'); if (t) t.textContent = cc || '—';
+  };
+  function go(channel) {
+    var ph = ssIntlPhone(document.getElementById('ssSharePhone').value, cc);
+    var enc = encodeURIComponent(message);
+    if (channel === 'wa') window.open(ph ? 'https://wa.me/' + ph + '?text=' + enc : 'https://wa.me/?text=' + enc, '_blank');
+    else if (channel === 'tg') window.open('https://t.me/share/url?url=' + enc, '_blank');
+    else if (channel === 'sms') {
+      if (!ph) { alert('Enter a phone number for SMS.'); return; }
+      var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      window.location.href = 'sms:+' + ph + (isIOS ? '&' : '?') + 'body=' + enc;
+    }
+    else if (channel === 'em') window.location.href = 'mailto:?subject=' + encodeURIComponent(opts.title || 'SmartShop Pro') + '&body=' + enc;
+    else if (channel === 'na') navigator.share({ text: message }).catch(function(){});
+    else if (channel === 'cp') {
+      if (navigator.clipboard) navigator.clipboard.writeText(message).then(function(){ alert('📋 Copied!'); });
+      else alert(message);
+    }
+    m.remove();
+  }
+  document.getElementById('ssGoWA').onclick = function(){ go('wa'); };
+  document.getElementById('ssGoTG').onclick = function(){ go('tg'); };
+  document.getElementById('ssGoSMS').onclick = function(){ go('sms'); };
+  document.getElementById('ssGoEM').onclick = function(){ go('em'); };
+  var na = document.getElementById('ssGoNA'); if (na) na.onclick = function(){ go('na'); };
+  document.getElementById('ssGoCP').onclick = function(){ go('cp'); };
+}
