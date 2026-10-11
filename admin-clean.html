@@ -151,7 +151,6 @@ body.dark .maximized-card{background:#0f172a!important}
   
 </head>
 <body>
-
 <!-- LOGIN -->
 <div class="screen show" id="loginScreen">
   <div class="box">
@@ -160,7 +159,60 @@ body.dark .maximized-card{background:#0f172a!important}
     <input type="email" id="loginEmail" placeholder="Owner Email" autocomplete="off">
     <input type="password" id="loginPass" placeholder="Password" autocomplete="new-password">
     <button class="btn btn-p" onclick="adminLogin()">🔓 Sign In</button>
-    <p style="margin-top:10px">🔑 Forgot password? Use the classic admin for now.</p>
+    <button class="btn" style="background:#fff;color:#2563eb;border:1px solid #2563eb;font-weight:bold;margin-top:8px;" onclick="ssShowRegisterForm()">📝 Create New Account</button>
+    <p style="margin-top:10px;font-size:11px;color:#94a3b8;cursor:pointer;text-decoration:underline;" onclick="ssForgotPassword()">🔑 Forgot password?</p>
+  </div>
+</div>
+<!-- REGISTRATION (email + password ONLY — shop<!-- REGISTRATION (email + password ONLY — shop type chosen AFTER login) -->
+<div class="screen" id="registerScreen">
+  <div class="box" style="max-width:380px;">
+    <div style="text-align:center;margin-bottom:12px;">
+      <h1 style="font-size:22px;color:#1e3a8a;">🎉 Create Your Account</h1>
+      <p style="font-size:12px;color:#64748b;">Just your email and password — we'll set up your shop next.</p>
+    </div>
+    <label style="font-size:10px;color:#64748b;font-weight:700;display:block;margin:4px 0 2px;text-align:left;">📧 EMAIL *</label>
+    <input type="email" id="regEmail" placeholder="your@email.com" style="width:100%;padding:12px;margin:0 0 10px 0;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;box-sizing:border-box;">
+    <label style="font-size:10px;color:#64748b;font-weight:700;display:block;margin:4px 0 2px;text-align:left;">🔐 PASSWORD *</label>
+    <div style="position:relative;margin-bottom:6px;">
+      <input type="password" id="regPass" placeholder="Min 6 characters" style="width:100%;padding:12px 44px 12px 12px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;box-sizing:border-box;" oninput="regCheckStrength()">
+      <button type="button" onclick="regTogglePwd('regPass')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;cursor:pointer;">👁️</button>
+    </div>
+    <div style="display:flex;gap:3px;margin:0 0 4px;">
+      <div id="strBar1" style="flex:1;height:5px;border-radius:3px;background:#e2e8f0;"></div>
+      <div id="strBar2" style="flex:1;height:5px;border-radius:3px;background:#e2e8f0;"></div>
+      <div id="strBar3" style="flex:1;height:5px;border-radius:3px;background:#e2e8f0;"></div>
+    </div>
+    <small id="strText" style="font-size:10px;color:#94a3b8;display:block;margin-bottom:10px;">Use letters + numbers for stronger password</small>
+    <label style="font-size:10px;color:#64748b;font-weight:700;display:block;margin:4px 0 2px;text-align:left;">🔐 CONFIRM PASSWORD *</label>
+    <div style="position:relative;margin-bottom:12px;">
+      <input type="password" id="regPass2" placeholder="Repeat password" style="width:100%;padding:12px 44px 12px 12px;border:2px solid #e2e8f0;border-radius:10px;font-size:14px;box-sizing:border-box;" oninput="regCheckMatch()">
+      <button type="button" onclick="regTogglePwd('regPass2')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:18px;cursor:pointer;">👁️</button>
+    </div>
+    <div id="matchIndicator" style="font-size:11px;margin-bottom:10px;display:none;"></div>
+    <button class="btn btn-p" onclick="registerAccount()">🚀 Create My Account</button>
+    <p style="text-align:center;margin-top:10px;font-size:11px;color:#94a3b8;cursor:pointer;text-decoration:underline;" onclick="ssBackToLogin()">Already have an account? Sign In</p>
+  </div>
+</div>
+
+<!-- REGISTRATION SUCCESS -->
+<div class="screen" id="regSuccessScreen">
+  <div class="box">
+    <div style="font-size:48px;">🎉</div>
+    <h3 style="margin-bottom:4px;">Account Created!</h3>
+    <p style="font-size:12px;color:#64748b;">SAVE this information — you need it to sign in & connect devices.</p>
+    <div style="background:#eff6ff;border:2px dashed #2563eb;border-radius:12px;padding:14px;margin:12px 0;">
+      <div style="font-size:10px;color:#64748b;font-weight:800;letter-spacing:1px;">🔑 YOUR SHOP ID</div>
+      <div id="regSuccessShopId" style="font-size:24px;font-weight:800;color:#2563eb;word-break:break-all;margin:4px 0;"></div>
+      <button class="btn btn-p" onclick="navigator.clipboard.writeText(document.getElementById('regSuccessShopId').textContent).then(function(){alert('📋 Shop ID copied!')})" style="width:auto;padding:8px 16px;font-size:12px;">📋 Copy Shop ID</button>
+    </div>
+    <div style="text-align:left;font-size:12px;color:#334155;line-height:1.7;">
+      <b>📝 Your login:</b> <span id="regSuccessEmail"></span> + the password you created<br>
+      <b>Next steps:</b><br>
+      1️⃣ Tap "Continue" and sign in<br>
+      2️⃣ POS/Kitchen: sign in with your email — shop found automatically<br>
+      🔑 Forgot password? Tap "Forgot Password?" on the login screen
+    </div>
+    <button class="btn btn-p" onclick="ssBackToLogin()" style="margin-top:14px;">Continue →</button>
   </div>
 </div>
 
@@ -441,11 +493,11 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
   <!-- PERIOD SELECTOR + LENS (same line) -->
   <div class="card" style="padding:12px">
     <div id="v4LensBar" style="display:none;gap:6px;margin-bottom:8px;"></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap">
-      <button class="period-btn active" data-p="daily" onclick="loadDashboardV4('daily',this)">📅 Today</button>
-      <button class="period-btn" data-p="weekly" onclick="loadDashboardV4('weekly',this)">📅 Week</button>
-      <button class="period-btn" data-p="monthly" onclick="loadDashboardV4('monthly',this)">📅 Month</button>
-      <button class="period-btn" data-p="yearly" onclick="loadDashboardV4('yearly',this)">📅 Year</button>
+     <div style="display:flex;gap:4px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch">    
+    <button class="period-btn active" data-p="daily" onclick="loadDashboardV4('daily',this)" style="padding:8px 12px;font-size:12px;white-space:nowrap;">📅 Today</button>
+<button class="period-btn" data-p="weekly" onclick="loadDashboardV4('weekly',this)" style="padding:8px 12px;font-size:12px;white-space:nowrap;">📅 Week</button>
+<button class="period-btn" data-p="monthly" onclick="loadDashboardV4('monthly',this)" style="padding:8px 12px;font-size:12px;white-space:nowrap;">📅 Month</button>
+<button class="period-btn" data-p="yearly" onclick="loadDashboardV4('yearly',this)" style="padding:8px 12px;font-size:12px;white-space:nowrap;">📅 Year</button>
     </div>
   </div>
 
@@ -483,11 +535,11 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
     <div id="v4insights"></div>
   </div>
 
-  <!-- 🏨 HOTEL OCCUPANCY (hotels only) -->
-  <div class="card" id="v4occupancyCard" style="display:none;padding:12px">
-    <div class="card-title" style="font-size:13px">🏨 Room Occupancy (Live)</div>
-    <div id="v4occupancy"></div>
-  </div>
+     <!-- 🏨 HOTEL OCCUPANCY (hotels only) -->
+    <div class="card" id="v4occupancyCard" style="display:none;padding:12px">
+      <div class="card-title" style="font-size:13px">🏨 Room Occupancy (Live)</div>
+      <div id="v4occupancy"></div>
+    </div>
 
   <!-- CHARTS: Sales + Payment side by side -->
   <div style="display:flex;gap:10px;flex-wrap:wrap">
@@ -836,8 +888,7 @@ function v4InitSwitcher() {
   var cur = getShopId();
   sel.innerHTML = shops.map(function(s){ return '<option value="' + s.shop_id + '"' + (s.shop_id === cur ? ' selected' : '') + '>' + (s.name || s.shop_id) + '</option>'; }).join('');
   sel.style.display = 'inline-block';
-}
-async function v4SwitchShop(id) {
+}async function v4SwitchShop(id) {
   if (!id || id === getShopId()) return;
   var s = (window.__v4MyShops || []).find(function(x){ return x.shop_id === id; });
   if (!await confirm('Switch to "' + (s ? s.name : id) + '"?\nThe page reloads with that shop.')) {
@@ -847,8 +898,109 @@ async function v4SwitchShop(id) {
   location.reload();
 }
   function toggleDarkMode(){ document.body.classList.toggle('dark'); localStorage.setItem('darkMode', document.body.classList.contains('dark')?'1':'0'); }
+// ═══ REGISTRATION SYSTEM (built-in — permanent) ═══
+var regShopIdTouched = false, regShopIdAvailable = null, regCheckTimer = null, regStep = 1;
 
-// ── LOGIN / LOGOUT ──
+function ssShowRegisterForm() {
+  document.getElementById('loginScreen').classList.remove('show');
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('registerScreen').classList.add('show');
+  document.getElementById('registerScreen').style.display = 'flex';
+}
+function ssBackToLogin() {
+  document.getElementById('registerScreen').classList.remove('show');
+  document.getElementById('registerScreen').style.display = 'none';
+  document.getElementById('regSuccessScreen').classList.remove('show');
+  document.getElementById('regSuccessScreen').style.display = 'none';
+  document.getElementById('loginScreen').classList.add('show');
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+async function ssForgotPassword() {
+  var email = await prompt('📧 Enter your email to receive a password reset link:');
+  if (!email) return;
+  try {
+    var base = window.location.origin + window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/') + 1);
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: base + 'admin-clean.html' });
+    if (error) throw error;
+    alert('✅ Password reset link sent!\n\nCheck your email (and Spam folder).');
+  } catch(e) { alert('❌ ' + e.message); }
+}
+function regGenerateShopId(name) { return (name || '').toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20); }
+
+  
+  
+
+
+function regTogglePwd(id) {
+  var el = document.getElementById(id);
+  el.type = el.type === 'password' ? 'text' : 'password';
+  var btn = el.parentElement.querySelector('button');
+  if (btn) btn.textContent = el.type === 'password' ? '👁️' : '🙈';
+}
+function regCheckStrength() {
+  var p = document.getElementById('regPass').value;
+  var score = 0;
+  if (p.length >= 6) score++;
+  if (p.length >= 10 || (p.match(/[A-Z]/) && p.match(/[0-9]/))) score++;
+  if (p.match(/[A-Z]/) && p.match(/[0-9]/) && p.match(/[^A-Za-z0-9]/)) score++;
+  var colors = ['#ef4444', '#f59e0b', '#10b981'];
+  var texts = ['Weak — add numbers', 'Good — add CAPS & symbols', 'Strong password! 💪'];
+  for (var i = 1; i <= 3; i++) {
+    document.getElementById('strBar' + i).style.background = (i <= score) ? colors[score - 1] : '#e2e8f0';
+  }
+  document.getElementById('strText').textContent = score > 0 ? texts[score - 1] : 'Use letters + numbers for stronger password';
+  regCheckMatch();
+}
+function regCheckMatch() {
+  var p1 = document.getElementById('regPass').value;
+  var p2 = document.getElementById('regPass2').value;
+  var el = document.getElementById('matchIndicator');
+  if (!p2) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  if (p1 === p2) { el.innerHTML = '✅ Passwords match'; el.style.color = '#10b981'; }
+  else { el.innerHTML = '❌ Passwords do not match'; el.style.color = '#ef4444'; }
+}
+
+
+async function registerAccount() {
+  var email = document.getElementById('regEmail').value.trim();
+  var pass = document.getElementById('regPass').value;
+  var pass2 = document.getElementById('regPass2').value;
+
+  if (!email) { alert('Please enter your email address.'); return; }
+  if (!pass || pass.length < 6) { alert('Password must be at least 6 characters.'); return; }
+  if (pass !== pass2) { alert('Passwords do not match!'); return; }
+
+  var btn = document.querySelector('#registerScreen .btn-p');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating...'; }
+
+  try {
+    // Create AUTH USER only — NO shop yet (type picker comes after login)
+    const { data, error } = await supabaseClient.auth.signUp({ email: email, password: pass });
+
+    if (error) {
+      if ((error.message || '').toLowerCase().indexOf('already') !== -1) {
+        if (btn) { btn.disabled = false; btn.textContent = '🚀 Create My Account'; }
+        alert('📧 This email already has a SmartShop account!\n\nUse the LOGIN screen instead.');
+        ssBackToLogin();
+        return;
+      }
+      throw error;
+    }
+    if (!data || !data.user) {
+      // Some Supabase setups return no user but no error — treat as success
+      // The auth state change will handle the rest
+    }
+    // Success → go back to login screen (they sign in, then get the type picker)
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Create My Account'; }
+    alert('✅ Account created!\n\n📧 ' + email + '\n\nNow sign in with your email and password to set up your shop.');
+    ssBackToLogin();
+    document.getElementById('loginEmail').value = email;
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = '🚀 Create My Account'; }
+    alert('❌ Registration failed: ' + e.message);
+  }
+}// ── LOGIN / LOGOUT ──
 async function adminLogin() {
   var email = document.getElementById('loginEmail').value.trim();
   var pass = document.getElementById('loginPass').value.trim();
@@ -867,25 +1019,189 @@ function adminLogout(){ supabaseClient.auth.signOut(); }
 
 // ── SCREEN HELPER ──
 function showScreen(id){
-  ['loginScreen','loadingScreen','appPinScreen'].forEach(function(s){
-    document.getElementById(s).classList.toggle('show', s === id);
-    document.getElementById(s).style.display = (s === id) ? 'flex' : 'none';
-  });
-  if (id === null) { document.getElementById('mainApp').style.display = 'block'; }
+    ['loginScreen','loadingScreen','appPinScreen'].forEach(function(s){
+        var el = document.getElementById(s);
+        if (el) {
+            el.classList.toggle('show', s === id);
+            el.style.display = (s === id) ? 'flex' : 'none';
+        }
+    });
+    if (id === null) {
+        // Entering the app — hide ALL overlays, show mainApp
+        ['loginScreen','loadingScreen','appPinScreen','ssTypePicker','ssShopPicker','ssTypeFullDialog','v4shUpgDialog'].forEach(function(s){
+            var el = document.getElementById(s);
+            if (el) { el.style.display = 'none'; el.classList.remove('show'); }
+        });
+        document.getElementById('mainApp').style.display = 'block';
+    }
+}
+  
+  // ═══ SHOP TYPE PICKER (checks existing types — 1 per type during trial) ═══
+async function ssShowTypePicker(userEmail) {
+    var loadingScreen = document.getElementById('loadingScreen');
+    var loginScreen = document.getElementById('loginScreen');
+    if (loadingScreen) loadingScreen.style.display = 'none';
+    if (loginScreen) loginScreen.style.display = 'none';
+
+    var old = document.getElementById('ssTypePicker'); if (old) old.remove();
+
+    // 🛡️ Check which types already exist (BY EMAIL — the reliable way)
+    var createdTypes = {};
+    try {
+        const { data: existing } = await supabaseClient.from('shops')
+            .select('business_type').eq('owner_email', userEmail).eq('active', true);
+        (existing || []).forEach(function(s) {
+            if (s.business_type) createdTypes[s.business_type] = true;
+        });
+    } catch(e) {
+        console.warn('Type check failed:', e.message);
+    }
+
+    function typeBtn(type, icon, name, desc) {
+        var already = !!createdTypes[type];
+        return '<button ' + (already ? 'disabled ' : 'onclick="ssCreateTrialShop(\'' + type + '\',this)" ') +
+            'style="background:' + (already ? '#fef2f2' : '#f8fafc') + ';border:2px solid ' + (already ? '#fecaca' : '#e2e8f0') + ';border-radius:14px;padding:14px 6px;cursor:' + (already ? 'not-allowed' : 'pointer') + ';text-align:center;' + (already ? 'opacity:.5;' : '') + '">' +
+            '<span style="font-size:32px;display:block;margin-bottom:6px;">' + icon + '</span>' +
+            '<b style="font-size:13px;color:#1e293b;display:block;">' + name + '</b>' +
+            '<small style="font-size:10px;color:#64748b;display:block;margin-top:2px;">' + desc + '</small>' +
+            '<span style="display:block;margin-top:8px;font-size:10px;font-weight:800;color:' + (already ? '#ef4444' : '#10b981') + ';">' + (already ? '⛔ Already created' : '✓ Create') + '</span>' +
+            '</button>';
+    }
+
+    var m = document.createElement('div');
+    m.id = 'ssTypePicker';
+    m.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e3a8a);z-index:10005;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto;';
+    m.innerHTML = '<div style="background:#fff;border-radius:24px;padding:24px;width:100%;max-width:420px;text-align:center;color:#0f172a;">' +
+        '<div style="font-size:48px;margin-bottom:6px;">🏪</div>' +
+        '<h2 style="margin:0 0 6px;color:#1e3a8a;">Choose Your Shop</h2>' +
+        '<p style="font-size:12px;color:#64748b;margin:0 0 16px;">This account owns several shops. Pick one to enter.</p>' +
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">' +
+        typeBtn('retail', '🛒', 'Retail', 'Simple selling') +
+        typeBtn('cafe', '☕', 'Cafe', 'Kitchen + tables') +
+        typeBtn('hotel', '🏨', 'Hotel', 'Rooms + full service') +
+        '</div>' +
+        '<div style="background:#eff6ff;border-radius:10px;padding:10px;font-size:11px;color:#2563eb;">' +
+        'You can create one of EACH type during trial.<br>Switch between them anytime.' +
+        '</div>' +
+        '<p style="font-size:11px;color:#94a3b8;margin:10px 0 0;">📧 ' + (userEmail || '') + '</p>' +
+        '<button onclick="supabaseClient.auth.signOut()" style="margin-top:10px;background:none;border:none;color:#ef4444;font-size:12px;cursor:pointer;text-decoration:underline;">Logout</button>' +
+        '</div>';
+    document.body.appendChild(m);
 }
 
-// ── SHOP PICKER (owner with several shops) ──
+async function ssCreateTrialShop(bizType, btnEl) {
+    if (btnEl) { btnEl.disabled = true; btnEl.style.opacity = '.6'; }
+    var typeIcon = { retail: '🛒', cafe: '☕', hotel: '🏨' }[bizType];
+    var typeName = { retail: 'Retail', cafe: 'Cafe', hotel: 'Hotel' }[bizType];
+
+    // Get email from AUTH SESSION (reliable)
+    var email = '';
+    try { const { data: { user } } = await supabaseClient.auth.getUser(); if (user) email = user.email; } catch(e) {}
+    if (!email) {
+        if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = '1'; }
+        alert('❌ Could not verify your account. Please sign in again.');
+        return;
+    }
+
+    // 🛡️ HARD CHECK: does this email already have a shop of this type?
+    try {
+        const { data: existing, error: checkErr } = await supabaseClient.from('shops')
+            .select('shop_id, name').eq('owner_email', email).eq('business_type', bizType).eq('active', true);
+        if (checkErr) throw new Error('Check failed: ' + checkErr.message);
+        if (existing && existing.length > 0) {
+            if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = '1'; }
+            ssTrialTypeFull(bizType);
+            return;
+        }
+    } catch(e) {
+        console.warn('Type check error:', e.message);
+        // If check fails, STILL block (better safe than duplicate)
+        if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = '1'; }
+        ssTrialTypeFull(bizType);
+        return;
+    }
+
+    // Ask for shop name
+    var shopName = await prompt(typeIcon + ' Name your ' + typeName + ' shop:');
+    if (!shopName) { if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = '1'; } return; }
+    shopName = shopName.trim();
+    if (!shopName) { if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = '1'; } return; }
+
+    var shopId = shopName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20) || 'shop' + Date.now().toString(36);
+
+    // Check shop_id availability
+    try {
+        const { data: taken } = await supabaseClient.from('shops').select('shop_id').eq('shop_id', shopId).limit(1);
+        if (taken && taken.length > 0) {
+            shopId = shopId + Date.now().toString(36).substring(0, 4);   // auto-suffix
+        }
+    } catch(e) {}
+
+    var trialDays = 30;
+    try {
+        const { data: gs } = await supabaseClient.from('global_settings').select('default_trial_days').eq('id', 'globalConfig').maybeSingle();
+        if (gs && gs.default_trial_days > 0) trialDays = gs.default_trial_days;
+    } catch(e) {}
+
+    if (btnEl) btnEl.innerHTML = '⏳<br><small>Creating...</small>';
+
+    try {
+        await supabaseClient.from('shops').insert([{
+            shop_id: shopId, name: shopName, owner_email: email,
+            plan: 'trial', active: true, business_type: bizType,
+            trial_expires: new Date(Date.now() + trialDays * 86400000).toISOString(),
+            registered_at: new Date().toISOString()
+        }]);
+        await supabaseClient.from('settings').insert([{ shop_id: shopId, name: shopName, currency: 'Br ', shop_type: bizType === 'hotel' ? 'cafe' : bizType }]);
+        try { await supabaseClient.auth.updateUser({ data: { shopId: shopId, shopName: shopName } }); } catch(e) {}
+        localStorage.setItem('shopId', shopId);
+
+        var m = document.getElementById('ssTypePicker'); if (m) m.remove();
+        alert('✅ ' + shopName + ' created!\n\n🔑 Shop ID: ' + shopId + '\n📋 Type: ' + typeName);
+        location.reload();   // ← reload → auth handler picks up the new shop → enters it
+    } catch(e) {
+        if (btnEl) { btnEl.disabled = false; btnEl.style.opacity = '1'; btnEl.innerHTML = typeIcon; }
+        alert('❌ ' + e.message);
+    }
+}
+
+// Same-type limit → Contact Provider
+function ssTrialTypeFull(bizType) {
+    var typeName = { retail: 'Retail', cafe: 'Cafe', hotel: 'Hotel' }[bizType];
+    var old = document.getElementById('ssTypeFullDialog'); if (old) old.remove();
+    var m = document.createElement('div');
+    m.id = 'ssTypeFullDialog';
+    m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10006;display:flex;align-items:center;justify-content:center;padding:16px;';
+    m.innerHTML = '<div style="background:#fff;border-radius:18px;max-width:380px;width:100%;padding:20px;color:#0f172a;text-align:center;">' +
+        '<div style="font-size:40px;margin-bottom:8px">✨</div>' +
+        '<h3 style="margin-bottom:8px;font-size:16px">Trial: 1 ' + typeName + ' Shop</h3>' +
+        '<p style="font-size:13px;color:#64748b;margin-bottom:16px;line-height:1.5;">Trial allows 1 shop per type.<br><br>Want a 2nd ' + typeName + ' shop?<br>Your provider can set this up for you.</p>' +
+        '<button class="btn btn-p" style="margin-bottom:8px;background:#f59e0b" onclick="document.getElementById(\'ssTypeFullDialog\').remove();ssContactProvider()">📞 Contact Provider</button>' +
+        '<button class="btn" style="background:#fff;color:#64748b;border:1px solid #cbd5e1;" onclick="document.getElementById(\'ssTypeFullDialog\').remove()">✖ Close</button>' +
+        '</div>';
+    document.body.appendChild(m);
+    m.addEventListener('click', function(e){ if (e.target === m) m.remove(); });
+}
+
+
 function ssShowShopPicker(shops) {
-  showScreen(null);
-  document.getElementById('mainApp').style.display = 'none';
+  // DON'T call showScreen(null) — it flashes mainApp for a split second
+  var loginScreen = document.getElementById('loginScreen');
+  var loadingScreen = document.getElementById('loadingScreen');
+  var mainApp = document.getElementById('mainApp');
+  if (loadingScreen) loadingScreen.style.display = 'none';
+  if (loginScreen) loginScreen.style.display = 'none';
+  if (mainApp) mainApp.style.display = 'none';
+
+  var old = document.getElementById('ssShopPicker'); if (old) old.remove();
   var m = document.createElement('div');
+  m.id = 'ssShopPicker';
   m.style.cssText = 'position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e3a8a);z-index:6000;display:flex;align-items:center;justify-content:center;padding:20px';
   var html = '<div class="box"><div style="font-size:34px">🏪</div><h1 style="color:#1e293b">Choose Your Shop</h1><p>This account owns several shops.</p>';
-  shops.forEach(function(s){ html += '<button class="btn btn-o" style="margin-bottom:8px;text-align:left" onclick="ssPickShop(\'' + s.shop_id + '\')">' + (s.name || s.shop_id) + '<br><small style="color:#64748b">' + s.shop_id + '</small></button>'; });
+  shops.forEach(function(s){ html += '<button class="btn btn-o" style="margin-bottom:8px;text-align:left" onclick="ssPickShop(\'' + s.shop_id + '\')">' + (s.name || s.shop_id) + '<br><small style="color:#64748b">' + s.shop_id + ' · ' + (s.business_type || '') + '</small></button>'; });
   html += '<button class="btn btn-o" style="color:var(--bad);border-color:var(--bad)" onclick="supabaseClient.auth.signOut()">Logout</button></div>';
   m.innerHTML = html; document.body.appendChild(m);
-}
-function ssPickShop(id){ localStorage.setItem('shopId', id); location.reload(); }
+}function ssPickShop(id){ localStorage.setItem('shopId', id); location.reload(); }
 
 // ── APP PIN (sha256, same pattern as classic) ──
 function verifyAppPin() {
@@ -906,60 +1222,129 @@ async function checkAppPinStatus() {
 
 // ── AUTH FLOW (simplified skeleton: license lockout ports with License tab step) ──
 supabaseClient.auth.onAuthStateChange(async function(event, session) {
-  if (event === 'PASSWORD_RECOVERY') { showScreen('loginScreen'); alert('📧 Recovery link detected. Full recovery UI ports with the Settings step — use classic admin today.'); return; }
+  try {
+    var loadingScreen = document.getElementById('loadingScreen');
+    var loginScreen = document.getElementById('loginScreen');
+    var mainApp = document.getElementById('mainApp');
+    var lockoutScreen = document.getElementById('lockoutScreen');
+    var appPinScreen = document.getElementById('appPinScreen');
 
-  if (session && session.user) {
-       // 1. ALWAYS fetch my owned shops (ownership truth > cache truth)
-    var myShops = [];
-    try {
-      const { data: mine } = await supabaseClient.from('shops').select('shop_id, name, plan, business_type').eq('owner_email', session.user.email).eq('active', true);
-      myShops = mine || [];
-    } catch(e) {}
+    if (loadingScreen) loadingScreen.style.display = 'none';
+    if (mainApp) mainApp.style.display = 'none';
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (lockoutScreen) lockoutScreen.style.display = 'none';
+    if (appPinScreen) appPinScreen.style.display = 'none';
 
-    // 2. Cached shop is valid ONLY if it is MINE
-    var shopId = (session.user.user_metadata && session.user.user_metadata.shopId) || localStorage.getItem('shopId') || '';
-    var cachedOk = shopId && myShops.some(function(s){ return s.shop_id === shopId; });
-
-    // 3. Route: 0 shops → recovery · 1 shop → silent · >1 → picker if cache invalid
-    if (myShops.length === 0) {
-      alert('🛟 No shop found on this account.\nUse the classic admin (admin.html) to register — full recovery ports with the Settings step.');
-      await supabaseClient.auth.signOut(); return;
+    if (event === 'PASSWORD_RECOVERY') {
+        var rm = document.getElementById('newPasswordModal');
+        if (rm) rm.classList.add('active');
+        return;
     }
-    if (myShops.length === 1) { shopId = myShops[0].shop_id; localStorage.setItem('shopId', shopId); }
-    else if (!cachedOk) { window.__v4MyShops = myShops; ssShowShopPicker(myShops); return; }
-    else { window.__v4MyShops = myShops; }   // valid cache → keep; switcher lives in header
 
-    // 4. Shop row → plan engine fuel
-    try { const { data: row } = await supabaseClient.from('shops').select('*').eq('shop_id', shopId).maybeSingle(); window.__currentShopRow = row || null; } catch(e) {}
-        // 4.5 🚀 DB-FIRST LICENSE — restored (was eaten by the auth rewrite).
-    // Truth from DB before the plan engine reads any cache.
-    try {
-        const { data: lic } = await supabaseClient.from('licenses')
-            .select('*').eq('shop_id', shopId)
-            .order('created_at', { ascending: false }).limit(1).maybeSingle();
-        if (lic && (!lic.status || lic.status === 'active') && lic.expiry_date && new Date(lic.expiry_date) > new Date()) {
-            localStorage.setItem('smartshop_license', JSON.stringify({
-                plan: lic.plan || 'basic', startDate: lic.start_date || '',
-                expiryDate: lic.expiry_date || '', shopId: lic.shop_id || shopId,
-                shopName: lic.shop_name || '',
-                maxShops: Number(lic.max_shops) || 1,
-                maxCashiersPerShop: Number(lic.max_cashiers_per_shop) || 2,
-                maxProducts: Number(lic.max_products) || 999999
-            }));
+    if (session && session.user) {
+        var user = session.user;
+        var userEmail = user.email;
+
+        // Fetch ALL my shops (ALWAYS — for picker, switcher, limits)
+        var myShops = [];
+        try {
+            const { data: mine } = await supabaseClient.from('shops')
+                .select('shop_id, name, plan, business_type, trial_expires')
+                .eq('owner_email', userEmail).eq('active', true);
+            myShops = mine || [];
+        } catch(e) {}
+        window.__v4MyShops = myShops;   // ← ALWAYS stored (for switcher + limits)
+
+        // ━━━ Route 1: 0 shops → TYPE PICKER (new account)
+        if (myShops.length === 0) {
+            ssShowTypePicker(userEmail);
+            return;
         }
-    } catch(e) { console.warn('DB-first license skipped:', e.message); }
-    // 5. PIN gate → app
-    showScreen(null); document.getElementById('mainApp').style.display = 'none';
-    checkAppPinStatus();
 
-  
-  } else {
-    document.getElementById('mainApp').style.display = 'none';
-    showScreen('loginScreen');
+        // ━━━ Route 2: figure out which shop to enter
+        var storedShopId = localStorage.getItem('shopId') || '';
+        var storedValid = storedShopId && myShops.some(function(s){ return s.shop_id === storedShopId; });
+
+        var shopId;
+        if (storedValid) {
+            // Previous session's shop is valid → go straight in
+            shopId = storedShopId;
+        } else if (myShops.length === 1) {
+            // Only 1 shop → go straight in
+            shopId = myShops[0].shop_id;
+            localStorage.setItem('shopId', shopId);
+        } else {
+            // 2+ shops + no valid stored shop → show picker
+            ssShowShopPicker(myShops);
+            return;
+        }
+
+        // ━━━ Route 3: Load the shop's FULL row (business_type is the KEY)
+        var shopRow = null;
+        try {
+            const { data: row } = await supabaseClient.from('shops').select('*').eq('shop_id', shopId).maybeSingle();
+            shopRow = row || null;
+        } catch(e) {}
+        window.__currentShopRow = shopRow;   // ← This drives ALL type-aware visibility
+
+        // ━━━ Route 4: DB-FIRST LICENSE (if exists)
+        try {
+            const { data: lic } = await supabaseClient.from('licenses')
+                .select('*').eq('shop_id', shopId)
+                .order('created_at', { ascending: false }).limit(1).maybeSingle();
+            if (lic && (!lic.status || lic.status === 'active') && lic.expiry_date && new Date(lic.expiry_date) > new Date()) {
+                localStorage.setItem('smartshop_license', JSON.stringify({
+                    plan: lic.plan || 'basic', startDate: lic.start_date || '',
+                    expiryDate: lic.expiry_date || '', shopId: lic.shop_id || shopId,
+                    shopName: lic.shop_name || '',
+                    maxShops: Number(lic.max_shops) || 1,
+                    maxCashiersPerShop: Number(lic.max_cashiers_per_shop) || 2,
+                    maxProducts: Number(lic.max_products) || 999999
+                }));
+            }
+        } catch(e) {}
+
+        // ━━━ Route 5: For TRIAL shops — force SS_PLAN to match shop's business type
+        if (shopRow && shopRow.plan === 'trial') {
+            if (typeof SS_PLAN !== 'undefined') {
+                SS_PLAN.businessType = shopRow.business_type || 'retail';
+                SS_PLAN.name = 'Trial';
+            }
+        }
+
+        // ━━━ Route 6: Enter the app
+        showScreen(null);
+        if (mainApp) mainApp.style.display = 'none';
+        if (typeof checkAppPinStatus === 'function') {
+            checkAppPinStatus();
+        } else {
+            if (mainApp) mainApp.style.display = 'block';
+            if (typeof init === 'function') init();
+        }
+
+    } else {
+        // Logged out → show login
+        if (loadingScreen) loadingScreen.style.display = 'none';
+        if (mainApp) mainApp.style.display = 'none';
+        if (lockoutScreen) lockoutScreen.style.display = 'none';
+        if (loginScreen) loginScreen.style.display = 'flex';
+        showScreen('loginScreen');
+        var emailInput = document.getElementById('loginEmail');
+        var passInput = document.getElementById('loginPass');
+        if (emailInput) emailInput.value = '';
+        if (passInput) passInput.value = '';
+    }
+
+  } catch(e) {
+    console.warn('Auth handler:', e.message);
+    try {
+        var ls = document.getElementById('loginScreen');
+        var lscr = document.getElementById('loadingScreen');
+        if (lscr) lscr.style.display = 'none';
+        if (ls) { ls.classList.add('show'); ls.style.display = 'flex'; }
+    } catch(e2) {}
   }
-});
-
-  
+});  
 function v4ToggleCard(titleEl) {
   var body = titleEl.nextElementSibling;
   var arrow = titleEl.querySelector('.arrow');
@@ -968,31 +1353,73 @@ function v4ToggleCard(titleEl) {
 }
 // ── INIT (one init chain — no window.onload fights, ever) ──
 function init() {
-  // 🏪 Show which shop you're entering
-  setTimeout(function() {
-    var shopName = (window.__currentShopRow && window.__currentShopRow.name) || getShopId();
-    var t = document.createElement('div');
-    t.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#1e3a8a;color:#fff;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.3);';
-    t.textContent = '🏪 ' + shopName + ' · 🔑 ' + getShopId();
-    document.body.appendChild(t);
-    setTimeout(function(){ t.style.opacity = '0'; t.style.transition = 'opacity .3s'; setTimeout(function(){ t.remove(); }, 300); }, 2500);
-  }, 500);
+    // 🛡️ HEADER LAW: exactly ONE header — runs FIRST, kills all twins
+    var hh = document.querySelectorAll('#mainApp .header, body > .header');
+    for (var hi = 1; hi < hh.length; hi++) hh[hi].remove();
+    var ss = document.querySelectorAll('#mainApp .sidebar, body > .sidebar');
+    for (var si = 1; si < ss.length; si++) ss[si].remove();
+    var tc = document.querySelectorAll('#mainApp .container, body > .container:not(#tabContainer)');
+    for (var ti = 1; ti < tc.length; ti++) tc[ti].remove();
+
+    document.getElementById('verBadge').textContent = APP_VERSION.split('-')[0];
+    document.getElementById('sideFoot').innerHTML = 'SmartShop Pro ' + APP_VERSION + '<br>Step 1/14 · Skeleton';
+    document.getElementById('langSelect').value = appLang;
+    changeLanguage(appLang);
+    buildSidebar();
+
+    // 🎯 SHOW DASHBOARD IMMEDIATELY (tab 0 = default landing)
+    var tab0 = document.getElementById('tab0');
+    if (tab0) {
+        tab0.style.display = 'block';
+        var stab0 = document.getElementById('stab0');
+        if (stab0) stab0.classList.add('active');
+    }
+
+    // 🔀 Shop switcher — retry until auth data arrives
+    var swTries = 0;
+    var swInterval = setInterval(function() {
+        swTries++;
+        if (window.__v4MyShops && window.__v4MyShops.length >= 2) {
+            clearInterval(swInterval);
+            v4InitSwitcher();
+            var shopTab = document.getElementById('shopSidebarTab');
+            if (shopTab) shopTab.style.display = 'flex';
+        } else if (swTries > 20) {
+            clearInterval(swInterval);
+        }
+    }, 500);
   
-    // 🛡️ HEADER LAW: exactly ONE header — any accidental twin dies now
-  var hh = document.querySelectorAll('#mainApp .header');
-  for (var hi = 1; hi < hh.length; hi++) hh[hi].remove();
-  document.getElementById('verBadge').textContent = APP_VERSION.split('-')[0];
-  document.getElementById('sideFoot').innerHTML = 'SmartShop Pro ' + APP_VERSION + '<br>Step 1/14 · Skeleton';
-  document.getElementById('langSelect').value = appLang;
-  changeLanguage(appLang);
-  buildSidebar();
-  v4InitSwitcher();
-  loadDashboardV4('daily', null).catch(function(e){ console.warn('Dashboard:', e.message); });
-  v4LoadProducts();
-  if (typeof ssLoadPlan === 'function') ssLoadPlan().then(function(){ applyPlanVisibility(); });
-  else applyPlanVisibility();
-  if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
-}
-</script>
+    // 📊 Dashboard — load data after module ready
+    var dashTries = 0;
+    var dashInterval = setInterval(function() {
+        dashTries++;
+        if (typeof loadDashboardV4 === 'function') {
+            clearInterval(dashInterval);
+            loadDashboardV4('daily', null).catch(function(e){ console.warn('Dashboard:', e.message); });
+        } else if (dashTries > 20) {
+            clearInterval(dashInterval);
+        }
+    }, 500);
+
+    v4LoadProducts();
+
+    if (typeof ssLoadPlan === 'function') ssLoadPlan().then(function(){ applyPlanVisibility(); });
+    else applyPlanVisibility();
+
+    // 🎯 TYPE-AWARE TOOLS — hide tools not relevant to this shop's type
+    var bizType = (window.__currentShopRow && window.__currentShopRow.business_type) || 'retail';
+    if (typeof v4lgApplySidebar === 'function') v4lgApplySidebar();
+    if (bizType === 'retail') {
+        [18, 21].forEach(function(n) {
+            var el = document.getElementById('stab' + n);
+            if (el) el.style.display = 'none';
+        });
+    } else if (bizType === 'cafe') {
+        var el21 = document.getElementById('stab21');
+        if (el21) el21.style.display = 'none';
+    }
+
+    if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
+}</script>
 </body>
 </html>
