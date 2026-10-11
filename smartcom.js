@@ -469,9 +469,7 @@ function scBubble(msg) {
     fwd.onclick = function(e) {
         e.stopPropagation();
         var text = (msg.message || '') + (msg.media_type === 'photo' ? ' [photo]' : '') + (msg.media_type === 'voice' ? ' [voice message]' : '');
-        var phone = prompt('Forward to which WhatsApp number?', '');
-        if (!phone) return;
-        window.open('https://wa.me/' + String(phone).replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent('📤 From SmartShop:\n' + text), '_blank');
+        ssShareTo('📤 From SmartShop:\n' + text, { title: '📤 Forward Message' });
     };
     b.onmouseenter = function() { del.style.display = 'flex'; fwd.style.display = 'flex'; };
     b.onmouseleave = function() { del.style.display = 'none'; fwd.style.display = 'none'; };
