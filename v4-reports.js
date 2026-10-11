@@ -243,11 +243,7 @@ function v4rePnLText() {
     (d.taxTotal > 0 ? '\nTax payable: ' + fmtMoney(d.taxTotal) : '') + '\n\n— SmartShop Pro';
 }
 function v4rePnLWA() {
-  var phone = prompt('Send P&L to which WhatsApp number?\n(Leave empty to copy)', '');
-  if (phone === null) return;
-  phone = String(phone).replace(/[^0-9]/g, '');
-  if (phone) window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(v4rePnLText()), '_blank');
-  else if (navigator.clipboard) navigator.clipboard.writeText(v4rePnLText()).then(function(){ alert('📋 P&L copied!'); });
+  ssShareTo(v4rePnLText(), { title: '📈 P&L Statement' });
 }
 function v4rePnLPrint() {
   var w = window.open('', '_blank', 'width=420,height=650');
@@ -319,11 +315,7 @@ function v4reZText() {
     '📱 Mobile: ' + fmtMoney(d.mobile) + '\n📝 Credit: ' + fmtMoney(d.credit) + '\n\n— SmartShop Pro';
 }
 function v4reZWA() {
-  var phone = prompt('Send Z-Report to which number?\n(Leave empty to copy)', '');
-  if (phone === null) return;
-  phone = String(phone).replace(/[^0-9]/g, '');
-  if (phone) window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(v4reZText()), '_blank');
-  else if (navigator.clipboard) navigator.clipboard.writeText(v4reZText()).then(function(){ alert('📋 Z-Report copied!'); });
+  ssShareTo(v4reZText(), { title: '🧾 Z-Report' });
 }
 function v4reZPrint() {
   var w = window.open('', '_blank', 'width=420,height=650');
@@ -389,11 +381,7 @@ function v4reTaxText() {
     (isTOT ? 'No VAT collected (TOT shop)' : d.taxName + ' collected: ' + fmtMoney(d.taxCollected) + ' — PAYABLE') + '\n\n— SmartShop Pro';
 }
 function v4reTaxWA() {
-  var phone = prompt('Send tax report to which number?\n(Leave empty to copy)', '');
-  if (phone === null) return;
-  phone = String(phone).replace(/[^0-9]/g, '');
-  if (phone) window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(v4reTaxText()), '_blank');
-  else if (navigator.clipboard) navigator.clipboard.writeText(v4reTaxText()).then(function(){ alert('📋 Copied!'); });
+  ssShareTo(v4reTaxText(), { title: '🏛️ Tax Report' });
 }
 function v4reTaxPrint() {
   var w = window.open('', '_blank', 'width=420,height=650');
@@ -485,13 +473,8 @@ async function v4reMenuEng() {
 function v4reMenuEngWA() {
   var d = window._v4reMenuEng || {};
   var msg = '🍕 MENU ENGINEERING — ' + v4rePeriodLabel() + '\n\n⭐ Stars: ' + (d.stars||0) + ' (keep!)\n🐴 Plowhorses: ' + (d.plowhorses||0) + ' (raise price)\n🧩 Puzzles: ' + (d.puzzles||0) + ' (promote)\n🐶 Dogs: ' + (d.dogs||0) + ' (remove)\n\n— SmartShop Pro';
-  var phone = prompt('Send to which number?\n(Leave empty to copy)', '');
-  if (phone === null) return;
-  phone = String(phone).replace(/[^0-9]/g, '');
-  if (phone) window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
-  else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(function(){ alert('📋 Copied!'); });
+  ssShareTo(msg, { title: '🍕 Menu Engineering' });
 }
-
 // ═══ CUSTOMER CRM (bounded) ═══
 async function v4reCRM() {
   var body = document.getElementById('v4reToolBody');
@@ -677,11 +660,7 @@ function v4reERCAText() {
     'Sales: ' + fmtMoney(rep.totalSales) + '\nVAT: ' + fmtMoney(rep.totalVat) + '\n\n— SmartShop Pro';
 }
 function v4reERCAWA() {
-  var phone = prompt('Send ERCA report to which number?\n(Leave empty to copy)', '');
-  if (phone === null) return;
-  phone = String(phone).replace(/[^0-9]/g, '');
-  if (phone) window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(v4reERCAText()), '_blank');
-  else if (navigator.clipboard) navigator.clipboard.writeText(v4reERCAText()).then(function(){ alert('📋 Copied!'); });
+  ssShareTo(v4reERCAText(), { title: '🏛️ ERCA Report' });
 }
 function v4reERCAPrint() {
   var w = window.open('', '_blank', 'width=420,height=650');
