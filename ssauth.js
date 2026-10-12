@@ -39,9 +39,10 @@ async function ssVerifyStaffPin(shopId, employeeId, pin){
 async function ssSetPin(employeeId, newPin){
     var salt = ssRandomSalt();
     var hash = await ssHashPin(String(newPin), salt);
-    const { error } = await supabaseClient.from('employees')
-        .update({ hashed_password: hash, pin_salt: salt, failed_attempts: 0, lock_until: null })
-        .eq('firebase_id', employeeId);
+    var isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(employeeId));
+    var q = supabaseClient.from('employees')
+        .update({ hashed_password: hash, pin_salt: salt, failed_attempts: 0, lock_until: null });
+    const { error } = isUuid ? await q.eq('id', employeeId) : await q.eq('firebase_id', employeeId);
     return !error;
 }
 
