@@ -326,6 +326,9 @@ function scSend(p) {
 function scBubble(msg) {
     var container = scContainer();
     if (!container) return;
+    // 🛡️ Round 15: DOM dedupe — a message already on screen never renders twice
+    // (own realtime echo, double events, multi-device same-name — all healed)
+    if (msg.id && document.getElementById('scmsg_' + msg.id)) return;
 
     var isMe = (msg.sender_id && String(msg.sender_id) === String(SC.id)) ||
                (msg.sender_name === SC.name) ||
@@ -348,6 +351,7 @@ function scBubble(msg) {
 
     var b = document.createElement('div');
     b.className = 'chat-bubble ' + (isMe ? 'sent' : 'received');
+    if (msg.id) b.id = 'scmsg_' + msg.id;
     b.style.position = 'relative';
     b.style.maxWidth = '85%';
     var ts = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
@@ -533,7 +537,6 @@ function scRerender() {
 // ================================================================
 // 📞 PART 7 — LIVE CALLS (WebRTC + mute + speaker + timer)
 // ================================================================
-let __scCallChannel = null;
 let __scIceBuffer = [];
 let __scRingStop = false;
 let __scCallTimer = null;
@@ -541,9 +544,10 @@ let __scRingbackInterval = null;
 let __scCallDurTimer = null;
 
 function scInitCallChannel() {
-    if (__scCallChannel) return;
-    __scCallChannel = supabaseClient.channel('calls-' + SC.shop);
-    __scCallChannel
+    // 🛡️ Round 15: ONE home, guarded — double channels = double rings, never again
+    if (window.__scCallChannel) return;
+    window.__scCallChannel = supabaseClient.channel('calls-' + SC.shop);
+    window.__scCallChannel
         .on('broadcast', { event: 'sc-signal' }, (msg) => scHandleSignal(msg.payload))
         .subscribe();
 }
@@ -578,9 +582,9 @@ async function scHandleSignal(s) {
 }
 
 async function scSig(toId, type, payload) {
-    if (!__scCallChannel) return;
+    if (!window.__scCallChannel) return;
     try {
-        await __scCallChannel.send({
+        await window.__scCallChannel.send({
             type: 'broadcast', event: 'sc-signal',
             payload: { shop_id: SC.shop, from_id: SC.id, from_name: SC.name, to_id: toId, type: type, data: payload }
         });
@@ -1088,8 +1092,6 @@ async function scBuildV4Recipients() {
     } catch(e) {}
 }
 function scQuickSend(text) {
-    var input = document.getElementById('scText');
-    if (input) input.value = text;
     scSend({ message: text, media_type: null, media_data: null, media_duration: null });
 }
 function scToggleSound() {
@@ -1100,6 +1102,21 @@ function scToggleSound() {
     // also toggle v4cmSound if present
     var el2 = document.getElementById('v4cmSound');
     if (el2) el2.textContent = cur ? '🔇' : '🔊';
+}
+
+// ── Round 15: unread badge (the promised feature, finally alive) ──
+function scUpdateBadge() {
+    var el = document.getElementById('stab19');
+    if (!el) return;
+    var b = document.getElementById('scUnreadBadge');
+    if (!b) {
+        b = document.createElement('span');
+        b.id = 'scUnreadBadge';
+        b.style.cssText = 'background:#ef4444;color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;margin-left:auto;flex-shrink:0;';
+        el.appendChild(b);
+    }
+    if (SC.unread > 0) { b.textContent = SC.unread > 99 ? '99+' : SC.unread; b.style.display = 'inline-flex'; }
+    else { b.style.display = 'none'; }
 }
 
 // ================================================================
@@ -1120,7 +1137,10 @@ function scBoot() {
     scPresence();
     window.__scIceBuffer = [];
 
-    var chatWasOpen = false;
+    // 🛡️ Round 15: SEPARATE flags for v4 and legacy — the shared flag was the
+    // engine of the "wipes messages and dropdowns" rebuild loop
+    var chatWasOpen = false;      // legacy (POS / Kitchen / Hotel / v3)
+    var v4ChatWasOpen = false;    // v4 admin intercom
 
     setInterval(function() {
         try {
@@ -1130,16 +1150,18 @@ function scBoot() {
                 scBuildV4Tab();
                 var v4c = document.getElementById('scChatMessages');
                 var v4open = v4c && v4c.offsetParent !== null;
-                if (v4open && !chatWasOpen) { chatWasOpen = true; scRerender(); scBuildBar(); }
-                else if (!v4open) chatWasOpen = false;
+                if (v4open && !v4ChatWasOpen) { v4ChatWasOpen = true; SC.unread = 0; scUpdateBadge(); scRerender(); scBuildBar(); }
+                else if (!v4open) v4ChatWasOpen = false;
             }
-            // legacy apps: attach to existing chat areas
-            var area = scInputArea();
-            var c = scContainer();
-            var open = c && c.offsetParent !== null;
-            if (area && area.offsetParent !== null) scBuildBar();
-            if (open && !chatWasOpen) { chatWasOpen = true; scRerender(); }
-            else if (!open) chatWasOpen = false;
+            // legacy apps only (never the v4 admin — its branch is above)
+            if (!scIsV4()) {
+                var area = scInputArea();
+                var c = scContainer();
+                var open = c && c.offsetParent !== null;
+                if (area && area.offsetParent !== null) scBuildBar();
+                if (open && !chatWasOpen) { chatWasOpen = true; SC.unread = 0; scUpdateBadge(); scRerender(); }
+                else if (!open) chatWasOpen = false;
+            }
             // typing ping
             var ti = document.getElementById('scText');
             if (ti && !ti.getAttribute('data-sc-typing')) {
@@ -1149,26 +1171,22 @@ function scBoot() {
         } catch(e) {}
     }, 1500);
 
-    // call channel
-    window.__scCallChannel = supabaseClient.channel('calls-' + SC.shop);
-    window.__scCallChannel
-        .on('broadcast', { event: 'sc-signal' }, function(msg) {
-            scHandleSignal(msg.payload);
-        })
-        .subscribe();
+    // call channel (Round 15: one home — scInitCallChannel guards duplicates)
+    scInitCallChannel();
 
     // message listener — sound + unread on new messages
     supabaseClient.channel('sc-msgs-' + SC.shop)
                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'shop_id=eq.' + SC.shop },
             function(payload) {
                 var msg = payload.new;
-                // skip my own — already rendered instantly by scSend
-                if (msg.sender_name === SC.name) return;
                 scNotifySound();
                 try { if (navigator.vibrate) navigator.vibrate(100); } catch(e) {}
-                // render if chat open
+                // Round 15: no more name-skip hack — the scmsg_ DOM guard dedupes.
+                // Chat closed → unread counter grows.
+                var fromMe = (String(msg.sender_id) === String(SC.id)) && (msg.sender_name === SC.name);
                 var c = scContainer();
                 if (c && c.offsetParent !== null) scBubble(msg);
+                else if (!fromMe) { SC.unread++; scUpdateBadge(); }
             })
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: 'shop_id=eq.' + SC.shop },
             function(payload) {
