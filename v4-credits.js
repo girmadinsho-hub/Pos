@@ -13,8 +13,7 @@ async function v4crLoad(force) {
   if (v4cr._cache && !force) return v4cr._cache;
   try {
     const { data, error } = await supabaseClient.from('sales')
-      .select('id, time, total, customer_name, customer_phone, paid_at, invoice_no, cashier_name')
-      .eq('shop_id', getShopId())
+      .select('id, time, total, customer_name, customer_phone, paid_at, invoice_no, cashier_name, credit_hidden')      .eq('shop_id', getShopId())
       .eq('voided', false)
       .eq('payment_method', 'credit')
       .order('time', { ascending: false })
@@ -23,8 +22,9 @@ async function v4crLoad(force) {
     v4cr._cache = (data || []).map(function(s){
       return { id:s.id, time:s.time, total:Number(s.total||0),
         customerName:s.customer_name || 'Unknown', customerPhone:s.customer_phone || '',
-        paidAt:s.paid_at || null, invoiceNo:s.invoice_no || '', cashierName:s.cashier_name || '' };
-    });
+        paidAt:s.paid_at || null, invoiceNo:s.invoice_no || '', cashierName:s.cashier_name || '',
+        hidden: !!s.credit_hidden };
+    }).filter(function(s){ return !s.hidden; });
   } catch(e) {
     console.warn('Credits load:', e.message);
     v4cr._cache = [];
@@ -170,7 +170,7 @@ function v4crCustomersHTML() {
       '</div>' +
       '<div style="text-align:right">' +
       '<b style="color:' + col + ';font-size:16px">' + fmtMoney(c.total) + '</b><br>' +
-      (c.phone ? '<a href="https://wa.me/' + c.phone.replace(/[^0-9]/g,'') + '?text=' + encodeURIComponent('Hello ' + c.name + ', friendly reminder: your credit balance is ' + fmtMoney(c.total) + '. Thank you! — ' + shop) + '" target="_blank" style="background:#25D366;color:#fff;padding:6px 12px;border-radius:8px;text-decoration:none;font-size:11px;font-weight:800">📤 Remind</a>' : '') +
+      (c.phone ? '<a href="https://wa.me/' + ssWaNum(c.phone) + '?text=' + encodeURIComponent('Hello ' + c.name + ', friendly reminder: your credit balance is ' + fmtMoney(c.total) + '. Thank you! — ' + shop) + '" target="_blank" style="background:#25D366;color:#fff;padding:6px 12px;border-radius:8px;text-decoration:none;font-size:11px;font-weight:800">📤 Remind</a>' : '') +
       '</div></div></div>';
   });
   return html;
@@ -219,7 +219,7 @@ async function v4crRemindAll() {
   custs.forEach(function(c, i){
     var msg = 'Hello ' + c.name + ', friendly reminder: your credit balance is ' + fmtMoney(c.total) + '. Thank you! — ' + shop;
     setTimeout(function(){
-      window.open('https://wa.me/' + c.phone.replace(/[^0-9]/g,'') + '?text=' + encodeURIComponent(msg), '_blank');
+      window.open('https://wa.me/' + ssWaNum(c.phone) + '?text=' + encodeURIComponent(msg), '_blank');
     }, i * 1200);
   });
 }
@@ -276,8 +276,9 @@ function v4crTable(rows) {
       { title:'Date', field:'time', width:'100px', render:function(i,h){ return h?formatDate(i.time):i.time; } },
       { title:'Actions', width:'165px', render:function(i,h){
           if (!h) return i.paidAt ? 'delete' : 'settle,edit,delete';
-          if (i.paidAt) {
-            return '<button class="btn-mini delete" onclick="v4crDelete(\'' + i.id + '\')">🗑️ Remove</button>';
+                    if (i.paidAt) {
+            return '<button class="btn-mini" style="background:#f59e0b;color:#fff" title="Undo — back to unpaid" onclick="v4crUnsettle(\'' + i.id + '\')">↩️</button> ' +
+                   '<button class="btn-mini delete" onclick="v4crDelete(\'' + i.id + '\')">🗑️ Remove</button>';
           }
           return '<button class="btn-mini" style="background:#10b981;color:#fff" onclick="v4crSettle(\'' + i.id + '\')">💰 Settle</button> ' +
                  '<button class="btn-mini edit" onclick="v4crEdit(\'' + i.id + '\')">✏️</button> ' +
@@ -342,12 +343,12 @@ async function v4crDelete(id) {
   var c = v4cr.data.find(function(x){ return x.id === id; });
   if (!c) return;
   if (!await confirm('Remove this credit record from the list?\n\n' + c.customerName + ' — ' + fmtMoney(c.total) + (c.paidAt ? ' (✅ paid)' : '') +
-      '\n\nThe sale stays in your Sales records as income. Stock is not changed.')) return;
+      '\n\nThe sale stays in your Sales records as income.\nNothing else changes — this only cleans your Credits list.')) return;
   try {
-    const { error } = await supabaseClient.from('sales').update({ paid_at: new Date().toISOString() }).eq('id', id);
+    const { error } = await supabaseClient.from('sales').update({ credit_hidden: true }).eq('id', id);
     if (error) throw error;
     v4crRefresh();
-    alert('✅ Record removed from the list.');
+    alert('✅ Record removed from the list. (Collected totals unchanged.)');
   } catch(e) { alert('❌ ' + e.message); }
 }
 
