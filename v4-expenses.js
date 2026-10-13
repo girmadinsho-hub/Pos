@@ -97,8 +97,7 @@ var V4EX_FREQ = { daily:'📅 Daily', weekly:'📅 Weekly', monthly:'📆 Monthl
 function v4exRecurGet() {
   try { return JSON.parse(localStorage.getItem('v4exRecur_' + getShopId()) || '[]'); } catch(e) { return []; }
 }
-function v4exRecurSet(list) { localStorage.setItem('v4exRecur_' + getShopId(), JSON.stringify(list)); }
-function v4exNextDate(dateStr, freq) {
+function v4exRecurSet(list) { localStorage.setItem('v4exRecur_' + getShopId(), JSON.stringify(list)); ssKVSet('ex_recur', JSON.stringify(list)); }function v4exNextDate(dateStr, freq) {
   var d = new Date(dateStr + 'T12:00:00');
   if (isNaN(d.getTime())) return dateStr;
   if (freq === 'daily')   d.setDate(d.getDate() + 1);
@@ -734,7 +733,12 @@ function v4exRender() {
 }
 
 // ── tab loader ──
+// ── Round 14: budget + bills truth pull (DB → cache, one-time migrate up) ──
+async function v4exSettingsPull() {
+  await ssKVPull('ex_budget', 'v4exBudget_' + getShopId());
+  await ssKVPull('ex_recur', 'v4exRecur_' + getShopId());
+}
 V4_TAB_LOADERS[7] = function() {
   v4exEnsureUI();
-  v4exLoad().then(v4exRender);
+  v4exSettingsPull().then(function(){ return v4exLoad(); }).then(v4exRender);
 };
