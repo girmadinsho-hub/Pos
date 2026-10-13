@@ -632,19 +632,21 @@ async function v4seSystemLock() {
 }
 
 async function v4seResetShop() {
-  var email = await prompt('⚠️ DELETE ALL DATA PERMANENTLY.\n\nThis removes products, sales, staff, expenses — EVERYTHING.\n\nEnter your email to confirm:');
-  if (!email) return;
+  var email = (await prompt('⚠️ DELETE ALL DATA PERMANENTLY.\n\nThis removes products, sales, staff, expenses, hotel records — EVERYTHING.\n(Fiscal receipts are kept for tax audit.)\n\nEnter YOUR account email to confirm:')) || '';
+  email = email.trim().toLowerCase();
+  var myEmail = '';
+  try { const { data: { user } } = await supabaseClient.auth.getUser(); if (user) myEmail = (user.email || '').toLowerCase(); } catch(e) {}
+  if (!email || !myEmail || email !== myEmail) { alert('❌ Email does not match this account. Reset cancelled.'); return; }
   if (!await confirm('🚨 FINAL WARNING: This CANNOT be undone.')) return;
   try {
-    var cols = ['products','sales','losses','expenses','employees','suppliers','purchase_orders','loyalty','loans','bank_accounts','bank_transactions','notes','orders','recipes','salary_ledger','stock_movements','timecards','chat_messages'];
+    var cols = ['products','sales','losses','expenses','employees','suppliers','purchase_orders','loyalty','loans','bank_accounts','bank_transactions','notes','orders','recipes','salary_ledger','stock_movements','timecards','chat_messages','devices','rooms','guest_stays','folio_charges','hotel_alerts'];
     for (var i = 0; i < cols.length; i++) {
       await supabaseClient.from(cols[i]).delete().eq('shop_id', getShopId());
     }
-    alert('Shop reset complete.');
+    alert('Shop reset complete. (Settings, license and fiscal receipts preserved.)');
     location.reload();
   } catch(e) { alert('Error: ' + e.message); }
 }
-
 function v4seCopyShopId() {
   var sid = getShopId();
   if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -803,15 +805,10 @@ function v4seVaultRender() {
   el.innerHTML = html;
 }
 async function v4seRemoveLicense() {
-  var reason = await prompt('🗑️ Remove Licence & switch to free plan?\n\nWhy are you removing it?');
-  if (reason === null) return;
-  if (!await confirm('⚠️ You will lose: unlimited products, multiple cashiers, enterprise features.\n\nYour data will NOT be deleted.')) return;
-  localStorage.removeItem('smartshop_license');
-  alert('✅ Licence removed. You are on the free Starter plan.');
-  await v4seLoadLicense();
-  location.reload();
+  var ok = await confirm('🗑️ Move to the Free plan?\n\nFree plan: full menus, soft limits — 15 products · 1 cashier.\nYour data is NOT deleted.\n\nYour provider completes the switch in one minute — the licence stays active on other devices until then.');
+  if (!ok) return;
+  ssContactProvider();
 }
-
 
 // ── tab loaders ──
 V4_TAB_LOADERS[13] = function() {
