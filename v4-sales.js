@@ -257,71 +257,85 @@ function v4MoreItem(){ v4S.ipage++; v4RenderItemDetail(); }function v4ItemView(v
   v4RenderItemDetail();
 }
 function v4MoreItem(){ v4S.ipage++; v4RenderItemDetail(); }
-// ── CASHIER PERFORMANCE (server, split-aware) ──
+// ── period helper (one home: this file — Round 10 crash fix) ──
+function v4PeriodStart(p) {
+  var now = new Date();
+  if (p === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (p === 'week') {
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var day = d.getDay();
+    var diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.getFullYear(), d.getMonth(), diff);
+  }
+  if (p === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
+  if (p === 'year') return new Date(now.getFullYear(), 0, 1);
+  return new Date(0);
+}
 async function v4CashierData() {
-  // 🚀 BOUNDED: server-paginated batches (max 600 sales), aggregated on phone
   var start = v4PeriodStart(v4S.cperiod);
-  var map = {};
   var from = start.toISOString();
-  var PAGE = 200, guard = 0;
-  while (guard < 3) {   // 3 × 200 = max 600 rows — hard ceiling, phone-safe
+  var map = {};
+  var PAGE = 200, guard = 0, loaded = 0;
+  while (guard < 10) {   // 10 × 200 = 2000 sales ceiling — speed law
     guard++;
-    var q = supabaseClient.from('sales')
-      .select('cashier_name, total, payment_method, payments')
+    var res = await supabaseClient.from('sales')
+      .select('cashier_name, total, payment_method, payments, time')
       .eq('shop_id', getShopId()).eq('voided', false)
       .gte('time', from).order('time', { ascending: false })
       .range(guard * PAGE - PAGE, guard * PAGE - 1);
-    var res = await q;
     if (res.error) break;
-    (res.data || []).forEach(function(s) {
+    var rows = res.data || [];
+    rows.forEach(function(s) {
       var name = s.cashier_name || 'Unknown';
-      if (!map[name]) map[name] = { name:name, cash:0, card:0, mobile:0, credit:0, total:0 };
+      if (!map[name]) map[name] = { name:name, cash:0, card:0, mobile:0, credit:0, total:0, count:0, hours:new Array(24).fill(0), first:null, last:null };
+      var c = map[name];
       if (s.payment_method === 'split' && Array.isArray(s.payments)) {
-        s.payments.forEach(function(p) { var m = p.method || 'cash'; if (map[name][m] !== undefined) map[name][m] += Number(p.amount || 0); });
-      } else { var m2 = s.payment_method || 'cash'; if (map[name][m2] !== undefined) map[name][m2] += Number(s.total || 0); }
-      map[name].total += Number(s.total || 0);
+        s.payments.forEach(function(p) { var m = p.method || 'cash'; if (c[m] !== undefined) c[m] += Number(p.amount || 0); });
+      } else { var m2 = s.payment_method || 'cash'; if (c[m2] !== undefined) c[m2] += Number(s.total || 0); }
+      c.total += Number(s.total || 0);
+      c.count++;
+      c.hours[new Date(s.time).getHours()]++;
+      if (!c.first || s.time < c.first) c.first = s.time;
+      if (!c.last || s.time > c.last) c.last = s.time;
     });
-    if (!res.data || res.data.length < PAGE) break;   // period exhausted
+    loaded += rows.length;
+    if (rows.length < PAGE) break;
   }
+  window._v4CashN = loaded;
   return Object.values(map).sort(function(a, b){ return b.total - a.total; });
 }
 
 
-
 // ── TOP PRODUCTS (server) ──
 async function v4TopData() {
-  // 🚀 SERVER-SIDE: built from daily summary buckets (tiny download, any shop size)
-  var all = v4S.tperiod === 'all' ? await v4EnsureDaily() : null;
-  var rows;
-  if (all) rows = all;
-  else {
-    var start = v4PeriodStart(v4S.tperiod);
-    rows = await ssFetchDailySummary(start, null);
-  }
-  // buckets don't carry items → derive top items from the paginated detailed cache
-  // (which is server-paginated 50-at-a-time — bounded download), topped up server-side
-  if (!SS_PERF.detailedCache.length) { try { await ssFetchDetailedPage(false); } catch(e) {} }
-  var map = {};
-  SS_PERF.detailedCache.forEach(function(s) {
-    (s.items || []).forEach(function(i) {
-      if (!map[i.name]) map[i.name] = { name:i.name, qty:0, revenue:0 };
-      map[i.name].qty += i.qty || 0;
-      map[i.name].revenue += (i.price || 0) * (i.qty || 0);
-    });
-  });
-  // Load up to 10 pages (500 sales) for the ranking — bounded, then rank
-  var guard = 0;
-  while (SS_PERF.detailedHasMore && guard < 9) { guard++; try { await ssFetchDetailedPage(true); } catch(e) { break; }
-    SS_PERF.detailedCache.slice(-50).forEach(function(s) {
+  // 🎯 Round 10 truth fix: rank from THIS period's own sales (bounded 2000),
+  // not the recent-sales cache — "Year" now really means the year.
+  var start = v4PeriodStart(v4S.tperiod);
+  var map = {}, loaded = 0;
+  var PAGE = 200, guard = 0;
+  while (guard < 10) {
+    guard++;
+    var res = await supabaseClient.from('sales')
+      .select('items, total')
+      .eq('shop_id', getShopId()).eq('voided', false)
+      .gte('time', start.toISOString()).order('time', { ascending: false })
+      .range(guard * PAGE - PAGE, guard * PAGE - 1);
+    if (res.error) break;
+    var rows = res.data || [];
+    rows.forEach(function(s) {
       (s.items || []).forEach(function(i) {
         if (!map[i.name]) map[i.name] = { name:i.name, qty:0, revenue:0 };
         map[i.name].qty += i.qty || 0;
         map[i.name].revenue += (i.price || 0) * (i.qty || 0);
       });
     });
+    loaded += rows.length;
+    if (rows.length < PAGE) break;
   }
+  window._v4TopN = loaded;
   return Object.values(map).sort(function(a, b){ return b.revenue - a.revenue; });
 }
+
 function v4MoreTop(){
   v4S.tpage++;
   v4TopData().then(function(d){
@@ -330,32 +344,22 @@ function v4MoreTop(){
     else v4PagGrid('v4topGrid', mapped, 'tpage', 12, 'v4MoreTop');
   });
 }
-async function v4RenderTop() {
-  var data = await v4TopData();
-  var mapped = data.map(function(p){ return { label:sanitize(p.name), detail:'Sold: ' + p.qty, right:fmtMoney(p.revenue) }; });
-  var ex = document.getElementById('v4topExcel'), li = document.getElementById('v4topList'), gr = document.getElementById('v4topGrid');
-  if (!ex) return;
-  ex.style.display = v4S.tview === 'excel' ? 'block' : 'none';
-  li.style.display = v4S.tview === 'list' ? 'block' : 'none';
-  gr.style.display = v4S.tview === 'grid' ? 'grid' : 'none';
-  if (v4S.tview === 'excel') {
-    var alive = ex.querySelector('.modern-sheet-table');
-    if (!window.v4topTable || !alive) {
-      ex.innerHTML = '';
-      window.v4topTable = new ModernSheet('v4topExcel', { data:data, columns:[
-        { title:'#', width:'36px', render:function(i,h,x){ return x+1; } },
-        { title:'Product', field:'name', width:'150px', render:function(i,h){ return h?sanitize(i.name):i.name; } },
-        { title:'Qty Sold', field:'qty', align:'center' },
-        { title:'Revenue', field:'revenue', align:'right', render:function(i,h){ return h?fmtMoney(i.revenue):i.revenue; }, total:true, totalValue:function(i){ return i.revenue; }, totalFormat:function(s){ return fmtMoney(s); } }
-      ], emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true });
-    } else window.v4topTable.setData(data);
-  } else if (v4S.tview === 'list') { v4S.tpage = 1; v4PagList('v4topList', mapped, 'tpage', 20, 'v4MoreTop'); }
-  else { v4S.tpage = 1; v4PagGrid('v4topGrid', mapped, 'tpage', 12, 'v4MoreTop'); }
-}
 
 async function v4RenderCashier() {
   var data = await v4CashierData();
-  var mapped = data.map(function(c){ return { label:c.name, detail:'Cash ' + fmtMoney(c.cash) + ' · Card ' + fmtMoney(c.card) + ' · Mobile ' + fmtMoney(c.mobile) + ' · Credit ' + fmtMoney(c.credit), right:fmtMoney(c.total) }; });
+  window._v4CashData = data;
+  var periodLbl = { all:'All Time', today:'Today', week:'This Week', month:'This Month', year:'This Year' }[v4S.cperiod] || 'This Month';
+  // toolbar: honest coverage + share (Round 10 bonus)
+  var tb = document.getElementById('v4cashTools');
+  if (!tb && document.getElementById('v4cashExcel')) {
+    tb = document.createElement('div'); tb.id = 'v4cashTools';
+    document.getElementById('v4cashExcel').parentNode.insertBefore(tb, document.getElementById('v4cashExcel'));
+  }
+  if (tb) tb.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">' +
+    '<small style="font-size:11px;color:#64748b">👥 ' + data.length + ' cashier(s) · ' + periodLbl + ' · based on ' + (window._v4CashN||0) + ' sales</small>' +
+    '<button class="v4-chip" onclick="v4CashWA()">📤 Share</button></div>';
+  var mapped = data.map(function(c){ return { label:c.name, detail:'Cash ' + fmtMoney(c.cash) + ' · Card ' + fmtMoney(c.card) + ' · Mobile ' + fmtMoney(c.mobile) + ' · Credit ' + fmtMoney(c.credit) + ' · ' + c.count + ' sales', right:fmtMoney(c.total) }; });
   var ex = document.getElementById('v4cashExcel'), li = document.getElementById('v4cashList'), gr = document.getElementById('v4cashGrid');
   if (!ex) return;
   ex.style.display = v4S.cview === 'excel' ? 'block' : 'none';
@@ -367,18 +371,65 @@ async function v4RenderCashier() {
       ex.innerHTML = '';
       window.v4cashTable = new ModernSheet('v4cashExcel', { data:data, columns:[
         { title:'#', width:'36px', render:function(i,h,x){ return x+1; } },
-        { title:'Cashier', field:'name', width:'110px' },
+        { title:'Cashier', field:'name', width:'110px', render:function(i,h){ return h?'<b>'+sanitize(i.name)+'</b>':i.name; } },
         { title:'💵 Cash', width:'84px', align:'right', render:function(i,h){ return h?fmtMoney(i.cash):i.cash; } },
         { title:'💳 Card', width:'84px', align:'right', render:function(i,h){ return h?fmtMoney(i.card):i.card; } },
         { title:'📱 Mobile', width:'84px', align:'right', render:function(i,h){ return h?fmtMoney(i.mobile):i.mobile; } },
         { title:'📝 Credit', width:'84px', align:'right', render:function(i,h){ return h?fmtMoney(i.credit):i.credit; } },
-        { title:'Total', width:'92px', align:'right', render:function(i,h){ return h?'<b>'+fmtMoney(i.total)+'</b>':i.total; }, total:true, totalValue:function(i){ return i.total; }, totalFormat:function(s){ return fmtMoney(s); } }
+        { title:'Total', width:'92px', align:'right', render:function(i,h){ return h?'<b>'+fmtMoney(i.total)+'</b>':i.total; }, total:true, totalValue:function(i){ return i.total; }, totalFormat:function(s){ return fmtMoney(s); } },
+        { title:'Avg/Sale', width:'84px', align:'right', render:function(i,h){ var a=i.count?i.total/i.count:0; return h?fmtMoney(a):a; } },
+        { title:'Tx', width:'46px', align:'center', field:'count', total:true, totalValue:function(i){ return i.count; }, totalFormat:function(s){ return s+' sales'; } },
+        { title:'', width:'56px', render:function(i,h){
+            if (!h) return '';
+            var nm = String(i.name).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+            return '<button class="btn-mini" style="background:#7c3aed;color:#fff" title="Performance details" onclick="v4CashDetail(\'' + nm + '\')">🏆</button>';
+          }, filterable:false }
       ], emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true });
     } else window.v4cashTable.setData(data);
   } else if (v4S.cview === 'list') { v4S.cpage = 1; v4PagList('v4cashList', mapped, 'cpage', 20, 'v4MoreCash'); }
   else { v4S.cpage = 1; v4PagGrid('v4cashGrid', mapped, 'cpage', 12, 'v4MoreCash'); }
 }
-function v4MoreCash(){
+// 🏆 Round 10 bonus — cashier drill-down: split, share of shop, busiest hour
+function v4CashDetail(name) {
+  var d = (window._v4CashData || []).find(function(c){ return c.name === name; });
+  if (!d) return;
+  var shopTotal = (window._v4CashData || []).reduce(function(s,c){ return s + c.total; }, 0);
+  var share = shopTotal > 0 ? (d.total / shopTotal * 100) : 0;
+  var peak = 0, peakH = 0;
+  d.hours.forEach(function(n,h){ if (n > peak) { peak = n; peakH = h; } });
+  function bar(v,l,c){ var pct = d.total>0?Math.round(v/d.total*100):0; return '<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>'+l+'</span><b style="color:'+c+'">'+fmtMoney(v)+' · '+pct+'%</b></div><div style="height:8px;background:rgba(148,163,184,.15);border-radius:4px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+c+'"></div></div></div>'; }
+  var m = document.createElement('div');
+  m.id = 'v4cashDetailModal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8300;overflow-y:auto;padding:14px';
+  m.innerHTML = '<div style="background:#fff;border-radius:18px;max-width:520px;margin:10px auto;padding:18px;color:#0f172a">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+    '<b style="font-size:17px">👤 ' + sanitize(name) + '</b>' +
+    '<button onclick="document.getElementById(\'v4cashDetailModal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer">✖</button></div>' +
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:10px">' +
+    '<div style="background:rgba(16,185,129,.12);border-radius:10px;padding:10px"><b style="color:#059669;font-size:16px;display:block">' + fmtMoney(d.total) + '</b><small style="font-size:9px;font-weight:800;color:#64748b">TOTAL</small></div>' +
+    '<div style="background:rgba(37,99,235,.12);border-radius:10px;padding:10px"><b style="color:#2563eb;font-size:16px;display:block">' + d.count + '</b><small style="font-size:9px;font-weight:800;color:#64748b">SALES</small></div>' +
+    '<div style="background:rgba(124,58,237,.12);border-radius:10px;padding:10px"><b style="color:#7c3aed;font-size:16px;display:block">' + fmtMoney(d.count ? d.total/d.count : 0) + '</b><small style="font-size:9px;font-weight:800;color:#64748b">AVG / SALE</small></div></div>' +
+    '<b style="font-size:13px">💳 Payment split</b>' +
+    bar(d.cash,'💵 Cash','#10b981') + bar(d.card,'💳 Card','#3b82f6') + bar(d.mobile,'📱 Mobile','#f59e0b') + bar(d.credit,'📝 Credit','#ef4444') +
+    '<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px dashed #cbd5e1;margin-top:6px;font-size:12px"><span>🏪 Share of shop revenue</span><b>' + share.toFixed(1) + '%</b></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span>⏰ Busiest hour</span><b>' + (peak > 0 ? String(peakH).padStart(2,'0') + ':00 (' + peak + ' sales)' : '—') + '</b></div>' +
+    '<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span>🕒 Active</span><b>' + (d.first ? new Date(d.first).toLocaleDateString() : '—') + ' → ' + (d.last ? new Date(d.last).toLocaleDateString() : '—') + '</b></div>' +
+    '<button class="v4-btn p" style="margin-top:10px" onclick="v4CashWA()">📤 Share Performance</button></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e){ if (e.target === m) m.remove(); });
+}
+function v4CashWA() {
+  var d = window._v4CashData || [];
+  if (!d.length) { alert('No cashier data to share.'); return; }
+  var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
+  var lbl = { all:'All Time', today:'Today', week:'This Week', month:'This Month', year:'This Year' }[v4S.cperiod] || 'This Month';
+  var msg = '👥 CASHIER PERFORMANCE — ' + shop + '\n' + lbl + '\n\n';
+  d.slice(0, 10).forEach(function(c, i){
+    msg += (i+1) + '. ' + c.name + ' — ' + fmtMoney(c.total) + ' (' + c.count + ' sales, avg ' + fmtMoney(c.count ? c.total/c.count : 0) + ')\n';
+  });
+  msg += '\n— SmartShop Pro';
+  ssShareTo(msg, { title: '👥 Cashier Performance — ' + shop });
+}function v4MoreCash(){
   v4S.cpage++;
   v4CashierData().then(function(d){
     var mapped = d.map(function(c){ return { label:c.name, detail:'Cash ' + fmtMoney(c.cash) + ' · Card ' + fmtMoney(c.card) + ' · Mobile ' + fmtMoney(c.mobile) + ' · Credit ' + fmtMoney(c.credit), right:fmtMoney(c.total) }; });
@@ -389,7 +440,30 @@ function v4MoreCash(){
 
 async function v4RenderTop() {
   var data = await v4TopData();
-  var mapped = data.map(function(p){ return { label:sanitize(p.name), detail:'Sold: ' + p.qty, right:fmtMoney(p.revenue) }; });
+  window._v4TopDataCache = data;
+  if (!v4S.trank) v4S.trank = 'revenue';
+  if (v4S.trank === 'qty') data.sort(function(a,b){ return b.qty - a.qty || b.revenue - a.revenue; });
+  var periodLbl = { all:'All Time', today:'Today', week:'This Week', month:'This Month', year:'This Year' }[v4S.tperiod] || 'This Month';
+  var itemTotal = data.reduce(function(s,p){ return s + p.revenue; }, 0);
+  window._v4TopItemTotal = itemTotal;
+  var top3 = data.slice(0, 3).reduce(function(s,p){ return s + p.revenue; }, 0);
+  var conc = itemTotal > 0 ? Math.round(top3 / itemTotal * 100) : 0;
+  // toolbar: rank chips + concentration insight + share (Round 10 bonus)
+  var tb = document.getElementById('v4topTools');
+  if (!tb && document.getElementById('v4topExcel')) {
+    tb = document.createElement('div'); tb.id = 'v4topTools';
+    document.getElementById('v4topExcel').parentNode.insertBefore(tb, document.getElementById('v4topExcel'));
+  }
+  if (tb) tb.innerHTML =
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">' +
+    '<button class="v4-chip' + (v4S.trank === 'revenue' ? ' active' : '') + '" onclick="v4S.trank=\'revenue\';v4RenderTop()">💰 By Revenue</button>' +
+    '<button class="v4-chip' + (v4S.trank === 'qty' ? ' active' : '') + '" onclick="v4S.trank=\'qty\';v4RenderTop()">📦 By Quantity</button>' +
+    '<button class="v4-chip" style="margin-left:auto" onclick="v4TopWA()">📤 Share</button></div>' +
+    '<small style="display:block;font-size:11px;color:#64748b;margin-bottom:8px">⭐ Top 3 = ' + conc + '% of item revenue · ' + periodLbl + ' · based on ' + (window._v4TopN||0) + ' sales analyzed</small>';
+  var mapped = data.map(function(p){
+    var prod = v4products.find(function(x){ return x.name === p.name; });
+    return { label:sanitize(p.name), detail:'Sold: ' + p.qty + (prod && !prod.isVirtual ? ' · stock ' + prod.stock : ''), right:fmtMoney(p.revenue) };
+  });
   var ex = document.getElementById('v4topExcel'), li = document.getElementById('v4topList'), gr = document.getElementById('v4topGrid');
   if (!ex) return;
   ex.style.display = v4S.tview === 'excel' ? 'block' : 'none';
@@ -401,16 +475,42 @@ async function v4RenderTop() {
       ex.innerHTML = '';
       window.v4topTable = new ModernSheet('v4topExcel', { data:data, columns:[
         { title:'#', width:'36px', render:function(i,h,x){ return x+1; } },
-        { title:'Product', field:'name', width:'140px' },
+        { title:'Product', field:'name', width:'150px', render:function(i,h){ return h?'<b>'+sanitize(i.name)+'</b>':i.name; } },
         { title:'Qty Sold', width:'70px', align:'center', render:function(i,h){ return h?'<b>'+i.qty+'</b>':i.qty; }, total:true, totalValue:function(i){ return i.qty; }, totalFormat:function(s){ return s+' sold'; } },
-        { title:'Revenue', width:'100px', align:'right', render:function(i,h){ return h?fmtMoney(i.revenue):i.revenue; }, total:true, totalValue:function(i){ return i.revenue; }, totalFormat:function(s){ return fmtMoney(s); } }
+        { title:'Revenue', width:'100px', align:'right', render:function(i,h){ return h?fmtMoney(i.revenue):i.revenue; }, total:true, totalValue:function(i){ return i.revenue; }, totalFormat:function(s){ return fmtMoney(s); } },
+        { title:'Share', width:'64px', align:'center', render:function(i,h){
+            var p = window._v4TopItemTotal > 0 ? (i.revenue / window._v4TopItemTotal * 100) : 0;
+            return h ? '<b style="color:' + (p >= 10 ? '#059669' : (p >= 3 ? '#f59e0b' : '#94a3b8')) + '">' + p.toFixed(1) + '%</b>' : p;
+          }, filterable:false },
+        { title:'Est. Margin', width:'92px', align:'right', render:function(i,h){
+            var prod = v4products.find(function(x){ return x.name === i.name; });
+            if (!prod || !prod.costPrice || !prod.price) return h ? '<span style="color:#94a3b8">—</span>' : '';
+            var est = (prod.price - prod.costPrice) * i.qty;
+            var mg = prod.price > 0 ? ((prod.price - prod.costPrice) / prod.price * 100) : 0;
+            return h ? '<b style="color:' + (mg >= 40 ? '#059669' : (mg >= 20 ? '#f59e0b' : '#ef4444')) + '">' + fmtMoney(est) + '</b><br><small style="color:#64748b">' + mg.toFixed(0) + '%</small>' : est;
+          }, filterable:false },
+        { title:'', width:'52px', render:function(i,h){
+            if (!h) return '';
+            var prod = v4products.find(function(x){ return x.name === i.name; });
+            return prod ? '<button class="btn-mini" style="background:#e0f2fe;color:#1565c0" title="Open product" onclick="v4ProductDetail(\'' + prod.id + '\')">📋</button>' : '';
+          }, filterable:false }
       ], emptyMessage:'No sales in this period', showSearch:false, showFontSlider:true });
     } else window.v4topTable.setData(data);
   } else if (v4S.tview === 'list') { v4S.tpage = 1; v4PagList('v4topList', mapped, 'tpage', 20, 'v4MoreTop'); }
   else { v4S.tpage = 1; v4PagGrid('v4topGrid', mapped, 'tpage', 12, 'v4MoreTop'); }
 }
-function v4MoreTop(){ v4S.tpage++; v4RenderTop(); }
-// ── view/period chip handlers ──
+function v4TopWA() {
+  var d = window._v4TopDataCache || [];
+  if (!d.length) { alert('No top products data to share.'); return; }
+  var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
+  var lbl = { all:'All Time', today:'Today', week:'This Week', month:'This Month', year:'This Year' }[v4S.tperiod] || 'This Month';
+  var msg = '🏆 TOP PRODUCTS — ' + shop + '\n' + lbl + '\n\n';
+  d.slice(0, 10).forEach(function(p, i){
+    msg += (i+1) + '. ' + p.name + ' — ' + fmtMoney(p.revenue) + ' (' + p.qty + ' sold)\n';
+  });
+  msg += '\n— SmartShop Pro';
+  ssShareTo(msg, { title: '🏆 Top Products — ' + shop });
+}// ── view/period chip handlers ──
 function v4SumPeriod(p, btn) {
   v4S.period = p;
   document.querySelectorAll('#v4sumPeriods .period-btn').forEach(function(b){ b.classList.toggle('active', b === btn); });
@@ -434,11 +534,13 @@ function v4Fold(bodyId, arrowId) {
   body.style.display = opening ? 'block' : 'none';
   if (arrow) arrow.textContent = opening ? '▾' : '▸';
   if (opening && !v4lazyDone[bodyId]) {          // 🚀 first expand = render now
-    v4lazyDone[bodyId] = true;
-    if (bodyId === 'v4detBody') v4RenderDetailed();
-    else if (bodyId === 'v4itemBody') v4RenderItemDetail(true);
-    else if (bodyId === 'v4cashBody') v4RenderCashier();
-    else if (bodyId === 'v4topBody') v4RenderTop();
+    // 🛡️ Round 10: mark done ONLY on success — a network blip stays unmarked,
+    // so the next expand retries. No more permanently-empty cards.
+    var markOk = function(){ v4lazyDone[bodyId] = true; };
+    if (bodyId === 'v4detBody') Promise.resolve(v4RenderDetailed()).then(markOk);
+    else if (bodyId === 'v4itemBody') Promise.resolve(v4RenderItemDetail(true)).then(markOk);
+    else if (bodyId === 'v4cashBody') Promise.resolve(v4RenderCashier()).then(markOk);
+    else if (bodyId === 'v4topBody') Promise.resolve(v4RenderTop()).then(markOk);
   }
 }
 function v4ItemFilterChange() { v4S.itemPool = null; v4S.ipage = 1; v4RenderItemDetail(); }
