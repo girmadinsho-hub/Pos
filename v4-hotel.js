@@ -345,7 +345,7 @@ async function v4htCheckIn(roomId) {
     if (phone && await confirm(msg + '\n\n📤 Send booking confirmation to the guest on WhatsApp?')) {
       var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
       var wa = '🏨 ' + shop + '\nHello ' + name + ', welcome!\n\nYour room: ' + room.room_number + ' (' + room.room_type + ')\nRate: ' + fmtMoney(rate) + '/night\nCheck-out: ' + new Date(checkout).toLocaleDateString() + '\n\nEnjoy your stay!';
-      window.open('https://wa.me/' + phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(wa), '_blank');
+      window.open('https://wa.me/' + ssWaNum(phone) + '?text=' + encodeURIComponent(wa), '_blank');
     } else alert(msg);
   } catch(e) { alert('❌ ' + e.message); }
 }
@@ -356,7 +356,7 @@ function v4htGuestWA(stayId) {
   var msg = '🏨 ' + shop + '\nHello ' + stay.guest_name + ',\n\nYour room: ' + (room ? room.room_number : '') +
     '\nRate: ' + fmtMoney(stay.nightly_rate) + '/night\nCheck-out: ' + (stay.planned_checkout ? new Date(stay.planned_checkout).toLocaleDateString() : 'open') +
     '\n\nNeed anything? Reply here!';
-  window.open('https://wa.me/' + String(stay.guest_phone || '').replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(msg), '_blank');
+  window.open('https://wa.me/' + ssWaNum(stay.guest_phone || '') + '?text=' + encodeURIComponent(msg), '_blank');
 }
 
 // ═══ FOLIO (v3 keeper: AUTO-BILLS missing nights!) ═══
@@ -435,8 +435,7 @@ async function v4htCheckout(stayId, due, method) {
     if (due > 0) {
       await supabaseClient.from('sales').insert([{
         items: [{ name: 'Hotel room settlement', qty: 1, price: due, subtotal: due }],
-        subtotal: due, discount: 0, tax: 0, total: due, profit: 0,
-        payment_method: method, payments: [{ method: method, amount: due }],
+        subtotal: due, discount: 0, tax: 0, total: due, profit: due,        payment_method: method, payments: [{ method: method, amount: due }],
         shop_id: getShopId(),
         cashier_id: 'admin', cashier_name: 'Admin',
         shift_id: 'hotel', time: new Date().toISOString(),
@@ -461,7 +460,7 @@ async function v4htCheckout(stayId, due, method) {
     if (stay.guest_phone && f && await confirm(msg + '\n\n📤 Send the folio receipt to the guest on WhatsApp?')) {
       var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
       var wa = '🧾 ' + shop + ' — FOLIO RECEIPT\nGuest: ' + stay.guest_name + '\nDate: ' + new Date().toLocaleDateString() + '\n\nTotal charges: ' + fmtMoney(f.total) + '\nDeposit: -' + fmtMoney(f.stay.deposit || 0) + '\nPaid: ' + fmtMoney(Math.max(0, due)) + '\n\nThank you for staying with us!';
-      window.open('https://wa.me/' + String(stay.guest_phone).replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(wa), '_blank');
+      window.open('https://wa.me/' + ssWaNum(stay.guest_phone) + '?text=' + encodeURIComponent(wa), '_blank');
     } else alert(msg);
   } catch(e) { alert('❌ ' + e.message); }
 }
@@ -509,7 +508,7 @@ async function v4htReserveSave() {
     if (phone && await confirm(msg + '\n\n📤 Send reservation confirmation on WhatsApp?')) {
       var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
       var wa = '🏨 ' + shop + ' — RESERVATION CONFIRMED\n\nGuest: ' + name + '\nRoom: ' + (room ? room.room_number + ' (' + room.room_type + ')' : '') + '\nArrival: ' + new Date(date).toLocaleDateString() + '\nNights: ' + nights + '\nRate: ' + fmtMoney(room ? room.base_rate : 0) + '/night\n\nSee you soon!';
-      window.open('https://wa.me/' + phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(wa), '_blank');
+      window.open('https://wa.me/' + ssWaNum(phone) + '?text=' + encodeURIComponent(wa), '_blank');
     } else alert(msg);
   } catch(e) { alert('❌ ' + e.message); }
 }
@@ -700,12 +699,7 @@ function v4htAuditHTML() {
   return html;
 }
 function v4htAuditWA() {
-  var msg = v4htAuditText();
-  var phone = prompt('Send night audit to which WhatsApp number?\n(Leave empty to copy)', '');
-  if (phone === null) return;
-  phone = String(phone).replace(/[^0-9]/g, '');
-  if (phone) window.open('https://wa.me/' + phone + '?text=' + encodeURIComponent(msg), '_blank');
-  else if (navigator.clipboard) navigator.clipboard.writeText(msg).then(function(){ alert('📋 Night audit copied!'); });
+  ssShareTo(v4htAuditText(), { title: '🌙 Night Audit' });
 }
 function v4htAuditPrint() {
   var win = window.open('', '_blank', 'width=420,height=650');
