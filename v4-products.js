@@ -208,8 +208,7 @@ async function v4CellEdit(item, col, newVal) {
   if (col === 'name' && !val) return;
   try {
     var upd = {}; upd[dbCol] = val;
-    const { error } = await supabaseClient.from('products').update(upd).eq('firebase_id', item.id);
-    if (error) throw error;
+    const { error } = await v4ById(supabaseClient.from('products').update(upd), item.id);    if (error) throw error;
     item[col] = val;
     if (col === 'stock' || col === 'price') { if (window.v4productTable) window.v4productTable.render(); }
   } catch(e) { alert('❌ ' + e.message); }
@@ -881,8 +880,7 @@ async function v4ToggleMenu(id) {
   var newVal = !p.menuVisible;
   if (!await confirm(newVal ? '👁️ Show "' + p.name + '" on the customer QR menu?' : '🚫 Hide "' + p.name + '" from the customer QR menu?')) return;
   try {
-    const { error } = await supabaseClient.from('products').update({ is_available_on_menu: newVal }).eq('firebase_id', id);
-    if (error) throw error;
+const { error } = await v4ById(supabaseClient.from('products').update({ is_available_on_menu: newVal }), id);    if (error) throw error;
     p.menuVisible = newVal;
     v4RenderProductTable();
     alert(newVal ? '✅ Visible on menu.' : '🚫 Hidden from menu.');
@@ -905,10 +903,16 @@ function v4ToggleProductMaximize() {
 async function v4OpenTransfer() {
   var shops = [];
   try {
-    const { data } = await supabaseClient.from('shops').select('shop_id, name').eq('active', true);
-    shops = (data || []).filter(function(s){ return s.shop_id !== getShopId(); });
+    // 🛡️ MY OWN branches ONLY — never other customers' shops (privacy law)
+    var myEmail = '';
+    try { const { data: { user } } = await supabaseClient.auth.getUser(); if (user) myEmail = user.email; } catch(e) {}
+    if (myEmail) {
+      const { data } = await supabaseClient.from('shops').select('shop_id, name')
+          .eq('active', true).eq('owner_email', myEmail);
+      shops = (data || []).filter(function(s){ return s.shop_id !== getShopId(); });
+    }
   } catch(e) {}
-  if (!shops.length) { alert('No other active branches found. Transfer needs an Enterprise multi-branch setup.'); return; }
+  if (!shops.length) { alert('No other branches under YOUR account yet.\n\nCreate a 2nd shop first (Settings → My Shops), or upgrade to Enterprise for multi-branch.'); return; }
 
   var m = v4ToolModal('v4transferModal', '🚚 Transfer Stock to Branch');
   var html = '<p style="font-size:12px;color:#64748b">Deduct from THIS branch, add to the destination.</p>' +
@@ -921,7 +925,6 @@ async function v4OpenTransfer() {
     '<button class="v4-btn g" onclick="v4DoTransfer()">🚚 Transfer Now</button>';
   document.getElementById('v4toolBody').innerHTML = html;
 }
-
 async function v4DoTransfer() {
   var dest = document.getElementById('v4trShop').value;
   var prodId = document.getElementById('v4trProd').value;
@@ -932,8 +935,7 @@ async function v4DoTransfer() {
   if (p.stock < qty) { alert('Not enough stock! Current: ' + p.stock); return; }
   if (!await confirm('Transfer ' + qty + ' ' + p.unit + ' of ' + p.name + ' to the selected branch?')) return;
   try {
-    const { error: srcErr } = await supabaseClient.from('products').update({ stock: p.stock - qty }).eq('firebase_id', prodId);
-    if (srcErr) throw srcErr;
+const { error: srcErr } = await v4ById(supabaseClient.from('products').update({ stock: p.stock - qty }), prodId);    if (srcErr) throw srcErr;
     const { data: destProds } = await supabaseClient.from('products').select('*').eq('shop_id', dest).eq('name', p.name);
     if (destProds && destProds.length) {
       const { error: dErr } = await supabaseClient.from('products').update({ stock: (destProds[0].stock || 0) + qty }).eq('id', destProds[0].id);
@@ -992,8 +994,7 @@ async function v4DoStockCount() {
   if (!updates.length) { alert('No changes detected — counts match the system.'); v4CloseTool(); return; }
   try {
     for (var i = 0; i < updates.length; i++) {
-      const { error } = await supabaseClient.from('products').update({ stock: updates[i].counted }).eq('firebase_id', updates[i].id);
-      if (error) throw error;
+const { error } = await v4ById(supabaseClient.from('products').update({ stock: updates[i].counted }), updates[i].id);      if (error) throw error;
       var p = v4products.find(function(x){ return x.id === updates[i].id; });
       if (p) p.stock = updates[i].counted;
     }
@@ -1157,8 +1158,7 @@ async function v4SaveVariantPrices() {
   if (!changed.length) { document.getElementById('v4varPriceModal').remove(); return; }
   try {
     for (var i = 0; i < changed.length; i++) {
-      const { error } = await supabaseClient.from('products').update({ price: changed[i].price }).eq('firebase_id', changed[i].id);
-      if (error) throw error;
+const { error } = await v4ById(supabaseClient.from('products').update({ price: changed[i].price }), changed[i].id);      if (error) throw error;
     }
     document.getElementById('v4varPriceModal').remove();
     v4RenderProductTable();
