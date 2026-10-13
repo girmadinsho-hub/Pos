@@ -205,7 +205,7 @@ function v4spWhatsAppSup(id) {
   if (!s.phone) { alert('No phone number for this supplier.\nEdit them to add one (then WhatsApp orders work).'); return; }
   var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
   var msg = 'Hello ' + s.name + ', this is ' + shop + '.\n\nWe would like to place an order. Could you please share current prices and availability?\n\nThank you!';
-  window.open('https://wa.me/' + s.phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(msg), '_blank');
+  window.open('https://wa.me/' + ssWaNum(s.phone) + '?text=' + encodeURIComponent(msg), '_blank');
 }
 
 // ═══ CREATE PURCHASE ORDER ═══
@@ -300,7 +300,7 @@ async function v4poSave() {
       items.forEach(function(i){ msg += '• ' + i.name + ' — ' + i.qty + ' ' + (i.unit||'') + '\n'; });
       msg += '\nEstimated total: ' + fmtMoney(total) + '\nPlease confirm availability and delivery date.\n\n— ' + shop;
       if (await confirm('✅ Order created!\n\n📤 Send it to ' + s.name + ' on WhatsApp now?')) {
-        window.open('https://wa.me/' + s.phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(msg), '_blank');
+        window.open('https://wa.me/' + ssWaNum(s.phone) + '?text=' + encodeURIComponent(msg), '_blank');
       }
     } else {
       alert('✅ Order ' + orderNo + ' created!');
@@ -421,10 +421,9 @@ async function v4spRecvGo(id, cancelRemaining) {
              : (o.receivedItems.length > 0 ? 'received' : 'cancelled');
     var remainingTotal = remaining.reduce(function(s,x){ return s + (x.qty * (x.unitCost||0)); }, 0);
     o.total = remainingTotal;
-    await supabaseClient.from('purchase_orders')
+        await v4ById(supabaseClient.from('purchase_orders')
       .update({ items: remaining, received_items: o.receivedItems, cancelled_items: o.cancelledItems,
-                status: o.status, total: remainingTotal })
-      .eq('firebase_id', id);
+                status: o.status, total: remainingTotal }), id);
     v4spCloseModal();
     await v4spRefresh();
     if (typeof v4LoadProducts === 'function') await v4LoadProducts();
@@ -445,9 +444,8 @@ async function v4spCancelOrder(id) {
     (o.items || []).forEach(function(item){
       o.cancelledItems.push({ productId: item.productId, name: item.name, unit: item.unit||'', qty: item.qty, unitCost: item.unitCost||0, cancelled_at: new Date().toISOString() });
     });
-    const { error } = await supabaseClient.from('purchase_orders')
-      .update({ status: 'cancelled', items: [], cancelled_items: o.cancelledItems, total: 0 })
-      .eq('firebase_id', id);
+    const { error } = await v4ById(supabaseClient.from('purchase_orders')
+      .update({ status: 'cancelled', items: [], cancelled_items: o.cancelledItems, total: 0 }), id);
     if (error) throw error;
     await v4spRefresh();
     alert('✅ Order cancelled (items recorded in history).');
@@ -463,7 +461,7 @@ function v4spDeleteOrder(id) {
 }
 async function v4spDeleteOrderGo(id) {
   try {
-    const { error } = await supabaseClient.from('purchase_orders').delete().eq('firebase_id', id);
+    const { error } = await v4ById(supabaseClient.from('purchase_orders').delete(), id);
     if (error) throw error;
     v4spCloseModal();
     await v4spRefresh();
@@ -521,9 +519,8 @@ async function v4spEditOrderSave(id) {
     }
   });
   try {
-    const { error } = await supabaseClient.from('purchase_orders')
-      .update({ status: document.getElementById('v4spEStatus').value, items: updated, total: newTotal })
-      .eq('firebase_id', id);
+    const { error } = await v4ById(supabaseClient.from('purchase_orders')
+      .update({ status: document.getElementById('v4spEStatus').value, items: updated, total: newTotal }), id);
     if (error) throw error;
     v4spCloseModal();
     await v4spRefresh();
@@ -661,7 +658,7 @@ function v4spOrderWA(id) {
   var msg = '📦 PURCHASE ORDER ' + o.orderNo + ' — ' + shop + '\n\n';
   (o.items || []).forEach(function(i){ msg += '• ' + i.name + ' — ' + i.qty + ' ' + (i.unit||'') + '\n'; });
   msg += '\nTotal: ' + fmtMoney(o.total) + '\nPlease confirm availability and delivery date.\n\n— ' + shop;
-  window.open('https://wa.me/' + s.phone.replace(/[^0-9]/g, '') + '?text=' + encodeURIComponent(msg), '_blank');
+  window.open('https://wa.me/' + ssWaNum(s.phone) + '?text=' + encodeURIComponent(msg), '_blank');
 }
 
 // ═══ SUPPLIERS LIST ═══
