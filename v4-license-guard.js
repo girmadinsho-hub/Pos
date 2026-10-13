@@ -95,9 +95,10 @@ function v4lgApplySidebar() {
       foot.appendChild(sidBadge);
     }
   }
-  if (sidBadge) sidBadge.textContent = '🔑 ' + getShopId();
+   if (sidBadge) sidBadge.textContent = '🔑 ' + getShopId();
+  // 🎯 Round 12: type law runs LAST — the type always wins
+  if (typeof v4TypeTabs === 'function') v4TypeTabs();
 }
-
 // ── TRIAL EXPIRY WATCHDOG ──
 function v4lgTrialWatch() {
   if (!window.__currentShopRow) return;
@@ -111,8 +112,7 @@ function v4lgTrialWatch() {
       var cached = localStorage.getItem('ss_trial_warning_days');
       if (cached) warningDays = parseInt(cached) || 5;
     } catch(e) {}
-    if (days <= 0) { v4lgShowPlanPicker(); }
-    else if (days <= warningDays) { v4lgTrialBanner(days); }
+    if (days <= 0 && !window.__v4lgFreeMode) { v4lgShowPlanPicker(); }    else if (days <= warningDays) { v4lgTrialBanner(days); }
     // else: HIDDEN — no banner, no anxiety
   }
   try {
@@ -182,6 +182,11 @@ async function v4lgShowPlanPicker() {
       plansHtml +
       '<div style="margin-top:10px;padding:10px;background:rgba(255,255,255,.1);border-radius:10px;font-size:11px;color:#cbd5e1;">' +
       'After payment, send your transaction ID on WhatsApp:<br><b>' + sup.phone + '</b></div>' +
+      '<div style="display:flex;gap:8px;margin-top:12px">' +
+        '<button onclick="v4lgContinueFree()" style="flex:1;padding:13px;border:none;border-radius:12px;background:#fff;color:#1e3a8a;font-weight:800;font-size:13px;cursor:pointer;">✅ Continue with Free Plan</button>' +
+        '<button onclick="supabaseClient.auth.signOut()" style="padding:13px 16px;border:none;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;font-weight:700;font-size:13px;cursor:pointer;">Logout</button>' +
+      '</div>' +
+      '<p style="font-size:10px;color:#94a3b8;margin:10px 0 0;">Free plan: 15 products · 1 cashier · all your data stays safe. Upgrade anytime from the License tab.</p>' +
       '</div>';
     document.body.appendChild(m);
   } catch(e) {
@@ -199,3 +204,19 @@ window.v4lgLimit = v4lgLimit;
 window.v4lgDeny = v4lgDeny;
 window.v4lgGate = v4lgGate;
 window.v4lgApplySidebar = v4lgApplySidebar;
+
+// ── Round 8: expired-trial soft landing on Free (exit-door law) ──
+function v4lgContinueFree() {
+  window.__v4lgFreeMode = true;   // watchdog stays quiet for this session
+  var m = document.getElementById('v4lgPicker'); if (m) m.remove();
+  try {
+    if (typeof ssLoadPlan === 'function') {
+      ssLoadPlan().then(function(){
+        if (typeof v4lgApplySidebar === 'function') v4lgApplySidebar();
+        else if (typeof applyPlanVisibility === 'function') applyPlanVisibility();
+      });
+    }
+  } catch(e) {}
+  alert('✅ Continuing on the Free plan.\n\n15 products · 1 cashier · all your data is safe.\nUpgrade anytime: License tab.');
+}
+window.v4lgContinueFree = v4lgContinueFree;
