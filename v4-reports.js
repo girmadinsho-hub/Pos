@@ -483,8 +483,7 @@ async function v4reCRM() {
   var customers = {};
   try {
     const { data } = await supabaseClient.from('sales')
-      .select('customer_name, customer_phone, total, paid_at, time')
-      .eq('shop_id', getShopId()).eq('voided', false)
+      .select('customer_name, customer_phone, total, paid_at, payment_method, time')      .eq('shop_id', getShopId()).eq('voided', false)
       .gte('time', start.toISOString()).limit(2000);
     (data || []).forEach(function(s){
       if (!s.customer_name && !s.customer_phone) return;
@@ -492,8 +491,7 @@ async function v4reCRM() {
       if (!customers[key]) customers[key] = { name:s.customer_name||'Unknown', phone:s.customer_phone||'', spend:0, visits:0, credit:0, last:'' };
       customers[key].spend += Number(s.total || 0);
       customers[key].visits++;
-      if (!s.paid_at) customers[key].credit += Number(s.total || 0);
-      if (!customers[key].last || s.time > customers[key].last) customers[key].last = s.time;
+      if (s.payment_method === 'credit' && !s.paid_at) customers[key].credit += Number(s.total || 0);      if (!customers[key].last || s.time > customers[key].last) customers[key].last = s.time;
     });
   } catch(e) {}
   var arr = Object.values(customers).sort(function(a,b){ return b.spend - a.spend; }).slice(0, 50);
@@ -547,7 +545,7 @@ async function v4reMarketing() {
     var days = Math.floor((Date.now() - new Date(c.last)) / 86400000);
     html += '<div style="background:#f8fafc;border:1px solid #e2e8f0;padding:10px;border-radius:10px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">' +
       '<div><b>' + sanitize(c.name) + '</b><br><small style="color:#64748b">Last visit: ' + days + ' days ago</small></div>' +
-      '<a href="https://wa.me/' + c.phone.replace(/[^0-9]/g,'') + '?text=' + promo + '" target="_blank" style="background:#25D366;color:white;text-decoration:none;padding:8px 15px;border-radius:8px;font-weight:bold;font-size:12px">💬 Send</a></div>';
+      '<a href="https://wa.me/' + c.phone.replace + '?text=' + promo + '" target="_blank" style="background:#25D366;color:white;text-decoration:none;padding:8px 15px;border-radius:8px;font-weight:bold;font-size:12px">💬 Send</a></div>';
   });
   body.innerHTML = html;
 }
