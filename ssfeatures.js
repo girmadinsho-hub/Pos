@@ -69,10 +69,13 @@ async function ssLoadPlan() {
 }
 
 function ssHasFeature(f) {
-    if (SS_PLAN.name === 'Trial') return true;
-    // Branch law: café tools belong to café shops only (any café tier)
-    if (SS_PLAN.businessType === 'cafe' && ['kitchen','recipes','qrMenu'].indexOf(f) !== -1) return true;
-    if (SS_PLAN.businessType !== 'cafe' && ['kitchen','recipes','qrMenu'].indexOf(f) !== -1) return false;
+    // 🎁 FREE & TRIAL = the full app (Captain's law: soft limits, never locked menus)
+    if (SS_PLAN.name === 'Trial' || SS_PLAN.name === 'Free') return true;
+    // 🔒 TYPE LAW: kitchen/recipes/QR-menu belong to cafe AND hotel shops — never retail
+    if (['kitchen','recipes','qrMenu'].indexOf(f) !== -1) {
+        return (SS_PLAN.businessType === 'cafe' || SS_PLAN.businessType === 'hotel');
+    }
+    // 💎 PAID PLANS: Master decides from the plans table
     return SS_PLAN.features.indexOf(f) !== -1;
 }
 
