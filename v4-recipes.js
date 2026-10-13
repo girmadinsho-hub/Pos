@@ -685,16 +685,17 @@ function v4rceRenderItems() {
     });
     var convHtml = '';
     if (item.unit && item.unit !== baseUnit) {
+      var autoF = v4rcConv(item.unit, baseUnit);
       convHtml = '<div style="margin-top:3px;font-size:10px;color:#64748b">1 ' + item.unit + ' = ' +
-        '<input type="number" step="0.0001" value="' + (item.factor||1) + '" style="width:52px;padding:3px;border:1px solid #cbd5e1;border-radius:4px;text-align:center;font-size:10px" oninput="v4rceUpd(' + idx + ')"> ' + baseUnit + '</div>';
+        '<input type="number" step="0.0001" value="' + (item.factor||1) + '" style="width:52px;padding:3px;border:1px solid #cbd5e1;border-radius:4px;text-align:center;font-size:10px" oninput="v4rceFactorUpd(' + idx + ', this.value)"> ' + baseUnit +
+        (Math.abs(autoF - (item.factor||1)) < 0.0001 ? '' : ' <small style="color:#94a3b8">auto: ' + (Math.round(autoF*10000)/10000) + '</small>') + '</div>';
     }
     html += '<tr style="border-bottom:1px solid #f1f5f9;vertical-align:top">' +
       '<td style="padding:5px"><b>' + sanitize(item.ingredientName) + '</b><br><small style="color:#94a3b8;font-size:10px">base: ' + baseUnit + '</small></td>' +
       '<td style="padding:5px;text-align:center"><input type="checkbox" ' + (item.critical === false ? '' : 'checked') + ' onchange="v4rce.items[' + idx + '].critical=this.checked"></td>' +
       '<td style="padding:5px"><div style="display:flex;gap:4px">' +
       '<input type="number" value="' + item.qty + '" step="0.001" min="0" style="width:54px;padding:5px;border:1px solid #cbd5e1;border-radius:6px;text-align:center;font-size:12px" oninput="v4rceUpd(' + idx + ', this.value)">' +
-      '<select onchange="v4rce.items[' + idx + '].unit=this.value;v4rceRenderItems()" style="width:70px;padding:5px;border:1px solid #cbd5e1;border-radius:6px;font-size:11px">' + unitOpts + '</select>' +
-      '</div>' + convHtml + '</td>' +
+      '<select onchange="v4rceUnitChange(' + idx + ', this.value)" style="width:70px;padding:5px;border:1px solid #cbd5e1;border-radius:6px;font-size:11px">' + unitOpts + '</select>' +      '</div>' + convHtml + '</td>' +
       '<td style="padding:5px;text-align:right;font-weight:700;color:#ef4444" id="rceCost' + idx + '">—</td>' +
       '<td style="padding:5px"><button class="btn-mini delete" onclick="v4rce.items.splice(' + idx + ',1);v4rceRenderItems()">✖</button></td>' +
       '</tr>';
@@ -715,6 +716,21 @@ function v4rceUpd(idx, newQty) {
     row.textContent = fmtMoney(cost);
   }
   v4rceCostBox();
+}
+// 🎯 Round 11 — the factor is ALIVE: writes to the model, costs update live
+function v4rceFactorUpd(idx, val) {
+  var item = v4rce.items[idx]; if (!item) return;
+  var f = parseFloat(val);
+  item.factor = (isNaN(f) || f <= 0) ? 1 : f;
+  v4rceUpd(idx);
+}
+function v4rceUnitChange(idx, newUnit) {
+  var item = v4rce.items[idx]; if (!item) return;
+  item.unit = newUnit;
+  var ing = v4rcProduct(item.ingredientId);
+  var baseUnit = ing ? (ing.unit || '') : '';
+  if (baseUnit) item.factor = v4rcConv(newUnit, baseUnit);   // auto kg↔gram, cup↔ml…
+  v4rceRenderItems();
 }
 function v4rceCostBox() {
   var box = document.getElementById('v4rceCostBox'); if (!box) return;
@@ -960,5 +976,9 @@ function v4rcSearchInput(v) {
 // ── tab loader ──
 V4_TAB_LOADERS[18] = function() {
   v4rcEnsureUI();
+  // 🎯 Round 11: forecast + analytics need the sales cache — fetch it here too
+  if (typeof SS_PERF !== 'undefined' && !SS_PERF.detailedCache.length) {
+    try { ssFetchDetailedPage(false).then(function(){ v4rcRender(); }).catch(function(){}); } catch(e) {}
+  }
   v4rcLoad().then(v4rcRender);
 };
