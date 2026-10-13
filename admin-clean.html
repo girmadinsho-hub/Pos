@@ -151,6 +151,43 @@ body.dark .maximized-card{background:#0f172a!important}
   
 </head>
 <body>
+  <!-- ═══ SPLASH SCREEN (v3 heritage restored — brand family look) ═══ -->
+<div id="splashScreen">
+  <div style="text-align:center;color:#fff;padding:20px">
+    <div style="font-size:56px;margin-bottom:10px;animation:v4splashPulse 1.6s ease-in-out infinite">🏪</div>
+    <h1 style="font-size:28px;font-weight:800;letter-spacing:.5px;margin:0">SmartShop Pro</h1>
+    <p style="font-size:12px;opacity:.75;margin-top:5px">Owner Administration · <span id="splashVer">v4</span></p>
+    <div style="width:140px;height:4px;background:rgba(255,255,255,.18);border-radius:4px;overflow:hidden;margin:20px auto 0">
+      <div id="splashBar" style="width:0%;height:100%;background:#fff;border-radius:4px;transition:width 1.3s ease"></div>
+    </div>
+    <small style="display:block;margin-top:14px;font-size:10px;opacity:.5">tap to skip</small>
+  </div>
+</div>
+<style>
+#splashScreen{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f172a,#1e3a8a);transition:opacity .6s ease;cursor:pointer}
+#splashScreen.hide{opacity:0;pointer-events:none}
+@keyframes v4splashPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+</style>
+<script>
+(function(){
+  function v4SplashKill(){
+    var s = document.getElementById('splashScreen');
+    if (!s) return;
+    s.classList.add('hide');
+    setTimeout(function(){ if (s.parentNode) s.remove(); }, 700);
+  }
+  var bar = document.getElementById('splashBar');
+  if (bar) setTimeout(function(){ bar.style.width = '100%'; }, 80);
+  document.addEventListener('DOMContentLoaded', function(){
+    if (typeof APP_VERSION !== 'undefined') { var v = document.getElementById('splashVer'); if (v) v.textContent = APP_VERSION.split('-')[0]; }
+    setTimeout(v4SplashKill, 1200);
+  });
+  setTimeout(v4SplashKill, 2000);                                  // safety net
+  var sEl = document.getElementById('splashScreen');
+  if (sEl) sEl.addEventListener('click', v4SplashKill);            // tap to skip
+})();
+</script>
+
 <!-- LOGIN -->
 <div class="screen show" id="loginScreen">
   <div class="box">
@@ -406,8 +443,7 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
         <button class="v4-chip" onclick="v4SumView('list',this)">📋 List</button>
         <button class="v4-chip" onclick="v4SumView('grid',this)">⊞ Grid</button>
       </div>
-      <div id="v4sumPeriods" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-        <button class="period-btn" onclick="v4SumPeriod('all',this)">All</button>
+      <div id="v4sumPeriods" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch">        <button class="period-btn" onclick="v4SumPeriod('all',this)">All</button>
         <button class="period-btn active" onclick="v4SumPeriod('daily',this)">Daily</button>
         <button class="period-btn" onclick="v4SumPeriod('weekly',this)">Weekly</button>
         <button class="period-btn" onclick="v4SumPeriod('monthly',this)">Monthly</button>
@@ -553,8 +589,8 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
     </div>
   </div>
 
-  <!-- 🪑 ACTIVE TABLES + 🍳 KITCHEN side by side -->
-  <div style="display:flex;gap:10px;flex-wrap:wrap">
+  <!-- 🪑 ACTIVE TABLES + 🍳 KITCHEN side by side (cafe/hotel only — Round 11) -->
+  <div id="v4cafeWidgets" style="display:flex;gap:10px;flex-wrap:wrap">
     <div class="card" style="flex:1;min-width:250px">
       <div class="card-title">🪑 Active Tables (Cafe Floor)</div>
       <div id="v4activeTables" style="max-height:160px;overflow-y:auto"></div>
@@ -669,8 +705,8 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 <script src="ssauth.js"></script>
 <script src="ssperf.js"></script>
 <script src="ssfeatures.js"></script>
-  <script src="ssupload.js"></script>
-  <script>window.V4_TAB_LOADERS = {};</script>
+<script src="ssupload.js"></script>
+<script src="ssfiscal.js"></script>  <script>window.V4_TAB_LOADERS = {};</script>
 <script src="v4-dashboard.js"></script>
 <script src="v4-products.js"></script>
   <script src="v4-sales.js"></script>
@@ -809,8 +845,7 @@ function v4SubAction(act) {
       case 'restock':     selectTab(1, document.getElementById('stab1')); setTimeout(v4OpenRestock, 250); break;
       case 'sum':         selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.querySelector('#tab2 .card'); if (c) c.scrollIntoView({behavior:'smooth'}); }, 250); break;
       case 'detailed':    selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4detExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
-      case 'itemDetail':  selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4itemDetail'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
-      case 'cashier':     selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4cashExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
+      case 'itemDetail':  selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4itemExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;      case 'cashier':     selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4cashExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
       case 'top':         selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4topExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
     }
   } catch(e) { console.warn('Sub action:', e.message); }
@@ -862,10 +897,28 @@ function applyPlanVisibility() {
             foot.appendChild(sidBadge);
         }
     }
-    if (sidBadge) sidBadge.textContent = '🔑 ' + getShopId();
+       if (sidBadge) sidBadge.textContent = '🔑 ' + getShopId();
+    // 🎯 Round 12: type law runs LAST — the type always wins
+    if (typeof v4TypeTabs === 'function') v4TypeTabs();
 }
+  
+// ── TYPE LAW (Round 12 — the Captain's law, one home) ──
+// retail: no Recipes(18), no Hotel(21) · cafe: no Hotel(21) · hotel: all menus
+// Plan features (Master) may hide MORE — but never show what the type forbids.
+// Runs LAST (after applyPlanVisibility / v4lgApplySidebar) so the type always wins.
+function v4TypeTabs() {
+    var bizType = (window.__currentShopRow && window.__currentShopRow.business_type) ||
+                  (typeof SS_PLAN !== 'undefined' ? SS_PLAN.businessType : 'retail');
+    var hide = (bizType === 'retail') ? [18, 21] : (bizType === 'cafe' ? [21] : []);
+    hide.forEach(function(n) {
+        var el = document.getElementById('stab' + n);
+        if (el) el.style.display = 'none';
+    });
+}
+  
 // ── TAB SWITCH ──
 function selectTab(i, el) {
+  
   document.querySelectorAll('.tab-content').forEach(function(x){ x.style.display = 'none'; });
   var target = document.getElementById('tab' + i);
   if (target) target.style.display = 'block';
@@ -1303,6 +1356,17 @@ supabaseClient.auth.onAuthStateChange(async function(event, session) {
                 }));
             }
         } catch(e) {}
+        // ━━━ Route 4b: Master's global trial settings → device cache (Round 13 —
+        // the countdown banner + type limits now obey the Master panel)
+        try {
+            const { data: gs } = await supabaseClient.from('global_settings')
+                .select('default_trial_days, trial_warning_days, trial_shops_per_type')
+                .eq('id', 'globalConfig').maybeSingle();
+            if (gs) {
+                if (gs.trial_warning_days > 0) localStorage.setItem('ss_trial_warning_days', String(gs.trial_warning_days));
+                if (gs.trial_shops_per_type > 0) localStorage.setItem('ss_trial_shops_per_type', String(gs.trial_shops_per_type));
+            }
+        } catch(e) {}
 
         // ━━━ Route 5: For TRIAL shops — force SS_PLAN to match shop's business type
         if (shopRow && shopRow.plan === 'trial') {
@@ -1367,13 +1431,10 @@ function init() {
     changeLanguage(appLang);
     buildSidebar();
 
-    // 🎯 SHOW DASHBOARD IMMEDIATELY (tab 0 = default landing)
-    var tab0 = document.getElementById('tab0');
-    if (tab0) {
-        tab0.style.display = 'block';
-        var stab0 = document.getElementById('stab0');
-        if (stab0) stab0.classList.add('active');
-    }
+       // 🎯 SHOW DASHBOARD IMMEDIATELY (tab 0 = default landing)
+    // Round 8: enter through selectTab() so the Dashboard loader runs on FIRST
+    // entry — hotel Lens setup, live clock, and the 📤 share button live there.
+    selectTab(0, document.getElementById('stab0'));
 
     // 🔀 Shop switcher — retry until auth data arrives
     var swTries = 0;
@@ -1407,17 +1468,7 @@ function init() {
     else applyPlanVisibility();
 
     // 🎯 TYPE-AWARE TOOLS — hide tools not relevant to this shop's type
-    var bizType = (window.__currentShopRow && window.__currentShopRow.business_type) || 'retail';
-    if (typeof v4lgApplySidebar === 'function') v4lgApplySidebar();
-    if (bizType === 'retail') {
-        [18, 21].forEach(function(n) {
-            var el = document.getElementById('stab' + n);
-            if (el) el.style.display = 'none';
-        });
-    } else if (bizType === 'cafe') {
-        var el21 = document.getElementById('stab21');
-        if (el21) el21.style.display = 'none';
-    }
+    if (typeof v4lgApplySidebar === 'function') v4lgApplySidebar();   // type law runs inside it (Round 12)
 
     if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
 }</script>
