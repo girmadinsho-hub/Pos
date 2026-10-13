@@ -29,12 +29,9 @@ function v4stfTaxTable() {
   } catch(e) {}
   return [[1,600,0],[601,1659,10],[1660,3199,15],[3200,5279,20],[5280,7799,25],[7800,10899,30],[10900,99999999,35]];
 }
-function v4stfTaxTableSet(t) { localStorage.setItem('v4stfTax_' + getShopId(), JSON.stringify(t)); }
-function v4stfTaxOn()   { return localStorage.getItem('v4stfTaxOn_' + getShopId()) !== '0'; }
-function v4stfTaxOnSet(v){ localStorage.setItem('v4stfTaxOn_' + getShopId(), v ? '1' : '0'); }
-function v4stfPenOn()   { return localStorage.getItem('v4stfPenOn_' + getShopId()) !== '0'; }
-function v4stfPenOnSet(v){ localStorage.setItem('v4stfPenOn_' + getShopId(), v ? '1' : '0'); }
-function v4stfPensionRate() { return parseFloat(localStorage.getItem('v4stfPen_' + getShopId()) || '7'); }
+function v4stfTaxTableSet(t) { localStorage.setItem('v4stfTax_' + getShopId(), JSON.stringify(t)); ssKVSet('staff_taxTable', JSON.stringify(t)); }function v4stfTaxOn()   { return localStorage.getItem('v4stfTaxOn_' + getShopId()) !== '0'; }
+function v4stfTaxOnSet(v){ localStorage.setItem('v4stfTaxOn_' + getShopId(), v ? '1' : '0'); ssKVSet('staff_taxOn', v ? '1' : '0'); }function v4stfPenOn()   { return localStorage.getItem('v4stfPenOn_' + getShopId()) !== '0'; }
+function v4stfPenOnSet(v){ localStorage.setItem('v4stfPenOn_' + getShopId(), v ? '1' : '0'); ssKVSet('staff_penOn', v ? '1' : '0'); }function v4stfPensionRate() { return parseFloat(localStorage.getItem('v4stfPen_' + getShopId()) || '7'); }
 function v4stfPensionEmployer() { return parseFloat(localStorage.getItem('v4stfPenE_' + getShopId()) || '11'); }
 function v4stfTax(income) {
   if (!v4stfTaxOn()) return 0;                    // 🏛️ optional — private institutions
@@ -54,10 +51,8 @@ function v4stfPension(income) {
 
 // custom recurring deductions per employee: [{name, amount}]
 function v4stfDedGet(id) { try { return JSON.parse(localStorage.getItem('v4stfDed_' + getShopId() + '_' + id) || '[]'); } catch(e) { return []; } }
-function v4stfDedSet(id, list) { localStorage.setItem('v4stfDed_' + getShopId() + '_' + id, JSON.stringify(list)); }
-function v4stfPaysGet() { try { return JSON.parse(localStorage.getItem('v4stfPays_' + getShopId()) || '[]'); } catch(e) { return []; } }
-function v4stfPaysPush(p) { var l = v4stfPaysGet(); l.push(p); localStorage.setItem('v4stfPays_' + getShopId(), JSON.stringify(l)); }
-
+function v4stfDedSet(id, list) { localStorage.setItem('v4stfDed_' + getShopId() + '_' + id, JSON.stringify(list)); ssKVSet('staff_ded_' + id, JSON.stringify(list)); }function v4stfPaysGet() { try { return JSON.parse(localStorage.getItem('v4stfPays_' + getShopId()) || '[]'); } catch(e) { return []; } }
+function v4stfPaysPush(p) { var l = v4stfPaysGet(); l.push(p); localStorage.setItem('v4stfPays_' + getShopId(), JSON.stringify(l)); ssKVSet('staff_pays', JSON.stringify(l)); }
 // ═══ LEDGER ENGINE (pay-day modes honored) ═══
 function v4stfDateStr(d) { return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 async function v4stfLedgerLoad(force) {
@@ -403,13 +398,24 @@ async function v4stfPaySave() {
       amount: net, date: new Date().toISOString().slice(0,10), shop_id: getShopId(),
       category: 'Salaries & Wages' }]).select('id').single();
     if (expErr) throw expErr;
+    // 🎯 Round 7 truth fix: extras were never "earned" in the ledger — paying them
+    // made balances go negative and repeat every month. Fix: record them as earned
+    // NOW, then clear them from the employee so they never double-pay.
+    var extrasTotal = slip.extras.reduce(function(s,x){ return s + x.amount; }, 0);
+    if (extrasTotal > 0) {
+      const { error: xErr } = await supabaseClient.from('salary_ledger').insert([{
+        shop_id: getShopId(), employee_id: emp.id, entry_type: 'earned',
+        amount: extrasTotal, note: 'Tips/Bonus/Overtime (paid together)',
+        created_by: 'Admin', created_at: new Date().toISOString() }]);
+      if (xErr) throw xErr;
+    }
     const { error: lErr } = await supabaseClient.from('salary_ledger').insert([{
       shop_id: getShopId(), employee_id: emp.id, entry_type: 'paid',
       amount: -slip.gross, note: 'Salary payment (net ' + fmtMoney(net) + ')',
       created_by: 'Admin', ref_expense_id: expData.id, created_at: new Date().toISOString() }]);
     if (lErr) throw lErr;
-    await v4ById(supabaseClient.from('employees').update({ last_paid: new Date().toISOString() }), emp.id);
-    emp.lastPaid = new Date().toISOString();
+    await v4ById(supabaseClient.from('employees').update({ last_paid: new Date().toISOString(), tip: 0, bonus: 0, overtime: 0, penalty: 0 }), emp.id);
+    emp.lastPaid = new Date().toISOString(); emp.tip = 0; emp.bonus = 0; emp.overtime = 0; emp.penalty = 0;
     v4stfPaysPush({ empId: emp.id, name: emp.name, date: new Date().toISOString(),
       gross: slip.gross, tax: slip.tax, pension: slip.pension,
       custom: slip.custom, extras: slip.extras, net: net, actualPaid: net });
@@ -710,6 +716,7 @@ function v4stfPenSave() {
   var e = parseFloat(document.getElementById('v4stfPenE').value) || 0;
   localStorage.setItem('v4stfPen_' + getShopId(), String(r));
   localStorage.setItem('v4stfPenE_' + getShopId(), String(e));
+  ssKVSet('staff_penRate', String(r)); ssKVSet('staff_penEmployer', String(e));
   alert('✅ Pension saved: employee ' + r + '% · employer ' + e + '%.');
 }
 
@@ -747,7 +754,10 @@ function v4stfEdit(id) {
     '<div id="v4stfDedList"></div>' +
     '<button class="v4-chip" onclick="v4stfDedAdd()">+ Add Deduction</button>' +
     '<div style="height:10px"></div>' +
-    '<button class="v4-btn g" onclick="v4stfEditSave()">💾 Save All</button>';
+    '<div style="display:flex;gap:6px">' +
+    '<button class="v4-btn g" style="margin:0;flex:1" onclick="v4stfEditSave()">💾 Save All</button>' +
+    '<button class="v4-btn" style="margin:0;flex:0 0 auto;width:auto;padding:12px 16px;background:#f59e0b" onclick="v4stfResetPin(\'' + id + '\')">🔑 PIN</button>' +
+    '</div>';
   v4stfDedRender();
 }
 function v4stfDedRender() {
@@ -761,6 +771,20 @@ function v4stfDedRender() {
   }).join('') || '<p style="font-size:11px;color:#94a3b8;margin:4px 0">None — add if the rules require (union, loans, cost sharing…)</p>';
 }
 function v4stfDedAdd() { window._v4stfEdit.ded.push({ name:'', amount:0 }); v4stfDedRender(); }
+async function v4stfResetPin(id) {
+  var emp = v4stf.data.find(function(x){ return x.id === id; }); if (!emp) return;
+  var pin = await prompt('🔑 New 4-digit login PIN for ' + emp.name + ':', '');
+  if (pin === null) return;
+  pin = String(pin).trim();
+  if (!/^\d{4}$/.test(pin)) { alert('PIN must be exactly 4 digits (e.g., 1234).'); return; }
+  if (!await confirm("Set " + emp.name + "'s PIN to " + pin + '?\nThey use it on POS / Kitchen / Hotel Desk.')) return;
+  try {
+    var ok = await ssSetPin(id, pin);
+    if (!ok) throw new Error('Update failed');
+    alert('✅ PIN updated for ' + emp.name + '.');
+  } catch(e) { alert('❌ ' + e.message); }
+}
+
 async function v4stfEditSave() {
   var e = window._v4stfEdit; if (!e) return;
   var name = document.getElementById('v4stfEName').value.trim();
@@ -955,7 +979,28 @@ function v4stfRender() {
 }
 
 // ── tab loader ──
+// ── Round 14: payroll truth pull (DB → cache, one-time migrate up) ──
+async function v4stfSettingsPull() {
+  var sid = getShopId();
+  await ssKVPull('staff_taxTable', 'v4stfTax_' + sid);
+  await ssKVPull('staff_taxOn', 'v4stfTaxOn_' + sid);
+  await ssKVPull('staff_penOn', 'v4stfPenOn_' + sid);
+  await ssKVPull('staff_penRate', 'v4stfPen_' + sid);
+  await ssKVPull('staff_penEmployer', 'v4stfPenE_' + sid);
+  await ssKVPull('staff_pays', 'v4stfPays_' + sid);
+  try {
+    const { data } = await supabaseClient.from('shop_kv').select('key, value').eq('shop_id', sid).like('key', 'staff_ded_%');
+    if (data && data.length) {
+      data.forEach(function(row) { localStorage.setItem('v4stfDed_' + sid + '_' + row.key.slice('staff_ded_'.length), row.value); });
+    } else {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('v4stfDed_' + sid + '_') === 0) ssKVSet('staff_ded_' + k.slice(('v4stfDed_' + sid + '_').length), localStorage.getItem(k));
+      }
+    }
+  } catch(e) {}
+}
 V4_TAB_LOADERS[6] = function() {
   v4stfEnsureUI();
-  v4stfLoad().then(function(){ return v4stfSyncAll(); }).then(v4stfRender);
+  v4stfSettingsPull().then(function(){ return v4stfLoad(); }).then(function(){ return v4stfSyncAll(); }).then(v4stfRender);
 };
