@@ -618,7 +618,7 @@ function v4stRestockWA() {
   var rows = window._v4stRestock || [];
   if (!rows.length) return;
   var sel = document.getElementById('v4stSup');
-  var phone = sel ? String(sel.value || '').replace(/[^0-9]/g, '') : '';
+  var phone = sel ? ssWaNum(sel.value || '') : '';
   var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
   var msg = '🛒 RESTOCK ORDER — ' + shop + '\n' + new Date().toLocaleDateString() + '\n\n';
   rows.forEach(function(r){
