@@ -1380,3 +1380,30 @@ function ssShareTo(message, opts) {
   var na = document.getElementById('ssGoNA'); if (na) na.onclick = function(){ go('na'); };
   document.getElementById('ssGoCP').onclick = function(){ go('cp'); };
 }
+
+// ── Direct-send helpers (Round 6) — normalize stored/local numbers ──
+function ssWaNum(phone) {
+  var ccIso = localStorage.getItem('ssShareCC') || 'ET';
+  var cc = (SS_COUNTRIES[ccIso] || SS_COUNTRIES['ET'])[1];
+  return ssIntlPhone(phone, cc);
+}
+function ssWaLink(phone, message) {
+  var ph = ssWaNum(phone);
+  if (!ph) { alert('❌ No valid phone number stored. Add a phone number to that record first.'); return; }
+  window.open('https://wa.me/' + ph + '?text=' + encodeURIComponent(message), '_blank');
+}
+// ── KV store (Round 14): database = truth, phone = cache ──
+async function ssKVGet(key) {
+  try { const { data } = await supabaseClient.from('shop_kv').select('value').eq('shop_id', getShopId()).eq('key', key).maybeSingle(); return (data && data.value !== null && data.value !== undefined) ? data.value : null; } catch(e) { return null; }
+}
+async function ssKVSet(key, val) {
+  try { await supabaseClient.from('shop_kv').upsert({ shop_id: getShopId(), key: key, value: val, updated_at: new Date().toISOString() }, { onConflict: 'shop_id,key' }); } catch(e) {}
+}
+async function ssKVPull(key, lsKey) {   // DB → cache; if DB empty, migrate cache → DB (once)
+  try {
+    var v = await ssKVGet(key);
+    if (v !== null && v !== undefined) { localStorage.setItem(lsKey, v); return; }
+    var ls = localStorage.getItem(lsKey);
+    if (ls !== null) await ssKVSet(key, ls);
+  } catch(e) {}
+}
