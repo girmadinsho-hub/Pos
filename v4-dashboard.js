@@ -96,8 +96,9 @@ async function v4YesterdayRevenue() {
 // ═══ MAIN LOAD ═══
 async function loadDashboardV4(period, btn) {
   v4period = period || v4period;
-  document.querySelectorAll('#tab0 .period-btn').forEach(function(b){ b.classList.toggle('active', btn ? b === btn : false); });
-
+  document.querySelectorAll('#tab0 .period-btn').forEach(function(b){ b.classList.toggle('active', btn ? b === btn : false); });  v4Clock();
+  v4LensWidgets();   // 🎯 Round 12: one home for lens widget visibility (hotels)
+  
   var start = v4periodStart(v4period);
   var jobs = [];
   var rev = 0, gp = 0, cd = 0, txCount = 0;
@@ -303,6 +304,17 @@ async function loadDashboardV4(period, btn) {
 
 function v4set(id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt; }
 
+// ═══ LIVE CLOCK (Round 11 repair — the call stayed, the body was lost) ═══
+function v4Clock() {
+  var el = document.getElementById('v4clock');
+  if (!el) return;
+  var d = new Date();
+  var h = d.getHours();
+  var m = String(d.getMinutes()).padStart(2, '0');
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  el.textContent = h + ':' + m + ' ' + ampm;
+}
 // ═══ CHARTS ═══
 function v4drawSales7(rows) {
   var ctx = document.getElementById('v4salesChart');
@@ -463,24 +475,115 @@ function v4LensEnsure() {
   ];
   opts.forEach(function(o){
     var b = document.createElement('button');
-    b.className = 'period-btn' + (v4lens === o[0] ? ' active' : '');
+    // 🛡️ Round 8: lens uses its OWN class — loadDashboardV4's .period-btn
+    // active-toggle must never steal the period chips' highlight.
+    b.className = 'lens-btn';
     b.style.cssText = 'flex:1;padding:9px 6px;border:2px solid #e2e8f0;border-radius:24px;font-size:11px;background:#fff;cursor:pointer;font-weight:700;color:#64748b;';
+    if (v4lens === o[0]) { b.style.background = '#3b82f6'; b.style.color = '#fff'; b.style.borderColor = '#3b82f6'; }
     b.textContent = o[1];
     b.onclick = function() {
       v4lens = o[0];
-      bar.querySelectorAll('.period-btn').forEach(function(x){ x.style.background = '#fff'; x.style.color = '#64748b'; x.style.borderColor = '#e2e8f0'; });
+      bar.querySelectorAll('button').forEach(function(x){ x.style.background = '#fff'; x.style.color = '#64748b'; x.style.borderColor = '#e2e8f0'; });
       b.style.background = '#3b82f6'; b.style.color = '#fff'; b.style.borderColor = '#3b82f6';
       loadDashboardV4(v4period, document.querySelector('#tab0 .period-btn.active'));
+      v4LensWidgets();
     };
-    if (v4lens === o[0]) { b.style.background = '#3b82f6'; b.style.color = '#fff'; b.style.borderColor = '#3b82f6'; }
     bar.appendChild(b);
   });
+}
+// ═══ ROOM SERVICE LENS CARD (Round 12 — beds lens: the room board summary) ═══
+function v4RoomServiceCardEnsure() {
+  var card = document.getElementById('v4RoomServiceCard');
+  if (card) return card;
+  var occ = document.getElementById('v4occupancyCard');
+  if (!occ || !occ.parentNode) return null;
+  card = document.createElement('div');
+  card.className = 'card';
+  card.id = 'v4RoomServiceCard';
+  card.style.cssText = 'display:none;padding:12px';
+  card.innerHTML = '<div class="card-title" style="font-size:13px;display:flex;align-items:center;gap:8px">🛏️ Room Service — Live Summary' +
+    '<button class="v4-chip" style="margin-left:auto;font-size:10px" onclick="selectTab(21, document.getElementById(\'stab21\'))">Open Room Board ›</button></div>' +
+    '<div id="v4RoomService"><p style="text-align:center;color:#94a3b8;font-size:12px;padding:10px">Loading…</p></div>';
+  occ.parentNode.insertBefore(card, occ.nextSibling);
+  return card;
+}
+async function v4RoomServiceFill() {
+  var el = document.getElementById('v4RoomService'); if (!el) return;
+  try {
+    var start = v4periodStart(v4period);
+    var res = await Promise.all([
+      supabaseClient.from('rooms').select('status').eq('shop_id', getShopId()).limit(100),
+      supabaseClient.from('guest_stays').select('planned_checkout, nightly_rate, deposit').eq('shop_id', getShopId()).eq('status', 'active').limit(200),
+      supabaseClient.from('sales').select('total').eq('shop_id', getShopId()).eq('order_type', 'Room Stay').eq('voided', false).gte('time', start.toISOString()).limit(500)
+    ]);
+    var rooms = res[0].data || [], stays = res[1].data || [], sales = res[2].data || [];
+    var occ = rooms.filter(function(r){ return r.status === 'occupied'; }).length;
+    var free = rooms.filter(function(r){ return r.status === 'available'; }).length;
+    var clean = rooms.filter(function(r){ return r.status === 'cleaning'; }).length;
+    var pct = rooms.length ? Math.round(occ / rooms.length * 100) : 0;
+    var t = new Date();
+    var tkey = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+    var dep = 0, over = 0, rateSum = 0, depSum = 0;
+    stays.forEach(function(s) {
+      var co = String(s.planned_checkout || '').slice(0, 10);
+      if (co === tkey) dep++;
+      else if (co && co < tkey) over++;
+      rateSum += Number(s.nightly_rate || 0);
+      depSum += Number(s.deposit || 0);
+    });
+    var rev = sales.reduce(function(s, x){ return s + Number(x.total || 0); }, 0);
+    function T(v, l, c) { return '<div style="flex:1;text-align:center;background:rgba(148,163,184,.08);border-radius:10px;padding:9px 4px;min-width:0"><b style="font-size:15px;display:block;color:' + c + '">' + v + '</b><small style="font-size:9px;font-weight:800;color:#64748b">' + l + '</small></div>'; }
+    el.innerHTML = '<div style="display:flex;gap:8px">' +
+      T(pct + '%', 'OCCUPIED (' + occ + '/' + rooms.length + ')', pct > 80 ? '#dc2626' : '#3b82f6') +
+      T(fmtMoney(rev), 'ROOM REVENUE', '#059669') +
+      T(fmtMoney(rateSum), 'TONIGHT VALUE', '#7c3aed') +
+      '</div><div style="display:flex;gap:8px;margin-top:8px">' +
+      T(free, 'FREE ROOMS', '#10b981') +
+      T(clean, 'CLEANING', clean ? '#f59e0b' : '#94a3b8') +
+      T(dep, 'DEPART TODAY', dep ? '#f97316' : '#94a3b8') +
+      T(over, 'OVERDUE', over ? '#ef4444' : '#10b981') +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;padding:6px 2px 0;font-size:11px;color:#64748b">' +
+      '<span>🌙 ' + stays.length + ' active stay(s)</span><span>💰 deposits held ' + fmtMoney(depSum) + '</span></div>' +
+      (over > 0 ? '<div style="margin-top:6px;background:rgba(239,68,68,.12);border-radius:8px;padding:6px;text-align:center;font-size:11px;font-weight:700;color:#dc2626">⚠️ ' + over + ' overdue guest(s) — Room Board → extend or checkout</div>' : '');
+  } catch(e) {
+    el.innerHTML = '<p style="text-align:center;color:#94a3b8;font-size:12px;padding:8px">Room data unavailable.</p>';
+  }
+}
+// ═══ LENS WIDGET LAW (Round 12 — one home) ═══
+function v4LensWidgets() {
+  if (!v4IsHotel()) return;   // non-hotels: v4DashboardTypeAware owns visibility
+  var cafeWrap = document.getElementById('v4cafeWidgets');
+  var tablesCard = document.getElementById('v4activeTables') ? document.getElementById('v4activeTables').closest('.card') : null;
+  var kitchenCard = document.getElementById('v4kitchenStatus') ? document.getElementById('v4kitchenStatus').closest('.card') : null;
+  var occCard = document.getElementById('v4occupancyCard');
+  var roomCard = v4RoomServiceCardEnsure();
+  function cafeVisible(v) {
+    if (cafeWrap) { cafeWrap.style.display = v ? 'flex' : 'none'; return; }
+    if (tablesCard) tablesCard.style.display = v ? 'block' : 'none';
+    if (kitchenCard) kitchenCard.style.display = v ? 'block' : 'none';
+  }
+  if (v4lens === 'cafe') {
+    cafeVisible(true);
+    if (occCard) occCard.style.display = 'none';
+    if (roomCard) roomCard.style.display = 'none';
+  } else if (v4lens === 'beds') {
+    cafeVisible(false);
+    if (occCard) occCard.style.display = 'block';
+    if (roomCard) { roomCard.style.display = 'block'; v4RoomServiceFill(); }
+  } else {
+    // 🏨 Whole Business — cafe + beds data together
+    cafeVisible(true);
+    if (occCard) occCard.style.display = 'block';
+    if (roomCard) { roomCard.style.display = 'block'; v4RoomServiceFill(); }
+  }
 }
 
 // ── register my tab loader ──
 V4_TAB_LOADERS[0] = function() {
     v4DashboardTypeAware();
     v4LensEnsure();
+    v4LensWidgets();
     loadDashboardV4(v4period, document.querySelector('.period-btn.active'));
 };
 
