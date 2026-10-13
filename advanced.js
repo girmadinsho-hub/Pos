@@ -770,7 +770,7 @@ async function openMarketingModal() {
         var promoMsg = encodeURIComponent("Hello! We miss you at our shop. Come back this week and get a 10% discount on your order! Show this message to the cashier.");
         var html = '<p style="font-size:12px; color:#64748b; margin-bottom:15px;">These customers haven\'t visited in over 30 days. Tap "Send Promo" to message them on WhatsApp.</p>';
         inactiveCustomers.forEach(function(c) {
-            var cleanPhone = c.phone.replace(/[^0-9]/g, '');
+            var cleanPhone = c.ssWaNum(phone);
             var daysSince = Math.floor((Date.now() - new Date(c.lastVisit)) / 86400000);
             html += '<div style="background:#f8fafc; border:1px solid #e2e8f0; padding:10px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">' +
                 '<div><b>' + sanitize(c.name) + '</b><br><small style="color:#64748b;">Last visit: ' + daysSince + ' days ago</small></div>' +
