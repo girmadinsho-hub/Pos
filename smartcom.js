@@ -228,17 +228,31 @@ function scRecStop() {
     var mic = document.getElementById('scMicBtn');
     if (mic) { mic.style.background = '#ef4444'; mic.textContent = '🎤'; }
     r.stop();
-    setTimeout(function() {
+    setTimeout(async function() {
         if (dur < 1 || scChunks.length === 0) return;
         var blob = new Blob(scChunks, { type: 'audio/webm' });
-        var rd = new FileReader();
-        rd.onloadend = function() {
-            if (rd.result.length > 1500000) { alert('Too long! Max ~2 minutes.'); return; }
-            scSend({ message: '🎤 Voice (' + dur + 's)', media_type: 'voice', media_data: rd.result, media_duration: dur + 's' });
-        };
-        rd.readAsDataURL(blob);
+        var url = null;
+        try { url = await scUploadMedia(blob, 'webm'); } catch(e) {}
+        if (url) {
+            scSend({ message: '🎤 Voice (' + dur + 's)', media_type: 'voice', media_url: url, media_data: null, media_duration: dur + 's' });
+        } else {
+            var rd = new FileReader();
+            rd.onloadend = function() {
+                if (rd.result.length > 1500000) { alert('Too long! Max ~2 minutes.'); return; }
+                scSend({ message: '🎤 Voice (' + dur + 's)', media_type: 'voice', media_data: rd.result, media_duration: dur + 's' });
+            };
+            rd.readAsDataURL(blob);
+        }
     }, 300);
+}async function scUploadMedia(blob, ext) {
+    var path = 'chat_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.' + ext;
+    const { error } = await supabaseClient.storage.from('chat-media')
+        .upload(path, blob, { contentType: blob.type || 'application/octet-stream', upsert: false });
+    if (error) return null;
+    const { data } = supabaseClient.storage.from('chat-media').getPublicUrl(path);
+    return data ? data.publicUrl : null;
 }
+
 
 // ================================================================
 // 📷 PART 3 — PHOTO
@@ -248,40 +262,50 @@ function scPhoto(file) {
     var rd = new FileReader();
     rd.onload = function(e) {
         var img = new Image();
-        img.onload = function() {
+        img.onload = async function() {
             var cv = document.createElement('canvas');
             var sc = Math.min(1, 480 / img.width);
             cv.width = img.width * sc; cv.height = img.height * sc;
             cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-            var b64 = cv.toDataURL('image/jpeg', 0.65);
-            if (b64.length > 800000) { alert('Photo too large.'); return; }
-            scSend({ message: '📷 Photo', media_type: 'photo', media_data: b64, media_duration: null });
+            cv.toBlob(async function(blob) {
+                if (!blob) return;
+                var url = null;
+                try { url = await scUploadMedia(blob, 'jpg'); } catch(e2) {}
+                if (url) {
+                    scSend({ message: '📷 Photo', media_type: 'photo', media_url: url, media_data: null, media_duration: null });
+                } else {
+                    // 🛟 offline fallback: old inline way
+                    var b64 = cv.toDataURL('image/jpeg', 0.65);
+                    if (b64.length > 800000) { alert('Photo too large and no internet for upload. Try again online.'); return; }
+                    scSend({ message: '📷 Photo', media_type: 'photo', media_data: b64, media_duration: null });
+                }
+            }, 'image/jpeg', 0.72);
         };
         img.src = e.target.result;
     };
     rd.readAsDataURL(file);
-}
-
-// ================================================================
+}// ================================================================
 // 📎 PART 4 — FILE (max 2MB — was 1MB)
 // ================================================================
-function scFile(file) {
+async function scFile(file) {
     if (!file) return;
-    if (file.size > 2000000) { alert('File too large! Max 2 MB.'); return; }
-    var rd = new FileReader();
-    rd.onloadend = function() {
-        if (rd.result.length > 2800000) { alert('File too large after encoding.'); return; }
-        scSend({
-            message: '📎 ' + file.name,
-            media_type: 'file',
-            media_data: rd.result,
-            media_duration: (file.size / 1024).toFixed(0) + 'KB'
-        });
-    };
-    rd.readAsDataURL(file);
-}
-
-// ================================================================
+    if (file.size > 5000000) { alert('File too large! Max 5 MB.'); return; }
+    var ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+    var url = null;
+    try { url = await scUploadMedia(file, ext); } catch(e) {}
+    if (url) {
+        scSend({ message: '📎 ' + file.name, media_type: 'file', media_url: url, media_data: null, media_duration: (file.size/1024).toFixed(0) + 'KB' });
+    } else {
+        // 🛟 fallback: old inline way
+        if (file.size > 2000000) { alert('File too large to send offline. Try again with internet.'); return; }
+        var rd = new FileReader();
+        rd.onloadend = function() {
+            if (rd.result.length > 2800000) { alert('File too large after encoding.'); return; }
+            scSend({ message: '📎 ' + file.name, media_type: 'file', media_data: rd.result, media_duration: (file.size/1024).toFixed(0) + 'KB' });
+        };
+        rd.readAsDataURL(file);
+    }
+}// ================================================================
 // 📤 PART 5 — SEND (all types + reply support)
 // ================================================================
 function scSend(p) {
@@ -292,8 +316,7 @@ function scSend(p) {
     var msg = {
         shop_id: SC.shop,
         message: p.message,
-        media_type: p.media_type, media_data: p.media_data, media_duration: p.media_duration,
-        sender_name: SC.name, sender_id: SC.id, sender_role: SC.role,
+        media_type: p.media_type, media_data: p.media_data, media_url: p.media_url || null, media_duration: p.media_duration,        sender_name: SC.name, sender_id: SC.id, sender_role: SC.role,
         recipient: 'All',
         read_by: JSON.stringify([SC.id])   // 🆕 sender has read it
     };
@@ -380,26 +403,23 @@ function scBubble(msg) {
     }
 
     // 1️⃣ VOICE — audio player with speed control
-    if (msg.media_type === 'voice' && msg.media_data) {
-        var vid = 'va_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+    if (msg.media_type === 'voice' && (msg.media_url || msg.media_data)) {        var vid = 'va_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
         in_ = replyQuote + '<div style="display:flex;align-items:center;gap:6px;min-width:180px;">' +
             '<span style="font-size:22px;">🎤</span>' +
-            '<audio id="' + vid + '" controls preload="metadata" src="' + msg.media_data + '" style="height:36px;flex:1;max-width:150px;"></audio>' +
+            '<audio id="' + vid + '" controls preload="metadata" src="' + (msg.media_url || msg.media_data) + '" style="height:36px;flex:1;max-width:150px;"></audio>' +
             '<button onclick="scVoiceSpeed(\'' + vid + '\')" style="font-size:9px;font-weight:800;padding:3px 6px;border:none;border-radius:6px;background:rgba(255,255,255,.2);color:inherit;cursor:pointer;" title="Speed">1×</button>' +
             '</div>' +
             '<small style="display:block;margin-top:3px;">' + msg.sender_name + ' • ' + (msg.media_duration || '') + ' • ' + ts + readMark + '</small>';
     }
     // 2️⃣ PHOTO — with lightbox
-    else if (msg.media_type === 'photo' && msg.media_data) {
-        var pid = 'ph_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-        in_ = replyQuote + '<img src="' + msg.media_data + '" style="max-width:220px;max-height:220px;border-radius:10px;cursor:pointer;display:block;" data-media="' + msg.media_data + '" id="' + pid + '" onclick="scLightbox(\'' + pid + '\')">' +
+    else if (msg.media_type === 'photo' && (msg.media_url || msg.media_data)) {        var pid = 'ph_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        in_ = replyQuote + '<img loading="lazy" src="' + (msg.media_url || msg.media_data) + '" style="max-width:220px;max-height:220px;border-radius:10px;cursor:pointer;display:block;" data-media="' + (msg.media_url || msg.media_data) + '" id="' + pid + '" onclick="scLightbox(\'' + pid + '\')">' +
             '<small style="display:block;margin-top:4px;">' + msg.sender_name + tag + ' • ' + ts + readMark + '</small>';
     }
     // 3️⃣ FILE — downloadable
-    else if (msg.media_type === 'file' && msg.media_data) {
-        var fname = (msg.message || 'file').replace('📎 ', '');
+    else if (msg.media_type === 'file' && (msg.media_url || msg.media_data)) {        var fname = (msg.message || 'file').replace('📎 ', '');
         var fsize = msg.media_duration || '';
-        in_ = replyQuote + '<a href="' + msg.media_data + '" download="' + fname + '" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;padding:8px 12px;border:1px solid rgba(255,255,255,.3);border-radius:10px;min-width:170px;">' +
+        in_ = replyQuote + '<a href="' + (msg.media_url || msg.media_data) + '" download="' + fname + '" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;padding:8px 12px;border:1px solid rgba(255,255,255,.3);border-radius:10px;min-width:170px;">' +
             '<span style="font-size:28px;">📎</span>' +
             '<span style="flex:1;min-width:0;"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;">' + fname + '</b>' +
             '<small style="opacity:.7;">' + fsize + ' • Tap to download</small></span>' +
@@ -523,8 +543,8 @@ function scRerender() {
     if (!c) return;
     supabaseClient.from('chat_messages')
         .select('*').eq('shop_id', SC.shop)
-        .gte('created_at', new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString())
-        .order('created_at', { ascending: true }).limit(150)
+        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+        .order('created_at', { ascending: true }).limit(200)
         .then(function(r) {
             if (!r.data) return;
             var olds = c.querySelectorAll('.chat-bubble');
@@ -627,14 +647,16 @@ async function scCall(toId, toName, video) {
 
 function scPeer(peerId, isOfferer) {
     if (SC.pc) { try { SC.pc.close(); } catch(e) {} }
-    SC.pc = new RTCPeerConnection({
-        iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' },
-            { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-            { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-        ]
-    });
+    var iceServers = [
+        { urls: ['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun.cloudflare.com:3478'] },
+        { urls: ['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'], username: 'openrelayproject', credential: 'openrelayproject' }
+    ];
+    try {
+        if (typeof SS_CONFIG !== 'undefined' && SS_CONFIG.TURN && SS_CONFIG.TURN.urls) {
+            iceServers.push({ urls: SS_CONFIG.TURN.urls, username: SS_CONFIG.TURN.username || '', credential: SS_CONFIG.TURN.credential || '' });
+        }
+    } catch(e) {}
+    SC.pc = new RTCPeerConnection({ iceServers: iceServers });
     SC.stream.getTracks().forEach(track => SC.pc.addTrack(track, SC.stream));
     SC.pc.ontrack = (ev) => {
         SC.remoteStream = ev.streams[0];
@@ -670,7 +692,11 @@ function scPeer(peerId, isOfferer) {
     };
     SC.pc.onicecandidate = (ev) => { if (ev.candidate) scSig(peerId, 'ice', { candidate: ev.candidate }); };
     SC.pc.onconnectionstatechange = () => {
-        if (SC.pc.connectionState === 'failed' || SC.pc.connectionState === 'disconnected') scEnd(false);
+        if (SC.pc.connectionState === 'failed') {
+            alert('❌ Call could not connect — the network between the two phones is too weak.\n\nTips: both phones need good internet. Voice messages always work.');
+            scEnd(true);
+        }
+        else if (SC.pc.connectionState === 'disconnected') scEnd(false);
     };
     if (isOfferer) {
         SC.pc.createOffer()
@@ -932,18 +958,23 @@ function scEnd(notify) {
     __scIceBuffer = [];
 }
 
-function scCallFromChat(video) {
+async function scCallFromChat(video) {
     const sel = scRecipientSelect();
     if (!sel) { alert('Open a chat first.'); return; }
     const val = sel.value;
-    const nm = sel.options[sel.selectedIndex].text.replace('👤 ', '').replace('🟢 ', '');
+    const nm = sel.options[sel.selectedIndex].text.replace('👤 ', '').replace('🟢 ', '').replace(' ⚫ ', '');
     if (val === 'All' || val === 'Cashier' || val === 'Kitchen' || val === 'Admin') {
-        alert('⚠️ Select a SPECIFIC person from the Direct Message list first.');
+        alert('⚠️ Select a SPECIFIC person from the Direct Message list first (look for 🟢).');
+        return;
+    }
+    await scFetchPresence();   // fresh online status before ringing
+    var p = SC.presenceMap[val];
+    if (!p || !p.online) {
+        if (confirm('⚫ ' + nm + ' appears OFFLINE (their app is not open).\n\nRing anyway? (they may get a missed-call message later)')) scCall(val, nm, video);
         return;
     }
     scCall(val, nm, video);
 }
-
 // ================================================================
 // ✏️ PART 8 — TYPING + PRESENCE + ONLINE DOTS
 // ================================================================
@@ -1179,8 +1210,8 @@ function scBoot() {
                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: 'shop_id=eq.' + SC.shop },
             function(payload) {
                 var msg = payload.new;
-                scNotifySound();
-                try { if (navigator.vibrate) navigator.vibrate(100); } catch(e) {}
+                var fromMe = (String(msg.sender_id) === String(SC.id)) && (msg.sender_name === SC.name);
+                if (!fromMe) { scNotifySound(); try { if (navigator.vibrate) navigator.vibrate(100); } catch(e) {} }
                 // Round 15: no more name-skip hack — the scmsg_ DOM guard dedupes.
                 // Chat closed → unread counter grows.
                 var fromMe = (String(msg.sender_id) === String(SC.id)) && (msg.sender_name === SC.name);
