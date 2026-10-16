@@ -583,15 +583,25 @@ async function scHandleSignal(s) {
             if (document.getElementById('scIncomingUI')) SC.pendingOffer = s;
             else if (SC.inCall) await scHandleOffer(s);
         }
-        else if (s.type === 'answer') {
+
+              else if (s.type === 'answer') {
             if (SC.pc && SC.pc.signalingState !== 'stable') {
+                try {
                 await SC.pc.setRemoteDescription(new RTCSessionDescription(s.data.sdp));
                 if (__scIceBuffer.length) {
                     const buf = __scIceBuffer; __scIceBuffer = [];
                     for (const c of buf) { try { await SC.pc.addIceCandidate(c); } catch(e) {} }
+                                }
+                } catch(er) {
+                    // 🛡️ Round 16B: answer failed → tell A instantly (no 40s ringing void)
+                    scSig(SC.peer, 'hangup', {});
+                    alert('❌ Call could not be established (answer rejected by the network).\nVoice messages always work.');
+                    scEnd(false);
                 }
             }
         }
+            
+    
         else if (s.type === 'ice') {
             if (SC.pc && SC.pc.remoteDescription) {
                 try { await SC.pc.addIceCandidate(s.data.candidate); } catch(e) {}
@@ -691,6 +701,39 @@ function scPeer(peerId, isOfferer) {
         if (video) { video.srcObject = SC.remoteStream; video.play().catch(() => {}); }
     };
     SC.pc.onicecandidate = (ev) => { if (ev.candidate) scSig(peerId, 'ice', { candidate: ev.candidate }); };
+    // 🛡️ Round 16B: if this is the ANSWERER (B), tracks attach only after the
+    // remote description exists — force-attach them the moment they arrive.
+    SC.pc.ontrack = SC.pc.ontrack || ((ev) => {
+        SC.remoteStream = ev.streams[0];
+        __scRingStop = true;
+        clearInterval(__scCallTimer); clearInterval(__scRingbackInterval);
+        const h2 = document.querySelector('#scCallUI h2');
+        if (h2) h2.textContent = '🟢 ' + SC.peerName;
+        SC.callStart = Date.now();
+        if (__scCallDurTimer) clearInterval(__scCallDurTimer);
+        __scCallDurTimer = setInterval(() => {
+            var el = document.getElementById('scCallTimer');
+            if (el) {
+                var secs = Math.floor((Date.now() - SC.callStart) / 1000);
+                var mm = String(Math.floor(secs / 60)).padStart(2, '0');
+                var ss = String(secs % 60).padStart(2, '0');
+                el.textContent = mm + ':' + ss;
+            }
+        }, 1000);
+        const audio = document.getElementById('scRemoteAudio');
+        const video = document.getElementById('scRemoteVideo');
+        if (audio) {
+            audio.srcObject = SC.remoteStream; audio.volume = 1.0;
+            audio.play().catch(() => {
+                const btn = document.createElement('button');
+                btn.textContent = '🔊 TAP TO HEAR';
+                btn.style.cssText = 'padding:12px 24px;border:none;border-radius:10px;background:#2563eb;color:white;font-weight:bold;font-size:16px;cursor:pointer;';
+                btn.onclick = () => { audio.play(); btn.remove(); };
+                audio.parentNode.appendChild(btn);
+            });
+        }
+        if (video) { video.srcObject = SC.remoteStream; video.play().catch(() => {}); }
+    });
     SC.pc.onconnectionstatechange = () => {
         if (SC.pc.connectionState === 'failed') {
             alert('❌ Call could not connect — the network between the two phones is too weak.\n\nTips: both phones need good internet. Voice messages always work.');
@@ -707,13 +750,12 @@ function scPeer(peerId, isOfferer) {
 }
 
 async function scHandleOffer(s) {
-    if (!SC.stream) {
-        try { SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video }); }
-        catch(e) {
-            // 🆕 missed call message
-            scSend({ message: '📞 Missed call from ' + SC.peerName + ' (mic blocked)', media_type: null, media_data: null, media_duration: null });
-            scSig(SC.peer, 'hangup', {}); scEnd(false); return;
-        }
+    // 🛡️ Round 16B: B's mic/camera is ALWAYS requested fresh here — the accept
+    // screen no longer races the offer. No permission → instant honest report.
+    try { SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video }); }
+    catch(e) {
+        scSend({ message: '📞 Missed call from ' + SC.peerName + ' (mic blocked)', media_type: null, media_data: null, media_duration: null });
+        scSig(SC.peer, 'hangup', {}); scEnd(false); return;
     }
     if (!SC.pc) scPeer(SC.peer, false);
     try {
@@ -852,8 +894,8 @@ function scCallUI(state, title) {
         '<style>@keyframes scP{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}</style>';
     document.body.appendChild(ui);
 
-    // wire local video
-    if (SC.video && SC.stream) {
+    // wire local video (Round 16B: re-wire whenever the UI (re)builds — B included)
+    if (SC.video && SC.stream && !document.getElementById('scLocalVideo').srcObject) {
         const lv = document.getElementById('scLocalVideo');
         if (lv) {
             lv.srcObject = SC.stream;
