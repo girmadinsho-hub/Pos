@@ -626,7 +626,10 @@ async function scCall(toId, toName, video) {
     scInit();
     SC.inCall = true; SC.peer = toId; SC.peerName = toName; SC.video = video; SC.muted = false;
     try {
-        SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: video });
+        SC.stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+            video: video
+        });
     } catch(e) {
         SC.inCall = false;
         alert('🎤/📷 Blocked! Allow access in browser settings.');
@@ -752,7 +755,12 @@ function scPeer(peerId, isOfferer) {
 async function scHandleOffer(s) {
     // 🛡️ Round 16B: B's mic/camera is ALWAYS requested fresh here — the accept
     // screen no longer races the offer. No permission → instant honest report.
-    try { SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video }); }
+    try {
+        SC.stream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+            video: SC.video
+        });
+    }
     catch(e) {
         scSend({ message: '📞 Missed call from ' + SC.peerName + ' (mic blocked)', media_type: null, media_data: null, media_duration: null });
         scSig(SC.peer, 'hangup', {}); scEnd(false); return;
@@ -820,7 +828,12 @@ function scIncoming(s) {
     document.getElementById('scYes').addEventListener('click', async (ev) => {
         ev.stopPropagation(); ev.preventDefault();
         __scRingStop = true; ui.remove();
-        try { SC.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: SC.video }); }
+        try {
+            SC.stream = await navigator.mediaDevices.getUserMedia({
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
+                video: SC.video
+            });
+        }
         catch(e) {
             scSend({ message: '📞 Missed call (mic blocked)', media_type: null, media_data: null, media_duration: null });
             scSig(SC.peer, 'hangup', {}); scEnd(false); return;
@@ -868,6 +881,7 @@ function scCallUI(state, title) {
         '<div style="position:absolute;top:15px;left:15px;z-index:3;background:rgba(0,0,0,.5);border-radius:12px;padding:8px 14px;">' +
         '<h2 style="margin:0;font-size:17px;">' + title + '</h2>' +
         '<p id="scCallTimer" style="margin:4px 0 0;color:#94a3b8;font-size:13px;">' + (state === 'calling' ? 'Ringing... 0s' : '00:00') + '</p>' +
+          '<p style="margin:6px 0 0;color:#94a3b8;font-size:10px;">🎧 Two phones in one room? Use a headset to avoid echo.</p>' +
         '</div>' +
         // controls (bottom)
         '<div style="position:absolute;bottom:30px;left:0;right:0;display:flex;justify-content:center;gap:18px;z-index:3;">' +
