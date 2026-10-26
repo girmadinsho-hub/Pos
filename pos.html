@@ -3487,7 +3487,7 @@ function printReceiptPOS() {
 
     // ===== FOOTER: FEEDBACK QR (only if shop phone exists) =====
     if (brand.phone) {
-        var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent('https://wa.me/' + brand.phone.replace(/[^0-9]/g, ''));
+        var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=' + encodeURIComponent('https://wa.me/' + brand.ssWaNum(phone));
         html += '<div class="center" style="margin-top:8px;"><img src="' + qrUrl + '" style="width:70px; height:70px;" alt="QR"></div>';
         html += '<p class="center" style="font-size: 10px;">Scan to give feedback</p>';
     }
@@ -4241,6 +4241,8 @@ function handleWaiterCall(call) {
                         showQRToast(o.table_id || 'QR', o.total || 0);
                     }
                 }).subscribe();
+
+  
 
         // Load shop branding from Supabase
     if (supabaseClient) {
@@ -5029,7 +5031,7 @@ function closeWaiterStatus() {
 	if (!phone) return; // User cancelled
     
     // Clean the phone number (remove spaces, dashes, plus signs)
-    var cleanPhone = phone.replace(/[^0-9]/g, '');
+    var cleanPhone = ssWaNum(phone);
     
     // Encode the receipt text for a URL
     var encodedText = encodeURIComponent(receiptText);
@@ -6271,8 +6273,8 @@ async function sendWaiterOrderToKitchen() {
             
             // CRITICAL missing → BLOCK
             if (!finalCheck.ok) {
-                alert('⛔ CANNOT SEND — ' + cart[check].name + ':\n' + formatIngredientIssues(finalCheck.criticalIssues) + '\n\nEssential ingredients missing.');
-                return;
+                if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; }
+                alert('⛔ CANNOT SEND — ' + cart[check].name + ':\n' + formatIngredientIssues(finalCheck.criticalIssues) + '\n\nEssential ingredients missing.');                return;
             }
             
             // OPTIONAL missing → ASK the waiter
@@ -6281,8 +6283,7 @@ async function sendWaiterOrderToKitchen() {
                 var sendAnyway = await confirm(
                     '⚠️ ' + cart[check].name + ' is missing OPTIONAL ingredients:\n' + optionalMsg + '\n\nThe kitchen can still prepare it (customer may not notice).\n\nSend anyway?'
                 );
-                if (!sendAnyway) return;
-            }
+                if (!sendAnyway) { if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; } return; }            }
         }
     }
     var stationStatus = {};
