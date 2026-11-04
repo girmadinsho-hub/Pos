@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>SmartShop Pro v4 — Clean Admin</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<script>window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#7f1d1d;color:#fff;padding:8px;font:12px monospace';d.textContent='❌ '+m+' | L'+l;d.onclick=function(){d.remove()};document.body.appendChild(d);};</script>
+<script src="zoom-fix.js"></script>
+  <meta charset="UTF-8">
+<title>BizMaster — Clean Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes"> 
+  <script>window.onerror=function(m,s,l){var d=document.createElement('div');d.style.cssText='position:fixed;top:0;left:0;right:0;z-index:999999;background:#7f1d1d;color:#fff;padding:8px;font:12px monospace';d.textContent='❌ '+m+' | L'+l;d.onclick=function(){d.remove()};document.body.appendChild(d);};</script>
 <style>
 :root{--primary:#2563eb;--bg:#f1f5f9;--surface:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;--ok:#10b981;--bad:#ef4444}
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
@@ -151,47 +152,10 @@ body.dark .maximized-card{background:#0f172a!important}
   
 </head>
 <body>
-  <!-- ═══ SPLASH SCREEN (v3 heritage restored — brand family look) ═══ -->
-<div id="splashScreen">
-  <div style="text-align:center;color:#fff;padding:20px">
-    <div style="font-size:56px;margin-bottom:10px;animation:v4splashPulse 1.6s ease-in-out infinite">🏪</div>
-    <h1 style="font-size:28px;font-weight:800;letter-spacing:.5px;margin:0">SmartShop Pro</h1>
-    <p style="font-size:12px;opacity:.75;margin-top:5px">Owner Administration · <span id="splashVer">v4</span></p>
-    <div style="width:140px;height:4px;background:rgba(255,255,255,.18);border-radius:4px;overflow:hidden;margin:20px auto 0">
-      <div id="splashBar" style="width:0%;height:100%;background:#fff;border-radius:4px;transition:width 1.3s ease"></div>
-    </div>
-    <small style="display:block;margin-top:14px;font-size:10px;opacity:.5">tap to skip</small>
-  </div>
-</div>
-<style>
-#splashScreen{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0f172a,#1e3a8a);transition:opacity .6s ease;cursor:pointer}
-#splashScreen.hide{opacity:0;pointer-events:none}
-@keyframes v4splashPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
-</style>
-<script>
-(function(){
-  function v4SplashKill(){
-    var s = document.getElementById('splashScreen');
-    if (!s) return;
-    s.classList.add('hide');
-    setTimeout(function(){ if (s.parentNode) s.remove(); }, 700);
-  }
-  var bar = document.getElementById('splashBar');
-  if (bar) setTimeout(function(){ bar.style.width = '100%'; }, 80);
-  document.addEventListener('DOMContentLoaded', function(){
-    if (typeof APP_VERSION !== 'undefined') { var v = document.getElementById('splashVer'); if (v) v.textContent = APP_VERSION.split('-')[0]; }
-    setTimeout(v4SplashKill, 1200);
-  });
-  setTimeout(v4SplashKill, 2000);                                  // safety net
-  var sEl = document.getElementById('splashScreen');
-  if (sEl) sEl.addEventListener('click', v4SplashKill);            // tap to skip
-})();
-</script>
-
 <!-- LOGIN -->
 <div class="screen show" id="loginScreen">
   <div class="box">
-    <h1>🏪 SmartShop Pro</h1>
+    <h1>🏪 BizMaster</h1>
     <p>Owner Administration · Clean Build v4</p>
     <input type="email" id="loginEmail" placeholder="Owner Email" autocomplete="off">
     <input type="password" id="loginPass" placeholder="Password" autocomplete="new-password">
@@ -256,7 +220,7 @@ body.dark .maximized-card{background:#0f172a!important}
 <!-- LOADING -->
 <div class="screen" id="loadingScreen">
   <div style="color:#fff;text-align:center">
-    <div style="font-size:20px;font-weight:800;margin-bottom:14px">SmartShop Pro</div>
+    <div style="font-size:20px;font-weight:800;margin-bottom:14px">BizMaster</div>
     <div style="width:80%;max-width:280px;height:10px;background:rgba(255,255,255,.2);border-radius:10px;overflow:hidden"><div id="loadingBar"></div></div>
   </div>
 </div>
@@ -432,8 +396,8 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
 </style>
   
   <!-- ═══ SALES TEMPLATE (clean, v4) ═══ -->
-<template id="tab2HTML">
-  <div id="tab2" class="tab-content">
+<temp<template id="tab2HTML">
+<div id="tab2" class="tab-content">
 
   <div class="card">
     <div class="card-title" style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="v4Fold('v4sumBody','v4sumArrow')">📅 Sales Summaries <span id="v4sumArrow" style="margin-left:auto">▾</span></div>
@@ -443,7 +407,8 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
         <button class="v4-chip" onclick="v4SumView('list',this)">📋 List</button>
         <button class="v4-chip" onclick="v4SumView('grid',this)">⊞ Grid</button>
       </div>
-      <div id="v4sumPeriods" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch">        <button class="period-btn" onclick="v4SumPeriod('all',this)">All</button>
+      <div id="v4sumPeriods" style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="period-btn" onclick="v4SumPeriod('all',this)">All</button>
         <button class="period-btn active" onclick="v4SumPeriod('daily',this)">Daily</button>
         <button class="period-btn" onclick="v4SumPeriod('weekly',this)">Weekly</button>
         <button class="period-btn" onclick="v4SumPeriod('monthly',this)">Monthly</button>
@@ -589,8 +554,8 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
     </div>
   </div>
 
-  <!-- 🪑 ACTIVE TABLES + 🍳 KITCHEN side by side (cafe/hotel only — Round 11) -->
-  <div id="v4cafeWidgets" style="display:flex;gap:10px;flex-wrap:wrap">
+  <!-- 🪑 ACTIVE TABLES + 🍳 KITCHEN side by side -->
+  <div style="display:flex;gap:10px;flex-wrap:wrap">
     <div class="card" style="flex:1;min-width:250px">
       <div class="card-title">🪑 Active Tables (Cafe Floor)</div>
       <div id="v4activeTables" style="max-height:160px;overflow-y:auto"></div>
@@ -679,7 +644,7 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 <div id="mainApp" style="display:none">
   <div class="header">
     <button class="hbtn" onclick="toggleSidebar()">☰</button>
-    <span style="font-weight:800">SmartShop Pro <span class="verbadge" id="verBadge">v4</span></span>
+    <span style="font-weight:800">BizMaster<span class="verbadge" id="verBadge">v4</span></span>
     <span style="display:flex;gap:6px;align-items:center">
       <button class="hbtn" onclick="toggleDarkMode()">🌓</button>
       <select id="shopSwitcher" onchange="v4SwitchShop(this.value)" style="display:none;max-width:95px;padding:4px;border-radius:8px;border:none;font-size:11px"></select>
@@ -691,8 +656,7 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
   <div class="sidebar" id="sidebar">
     <div style="padding:16px;font-weight:800;border-bottom:1px solid #f1f5f9;color:#1e3a8a">📋 Menu <span class="badge" id="planBadge">…</span></div>
     <div id="sideTabs"></div>
-    <div class="side-foot" id="sideFoot">SmartShop Pro v4.0.0 — Clean Build<br>Step 1/14 · Skeleton</div>
-  </div>
+<div class="side-foot" id="sideFoot"></div>  </div>
   <div class="container" id="tabContainer"></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
@@ -705,8 +669,8 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 <script src="ssauth.js"></script>
 <script src="ssperf.js"></script>
 <script src="ssfeatures.js"></script>
-<script src="ssupload.js"></script>
-<script src="ssfiscal.js"></script>  <script>window.V4_TAB_LOADERS = {};</script>
+  <script src="ssupload.js"></script>
+  <script>window.V4_TAB_LOADERS = {};</script>
 <script src="v4-dashboard.js"></script>
 <script src="v4-products.js"></script>
   <script src="v4-sales.js"></script>
@@ -725,6 +689,410 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 <script src="v4-license-guard.js"></script>
 <script src="v4-shops.js"></script>
 <script src="smartcom.js"></script>
+<!-- SLP-LANG-2 · language engine: English / አማርኛ / Afaan Oromoo on every menu (data-spp-auto) -->
+<script src="lang.js" data-spp-auto="1"></script>
+<script src="licence.js" data-spp-app="admin" data-spp-silent="1"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   BIZ-EXP-WALL-1 · LICENCE-EXPIRY WALL — admin-clean.html  (Round 22)
+   ─────────────────────────────────────────────────────────────────
+   Field report (after R21): sagure shop's licence ended — POS locks,
+   but admin-clean still opened silently and never asked for a renewal.
+   Whatever neutralises the door engine on this page (a server copy
+   without the licence.js tag, a foreign shopId key, or the in-app
+   v4 guard hiding the door's lock), THIS wall stands on its own:
+     · verdict comes from the page's own auth flow (Route 4 already
+       fetches the newest licence row — we only read its verdict) and
+       from a 90 s re-check that uses the page's own supabaseClient;
+     · the wall renders above everything (z-index 2147482000 — only
+       the A± zoom buttons sit higher) and has NO close button;
+     · renewal happens ON the wall: paste the new key → Activate →
+       the page reloads unlocked (SPP.activateKey when the door engine
+       is present, the identical direct-DB law otherwise);
+     · it re-asserts itself: anything that removes it or re-shows
+       #mainApp while the licence is expired is overridden within
+       100 ms;
+     · it never runs without a logged-in session — the login screen
+       stays free, and Log out removes the wall;
+     · every string goes through LANG.t() with a built-in EN/AM/OM
+       fallback; the wall re-renders on 'langchange'.
+   Wall law = licence.js v2 law: newest ACTIVE row for this shop with
+   expiry_date in the past → EXPIRED. Trials are NOT walled here (the
+   door engine owns trial banners / grace / read-only).
+   ═══════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  var W = window, WALL_ID = 'v4ExpWall';
+
+  /* ── tiny i18n: the language engine first, a hard fallback second —
+     the wall must speak even if lang.js failed to load ── */
+  var FB = {
+    en: { 'lk.expired': 'Subscription ended',
+          'lk.expiredp': 'The subscription for this business has ended. Activate a licence key to continue.',
+          'lk.data': 'Your data is safe and will not be deleted.',
+          'sup.h': 'Need a licence? Contact us',
+          'ak.ph': 'Paste the key your provider gave you',
+          'ak.btn': 'Activate',
+          'ak.ok': 'Key activated ✓',
+          'ak.bad': 'This key is not valid.',
+          'ak.expired': 'This key has already expired.',
+          'ak.other': 'This key belongs to another shop.',
+          'ak.taken': 'This key already belongs to another account.',
+          'msg.net': 'Connection problem — check the internet and try again.',
+          'v4x.expiredon': 'Ended on {date}',
+          'v4x.logout': 'Log out' },
+    am: { 'lk.expired': 'ክፍያ አልቋል',
+          'lk.expiredp': 'የዚህ ንግድ ክፍዋ አልቋል። ለመቀጠል የፈቃድ ቁልፍ ያስገቡ።',
+          'lk.data': 'መረጃዎ ደህና ነው፤ አይጠፋም።',
+          'sup.h': 'ፈቃድ ያስፈልጋል? ያግኙን',
+          'ak.ph': 'የተሰጠዎትን ቁልፍ ይለጥፉ',
+          'ak.btn': 'አስገባ',
+          'ak.ok': 'ቁልፉ ተገብቷል ✓',
+          'ak.bad': 'ይህ ቁልፍ ትክክል አይደለም።',
+          'ak.expired': 'ይህ ቁልፍ አስቀድሞ አልቋል።',
+          'ak.other': 'ይህ ቁልፍ ለሌላ ሱቅ ነው።',
+          'ak.taken': 'ይህ ቁልፍ አስቀድሞ ለሌላ መለያ ይገባል።',
+          'msg.net': 'የግንኙነት ችግር — ኢንተርኔቱን ያረጋግጡ እና እንደገና ይሞክሩ።',
+          'v4x.expiredon': 'ያለቀው ቀን፦ {date}',
+          'v4x.logout': 'ውጣ' },
+    om: { 'lk.expired': 'Kaffaltiin dhume',
+          'lk.expiredp': 'Kaffaltiin dabara kanaa dhufeera. Itti fufuuf kiitii falmii kakaasi.',
+          'lk.data': 'Deetaan kee nageenya qaba; hin balleeffamu.',
+          'sup.h': 'Falmii barbaaddaa? Nu qunnamsiisi',
+          'ak.ph': 'Kiitii kenname dabaladhu',
+          'ak.btn': 'Kakaasi',
+          'ak.ok': 'Kiitiin kakaafe ✓',
+          'ak.bad': 'Kiitiin kun sirrii miti.',
+          'ak.expired': 'Kiitiin kun duraan xumureera.',
+          'ak.other': 'Kiitiin kun dukaalee biraati.',
+          'ak.taken': 'Kiitiin kun dura herrega biraatiif galmeeffame.',
+          'msg.net': 'Rakina qunnamsiisaa — interneetii mirkaneessi irradeebi\u2019ii yaali.',
+          'v4x.expiredon': 'Guyyaa xumuraa: {date}',
+          'v4x.logout': 'Ba\u2019iinsa' }
+  };
+  function wt(key, vars) {
+    var s = null;
+    try { if (W.LANG && LANG.t) s = LANG.t(key, vars); } catch (e) {}
+    if (s == null || s === key) {
+      var L = 'en';
+      try { L = localStorage.getItem('slp_lang') || localStorage.getItem('appLang') || 'en'; } catch (e2) {}
+      var d = FB[L] || FB.en;
+      s = (d[key] != null) ? d[key] : ((FB.en[key] != null) ? FB.en[key] : key);
+    }
+    if (vars) { s = String(s); for (var v in vars) s = s.split('{' + v + '}').join(String(vars[v])); }
+    return s;
+  }
+  function esc(x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function (c) { return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]; }); }
+  function fmtD(iso) { try { return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return String(iso || '').slice(0, 10); } }
+  function shopId() { try { return localStorage.getItem('shopId') || ''; } catch (e) { return ''; } }
+
+  function hideApp() {
+    var ma = document.getElementById('mainApp'); if (ma) ma.style.display = 'none';
+    var sc = document.querySelectorAll('.screen.show');
+    for (var i = 0; i < sc.length; i++) sc[i].classList.remove('show');
+  }
+
+  function supportLine() {
+    var p = '', e = '';
+    try { var s = (W.SPP && SPP.cfg && SPP.cfg.support) || {}; p = s.phone || ''; e = s.email || ''; } catch (er) {}
+    if (!p) p = '+251 97 331 6100';
+    var link = (/wa\.me|whatsapp/i.test(p))
+      ? '<a href="' + esc(p) + '" target="_blank" rel="noopener">💬 WhatsApp</a>'
+      : '<a href="tel:' + esc(p) + '">📱 ' + esc(p) + '</a>';
+    if (e) link += ' &nbsp;·&nbsp; <a href="mailto:' + esc(e) + '">✉️ ' + esc(e) + '</a>';
+    return '<div style="margin-top:16px;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.08em">' + esc(wt('sup.h')) + '</div>'
+      + '<div style="margin-top:4px;font-size:14px;font-weight:600">' + link + '</div>';
+  }
+
+  function renderWall(d, lic) {
+    if (lic) d.__lic = lic;
+    lic = d.__lic || {};
+    var when = (lic && lic.expiry_date) ? wt('v4x.expiredon', { date: fmtD(lic.expiry_date) }) : '';
+    d.innerHTML =
+      '<div style="min-height:100%;display:flex;align-items:center;justify-content:center;padding:18px">'
+      + '<div style="width:100%;max-width:420px;background:#fff;border-radius:18px;padding:26px 22px;text-align:center;'
+      + 'font-family:Inter,system-ui,\'Segoe UI\',sans-serif;color:#0f172a;box-shadow:0 24px 60px rgba(0,0,0,.45)">'
+      + '<div style="font-size:42px;line-height:1">🔒</div>'
+      + '<h3 style="margin:8px 0 6px;font-size:20px;font-weight:800">' + esc(wt('lk.expired')) + '</h3>'
+      + (when ? '<div style="font-size:15px;font-weight:800;color:#b91c1c;margin:0 0 8px">📅 ' + esc(when) + '</div>' : '')
+      + '<p style="margin:4px 0 14px;font-size:14px;color:#475569;line-height:1.6">' + esc(wt('lk.expiredp')) + '</p>'
+      + '<input id="v4ExpKey" autocomplete="off" spellcheck="false" placeholder="' + esc(wt('ak.ph')) + '"'
+      + ' style="width:100%;padding:13px;margin:0 0 10px;border:2px solid #e2e8f0;border-radius:12px;font-size:16px;outline:none;text-align:center;letter-spacing:.5px">'
+      + '<button type="button" id="v4ExpAct" style="display:block;width:100%;padding:14px;border:0;border-radius:12px;'
+      + 'background:#1d4ed8;color:#fff;font-weight:800;font-size:16px;cursor:pointer">🔑 ' + esc(wt('ak.btn')) + '</button>'
+      + '<div id="v4ExpMsg" style="min-height:18px;margin-top:10px;font-size:13px;font-weight:600;color:#b91c1c"></div>'
+      + '<button type="button" id="v4ExpOut" style="display:block;width:100%;margin-top:8px;padding:11px;border:1.5px solid #cbd5e1;'
+      + 'border-radius:12px;background:#fff;color:#334155;font-weight:700;font-size:14px;cursor:pointer">⎋ ' + esc(wt('v4x.logout')) + '</button>'
+      + supportLine()
+      + '<p style="margin-top:14px;font-size:11.5px;color:#94a3b8">' + esc(wt('lk.data')) + '</p>'
+      + '</div></div>';
+    var inp = d.querySelector('#v4ExpKey');
+    if (inp) inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') doActivate(); });
+    var act = d.querySelector('#v4ExpAct');
+    if (act) act.addEventListener('click', doActivate);
+    var out = d.querySelector('#v4ExpOut');
+    if (out) out.addEventListener('click', function () {
+      try { W.supabaseClient.auth.signOut(); } catch (e) {}
+      setTimeout(function () {
+        var w2 = document.getElementById(WALL_ID); if (w2) w2.remove();
+        W.__v4LicExpired = null;
+      }, 400);
+    });
+  }
+
+  function msg(key, good) {
+    var m = document.getElementById('v4ExpMsg'); if (!m) return;
+    m.style.color = good ? '#047857' : '#b91c1c';
+    m.textContent = wt(key);
+  }
+
+  function wallUp(lic) {
+    var d = document.getElementById(WALL_ID);
+    if (d) { renderWall(d, lic); hideApp(); return; }
+    try { localStorage.removeItem('smartshop_license'); } catch (e) {}   /* stale cache dies with the wall */
+    hideApp();
+    var olds = document.querySelectorAll('.spp-lock');                   /* the door's lock hides under ours */
+    for (var i = 0; i < olds.length; i++) olds[i].remove();
+    d = document.createElement('div');
+    d.id = WALL_ID;
+    d.style.cssText = 'position:fixed;inset:0;z-index:2147482000;background:rgba(15,23,42,.97);overflow:auto';
+    (document.body || document.documentElement).appendChild(d);
+    renderWall(d, lic);
+  }
+  W.v4ExpWall = wallUp;   /* Route 6 calls this instead of entering the app */
+
+  /* ── activation: the door engine first, the identical direct-DB law
+     as fallback (for server copies that lost their licence.js tag) ── */
+  async function fallbackActivate(sid, key) {
+    try {
+      var c = W.supabaseClient; if (!c) return { ok: false, msgKey: 'msg.net' };
+      var kk = key.toUpperCase();
+      var res = await c.from('licenses').select('*').ilike('key', kk).limit(5);
+      var rows = (res && res.data) || [];
+      var lic = null;
+      for (var i = 0; i < rows.length; i++) if (String(rows[i].key || '').toUpperCase() === kk) lic = rows[i];
+      if (!lic) return { ok: false, msgKey: 'ak.bad' };
+      if (lic.status && lic.status !== 'active') return { ok: false, msgKey: 'ak.bad' };
+      var left = Math.ceil((new Date(lic.expiry_date) - Date.now()) / 86400000);
+      if (!(left >= 0)) return { ok: false, msgKey: 'ak.expired' };
+      if (sid && lic.shop_id !== sid) return { ok: false, msgKey: 'ak.other' };
+      try { await c.from('shops').update({ plan: lic.plan }).eq('shop_id', sid); } catch (e2) {}
+      try { localStorage.setItem('smartshop_license', JSON.stringify({
+        plan: lic.plan || 'basic', startDate: lic.start_date || '',
+        expiryDate: lic.expiry_date || '', shopId: lic.shop_id || sid,
+        shopName: lic.shop_name || '', maxShops: Number(lic.max_shops) || 1,
+        maxCashiersPerShop: Number(lic.max_cashiers_per_shop) || 2,
+        maxProducts: Number(lic.max_products) || 999999 })); } catch (e3) {}
+      return { ok: true };
+    } catch (e) { return { ok: false, msgKey: 'msg.net' }; }
+  }
+  async function doActivate() {
+    var kEl = document.getElementById('v4ExpKey');
+    var key = kEl ? String(kEl.value || '').trim() : '';
+    if (!key) { msg('ak.bad'); return; }
+    var m = document.getElementById('v4ExpMsg');
+    if (m) { m.style.color = '#475569'; m.textContent = '…'; }
+    var sid = shopId();
+    var r = null;
+    try { if (W.SPP && SPP.activateKey) r = await SPP.activateKey(sid, key); } catch (e) { r = null; }
+    if (r && r.ok) { msg('ak.ok', true); setTimeout(function () { location.reload(); }, 1300); return; }
+    if (!r) {
+      r = await fallbackActivate(sid, key);
+      if (r && r.ok) { msg('ak.ok', true); setTimeout(function () { location.reload(); }, 1300); return; }
+    }
+    msg((r && r.msgKey) || 'ak.bad');
+  }
+
+  /* ── watchman: covers shop-picker entry, shop switching, and a licence
+     renewed from the Master panel while we waited ── */
+  async function watchOnce() {
+    try {
+      if (!W.supabaseClient || !shopId()) return;
+      var s = await W.supabaseClient.auth.getSession();
+      if (!s || !s.data || !s.data.session) return;                     /* logged out → hands off */
+      var res = await W.supabaseClient.from('licenses')
+        .select('*').eq('shop_id', shopId())
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      var lic = res && res.data;
+      var expired = !!(lic && (!lic.status || lic.status === 'active')
+                       && lic.expiry_date && new Date(lic.expiry_date) <= new Date());
+      if (expired) { W.__v4LicExpired = lic; wallUp(lic); }
+      else if (document.getElementById(WALL_ID)) { location.reload(); } /* renewed elsewhere → clean state */
+    } catch (e) {}
+  }
+  setInterval(watchOnce, 90000);
+  setTimeout(watchOnce, 6000);
+
+  /* ── re-assert: the wall survives hostile removal & app re-shows ── */
+  setInterval(function () {
+    var d = document.getElementById(WALL_ID); if (!d) return;
+    var ma = document.getElementById('mainApp');
+    if (ma && ma.style.display !== 'none') ma.style.display = 'none';
+    var olds = document.querySelectorAll('.spp-lock');   /* late door-locks die too */
+    for (var i = 0; i < olds.length; i++) olds[i].remove();
+  }, 100);
+  if (W.MutationObserver && document.body) {
+    new MutationObserver(function () {
+      if (W.__v4LicExpired && !document.getElementById(WALL_ID)) wallUp(W.__v4LicExpired);
+    }).observe(document.body, { childList: true });
+  }
+
+  /* ── language switches re-render the wall ── */
+  document.addEventListener('langchange', function () {
+    var d = document.getElementById(WALL_ID); if (!d) return;
+    var v = '', m = '', mc = '';
+    var kEl = document.getElementById('v4ExpKey'); if (kEl) v = kEl.value;
+    var mEl = document.getElementById('v4ExpMsg'); if (mEl) { m = mEl.textContent; mc = mEl.style.color; }
+    renderWall(d, null);
+    var k2 = document.getElementById('v4ExpKey'); if (k2) k2.value = v;
+    var m2 = document.getElementById('v4ExpMsg'); if (m2) { m2.textContent = m; m2.style.color = mc; }
+  });
+})();
+</script>
+  
+  <script>
+// ═══════════════════════════════════════════════════════════════
+// BIZ-EXCEL-HEAL-1 · Products view self-heal (Round 18)
+// FIELD REPORT: product list showed nothing in Excel view (and List/Grid
+// stayed blank when data arrived late). TWO root causes, both fixed here
+// without touching v4-products.js:
+//   1. v4LoadProducts() builds the ModernSheet while tab 1 is still
+//      hidden (display:none → container measures 0 → sheet.js renders
+//      nothing). Fix: re-render the moment the Products tab opens.
+//   2. Late Supabase data only refreshed the Excel table; a List/Grid
+//      view that was already open NEVER re-rendered. Fix: every product
+//      data change re-syncs whichever view is active.
+// Plus: last-resort plain-table fallback (products are ALWAYS visible,
+// even if sheet.js fails) + full re-render on language switch.
+// ═══════════════════════════════════════════════════════════════
+(function () {
+  function productsReady() { return !!(window.v4products && v4products.length); }
+  function tab1Visible() {
+    var t = document.getElementById('tab1');
+    if (!t) return false;
+    if (t.style.display === 'none') return false;
+    try { var r = t.getBoundingClientRect(); if (r.width > 0 || r.height > 0) return true; } catch (e) {}
+    try { if (t.offsetParent !== null) return true; } catch (e2) {}
+    return true;   // cannot measure — assume visible; the heal itself is harmless
+  }
+  function excelBlank() {
+    var ex = document.getElementById('v4productExcel');
+    if (!ex) return true;
+    var html = (ex.innerHTML || '');
+    if (html.trim().length < 60) return true;                       // nothing rendered at all
+    if (productsReady()) {
+      // data-driven check — do the first few product NAMES actually appear?
+      var list = (typeof v4FilteredProducts === 'function') ? v4FilteredProducts() : (window.v4products || []);
+      var names = (list || []).filter(function (p) { return p.name && !/[&<>"]/.test(p.name); }).slice(0, 3);
+      if (names.length) {
+        for (var i = 0; i < names.length; i++) if (html.indexOf(names[i].name) === -1) return true;
+      }
+    }
+    return false;
+  }
+
+  // last resort — plain HTML table so products are never invisible
+  function fallbackTable() {
+    var ex = document.getElementById('v4productExcel'); if (!ex) return;
+    var data = (typeof v4FilteredProducts === 'function') ? v4FilteredProducts() : (window.v4products || []);
+    var esc = function (s) { return (typeof sanitize === 'function') ? sanitize(s) : String(s); };
+    var rows = (data || []).map(function (p, i) {
+      return '<tr style="border-bottom:1px solid #e2e8f0">' +
+        '<td style="padding:7px 6px;color:#94a3b8">' + (i + 1) + '</td>' +
+        '<td style="padding:7px 6px"><b>' + esc(p.name) + '</b></td>' +
+        '<td style="padding:7px 6px">' + (typeof v4TypeBadge === 'function' ? v4TypeBadge(p.type) : esc(p.type)) + '</td>' +
+        '<td style="padding:7px 6px;text-align:center">' + (p.isVirtual ? '—' : p.stock) + '</td>' +
+        '<td style="padding:7px 6px;text-align:right">' + (typeof fmtMoney === 'function' ? fmtMoney(p.costPrice) : p.costPrice) + '</td>' +
+        '<td style="padding:7px 6px;text-align:right"><b>' + (typeof fmtMoney === 'function' ? fmtMoney(p.price) : p.price) + '</b></td>' +
+        '<td style="padding:7px 6px;white-space:nowrap">' +
+          '<button class="btn-mini edit" onclick="v4EditProduct(\'' + p.id + '\')">✏️</button> ' +
+          '<button class="btn-mini delete" onclick="v4DeleteProduct(\'' + p.id + '\')">🗑️</button></td></tr>';
+    }).join('');
+    ex.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;background:#fff">' +
+      '<thead><tr style="background:#f1f5f9;text-align:left">' +
+      '<th style="padding:7px 6px">#</th><th style="padding:7px 6px">Product</th><th style="padding:7px 6px">Type</th>' +
+      '<th style="padding:7px 6px;text-align:center">Stock</th><th style="padding:7px 6px;text-align:right">Cost</th>' +
+      '<th style="padding:7px 6px;text-align:right">Price</th><th style="padding:7px 6px">Actions</th></tr></thead>' +
+      '<tbody>' + (rows || '<tr><td colspan="7" style="padding:14px;text-align:center;color:#94a3b8">No products found.</td></tr>') + '</tbody></table></div>';
+  }
+
+  // the heal — only meaningful for the Excel view, only when tab 1 is visible
+  var __healing = false;   // recursion guard (rebuild calls the wrapped render)
+  function healExcel(force) {
+    if (__healing) return;
+    __healing = true;
+    try {
+      if ((window.v4prodView || 'excel') !== 'excel') return;
+      if (!force && (!productsReady() || !tab1Visible())) return;
+      if (productsReady() && tab1Visible() && excelBlank()) {
+        if (window.v4productTable) {
+          try { window.v4productTable.setData((typeof v4FilteredProducts === 'function') ? v4FilteredProducts() : window.v4products); }
+          catch (e) { window.v4productTable = null; }
+        }
+        if (excelBlank()) {                                   // full rebuild — tab is visible now
+          window.v4productTable = null;
+          try { if (typeof v4RenderProductTable === 'function') v4RenderProductTable(); } catch (e) {}
+        }
+        if (excelBlank()) fallbackTable();                     // last resort — never a blank page
+      }
+    } catch (e) { try { console.warn('excel heal:', e.message); } catch (e2) {} }
+    finally { __healing = false; }
+  }
+
+  // after EVERY product-data change (load / add / edit / delete all end in
+  // v4RenderProductTable) re-sync the view the user is actually looking at
+  function syncActiveView() {
+    try {
+      var view = window.v4prodView || 'excel';
+      if (view === 'list' && typeof v4RenderProductList === 'function') v4RenderProductList(false);
+      else if (view === 'grid' && typeof v4RenderProductGrid === 'function') v4RenderProductGrid(false);
+      else healExcel(false);
+    } catch (e) {}
+  }
+
+  if (typeof window.v4RenderProductTable === 'function') {
+    var __origRenderProductTable = window.v4RenderProductTable;
+    window.v4RenderProductTable = function () {
+      try { __origRenderProductTable.apply(this, arguments); }
+      catch (e) { try { fallbackTable(); } catch (e2) {} }
+      try { syncActiveView(); } catch (e3) {}
+    };
+  }
+
+  // tab 1 opens → heal (selectTab fires V4_TAB_LOADERS)
+  if (window.V4_TAB_LOADERS) {
+    var __prevTab1 = window.V4_TAB_LOADERS[1];
+    window.V4_TAB_LOADERS[1] = function () {
+      if (typeof __prevTab1 === 'function') { try { __prevTab1(); } catch (e) {} }
+      setTimeout(function () { healExcel(false); }, 80);      // let the display flip settle
+    };
+  }
+
+  // view switch back to Excel → verify it actually rendered
+  if (typeof window.v4ProductView === 'function') {
+    var __origProductView = window.v4ProductView;
+    window.v4ProductView = function (v) {
+      var out = __origProductView.apply(this, arguments);
+      if (v === 'excel') setTimeout(function () { healExcel(false); }, 80);
+      return out;
+    };
+  }
+
+  // language switch → re-render whatever view is active (everything follows)
+  document.addEventListener('langchange', function () {
+    try {
+      var view = window.v4prodView || 'excel';
+      if (view === 'list' && typeof v4RenderProductList === 'function') v4RenderProductList(true);
+      else if (view === 'grid' && typeof v4RenderProductGrid === 'function') v4RenderProductGrid(true);
+      else if (window.v4productTable && typeof v4FilteredProducts === 'function') {
+        try { window.v4productTable.setData(v4FilteredProducts()); } catch (e) {}
+      }
+    } catch (e) {}
+  });
+})();
+</script>
+
+  
   
 <script>
 // ═════════════════════════════════════════════════════════
@@ -771,7 +1139,8 @@ var TABS = [
   {n:13, icon:'⚙️', label:'Settings'},
   {n:14, icon:'🔑', label:'License'},
   {n:20, icon:'📱', label:'Devices'},
-  {n:16, icon:'🏪', label:'Shops', ent:true}
+  {n:16, icon:'🏪', label:'Shops', ent:true},
+  {n:22, icon:'📘', label:'Help', link:'help.html'}
 ];
 
 // ── SIDEBAR + TAB CONTAINERS (data-driven, replaces 200 lines of HTML) ──
@@ -780,6 +1149,11 @@ function buildSidebar() {
   var sh = '', ch = '';
   TABS.forEach(function(t) {
     var hasSub = t.sub && t.sub.length;
+    if (t.link) { // SLP-HELP-1: external entry (Help & Guide) — opens the guide page
+      sh += '<a class="sidebar-tab" href="' + t.link + '" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit">' +
+            '<span>' + t.icon + '</span><span style="flex:1">' + t.label + '</span><span style="font-size:10px;opacity:.6">↗</span></a>';
+      return;
+    }
     sh += '<div class="sidebar-tab' + (hasSub ? ' has-sub' : '') + '" id="stab' + t.n + '" onclick="sideTabClick(' + t.n + ', this)">' +
           '<span>' + t.icon + '</span><span style="flex:1">' + t.label + '</span>' +
           (hasSub ? '<span class="sub-arrow" id="sarrow' + t.n + '">▸</span>' : '') + '</div>';
@@ -845,7 +1219,8 @@ function v4SubAction(act) {
       case 'restock':     selectTab(1, document.getElementById('stab1')); setTimeout(v4OpenRestock, 250); break;
       case 'sum':         selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.querySelector('#tab2 .card'); if (c) c.scrollIntoView({behavior:'smooth'}); }, 250); break;
       case 'detailed':    selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4detExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
-      case 'itemDetail':  selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4itemExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;      case 'cashier':     selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4cashExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
+      case 'itemDetail':  selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4itemDetail'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
+      case 'cashier':     selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4cashExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
       case 'top':         selectTab(2, document.getElementById('stab2')); setTimeout(function(){ var c = document.getElementById('v4topExcel'); if (c) c.closest('.card').scrollIntoView({behavior:'smooth'}); }, 350); break;
     }
   } catch(e) { console.warn('Sub action:', e.message); }
@@ -897,28 +1272,10 @@ function applyPlanVisibility() {
             foot.appendChild(sidBadge);
         }
     }
-       if (sidBadge) sidBadge.textContent = '🔑 ' + getShopId();
-    // 🎯 Round 12: type law runs LAST — the type always wins
-    if (typeof v4TypeTabs === 'function') v4TypeTabs();
+    if (sidBadge) sidBadge.textContent = '🔑 ' + getShopId();
 }
-  
-// ── TYPE LAW (Round 12 — the Captain's law, one home) ──
-// retail: no Recipes(18), no Hotel(21) · cafe: no Hotel(21) · hotel: all menus
-// Plan features (Master) may hide MORE — but never show what the type forbids.
-// Runs LAST (after applyPlanVisibility / v4lgApplySidebar) so the type always wins.
-function v4TypeTabs() {
-    var bizType = (window.__currentShopRow && window.__currentShopRow.business_type) ||
-                  (typeof SS_PLAN !== 'undefined' ? SS_PLAN.businessType : 'retail');
-    var hide = (bizType === 'retail') ? [18, 21] : (bizType === 'cafe' ? [21] : []);
-    hide.forEach(function(n) {
-        var el = document.getElementById('stab' + n);
-        if (el) el.style.display = 'none';
-    });
-}
-  
 // ── TAB SWITCH ──
 function selectTab(i, el) {
-  
   document.querySelectorAll('.tab-content').forEach(function(x){ x.style.display = 'none'; });
   var target = document.getElementById('tab' + i);
   if (target) target.style.display = 'block';
@@ -1354,17 +1711,10 @@ supabaseClient.auth.onAuthStateChange(async function(event, session) {
                     maxCashiersPerShop: Number(lic.max_cashiers_per_shop) || 2,
                     maxProducts: Number(lic.max_products) || 999999
                 }));
-            }
-        } catch(e) {}
-        // ━━━ Route 4b: Master's global trial settings → device cache (Round 13 —
-        // the countdown banner + type limits now obey the Master panel)
-        try {
-            const { data: gs } = await supabaseClient.from('global_settings')
-                .select('default_trial_days, trial_warning_days, trial_shops_per_type')
-                .eq('id', 'globalConfig').maybeSingle();
-            if (gs) {
-                if (gs.trial_warning_days > 0) localStorage.setItem('ss_trial_warning_days', String(gs.trial_warning_days));
-                if (gs.trial_shops_per_type > 0) localStorage.setItem('ss_trial_shops_per_type', String(gs.trial_shops_per_type));
+            } else if (lic && (!lic.status || lic.status === 'active') && lic.expiry_date && new Date(lic.expiry_date) <= new Date()) {
+                // BIZ-EXP-WALL-1 · newest row is an EXPIRED paid licence → raise the wall
+                window.__v4LicExpired = lic;
+                try { localStorage.removeItem('smartshop_license'); } catch(e2) {}
             }
         } catch(e) {}
 
@@ -1376,7 +1726,8 @@ supabaseClient.auth.onAuthStateChange(async function(event, session) {
             }
         }
 
-        // ━━━ Route 6: Enter the app
+        // ━━━ Route 6: Enter the app — BIZ-EXP-WALL-1: an expired licence NEVER enters
+        if (window.__v4LicExpired) { try { v4ExpWall(window.__v4LicExpired); } catch(e3) {} return; }
         showScreen(null);
         if (mainApp) mainApp.style.display = 'none';
         if (typeof checkAppPinStatus === 'function') {
@@ -1387,7 +1738,9 @@ supabaseClient.auth.onAuthStateChange(async function(event, session) {
         }
 
     } else {
-        // Logged out → show login
+        // Logged out → show login — BIZ-EXP-WALL-1: the wall belongs to a session
+        window.__v4LicExpired = null;
+        try { var _vw = document.getElementById('v4ExpWall'); if (_vw) _vw.remove(); } catch(e4) {}
         if (loadingScreen) loadingScreen.style.display = 'none';
         if (mainApp) mainApp.style.display = 'none';
         if (lockoutScreen) lockoutScreen.style.display = 'none';
@@ -1426,15 +1779,17 @@ function init() {
     for (var ti = 1; ti < tc.length; ti++) tc[ti].remove();
 
     document.getElementById('verBadge').textContent = APP_VERSION.split('-')[0];
-    document.getElementById('sideFoot').innerHTML = 'SmartShop Pro ' + APP_VERSION + '<br>Step 1/14 · Skeleton';
-    document.getElementById('langSelect').value = appLang;
+   var sfEl = document.getElementById('sideFoot'); if (sfEl) sfEl.innerHTML = '';    document.getElementById('langSelect').value = appLang;
     changeLanguage(appLang);
     buildSidebar();
 
-       // 🎯 SHOW DASHBOARD IMMEDIATELY (tab 0 = default landing)
-    // Round 8: enter through selectTab() so the Dashboard loader runs on FIRST
-    // entry — hotel Lens setup, live clock, and the 📤 share button live there.
-    selectTab(0, document.getElementById('stab0'));
+    // 🎯 SHOW DASHBOARD IMMEDIATELY (tab 0 = default landing)
+    var tab0 = document.getElementById('tab0');
+    if (tab0) {
+        tab0.style.display = 'block';
+        var stab0 = document.getElementById('stab0');
+        if (stab0) stab0.classList.add('active');
+    }
 
     // 🔀 Shop switcher — retry until auth data arrives
     var swTries = 0;
@@ -1468,7 +1823,17 @@ function init() {
     else applyPlanVisibility();
 
     // 🎯 TYPE-AWARE TOOLS — hide tools not relevant to this shop's type
-    if (typeof v4lgApplySidebar === 'function') v4lgApplySidebar();   // type law runs inside it (Round 12)
+    var bizType = (window.__currentShopRow && window.__currentShopRow.business_type) || 'retail';
+    if (typeof v4lgApplySidebar === 'function') v4lgApplySidebar();
+    if (bizType === 'retail') {
+        [18, 21].forEach(function(n) {
+            var el = document.getElementById('stab' + n);
+            if (el) el.style.display = 'none';
+        });
+    } else if (bizType === 'cafe') {
+        var el21 = document.getElementById('stab21');
+        if (el21) el21.style.display = 'none';
+    }
 
     if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
 }</script>
