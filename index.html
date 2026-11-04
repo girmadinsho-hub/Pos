@@ -27,6 +27,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
 <meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>BizMaster — One Account. Every Business.</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1064,8 +1066,16 @@ document.addEventListener('DOMContentLoaded', function () {
   route();
   refreshCreateLine();
   renderSupportFooter();
-  if (window.SPP && SPP.boot) SPP.boot({ app: 'index', silent: true }).then(function () { renderSupportFooter(); if (LP.loaded) renderLauncher(); });
+    if (window.SPP && SPP.boot) SPP.boot({ app: 'index', silent: true }).then(function () { renderSupportFooter(); if (LP.loaded) renderLauncher(); });
 });
+</script>
+<script>
+// 📲 PWA — makes Chrome offer "Install app" with the real BizMaster icon
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function (e) { console.warn('SW register failed:', e); });
+  });
+}
 </script>
 </body>
 </html>
