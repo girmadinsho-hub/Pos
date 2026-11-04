@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0f172a">
+<script src="zoom-fix.js"></script>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+  <meta name="theme-color" content="#0f172a">
 <title>🏨 SmartHotel Desk</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',system-ui,sans-serif; }
@@ -64,7 +65,11 @@ select, input { width:100%; padding:13px; border:1.5px solid #cbd5e1; border-rad
             <b>🏨 <span id="hdTitle">Hotel Desk</span></b>
             <small id="hdWho">—</small>
         </div>
-        <button onclick="htlLogout()" style="background:rgba(255,255,255,.2); border:none; color:#fff; padding:8px 14px; border-radius:10px; font-weight:700; cursor:pointer;">🚪</button>
+        <span style="display:flex; gap:8px; align-items:center;">
+                      <span id="langMount"></span>
+            <a href="help.html" title="Help & Guide" style="background:rgba(255,255,255,.2); border:none; color:#fff; padding:8px 14px; border-radius:10px; font-weight:700; text-decoration:none;">❓</a>
+            <button onclick="htlLogout()" style="background:rgba(255,255,255,.2); border:none; color:#fff; padding:8px 14px; border-radius:10px; font-weight:700; cursor:pointer;">🚪</button>
+        </span>
     </div>
     <div id="htlContent"></div>
 </div>
@@ -115,18 +120,22 @@ async function htlActivateDevice() {
         location.reload();
     } catch(e) { alert('❌ ' + e.message); }
 }
-
 htlSb.auth.onAuthStateChange(async function(event, session) {
-    var isReal = session && session.user && session.user.email && !session.user.is_anonymous;
-    if (isReal) {
-        if (localStorage.getItem('hotelStaffId')) { htlShowMain(); return; }
-        await htlShowStaffLogin();
-    } else {
+    try {
+        var isReal = session && session.user && session.user.email && !session.user.is_anonymous;
+        if (isReal) {
+            if (localStorage.getItem('hotelStaffId')) { htlShowMain(); return; }
+            await htlShowStaffLogin();
+        } else {
+            document.getElementById('ownerSection').style.display = 'block';
+            document.getElementById('staffSection').style.display = 'none';
+        }
+    } catch(e) {
+        console.warn('Hotel auth error:', e.message);
         document.getElementById('ownerSection').style.display = 'block';
         document.getElementById('staffSection').style.display = 'none';
     }
 });
-
 async function htlShowStaffLogin() {
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('ownerSection').style.display = 'none';
@@ -139,7 +148,7 @@ async function htlShowStaffLogin() {
 
     var sel = document.getElementById('staffSelect');
     sel.innerHTML = HTL.staff.length
-        ? HTL.staff.map(function(s){ return '<option value="' + (s.firebase_id || s.id) + '">' + s.name + ' (' + s.position + ')</option>'; }).join('')
+        ? HTL.staff.map(function(s){ return '<option value="' + htlEscape(s.firebase_id || s.id) + '">' + htlEscape(s.name) + ' (' + htlEscape(s.position) + ')</option>'; }).join('')
         : '<option value="">No hotel staff found — register them in Admin</option>';
     sel.style.display = 'block';
     document.getElementById('pinInput').style.display = 'block';
@@ -208,6 +217,11 @@ function htlStayFor(roomId) {
     return HTL.stays.find(function(s){ return s.room_id === roomId && s.status === 'active'; });
 }
 
+// H1: find the PENDING reservation for a room (rooms.status === 'reserved')
+function htlReservedStayFor(roomId) {
+    return HTL.stays.find(function(s){ return s.room_id === roomId && s.status === 'reserved'; });
+}
+
 function htlStats() {
     var total = HTL.rooms.length;
     var occ = HTL.rooms.filter(function(r){ return r.status === 'occupied'; }).length;
@@ -243,9 +257,15 @@ function htlBoardHtml() {
     HTL.rooms.forEach(function(room) {
         var c = colors[room.status] || '#64748b';
         var stay = htlStayFor(room.id);
-        var sub = (room.status === 'occupied' && stay)
-            ? stay.guest_name + ' · ' + (stay.planned_checkout ? new Date(stay.planned_checkout).toLocaleDateString() : 'open')
-            : (room.room_type + ' · ' + htlMoney(room.base_rate));
+        var sub;
+        if (room.status === 'occupied' && stay) {
+            sub = stay.guest_name + ' · ' + (stay.planned_checkout ? new Date(stay.planned_checkout).toLocaleDateString() : 'open');
+        } else if (room.status === 'reserved') {
+            var rs = htlReservedStayFor(room.id); // H1: show who reserved it, not just the room type
+            sub = rs ? ('📅 ' + rs.guest_name + ' · ' + (rs.check_in ? new Date(rs.check_in).toLocaleDateString() : '?')) : 'Reserved';
+        } else {
+            sub = room.room_type + ' · ' + htlMoney(room.base_rate);
+        }
         html += '<div onclick="htlOpenRoom(\'' + room.id + '\')" style="background:' + c + ';color:#fff;border-radius:12px;padding:10px;cursor:pointer;min-height:82px;display:flex;flex-direction:column;justify-content:center;">' +
             '<b style="font-size:17px;">' + htlEscape(room.room_number) + '</b>' +
             '<small style="opacity:.92;font-size:10px;line-height:1.35;margin-top:3px;">' + htlEscape(sub) + '</small></div>';
@@ -294,10 +314,21 @@ function htlOpenRoom(roomId) {
             '<button class="htl-btn primary" onclick="htlOpenFolio(\'' + stay.id + '\')">📋 View Folio & Checkout</button>' +
             '<button class="htl-btn outline" onclick="htlQuickCharge(\'' + stay.id + '\')">➕ Add Charge (minibar/laundry)</button>' +
             '<button class="htl-btn outline" onclick="htlExtendStay(\'' + stay.id + '\')">🌙 Extend Stay</button>';
+    } else if (room.status === 'occupied') {
+        // safety: room says occupied but no ACTIVE stay (closed/corrected in Admin) — recovery, not a dead-end modal
+        body += '<p style="color:#ef4444;font-weight:700;">⚠️ Occupied — but no active guest stay found.</p>' +
+            '<p style="font-size:12px;color:#64748b;margin-bottom:8px;">The stay may have been checked out or corrected in Admin. Send the room to cleaning to free it:</p>' +
+            '<button class="htl-btn outline" onclick="htlSetRoomStatus(\'' + roomId + '\',\'cleaning\')">🧹 Send to Cleaning</button>';
     } else if (room.status === 'reserved') {
-        body += '<p style="color:#3b82f6;">📅 Reserved</p>' +
-            '<button class="htl-btn success" onclick="htlSetRoomStatus(\'' + roomId + '\',\'available\')">🚪 Guest Arrived — Check In</button>' +
-            '<button class="htl-btn outline" onclick="htlSetRoomStatus(\'' + roomId + '\',\'available\')">❌ Cancel Reservation</button>';
+        var rs = htlReservedStayFor(roomId);
+        body += '<p style="color:#3b82f6;font-weight:700;">📅 Reserved' + (rs ? ' — ' + htlEscape(rs.guest_name) : '') + '</p>' +
+            (rs ? '<div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:10px;font-size:13px;">' +
+            '👤 <b>' + htlEscape(rs.guest_name) + '</b><br>' +
+            '📞 ' + htlEscape(rs.guest_phone || '—') + '<br>' +
+            '🚪 Arrive: ' + (rs.check_in ? new Date(rs.check_in).toLocaleDateString() : '—') + ' → Out: ' + (rs.planned_checkout ? new Date(rs.planned_checkout).toLocaleDateString() : 'open') + '<br>' +
+            '💰 ' + htlMoney(rs.nightly_rate) + '/night</div>' : '') +
+            '<button class="htl-btn success" onclick="htlReserveArrive(\'' + roomId + '\')">🚪 Guest Arrived — Check In</button>' +
+            '<button class="htl-btn outline" onclick="htlCancelResv(\'' + roomId + '\')">❌ Cancel Reservation</button>';
     } else if (room.status === 'maintenance') {
         body += '<p style="color:#64748b;">🔧 Under maintenance</p>' +
             '<button class="htl-btn success" onclick="htlSetRoomStatus(\'' + roomId + '\',\'cleaning\')">✅ Fixed → Cleaning</button>';
@@ -335,8 +366,8 @@ async function htlCheckIn(roomId) {
 }
 
 async function htlOpenFolio(stayId) {
-    const { data: stay } = await htlSb.from('guest_stays').select('*').eq('id', stayId).single();
-    if (!stay) return;
+    const { data: stay } = await htlSb.from('guest_stays').select('*').eq('id', stayId).maybeSingle();
+    if (!stay) { alert('Stay not found — it may already be checked out.'); htlCloseModal('roomActionsModal'); return; }
 
     // 🔑 AUTO-BILL missing nights (never undercharge!)
     const { data: charges } = await htlSb.from('folio_charges').select('*').eq('stay_id', stayId).order('charge_date');
@@ -390,6 +421,9 @@ async function htlCheckout(stayId, due, method) {
         if (!await confirm('Collect ' + htlMoney(due) + ' (' + method + ') and check out?')) return;
     }
     try {
+        // verify the stay BEFORE recording money (0-row update used to record a sale for nothing)
+        const { data: stay } = await htlSb.from('guest_stays').select('room_id, guest_name').eq('id', stayId).maybeSingle();
+        if (!stay) { alert('Stay not found — it may already be checked out. No payment recorded.'); return; }
         if (due > 0) {
             await htlSb.from('sales').insert([{
                 items: [{ name: 'Hotel room settlement', qty: 1, price: due, subtotal: due }],
@@ -403,7 +437,6 @@ async function htlCheckout(stayId, due, method) {
                 order_type: 'Room Stay'
             }]);
         }
-        const { data: stay } = await htlSb.from('guest_stays').select('room_id, guest_name').eq('id', stayId).single();
         await htlSb.from('guest_stays').update({ status: 'checked_out', actual_checkout: new Date().toISOString() }).eq('id', stayId);
         var room = HTL.rooms.find(function(r){ return r.id === stay.room_id; });
         await htlSb.from('rooms').update({ status: 'cleaning' }).eq('id', stay.room_id);
@@ -431,18 +464,58 @@ async function htlQuickCharge(stayId) {
 async function htlExtendStay(stayId) {
     var extra = parseInt(await prompt('Extend by how many nights?', '1'));
     if (isNaN(extra) || extra <= 0) return;
-    const { data: stay } = await htlSb.from('guest_stays').select('planned_checkout').eq('id', stayId).single();
-    var nd = new Date(new Date(stay.planned_checkout).getTime() + extra * 86400000).toISOString().slice(0,10);
-    await htlSb.from('guest_stays').update({ planned_checkout: nd }).eq('id', stayId);
-    htlCloseModal('roomActionsModal');
-    alert('✅ New checkout: ' + new Date(nd).toLocaleDateString());
-    await htlLoad(); htlRenderReception();
+    try {
+        const { data: stay } = await htlSb.from('guest_stays').select('planned_checkout').eq('id', stayId).maybeSingle();
+        if (!stay) { alert('Stay not found — it may already be checked out.'); return; }
+        // H2: an open-ended stay (planned_checkout = null, shown as "open") used to become
+        // 1970-01-01, because new Date(null).getTime() is 0. Count from TODAY instead.
+        var base = stay.planned_checkout ? new Date(stay.planned_checkout) : new Date();
+        var nd = new Date(base.getTime() + extra * 86400000).toISOString().slice(0,10);
+        await htlSb.from('guest_stays').update({ planned_checkout: nd }).eq('id', stayId);
+        htlCloseModal('roomActionsModal');
+        alert('✅ New checkout: ' + new Date(nd).toLocaleDateString());
+        await htlLoad(); htlRenderReception();
+    } catch(e) { alert('❌ ' + e.message); }
 }
 
 async function htlSetRoomStatus(roomId, status) {
     await htlSb.from('rooms').update({ status: status }).eq('id', roomId);
     htlCloseModal('roomActionsModal');
     await htlLoad(); htlRenderReception();
+}
+
+// ═══ RESERVATIONS — H1 (ported from v4-hotel.js) ═══
+// Before, BOTH reserved-room buttons just set the room to 'available':
+// "Guest Arrived" freed the room instead of occupying it (no night-1 charge, guest data unused),
+// and "Cancel" left the reservation row dangling as 'reserved' forever.
+async function htlReserveArrive(roomId) {
+    var room = HTL.rooms.find(function(r){ return r.id === roomId; });
+    if (!room) return;
+    var rs = htlReservedStayFor(roomId);
+    if (!rs) { alert('No reservation found for this room.'); return; }
+    if (!confirm('🚪 ' + rs.guest_name + ' has arrived — check them in now?\n\nCheck-in becomes today; planned checkout stays ' + (rs.planned_checkout ? String(rs.planned_checkout).slice(0,10) : 'open') + '.')) return;
+    try {
+        await htlSb.from('guest_stays').update({ status: 'active', check_in: new Date().toISOString() }).eq('id', rs.id);
+        await htlSb.from('rooms').update({ status: 'occupied' }).eq('id', roomId);
+        await htlSb.from('folio_charges').insert([{ shop_id: htlShopId(), stay_id: rs.id,
+            charge_type: 'room_night', description: 'Room ' + room.room_number + ' — night 1', amount: rs.nightly_rate || room.base_rate }]);
+        htlCloseModal('roomActionsModal');
+        await htlLoad(); htlRenderMyMode();
+        alert('✅ ' + rs.guest_name + ' checked in to Room ' + room.room_number + '!');
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+async function htlCancelResv(roomId) {
+    var room = HTL.rooms.find(function(r){ return r.id === roomId; });
+    if (!room) return;
+    if (!confirm('❌ Cancel the reservation for Room ' + room.room_number + '?\nThe room becomes free.')) return;
+    try {
+        await htlSb.from('guest_stays').update({ status: 'cancelled' }).eq('room_id', roomId).eq('status', 'reserved');
+        await htlSb.from('rooms').update({ status: 'available' }).eq('id', roomId);
+        htlCloseModal('roomActionsModal');
+        await htlLoad(); htlRenderMyMode();
+        alert('✅ Reservation cancelled — room free.');
+    } catch(e) { alert('❌ ' + e.message); }
 }
 
 // ═══ CLEANER ═══
@@ -493,8 +566,14 @@ async function htlAckAlert(id) {
 
 // ═══ REALTIME (live updates + guard alarm) ═══
 function htlRealtime() {
+    if (window.__htlChannel) { try { htlSb.removeChannel(window.__htlChannel); } catch(e) {} } // never stack duplicate channels
     window.__htlChannel = htlSb.channel('hotel-' + htlShopId())
         .on('postgres_changes', { event: '*', schema: 'public', table: 'rooms', filter: 'shop_id=eq.' + htlShopId() }, function() {
+            htlLoad().then(function(){ htlRenderMyMode(); });
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'guest_stays', filter: 'shop_id=eq.' + htlShopId() }, function() {
+            // H3: stays changed from ANOTHER app (Admin hotel tool / other desk) — rooms alone
+            // wouldn't fire, so the board kept stale guest names and checkout dates.
             htlLoad().then(function(){ htlRenderMyMode(); });
         })
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'hotel_alerts', filter: 'shop_id=eq.' + htlShopId() }, function() {
@@ -518,5 +597,7 @@ function htlBeep() {
     } catch(e) {}
 }
 </script>
+<!-- SLP-LANG-2 · language engine: English / አማርታ / Afaan Oromoo on the whole page -->
+<script src="lang.js" data-spp-auto="1"></script>
 </body>
 </html>
