@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<!-- ═══════════════════════════════════════════════════════════════════
+     BizMaster · STAFF DOOR (staff.html) — 2026-11-02
+     ─────────────────────────────────────────────────────────────────
+     THE SEPARATE DOOR RULE:
+       · This is the STAFF entrance ONLY — name + password, exactly as
+         the owner registered them. Each staff member lands at their
+         own workplace automatically (position routing below).
+       · There is NO admin / owner login on this page — no email
+         fields, no link to the owner door, nothing to discover. Staff
+         can never see or reach the admin sign-in window from here.
+       · The owner shares this link (or a QR of it) with the team:
+         staff.html            — shop is auto-detected
+         staff.html?shop=ID    — goes straight to one shop
+     Routing (position × business type) — same trusted logic as v4/v5:
+       Owner/Manager          → admin console (only if the OWNER made
+                                such a staff record — a deliberate act)
+       Cashier (retail)       → POS checkout
+       Cashier (café / hotel) → POS bill payments
+       Waiter                 → POS order mode
+       Chef / Barista         → Kitchen display (SSO)
+       Reception / Cleaner /
+       Guard / Housekeeping   → Hotel desk on hotels (SSO)
+     Language: English · አማርኛ · Afaan Oromoo (lang.js).
+     ═══════════════════════════════════════════════════════════════════ -->
+<html lang="en">
+<head>
+<script src="zoom-fix.js"></script>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+  <meta name="theme-color" content="#0f172a">
+<title>BizMaster — Staff Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#0f172a;--ink2:#1e293b;--sub:#94a3b8;--line:#334155;--gold:#d4af37;--bg:#0f172a}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:radial-gradient(1200px 600px at 50% -10%,#1e3a8a 0%,var(--bg) 60%);color:#f8fafc;display:flex;flex-direction:column;min-height:100vh}
+body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,body[data-lang="am"] .door-note{font-family:'Noto Sans Ethiopic','Inter',sans-serif}
+.wordmark{display:inline-flex;align-items:baseline;gap:1px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:18px;letter-spacing:-.02em}
+.wordmark .biz{color:#f8fafc}.wordmark .master{color:var(--gold)}
+.topbar{width:100%;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.topbar .right{display:flex;align-items:center;gap:12px}
+.topbar a{color:var(--sub);text-decoration:none;font-size:12.5px;font-weight:600}
+.help-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(212,175,55,.12);color:var(--gold)!important;border-radius:999px;padding:6px 12px}
+#langbar{display:flex;gap:4px}
+#langbar button{border:1px solid var(--line);background:transparent;border-radius:8px;padding:4px 8px;font-size:10.5px;font-weight:700;color:var(--sub);cursor:pointer}
+#langbar button.on{border-color:var(--gold);color:var(--gold)}
+.wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:22px 18px 40px}
+.box{width:100%;max-width:380px;background:var(--ink2);border:1px solid var(--line);border-radius:22px;padding:30px 26px;box-shadow:0 30px 70px -30px rgba(0,0,0,.7)}
+.box .ic{font-size:38px;text-align:center}
+.box h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;text-align:center;margin:8px 0 4px}
+.box .sub{color:var(--sub);font-size:12.5px;text-align:center;margin-bottom:20px;line-height:1.5}
+.lbl{display:block;font-size:11px;font-weight:700;color:var(--sub);margin:14px 0 5px;text-transform:uppercase;letter-spacing:.06em}
+.fld{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;font-size:15px;font-family:inherit;background:#0b1220;color:#f8fafc;outline:none;transition:border-color .15s}
+.fld:focus{border-color:var(--gold)}
+.btn{width:100%;padding:14px;margin-top:18px;border:0;border-radius:12px;background:var(--gold);color:#0f172a;font-weight:800;font-size:15px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif}
+.btn:active{transform:scale(.985)}
+.btn.loading{opacity:.6;pointer-events:none}
+.msgbox{border-radius:12px;padding:11px 13px;font-size:12.5px;line-height:1.5;margin-top:14px}
+.msgbox.err{background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+.msgbox.info{background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.3)}
+.msgbox.ok{background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
+.msgbox.warn{background:rgba(245,158,11,.12);color:#fcd34d;border:1px solid rgba(245,158,11,.3)}
+.hidden{display:none!important}
+.picks{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.pick{display:flex;align-items:center;gap:12px;background:#0b1220;border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;color:#f8fafc;font-family:inherit}
+.pick:hover{border-color:var(--gold)}
+.pick .pick-ic{font-size:20px}
+.pick b{font-size:14px;display:block}
+.pick small{color:var(--sub);font-size:11px}
+.door-note{margin-top:18px;text-align:center;font-size:11px;color:var(--sub);line-height:1.6}
+.foot{padding:14px 18px;text-align:center;color:var(--sub);font-size:11px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="wordmark"><span class="biz">Biz</span><span class="master">Master</span></span>
+  <div class="right">
+    <a class="help-chip" href="help.html">❓ <span data-i18n="nav.help">Help</span></a>
+    <span id="langbar"></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="box">
+    <div class="ic">🧑‍🍳</div>
+    <h1 data-i18n="si.h2">Staff Sign In</h1>
+    <p class="sub" data-i18n="si.p">Type your name and password — exactly as the owner registered them.</p>
+
+    <label class="lbl" for="sfShop" data-i18n="sf.shop">Shop ID (optional)</label>
+    <input class="fld" id="sfShop" autocomplete="off" data-i18n-ph="sf.shopph" placeholder="Leave empty to find automatically">
+    <label class="lbl" for="staffName" data-i18n="si.name">Your name</label>
+    <input class="fld" id="staffName" autocomplete="off" data-i18n-ph="si.nameph" placeholder="e.g. Abebe">
+    <label class="lbl" for="staffPass" data-i18n="si.pass">Password</label>
+    <input class="fld" id="staffPass" type="password" autocomplete="current-password" data-i18n-ph="si.passph" placeholder="Your password">
+
+    <div id="signinMsg" class="msgbox err hidden"></div>
+    <div id="matchBox" class="picks hidden"></div>
+
+    <button type="button" class="btn" id="signinBtn" onclick="doSignIn()"><span id="btnLabel" data-i18n="si.btn">Verify &amp; Open</span></button>
+
+    <p class="door-note" data-i18n-html="sf.note">This is the staff entrance. Owners and admins sign in at their own separate door.</p>
+  </div>
+</div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="licence.js" data-spp-app="staff" data-spp-mode="staff"></script>
+<script src="lang.js"></script>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  BizMaster · STAFF DOOR — carried over from the approved v5 gateway
+//  (server-side password check + offline fallback + same-name picker
+//   + position routing). No admin anything.
+// ═══════════════════════════════════════════════════════════════════
+var APP_NAME = 'BizMaster';
+function t(key, vars) { return window.LANG ? LANG.t(key, vars) : key; }
+function $(id) { return document.getElementById(id); }
+function val(id) { var e = $(id); return e ? String(e.value || '').trim() : ''; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function withTimeout(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('TIMEOUT')); }, ms); })]); }
+
+// ── Supabase ──
+var CFG_URL = '', CFG_KEY = '';
+try { if (typeof SS_CONFIG !== 'undefined') { CFG_URL = SS_CONFIG.SUPABASE_URL || ''; CFG_KEY = SS_CONFIG.SUPABASE_KEY || ''; } } catch (e) {}
+if (!CFG_URL) CFG_URL = 'https://mtwcdvmdoxzcejzgypdw.supabase.co';
+if (!CFG_KEY) CFG_KEY = 'sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8';
+var sb = null;
+if (window.supabase) { try { sb = window.supabase.createClient(CFG_URL, CFG_KEY, { auth: { flowType: 'implicit' } }); } catch (e) { sb = null; } }
+if (sb) window.SPP_SB = sb;
+
+var G = { busy: false };
+
+// ── Business-type classification ──
+var TYPE_HOTEL = ['hotel','guest house','guesthouse','lodge','resort','pension','bnb','hostel'];
+var TYPE_FOOD = ['cafe','café','restaurant','coffee','bar','bakery','cafeteria','fast food','fastfood','food','juice','burger','pizza'];
+function typeGroup(t) {
+  t = String(t || '').toLowerCase().trim();
+  if (TYPE_HOTEL.indexOf(t) > -1) return 'hotel';
+  if (TYPE_FOOD.indexOf(t) > -1) return 'cafe';
+  return 'retail';
+}
+var POS_ICON = { Owner:'👑', Manager:'🛠️', Cashier:'💳', Waiter:'📝', Chef:'👨‍🍳', Barista:'☕', Reception:'🛎️', Cleaner:'🧹', Guard:'💂' };
+
+// ── THE ROUTING MATRIX: position × business type → destination ──
+function routeFor(position, shopType) {
+  var p = String(position || '').trim().toLowerCase();
+  var g = typeGroup(shopType);
+  if (p === 'owner' || p === 'manager') return { app: 'admin-clean.html', icon: '🛠️', dest: t('dest.admin'), sso: null };
+  if (p === 'chef' || p === 'barista' || p === 'kitchen') return { app: 'kitchen.html', icon: '🍳', dest: t('dest.kitchen'), sso: 'kitchen' };
+  if (p === 'reception' || p === 'cleaner' || p === 'guard' || p === 'housekeeping' || p === 'security') {
+    if (g === 'hotel') return { app: 'hotel.html', icon: '🏨', dest: t('dest.hotel'), sso: 'hotel' };
+    return { app: 'pos.html', icon: '🧾', dest: t('dest.pos'), sso: null };
+  }
+  if (p === 'waiter') return { app: 'pos.html', icon: '📝', dest: t('dest.waiter'), sso: null };
+  if (p === 'cashier') {
+    if (g === 'retail') return { app: 'pos.html', icon: '🧾', dest: t('dest.posretail'), sso: null };
+    return { app: 'pos.html', icon: '💳', dest: t('dest.posbill'), sso: null };
+  }
+  return { app: 'pos.html', icon: '🧾', dest: t('dest.pos'), sso: null };
+}
+
+// ── Messages / busy state ──
+function setMsg(kind, html) { var m = $('signinMsg'); if (m) { m.className = 'msgbox ' + kind + (html ? '' : ' hidden'); if (html) m.innerHTML = html; } }
+function setBusy(on, label) {
+  G.busy = on;
+  var b = $('signinBtn'); if (b) b.classList[on ? 'add' : 'remove']('loading');
+  var l = $('btnLabel'); if (l) l.textContent = on ? (label || t('si.btn.checking')) : t('si.btn');
+}
+function netMsg(e) { if (e && e.message === 'TIMEOUT') return t('msg.timeout'); return t('msg.net', { err: (e && e.message) || 'network' }); }
+
+// ── Find staff by name (filtered by shop when the ID was given) ──
+async function findStaff(name, shopId) {
+  var q = sb.from('employees').select('firebase_id,id,name,position,status,shop_id').ilike('name', name).limit(25);
+  if (shopId) q = q.eq('shop_id', shopId);
+  var res = await withTimeout(q, 10000);
+  if (res.error) throw res.error;
+  var rows = res.data || [];
+  var low = name.trim().toLowerCase();
+  var exact = rows.filter(function (r) { return String(r.name || '').trim().toLowerCase() === low; });
+  return exact.length ? exact : rows;
+}
+
+// ── Staff sign-in flow ──
+async function doSignIn() {
+  if (G.busy) return;
+  var name = val('staffName');
+  var pass = $('staffPass').value || '';
+  var shop = val('sfShop');
+  if (!name) { setMsg('err', t('e.noname')); $('staffName').focus(); return; }
+  if (!pass) { setMsg('err', t('e.nopass')); $('staffPass').focus(); return; }
+  if (!sb) { setMsg('err', t('e.nosb')); return; }
+
+  hidePicker();
+  setBusy(true, t('si.btn.checking'));
+  setMsg('info', t('e.checking'));
+
+  var rows;
+  try { rows = await findStaff(name, shop); }
+  catch (e) { setBusy(false); setMsg('err', netMsg(e)); return; }
+
+  if (!rows || rows.length === 0) { setBusy(false); setMsg('err', t('e.notfound', { name: esc(name) })); return; }
+  var active = rows.filter(function (r) { return (r.status || 'active') !== 'inactive'; });
+  if (active.length === 0) { setBusy(false); setMsg('err', t('e.disabled')); return; }
+  if (active.length > 1) { setBusy(false); showPicker(active, pass); return; }
+
+  await verifyAndGo(active[0], pass);
+}
+
+// ── Same-name collision → let the staff member pick themselves ──
+async function showPicker(list, pass) {
+  setMsg('info', t('e.dup'));
+  var box = $('matchBox');
+  var names = {};
+  try {
+    var ids = list.map(function (r) { return r.shop_id; }).filter(Boolean);
+    if (ids.length) {
+      var res = await withTimeout(sb.from('shops').select('shop_id,name').in('shop_id', ids), 8000);
+      (res.data || []).forEach(function (s) { names[s.shop_id] = s.name; });
+    }
+  } catch (e) {}
+  box.innerHTML = '';
+  list.forEach(function (r) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'pick';
+    var shopTxt = (r.shop_id && names[r.shop_id]) ? ' · ' + esc(names[r.shop_id]) : '';
+    b.innerHTML = '<span class="pick-ic">' + (POS_ICON[r.position] || '👤') + '</span>'
+      + '<span><b>' + esc(r.name) + '</b><small>' + esc(r.position || t('side.staff')) + shopTxt + '</small></span>';
+    b.onclick = function () { hidePicker(); verifyAndGo(r, pass); };
+    box.appendChild(b);
+  });
+  box.classList.remove('hidden');
+}
+function hidePicker() { var b = $('matchBox'); if (b) { b.classList.add('hidden'); b.innerHTML = ''; } }
+
+// ── Password verification: server check first, offline fallback second ──
+async function verifyAndGo(emp, pass) {
+  setBusy(true, t('si.btn.verifying'));
+  setMsg('info', t('e.vpass'));
+  var empId = emp.firebase_id || emp.id;
+  var v = null;
+
+  // 1) Server-side check (same as POS / Kitchen / Hotel Desk). Two tries.
+  for (var attempt = 0; attempt < 2 && !v; attempt++) {
+    if (attempt > 0) { setMsg('info', t('e.slow')); await new Promise(function (r) { setTimeout(r, 500); }); }
+    try { v = await edgeVerify(emp.shop_id, empId, pass); }
+    catch (e) { v = null; }
+    if (v && v.reason === 'bad_response') v = null;
+  }
+
+  if (v) {
+    if (v.ok) return goStaff(emp);
+    setBusy(false);
+    $('staffPass').value = ''; $('staffPass').focus();
+    if (v.reason === 'locked') { setMsg('err', t('e.locked', { n: v.minutes || 5 })); return; }
+    if (v.reason === 'inactive') { setMsg('err', t('e.disabled')); return; }
+    if (v.reason === 'network') { setMsg('err', t('e.net')); return; }
+    setMsg('err', t('e.wrong') + (v.attempts_left > 0 ? ' <small>' + t('e.tries', { n: v.attempts_left }) + '</small>' : ''));
+    return;
+  }
+
+  // 2) Server unreachable → offline check for legacy (unsalted) accounts only.
+  setMsg('info', t('e.offchk'));
+  try {
+    var r = await offlineVerify(emp, pass);
+    if (r === 'ok') return goStaff(emp);
+    if (r === 'disabled') { setBusy(false); setMsg('err', t('e.disabled')); return; }
+    if (r === 'cant') { setBusy(false); setMsg('err', t('e.cant')); return; }
+    if (r === 'noset') { setBusy(false); setMsg('err', t('e.noset')); return; }
+    setBusy(false); $('staffPass').value = '';
+    setMsg('err', t('e.wrong'));
+  } catch (e) {
+    setBusy(false);
+    setMsg('err', netMsg(e));
+  }
+}
+
+async function edgeVerify(shopId, empId, pin) {
+  var token = CFG_KEY;
+  try { var s = await withTimeout(sb.auth.getSession(), 5000); if (s && s.data && s.data.session) token = s.data.session.access_token; } catch (e) {}
+  var ctrl = new AbortController();
+  var tOut = setTimeout(function () { ctrl.abort(); }, 9000);
+  try {
+    var res = await fetch(CFG_URL + '/functions/v1/staff-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': CFG_KEY, 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ shop_id: shopId, employee_id: empId, pin: String(pin) }),
+      signal: ctrl.signal
+    });
+    var v = {};
+    try { v = await res.json(); } catch (e) { v = { ok: false, reason: 'bad_response' }; }
+    return v;
+  } finally { clearTimeout(tOut); }
+}
+
+// Offline fallback: only accounts stored WITHOUT a salt can be checked here
+// (salted ones need the server — that is honest security, not a bug).
+async function offlineVerify(emp, pass) {
+  var res = await withTimeout(
+    sb.from('employees').select('hashed_password,pin_salt,status,name').eq('shop_id', emp.shop_id).ilike('name', emp.name).limit(5),
+    8000);
+  if (res.error) throw res.error;
+  var rows = res.data || [];
+  var low = String(emp.name || '').trim().toLowerCase();
+  var row = rows.filter(function (r) { return String(r.name || '').trim().toLowerCase() === low; })[0] || rows[0];
+  if (!row) throw new Error('account not found');
+  if ((row.status || 'active') === 'inactive') return 'disabled';
+  if (row.hashed_password && row.pin_salt) return 'cant';
+  if (!row.hashed_password) return 'noset';
+  var hex = await sha256Hex(pass);
+  return hex.toLowerCase() === String(row.hashed_password).toLowerCase() ? 'ok' : 'wrong';
+}
+
+async function sha256Hex(str) {
+  if (!window.crypto || !window.crypto.subtle || !window.TextEncoder) throw new Error('no-webcrypto');
+  var buf = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  var bytes = new Uint8Array(buf), out = '';
+  for (var i = 0; i < bytes.length; i++) out += ('0' + bytes[i].toString(16)).slice(-2);
+  return out;
+}
+
+// ── Success: write the single-sign-on keys each app already reads ──
+async function goStaff(emp) {
+  setBusy(true, t('si.btn.opening'));
+  var shop = { shop_id: emp.shop_id, name: '', business_type: '' };
+  try {
+    var res = await withTimeout(sb.from('shops').select('shop_id,name,business_type,active').eq('shop_id', emp.shop_id).maybeSingle(), 8000);
+    if (res.data) shop = res.data;
+  } catch (e) {}
+
+  var pos = String(emp.position || '').trim();
+  var r = routeFor(pos, shop.business_type);
+  var empId = emp.firebase_id || emp.id;
+
+  lsSet('shopId', emp.shop_id);
+  if (r.sso === 'kitchen') {
+    lsSet('kitchenShopId', emp.shop_id);
+    lsSet('kitchenChefId', empId);
+    lsSet('kitchenChefName', emp.name || 'Chef');
+  } else if (r.sso === 'hotel') {
+    lsSet('hotelShopId', emp.shop_id);
+    lsSet('hotelStaffId', empId);
+    lsSet('hotelStaffName', emp.name || 'Staff');
+    lsSet('hotelPosition', pos);
+  }
+
+  var url = r.app +
+    '?shop=' + encodeURIComponent(emp.shop_id || '') +
+    '&name=' + encodeURIComponent(emp.name || '') +
+    '&role=' + encodeURIComponent(pos || '') +
+    '&id=' + encodeURIComponent(empId || '');
+  setMsg('ok', (r.icon || '✅') + ' ' + t('ok.opening', { dest: r.dest }));
+  setTimeout(function () { window.location.href = url; }, 350);
+}
+
+// ── language + boot ──
+function applyBrand() { document.title = APP_NAME + ' — ' + t('si.h2'); }
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.LANG) {
+    if ($('langbar')) LANG.pills($('langbar'));
+    try { LANG.setLang(LANG.detect(), true); } catch (e) {}
+    LANG.apply();
+  }
+  applyBrand();
+  try {
+    var shop = new URLSearchParams(location.search).get('shop');
+    if (shop) $('sfShop').value = shop;
+  } catch (e) {}
+  $('staffName').focus();
+});
+document.addEventListener('langchange', applyBrand);
+document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !G.busy) doSignIn(); });
+</script>
+</body>
+</html>
