@@ -8,8 +8,25 @@
    Works in: POS, Kitchen, Hotel, v3 Admin, v4 Admin (auto-detect).
    ================================================================ */
 
-var SC = {
-    id: null, name: null, role: null, shop: null,
+
+// 🛡️ Round 17: SELF-CONTAINED — kitchen.html has no shared.js, so define
+// local fallbacks here. Pages that DO load shared.js simply override these
+// with the identical functions. Fixes: kitchen text bubbles + forward button.
+if (typeof sanitize === 'undefined') {
+  window.sanitize = function(str){ var d = document.createElement('div'); d.textContent = (str === null || str === undefined) ? '' : String(str); return d.innerHTML; };
+}
+if (typeof ssShareTo === 'undefined') {
+  window.ssShareTo = function(text, opts) {
+    if (navigator.share) { navigator.share({ title: (opts && opts.title) || 'Share', text: String(text) }).catch(function(){}); }
+    else {
+      try { navigator.clipboard.writeText(String(text)); } catch(e) {}
+      alert('Copied to clipboard!');
+    }
+  };
+}
+
+var SC = {    
+  id: null, name: null, role: null, shop: null,
     pc: null, stream: null, peer: null, peerName: '', video: false,
     inCall: false, muted: false, callStart: 0,
     channel: null, booted: false, unread: 0, searchQ: '',
@@ -1164,7 +1181,7 @@ async function scBuildV4Recipients() {
     var sel = document.getElementById('scRecipient');
     if (!sel) return;
     try {
-        const { data: staff } = await supabaseClient.from('employees').select('firebase_id, name, position').eq('shop_id', SC.shop).eq('status', 'active');
+        const { data: staff } = await supabaseClient.from('employees').select('id, firebase_id, name, position').eq('shop_id', SC.shop).eq('status', 'active');
         if (staff && staff.length) {
             var og = document.createElement('optgroup');
             og.label = '── Direct Message ──';
