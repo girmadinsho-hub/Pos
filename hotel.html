@@ -31,6 +31,25 @@ h2 { font-size:17px; margin:12px 0 6px; }
 .login-box p { font-size:12px; color:#64748b; margin-bottom:16px; }
 select, input { width:100%; padding:13px; border:1.5px solid #cbd5e1; border-radius:11px; font-size:15px; margin-bottom:10px; }
 .login-btn { width:100%; padding:14px; background:#2563eb; color:#fff; border:none; border-radius:12px; font-size:16px; font-weight:800; cursor:pointer; }
+
+/* ═══ 💬 ROUND 18 · HOTEL INTERCOM (smartcom) ═══ */
+#scFab { position:fixed; bottom:22px; right:18px; width:54px; height:54px; border-radius:50%; border:none; background:linear-gradient(135deg,#2563eb,#1e3a8a); color:#fff; font-size:24px; cursor:pointer; z-index:900; box-shadow:0 6px 20px rgba(37,99,235,.45); display:flex; align-items:center; justify-content:center; transition:transform .15s; }
+#scFab:active { transform:scale(.9); }
+#scFab::after { content:''; position:absolute; inset:-5px; border-radius:50%; border:2px solid rgba(37,99,235,.55); animation:scFabPulse 2.4s infinite; }
+@keyframes scFabPulse { 0% { transform:scale(1); opacity:.9; } 70% { transform:scale(1.4); opacity:0; } 100% { opacity:0; } }
+#scFabBadge { position:absolute; top:-5px; right:-5px; min-width:20px; height:20px; border-radius:10px; background:#ef4444; color:#fff; font-size:11px; font-weight:800; display:none; align-items:center; justify-content:center; padding:0 5px; border:2px solid #0f172a; }
+#scSheet { position:fixed; left:0; right:0; bottom:0; height:80vh; background:#0f172a; border-radius:22px 22px 0 0; z-index:1000; display:none; flex-direction:column; box-shadow:0 -10px 40px rgba(0,0,0,.55); }
+#scSheetHead { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:linear-gradient(135deg,#1e3a8a,#2563eb); border-radius:22px 22px 0 0; color:#fff; flex-shrink:0; }
+#scSheetHead b { font-size:15px; }
+#scChips { display:flex; gap:6px; overflow-x:auto; padding:8px 10px 2px; -webkit-overflow-scrolling:touch; flex-shrink:0; }
+.scChip { flex-shrink:0; padding:7px 12px; border-radius:16px; border:1px solid #334155; background:#1e293b; color:#e2e8f0; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; }
+#scChatMessages { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; }
+.chat-bubble { max-width:85%; padding:9px 13px; border-radius:14px; font-size:13.5px; line-height:1.45; word-wrap:break-word; margin-bottom:8px; position:relative; }
+.chat-bubble small { display:block; font-size:10px; opacity:.75; margin-top:3px; }
+.chat-bubble.sent { align-self:flex-end; background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; border-bottom-right-radius:3px; }
+.chat-bubble.received { align-self:flex-start; background:#1e293b; color:#e2e8f0; border:1px solid #334155; border-bottom-left-radius:3px; }
+.chat-input-area { padding:8px 10px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid #1e293b; flex-shrink:0; }
+#scRecipient { background:#1e293b; color:#e2e8f0; border:1.5px solid #334155; margin-bottom:6px; }
 </style>
 </head>
 <body>
@@ -74,8 +93,201 @@ select, input { width:100%; padding:13px; border:1.5px solid #cbd5e1; border-rad
     <div id="htlContent"></div>
 </div>
 
+<!-- ═══ 🏨 ROUND 18 · STAFF INTERCOM (smartcom) — chat · voice · photos · calls ═══ -->
+<button id="scFab" onclick="htlToggleChat()" style="display:none;">💬<span id="scFabBadge"></span></button>
+
+<div id="scSheet">
+    <div id="scSheetHead">
+        <b>💬 Hotel Intercom</b>
+        <button onclick="htlToggleChat()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:17px;width:34px;height:34px;border-radius:10px;cursor:pointer;">✖</button>
+    </div>
+    <div id="scChips">
+        <button class="scChip" onclick="htlQuick('✅ Room cleaned and ready')">✅ Room ready</button>
+        <button class="scChip" onclick="htlQuick('🛏️ Guest checked in')">🛏️ Checked in</button>
+        <button class="scChip" onclick="htlQuick('🔔 Guest checked out — please verify at gate')">🔔 Checkout</button>
+        <button class="scChip" onclick="htlQuick('🧴 Need towels / amenities')">🧴 Amenities</button>
+        <button class="scChip" onclick="htlQuick('🚨 Security help needed!')">🚨 Security</button>
+    </div>
+    <div id="scChatMessages"></div>
+    <div class="chat-input-area">
+        <select id="scRecipient">
+            <option value="All">📢 Everyone (all staff)</option>
+            <option value="Reception">🛎️ Front Desk</option>
+            <option value="Cleaner">🧹 Housekeeping</option>
+            <option value="Guard">💂 Security</option>
+        </select>
+    </div>
+</div>
+
+<script>
+// ═══ 🏨 INTERCOM GLUE (smartcom ↔ hotel) ═══
+function htlToggleChat() {
+    var sheet = document.getElementById('scSheet');
+    if (sheet.style.display === 'flex') { sheet.style.display = 'none'; }
+    else { sheet.style.display = 'flex'; htlInitChat(); }
+}
+
+async function htlInitChat() {
+    var sel = document.getElementById('scRecipient');
+    if (!sel) return;
+    if (sel.getAttribute('data-htl-built') !== '1') {
+        sel.setAttribute('data-htl-built', '1');
+        try {
+            const { data: staff } = await htlSb.from('employees').select('id, firebase_id, name, position')
+                .eq('shop_id', htlShopId()).eq('status', 'active');
+            var me = localStorage.getItem('hotelStaffId');
+            var og = document.createElement('optgroup');
+            og.label = '── Direct Message (all staff) ──';
+            (staff || []).forEach(function(emp) {
+                var vid = emp.firebase_id || emp.id;
+                if (vid && String(vid) !== String(me)) {
+                    var o = document.createElement('option');
+                    o.value = vid;
+                    o.textContent = '👤 ' + emp.name + ' (' + emp.position + ')';
+                    og.appendChild(o);
+                }
+            });
+            if (og.children.length) sel.appendChild(og);
+        } catch(e) {}
+    }
+    try { if (typeof scFetchPresence === 'function') scFetchPresence(); } catch(e) {}
+    var fb = document.getElementById('scFabBadge'); if (fb) fb.style.display = 'none';
+}
+
+function htlQuick(text) {
+    try { scQuickSend(text); }
+    catch(e) { alert('Chat is still loading — try again in a few seconds.'); }
+}
+
+async function htlReportMaintenance(roomId) {
+    var room = HTL.rooms.find(function(r){ return r.id === roomId; });
+    if (!room) return;
+    var issue = await prompt('What is the problem in Room ' + room.room_number + '?\n(e.g., leaking tap, broken lamp)', 'Needs repair');
+    if (!issue) return;
+    try {
+        await htlSb.from('rooms').update({ status: 'maintenance' }).eq('id', roomId);
+        htlCloseModal('roomActionsModal');
+        try { scQuickSend('🔧 MAINTENANCE — Room ' + room.room_number + ': ' + issue); } catch(e) {}
+        await htlLoad(); htlRenderMyMode();
+        alert('✅ Room ' + room.room_number + ' → 🔧 Maintenance.\nAll staff notified in the intercom.');
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+// ═══ 📊 BONUS: front-desk daily numbers ═══
+function htlSameDay(d) {
+    var t = new Date(d), n = new Date();
+    return t.getFullYear() === n.getFullYear() && t.getMonth() === n.getMonth() && t.getDate() === n.getDate();
+}
+function htlArrivalsToday() {
+    return HTL.stays.filter(function(s){ return s.status === 'reserved' && s.check_in && htlSameDay(s.check_in); }).length;
+}
+function htlDeparturesToday() {
+    return HTL.stays.filter(function(s){ return s.status === 'active' && s.planned_checkout && htlSameDay(s.planned_checkout); }).length;
+}
+function htlTonightValue() {
+    return HTL.stays.filter(function(s){ return s.status === 'active'; })
+        .reduce(function(a, s){ return a + Number(s.nightly_rate || 0); }, 0);
+}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
+
+<!-- ═══ 🏨 ROUND 18 · STAFF INTERCOM (smartcom) — chat · voice · photos · calls ═══ -->
+<button id="scFab" onclick="htlToggleChat()" style="display:none;">💬<span id="scFabBadge"></span></button>
+
+<div id="scSheet">
+    <div id="scSheetHead">
+        <b>💬 Hotel Intercom</b>
+        <button onclick="htlToggleChat()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:17px;width:34px;height:34px;border-radius:10px;cursor:pointer;">✖</button>
+    </div>
+    <div id="scChips">
+        <button class="scChip" onclick="htlQuick('✅ Room cleaned and ready')">✅ Room ready</button>
+        <button class="scChip" onclick="htlQuick('🛏️ Guest checked in')">🛏️ Checked in</button>
+        <button class="scChip" onclick="htlQuick('🔔 Guest checked out — please verify at gate')">🔔 Checkout</button>
+        <button class="scChip" onclick="htlQuick('🧴 Need towels / amenities')">🧴 Amenities</button>
+        <button class="scChip" onclick="htlQuick('🚨 Security help needed!')">🚨 Security</button>
+    </div>
+    <div id="scChatMessages"></div>
+    <div class="chat-input-area">
+        <select id="scRecipient">
+            <option value="All">📢 Everyone (all staff)</option>
+            <option value="Reception">🛎️ Front Desk</option>
+            <option value="Cleaner">🧹 Housekeeping</option>
+            <option value="Guard">💂 Security</option>
+        </select>
+    </div>
+</div>
+
+<script>
+// ═══ 🏨 INTERCOM GLUE (smartcom ↔ hotel) ═══
+function htlToggleChat() {
+    var sheet = document.getElementById('scSheet');
+    if (sheet.style.display === 'flex') { sheet.style.display = 'none'; }
+    else { sheet.style.display = 'flex'; htlInitChat(); }
+}
+
+async function htlInitChat() {
+    var sel = document.getElementById('scRecipient');
+    if (!sel) return;
+    if (sel.getAttribute('data-htl-built') !== '1') {
+        sel.setAttribute('data-htl-built', '1');
+        try {
+            const { data: staff } = await htlSb.from('employees').select('id, firebase_id, name, position')
+                .eq('shop_id', htlShopId()).eq('status', 'active');
+            var me = localStorage.getItem('hotelStaffId');
+            var og = document.createElement('optgroup');
+            og.label = '── Direct Message (all staff) ──';
+            (staff || []).forEach(function(emp) {
+                var vid = emp.firebase_id || emp.id;
+                if (vid && String(vid) !== String(me)) {
+                    var o = document.createElement('option');
+                    o.value = vid;
+                    o.textContent = '👤 ' + emp.name + ' (' + emp.position + ')';
+                    og.appendChild(o);
+                }
+            });
+            if (og.children.length) sel.appendChild(og);
+        } catch(e) {}
+    }
+    try { if (typeof scFetchPresence === 'function') scFetchPresence(); } catch(e) {}
+    var fb = document.getElementById('scFabBadge'); if (fb) fb.style.display = 'none';
+}
+
+function htlQuick(text) {
+    try { scQuickSend(text); }
+    catch(e) { alert('Chat is still loading — try again in a few seconds.'); }
+}
+
+async function htlReportMaintenance(roomId) {
+    var room = HTL.rooms.find(function(r){ return r.id === roomId; });
+    if (!room) return;
+    var issue = await prompt('What is the problem in Room ' + room.room_number + '?\n(e.g., leaking tap, broken lamp)', 'Needs repair');
+    if (!issue) return;
+    try {
+        await htlSb.from('rooms').update({ status: 'maintenance' }).eq('id', roomId);
+        htlCloseModal('roomActionsModal');
+        try { scQuickSend('🔧 MAINTENANCE — Room ' + room.room_number + ': ' + issue); } catch(e) {}
+        await htlLoad(); htlRenderMyMode();
+        alert('✅ Room ' + room.room_number + ' → 🔧 Maintenance.\nAll staff notified in the intercom.');
+    } catch(e) { alert('❌ ' + e.message); }
+}
+
+// ═══ 📊 BONUS: front-desk daily numbers ═══
+function htlSameDay(d) {
+    var t = new Date(d), n = new Date();
+    return t.getFullYear() === n.getFullYear() && t.getMonth() === n.getMonth() && t.getDate() === n.getDate();
+}
+function htlArrivalsToday() {
+    return HTL.stays.filter(function(s){ return s.status === 'reserved' && s.check_in && htlSameDay(s.check_in); }).length;
+}
+function htlDeparturesToday() {
+    return HTL.stays.filter(function(s){ return s.status === 'active' && s.planned_checkout && htlSameDay(s.planned_checkout); }).length;
+}
+function htlTonightValue() {
+    return HTL.stays.filter(function(s){ return s.status === 'active'; })
+        .reduce(function(a, s){ return a + Number(s.nightly_rate || 0); }, 0);
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
 <script src="config.js"></script>
 
 <script>
@@ -86,7 +298,8 @@ select, input { width:100%; padding:13px; border:1.5px solid #cbd5e1; border-rad
 
 // ─── Supabase (OWN connection — this file is standalone) ───
 var htlSb = window.supabase.createClient(SS_CONFIG.SUPABASE_URL, SS_CONFIG.SUPABASE_KEY, { auth: { flowType: 'implicit' } });
-
+// 🤝 smartcom expects a client named supabaseClient — alias our standalone hotel client
+window.supabaseClient = htlSb;
 // ─── State ───
 var HTL = { rooms: [], stays: [], alerts: [], staff: [] };
 
@@ -189,6 +402,7 @@ async function htlStaffLogin() {
 function htlShowMain() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
+    var scFab = document.getElementById('scFab'); if (scFab) scFab.style.display = 'flex';
     var role = htlRole();
     document.getElementById('hdWho').textContent = '👤 ' + (localStorage.getItem('hotelStaffName') || '') + ' · ' + role;
     document.getElementById('hdTitle').textContent = (role === 'Cleaner') ? 'Housekeeping' : (role === 'Guard') ? 'Security' : 'Front Desk';
@@ -245,7 +459,12 @@ function htlRenderReception() {
         '<div class="htl-stat"><b>' + s.total + '</b><small>🛏️ TOTAL</small></div>' +
         '<div class="htl-stat" style="background:#065f46;"><b>' + s.avail + '</b><small>✅ FREE</small></div>' +
         '<div class="htl-stat" style="background:#7f1d1d;"><b>' + s.occ + ' (' + s.pct + '%)</b><small>👥 OCCUPIED</small></div>' +
-        '<div class="htl-stat" style="background:#92400e;"><b>' + s.clean + '</b><small>🧹 CLEANING</small></div>' +
+         '<div class="htl-stat" style="background:#92400e;"><b>' + s.clean + '</b><small>🧹 CLEANING</small></div>' +
+        '</div>' +
+        '<div class="htl-stats" style="margin-top:8px;">' +
+        '<div class="htl-stat" style="background:#1d4ed8;"><b>' + htlArrivalsToday() + '</b><small>📅 ARRIVALS</small></div>' +
+        '<div class="htl-stat" style="background:#7c2d12;"><b>' + htlDeparturesToday() + '</b><small>🚶 DUE OUT</small></div>' +
+        '<div class="htl-stat" style="background:#4c1d95;"><b>' + htlMoney(htlTonightValue()) + '</b><small>💰 TONIGHT</small></div>' +
         '</div>' +
         '<h2 style="margin-top:16px;">🛏️ Room Board <small style="font-size:11px;color:#94a3b8;">(tap a room)</small></h2>' +
         '<div class="htl-board">' + htlBoardHtml() + '</div>';
@@ -333,8 +552,9 @@ function htlOpenRoom(roomId) {
         body += '<p style="color:#64748b;">🔧 Under maintenance</p>' +
             '<button class="htl-btn success" onclick="htlSetRoomStatus(\'' + roomId + '\',\'cleaning\')">✅ Fixed → Cleaning</button>';
     }
+body += '<button class="htl-btn outline" style="background:#fef3c7;color:#92400e;border:1.5px solid #fcd34d;" onclick="htlReportMaintenance(\'' + roomId + '\')">🔧 Report Problem (Maintenance)</button>';
     body += '<button class="htl-btn outline" onclick="htlCloseModal(\'roomActionsModal\')">Close</button>';
-    htlModal('roomActionsModal', body);
+  htlModal('roomActionsModal', body);
 }
 
 async function htlCheckIn(roomId) {
@@ -598,6 +818,7 @@ function htlBeep() {
 }
 </script>
 <!-- SLP-LANG-2 · language engine: English / አማርታ / Afaan Oromoo on the whole page -->
+<script src="smartcom.js"></script>
 <script src="lang.js" data-spp-auto="1"></script>
 </body>
 </html>
