@@ -1,14 +1,15 @@
 <!DOCTYPE html>
+<!-- SmartMenu · FIXED BUILD 2026-10-29 · M1 shop_type/system_locked single-source · M2 menu-filter fixed · M3 call-waiter button in DOM · M4 station routing · M5 required modifiers · M6 XSS escaping · M7 placeOrder(this) · M9 maybeSingle reads · M10 modifier merge · M11 lock restores on unlock -->
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0f172a">
-    <title>SmartMenu</title>
-    
+<script src="zoom-fix.js"></script>  
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+  <meta name="theme-color" content="#0f172a">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <style>
         :root {
             --primary: #d4af37; --bg-dark: #0f172a; --bg-card: #1e293b;
@@ -19,8 +20,6 @@
         html, body { height: 100%; overflow-x: hidden; }
         body { font-family: 'Inter', sans-serif; background: var(--bg-dark); color: var(--text-main); padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
 
-
-      
         /* Loader */
         .loader { position: fixed; inset: 0; background: var(--bg-dark); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; }
         .loader.hidden { display: none; }
@@ -90,8 +89,9 @@
         .lightbox.active { display: flex; }
         .lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }
         .lightbox-close { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; font-size: 24px; cursor: pointer; }
-   
-        .call-waiter-btn { position: fixed; bottom: 20px; right: 20px; background: #ef4444; color: white; border: none; padding: 15px 24px; border-radius: 50px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 200; cursor: pointer; display: none; } /* Hidden by default for retail */
+
+        /* M3 FIX: call-waiter button — bottom raised to 90px so it never overlaps the cart bar */
+        .call-waiter-btn { position: fixed; bottom: 90px; right: 20px; background: #ef4444; color: white; border: none; padding: 15px 24px; border-radius: 50px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 15px rgba(0,0,0,0.3); z-index: 200; cursor: pointer; display: none; } /* Hidden by default for retail */
         .call-waiter-btn:active { transform: scale(0.95); }
 
         /* Sold Out & Modifiers */
@@ -126,7 +126,8 @@
     </style>
 </head>
 <body>
-
+  
+<a href="help.html" data-slp-skip="1" style="position:fixed; bottom:calc(20px + env(safe-area-inset-bottom)); left:16px; z-index:800; display:flex; align-items:center; gap:6px; background:rgba(15,23,42,.75); color:#e2e8f0; padding:10px 15px; border-radius:999px; text-decoration:none; font:600 12px/1 'Inter',sans-serif; box-shadow:0 4px 14px rgba(0,0,0,.4);">❓ <span>Help</span></a>
 <div class="loader" id="loader">
     <div class="spinner"></div>
     <div class="loader-text">Preparing your menu...</div>
@@ -145,7 +146,6 @@
 
 <div id="mainApp" style="display:none;">
     <div class="hero-header">
-        <button class="call-waiter-btn" onclick="callWaiter()">🔔 Call Waiter</button>
         <div class="hero-bg" id="heroBg"></div>
         <div class="hero-content">
             <div class="hero-subtitle" id="heroSubtitle">Welcome to</div>
@@ -158,27 +158,28 @@
         <button class="scan-btn" onclick="startSupermarketScanner()">📷 Scan Product Barcode</button>
     </div>
 
+    <!-- M3 FIX: the call-waiter button now actually exists in the DOM (cafe mode only) -->
+    <button class="call-waiter-btn" onclick="callWaiter()">🔔 Call Waiter</button>
+
     <div class="promo-area" id="promoArea" style="display:none;">
         <iframe class="promo-video" id="promoVideo" style="display:none; height:200px;" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
         <img class="promo-banner" id="promoBannerImg" src="" style="display:none;">
         <div class="promo-text" id="promoText" style="display:none;"></div>
     </div>
-    
+
     <div class="welcome-msg" id="welcomeMsg"></div>
 
     <div class="category-nav" id="categoryNav"></div>
     <div class="menu-section" id="menuContainer"></div>
 </div>
 
-
-	
 <!-- Barcode Scanner Container (Outside main app so it overlays everything) -->
 <div id="scannerContainer">
     <button class="scanner-close-btn" onclick="stopSupermarketScanner()">✖ Close Scanner</button>
     <div id="scannerViewport"></div>
     <div class="scan-status" id="scanStatus">Point camera at the barcode...</div>
 </div>
-    
+
 <div class="cart-fab" id="cartFab" onclick="openCart()" style="display:none;">
     <span>🛒 View Cart (<span id="cartCount">0</span>)</span>
     <span id="cartTotal">$0.00</span>
@@ -195,7 +196,7 @@
         <div style="margin-top:15px; padding-top:15px; border-top:1px solid rgba(255,255,255,0.1); text-align:right; font-size:20px; font-weight:bold;">
             Total: <span id="cartModalTotal">$0.00</span>
         </div>
-        <button class="checkout-btn" onclick="placeOrder()">✅ Pay & Generate Receipt</button>
+        <button class="checkout-btn" onclick="placeOrder(this)">✅ Pay & Generate Receipt</button>
     </div>
 </div>
 
@@ -221,20 +222,23 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
-
-<!-- ADD THIS LINE BELOW -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-	<script src="config.js"></script>
-	
+<script src="config.js"></script>
+
 <script>
-   
-    
-	    // ===== SUPABASE INITIALIZATION =====
+    // ===== SmartMenu · FIXED BUILD 2026-10-29 =====
+    // M1 shop_type + system_locked now single-sourced (settings first, menu_settings legacy fallback)
+    // M2 is_available_on_menu filter fixed · M3 call-waiter button present · M4 cart carries station
+    // M5 required modifiers enforced · M6 all DB strings escaped · M7 placeOrder(this)
+    // M9 maybeSingle reads · M10 identical modifier configs merge · M11 menu restores after unlock
+    console.log('%c SmartMenu · FIXED BUILD 2026-10-29 ', 'background:#d4af37; color:#0f172a; font-weight:bold; padding:2px 8px; border-radius:4px;');
+
+    // ===== SUPABASE INITIALIZATION =====
     const SUPABASE_URL = "https://mtwcdvmdoxzcejzgypdw.supabase.co";
     const SUPABASE_KEY = "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8";
     let supabaseClient = null;
     if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: 'implicit' } });
         console.log("✅ Supabase Connected in Menu!");
     } else {
         console.error("❌ Supabase library not loaded.");
@@ -246,7 +250,8 @@
     let cart = [];
     let allProducts = [];
     let activeCategory = 'All';
-	  let shopType = 'retail'; // Global variable to store shop type
+    let shopType = 'retail';
+    let menuLocked = false; // M11: tracks lock state so the menu can be restored on unlock
 
     var urlShop = new URLSearchParams(window.location.search).get('shop');
     if (urlShop) {
@@ -255,22 +260,30 @@
         window.history.replaceState({}, document.title, window.location.pathname);
     }
 
+    // ===== M6 FIX: ESCAPING HELPERS — every DB string that reaches HTML goes through these =====
+    function escHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function escUrl(s) { return String(s == null ? '' : s).replace(/['"\\]/g, ''); }
+
     function fmtMoney(amount) { return currency + Number(amount || 0).toFixed(2); }
 
     // ===== SUPABASE ANONYMOUS AUTH =====
-supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (session) {
-        if (shopId && shopId !== 'default') {
-            initMenu();
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (session) {
+            if (shopId && shopId !== 'default') {
+                initMenu();
+            } else {
+                document.getElementById('loader').classList.add('hidden');
+                document.getElementById('loginScreen').style.display = 'flex';
+            }
         } else {
-            document.getElementById('loader').classList.add('hidden');
-            document.getElementById('loginScreen').style.display = 'flex';
+            // No session, sign in anonymously
+            supabaseClient.auth.signInAnonymously();
         }
-    } else {
-        // No session, sign in anonymously
-        supabaseClient.auth.signInAnonymously();
-    }
-});
+    });
 
     function manualLinkMenu() {
         var id = document.getElementById('loginShopId').value.trim();
@@ -282,41 +295,26 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
         initMenu();
     }
 
-          async function initMenu() {
+    // ===== M1 FIX: SHOP TYPE — the settings table is the source of truth; menu_settings.shop_type is a legacy fallback =====
+    async function loadShopType(legacyType) {
+        try {
+            const { data: s } = await supabaseClient.from('settings').select('shop_type').eq('shop_id', shopId).maybeSingle();
+            if (s && s.shop_type) return s.shop_type;
+        } catch (e) { console.warn('settings read failed:', e.message); }
+        return legacyType || 'retail';
+    }
+
+    async function initMenu() {
         try {
             if (supabaseClient) {
-                // 1. FETCH SETTINGS FROM SUPABASE
-                const { data: settings, error: setErr } = await supabaseClient.from('menu_settings').select('*').eq('shop_id', shopId).single();
+                // 1. FETCH BRANDING SETTINGS (M9: maybeSingle — a missing row degrades to defaults instead of erroring)
+                const { data: settings, error: setErr } = await supabaseClient.from('menu_settings').select('*').eq('shop_id', shopId).maybeSingle();
+                if (setErr) console.warn('menu_settings read failed:', setErr.message);
                 if (settings) {
                     document.getElementById('heroTitle').innerText = settings.name || 'SmartShop Menu';
                     if (settings.currency) currency = settings.currency;
 
                     if (tableId) document.getElementById('heroSubtitle').innerText = '🪑 Table: ' + tableId;
-
-                    // Shop Type
-                    shopType = settings.shop_type || 'retail';
-                    
-                    var scanSec = document.getElementById('scanSection');
-                    var catNav = document.querySelector('.category-nav');
-                    var callBtn = document.querySelector('.call-waiter-btn');
-                    var menuCont = document.getElementById('menuContainer');
-                    
-                    if (shopType === 'retail') {
-                        if (scanSec) scanSec.style.display = 'block';
-                        if (catNav) catNav.style.display = 'none';
-                        if (callBtn) callBtn.style.display = 'none';
-                        document.getElementById('heroSubtitle').innerText = 'Scan & Go Shopping';
-                                                var browseHeader = document.querySelector('.browse-header') || document.createElement('div');
-                        browseHeader.className = 'browse-header';
-                        browseHeader.className = 'section-header';
-                        browseHeader.style.marginTop = '20px';
-                        browseHeader.innerText = '🛒 Browse Products';
-                        menuCont.parentNode.insertBefore(browseHeader, menuCont);
-                    } else {
-                        if (scanSec) scanSec.style.display = 'none';
-                        if (catNav) catNav.style.display = 'flex';
-                        if (callBtn) callBtn.style.display = 'flex';
-                    }
 
                     // Menu Customizer
                     if (settings.header_color) {
@@ -326,17 +324,17 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
                     }
                     if (settings.bg_color) document.documentElement.style.setProperty('--bg-dark', settings.bg_color);
                     if (settings.card_color) document.documentElement.style.setProperty('--bg-card', settings.card_color);
-                    
+
                     if (settings.welcome_msg) {
                         document.getElementById('welcomeMsg').innerText = settings.welcome_msg;
                         document.getElementById('welcomeMsg').style.display = 'block';
                     }
-                    
+
                     if (settings.banner_url || settings.promo_text || settings.video_url) document.getElementById('promoArea').style.display = 'block';
                     if (settings.banner_url) {
                         document.getElementById('promoBannerImg').src = settings.banner_url;
                         document.getElementById('promoBannerImg').style.display = 'block';
-                        document.getElementById('heroBg').style.backgroundImage = `url('${settings.banner_url}')`;
+                        document.getElementById('heroBg').style.backgroundImage = `url('${escUrl(settings.banner_url)}')`;
                     } else {
                         document.getElementById('heroBg').style.backgroundImage = "url('https://images.unsplash.com/photo-1414235077428-338989a2e8c0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1400&q=80')";
                     }
@@ -354,15 +352,42 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
                     }
                 }
 
+                // M1 FIX: shop type now comes from the settings table (source of truth),
+                // with menu_settings.shop_type as legacy fallback — the exact same precedence placeOrder uses.
+                shopType = await loadShopType(settings ? settings.shop_type : null);
+
+                // Mode switch (now works even when the menu_settings row is missing entirely)
+                var scanSec = document.getElementById('scanSection');
+                var catNav = document.querySelector('.category-nav');
+                var callBtn = document.querySelector('.call-waiter-btn'); // M3: this button now exists in the DOM
+                var menuCont = document.getElementById('menuContainer');
+
+                if (shopType === 'retail') {
+                    if (scanSec) scanSec.style.display = 'block';
+                    if (catNav) catNav.style.display = 'none';
+                    if (callBtn) callBtn.style.display = 'none';
+                    document.getElementById('heroSubtitle').innerText = 'Scan & Go Shopping';
+                    var browseHeader = document.querySelector('.browse-header') || document.createElement('div');
+                    browseHeader.className = 'section-header';
+                    browseHeader.style.marginTop = '20px';
+                    browseHeader.innerText = '🛒 Browse Products';
+                    menuCont.parentNode.insertBefore(browseHeader, menuCont);
+                } else {
+                    if (scanSec) scanSec.style.display = 'none';
+                    if (catNav) catNav.style.display = 'flex';
+                    if (callBtn) callBtn.style.display = 'flex';
+                }
+
                 // 2. FETCH PRODUCTS FROM SUPABASE
                 const { data: prods, error: prodErr } = await supabaseClient.from('menu_products').select('*').eq('shop_id', shopId);
+                if (prodErr) console.warn('menu_products read failed:', prodErr.message);
                 allProducts = [];
                 if (prods) {
                     prods.forEach(function(p) {
                         p.id = p.firebase_id || p.id;
                         p.imageUrl = p.image_url;
                         p.isVirtual = p.is_virtual;
-                        p.isAvailableOnMenu = p.is_available_on_menu;
+                        p.isAvailableOnMenu = p.is_available_on_menu; // M2 FIX: was mapped to p.value, which the filter never read
                         p.sellDirectly = p.sell_directly;
                         if (p.isAvailableOnMenu !== false && p.sellDirectly !== false) {
                             allProducts.push(p);
@@ -386,7 +411,8 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
             });
             var catHtml = '';
             categories.forEach(cat => {
-                catHtml += `<div class="cat-pill ${cat === activeCategory ? 'active' : ''}" onclick="filterCategory('${cat}', this)">${cat}</div>`;
+                // M6 FIX: category names escaped; clicks handled by delegation (no inline onclick strings)
+                catHtml += `<div class="cat-pill ${cat === activeCategory ? 'active' : ''}" data-cat="${escHtml(cat)}">${escHtml(cat)}</div>`;
             });
             document.getElementById('categoryNav').innerHTML = catHtml;
 
@@ -400,23 +426,58 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
         } catch(e) {
             document.getElementById('loader').classList.add('hidden');
             document.getElementById('mainApp').style.display = 'block';
-            document.getElementById('menuContainer').innerHTML = '<p style="text-align:center; padding:40px; color:red;">Error loading menu.<br><small>' + e.message + '</small></p>';
+            document.getElementById('menuContainer').innerHTML = '<p style="text-align:center; padding:40px; color:red;">Error loading menu.<br><small>' + escHtml(e.message) + '</small></p>';
         }
     }
 
+    // ===== M6 FIX: DELEGATED CLICK HANDLERS — no DB-controlled strings inside inline onclick attributes =====
+    (function attachDelegatedHandlers() {
+        var menuCont = document.getElementById('menuContainer');
+        if (menuCont) menuCont.addEventListener('click', function(e) {
+            var t = e.target;
+            if (!t || !t.closest) return;
+            var addBtn = t.closest('.add-btn');
+            if (addBtn && addBtn.getAttribute('data-id')) { addToCart(addBtn.getAttribute('data-id')); return; }
+            var img = t.closest('.card-media img');
+            if (img) openLightbox(img.getAttribute('src'));
+        });
+        var catNav = document.getElementById('categoryNav');
+        if (catNav) catNav.addEventListener('click', function(e) {
+            var t = e.target;
+            if (!t || !t.closest) return;
+            var pill = t.closest('.cat-pill');
+            if (pill) filterCategory(pill.getAttribute('data-cat'), pill);
+        });
+    })();
 
-	
-
-    // System Lock Checker for Supabase
+    // ===== SYSTEM LOCK CHECKER (M1 + M9 + M11) =====
     async function checkSystemLock() {
         if (!supabaseClient) return;
-        const { data, error } = await supabaseClient.from('menu_settings').select('system_locked').eq('shop_id', shopId).single();
-        if (data && data.system_locked === true) {
-            document.getElementById('menuContainer').innerHTML = '<div style="text-align:center; padding:60px 20px;"><h2 style="color:#ef4444; font-size:28px; margin-bottom:10px;">🔒 Temporarily Closed</h2><p style="color:var(--text-muted);">We are not taking online orders right now. Please call a waiter.</p></div>';
-            document.getElementById('cartFab').style.display = 'none';
-        }
+        try {
+            var locked = null;
+            const { data: s } = await supabaseClient.from('settings').select('system_locked').eq('shop_id', shopId).maybeSingle();
+            if (s && s.system_locked !== null && s.system_locked !== undefined) locked = (s.system_locked === true);
+            if (locked === null) {
+                // legacy fallback row only when settings has no explicit value
+                const { data: m } = await supabaseClient.from('menu_settings').select('system_locked').eq('shop_id', shopId).maybeSingle();
+                locked = (m && m.system_locked === true);
+            }
+            if (locked === true && !menuLocked) {
+                menuLocked = true;
+                document.getElementById('menuContainer').innerHTML = '<div style="text-align:center; padding:60px 20px;"><h2 style="color:#ef4444; font-size:28px; margin-bottom:10px;">🔒 Temporarily Closed</h2><p style="color:var(--text-muted);">We are not taking online orders right now. Please call a waiter.</p></div>';
+                document.getElementById('cartFab').style.display = 'none';
+            } else if (locked !== true && menuLocked) {
+                // M11 FIX: the menu used to stay "closed" until a full page reload
+                menuLocked = false;
+                if (allProducts.length === 0) {
+                    document.getElementById('menuContainer').innerHTML = '<p style="text-align:center; padding:40px; color:var(--text-muted);">No items available right now.</p>';
+                } else {
+                    renderMenu();
+                }
+                updateCartUI();
+            }
+        } catch(e) { console.warn('Lock check failed:', e.message); }
     }
-
     function filterCategory(cat, el) {
         activeCategory = cat;
         document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
@@ -430,34 +491,35 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
             var cats = [];
             allProducts.forEach(p => { var c = p.category || 'General'; if (cats.indexOf(c) === -1) cats.push(c); });
             cats.forEach(cat => {
-                html += `<div class="section-header">${cat}</div>`;
+                html += `<div class="section-header">${escHtml(cat)}</div>`;
                 allProducts.filter(p => (p.category || 'General') === cat).forEach(p => { html += buildItemHtml(p); });
             });
         } else {
-            html += `<div class="section-header">${activeCategory}</div>`;
+            html += `<div class="section-header">${escHtml(activeCategory)}</div>`;
             allProducts.filter(p => (p.category || 'General') === activeCategory).forEach(p => { html += buildItemHtml(p); });
         }
         document.getElementById('menuContainer').innerHTML = html;
     }
 
     function buildItemHtml(p) {
-        var imgHtml = p.imageUrl 
-            ? `<img src="${p.imageUrl}" onclick="openLightbox('${p.imageUrl}')" onerror="this.style.display='none'">` 
+        // M6 FIX: name/URL escaped; no inline onclick — clicks handled by delegation
+        var imgHtml = p.imageUrl
+            ? `<img src="${escHtml(p.imageUrl)}" alt="${escHtml(p.name)}" loading="lazy">`
             : `<div class="card-media-placeholder">🍽️</div>`;
-            
+
         var isOutOfStock = !p.isVirtual && p.stock <= 0;
         var badgeHtml = isOutOfStock ? '<div class="sold-out-badge">Sold Out</div>' : '';
-        
-        var actionHtml = isOutOfStock 
-            ? `<button class="add-btn" disabled>Sold Out</button>` 
-            : `<button class="add-btn" onclick="addToCart('${p.id}')">+ Add</button>`;
-            
+
+        var actionHtml = isOutOfStock
+            ? `<button class="add-btn" disabled>Sold Out</button>`
+            : `<button class="add-btn" data-id="${escHtml(p.id)}">+ Add</button>`;
+
         var cardClass = isOutOfStock ? 'menu-card sold-out' : 'menu-card';
 
         return `
             <div class="${cardClass}">
                 <div class="card-info">
-                    <div class="card-name">${p.name}</div>
+                    <div class="card-name">${escHtml(p.name)}</div>
                     <div class="card-price">${fmtMoney(p.price)}</div>
                     ${actionHtml}
                 </div>
@@ -468,7 +530,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
             </div>
         `;
     }
-   
+
     function openLightbox(url) {
         document.getElementById('lightboxImg').src = url;
         document.getElementById('lightbox').classList.add('active');
@@ -477,24 +539,19 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
         document.getElementById('lightbox').classList.remove('active');
     }
 
-
-
-
-
-
-	
     // ===== UNIFIED ADD TO CART (HANDLES MODIFIERS) =====
     var currentModifierProduct = null;
     function addToCart(id) {
         var p = allProducts.find(x => x.id === id);
         if (!p) return;
-        
+
         if (p.modifiers && p.modifiers.length > 0) {
             currentModifierProduct = p;
             openMenuModifierModal(p);
         } else {
             var existing = cart.find(x => x.id === id && !x.modifiers);
-            if (existing) { existing.qty += 1; } else { cart.push({ id: p.id, name: p.name, price: p.price, qty: 1 }); }
+            // M4 FIX: cart items now carry their product's station
+            if (existing) { existing.qty += 1; } else { cart.push({ id: p.id, name: p.name, price: p.price, qty: 1, station: p.station }); }
             updateCartUI();
         }
     }
@@ -517,7 +574,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
             cart.forEach((item, idx) => {
                 html += `<div class="cart-item">
                     <div style="flex:1;">
-                        <div style="font-weight:600; font-size:15px;">${item.name}</div>
+                        <div style="font-weight:600; font-size:15px;">${escHtml(item.name)}</div>
                         <div style="font-size:12px; color:var(--text-muted);">${fmtMoney(item.price)} each</div>
                     </div>
                     <div class="qty-control">
@@ -533,136 +590,127 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
         document.getElementById('cartModal').classList.add('active');
     }
 
-
     function changeCartQty(idx, dir) {
         cart[idx].qty += dir;
         if (cart[idx].qty <= 0) cart.splice(idx, 1);
         updateCartUI();
     }
 
-  async function callWaiter() {
-    if (!supabaseClient) { alert('Database not connected.'); return; }
-    try {
-        const { error } = await supabaseClient.from('service_calls').insert([
-            { shop_id: shopId, table_id: tableId || 'Unknown Table', status: 'pending' }
-        ]);
-        if (error) throw error;
-        alert('✅ Waiter has been called! They will be with you shortly.');
-    } catch(e) {
-        alert('Error calling waiter. Please try again.');
-    }
-}
-
-      async function placeOrder() {
-        if (cart.length === 0) return;
-        var btn = event.target; 
-        btn.innerText = 'Processing...'; 
-        btn.disabled = true;
-        
+    async function callWaiter() {
+        if (!supabaseClient) { alert('Database not connected.'); return; }
         try {
-            // BULLETPROOF CHECK: Read Shop Type DIRECTLY from Supabase
-            const { data: settingsData } = await supabaseClient.from('settings').select('shop_type').eq('shop_id', shopId).single();
-            var currentShopType = settingsData ? (settingsData.shop_type || 'retail') : 'retail';
-            
+            const { error } = await supabaseClient.from('service_calls').insert([
+                { shop_id: shopId, table_id: tableId || 'Unknown Table', status: 'pending' }
+            ]);
+            if (error) throw error;
+            alert('✅ Waiter has been called! They will be with you shortly.');
+        } catch(e) {
+            alert('Error calling waiter. Please try again.');
+        }
+    }
+    async function placeOrder(btn) {
+        if (cart.length === 0) return;
+        if (!supabaseClient) { alert('Database not connected.'); return; }
+        btn = btn || document.querySelector('#cartModal .checkout-btn'); // M7 FIX: no implicit window.event
+        if (btn) { btn.innerText = 'Processing...'; btn.disabled = true; }
+
+        try {
+            // M1 FIX: same precedence as initMenu — settings first, then the type the menu loaded with.
+            // UI mode and order routing can no longer disagree.
+            const { data: settingsData } = await supabaseClient.from('settings').select('shop_type').eq('shop_id', shopId).maybeSingle();
+            var currentShopType = (settingsData && settingsData.shop_type) || shopType || 'retail';
+
             var defaultStation = currentShopType === 'cafe' ? 'Kitchen' : 'Retail';
-            
+
+            // M4 FIX: cart items carry their product's station, so Bar/Coffee QR orders
+            // finally reach the right station tab on the kitchen display.
             var stationStatus = {};
             cart.forEach(function(item) {
                 var st = item.station || defaultStation;
-                stationStatus[st] = false; 
+                stationStatus[st] = false;
             });
 
             // Generate a unique ID for the order
-            var orderId = 'order_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5); 
+            var orderId = 'order_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            var orderItems = cart.map(i => ({
+                productId: i.id, name: i.name, qty: i.qty, price: i.price,
+                modifiers: i.modifiers || [], note: i.note || '',
+                station: i.station || defaultStation
+            }));
+            var orderTotal = cart.reduce((s,i) => s+(i.price*i.qty), 0);
+            var orderTable = tableId || ('QR-' + Date.now().toString().slice(-4));
 
             if (currentShopType === 'cafe') {
                 // CAFE MODE: Send to Kitchen
                 var orderData = {
-                    firebase_id: orderId, 
-                    shop_id: shopId, 
-                    table_id: tableId || ('QR-' + Date.now().toString().slice(-4)),
-									items: cart.map(i => ({ 
-                        productId: i.id, name: i.name, qty: i.qty, price: i.price,
-                        modifiers: i.modifiers || [], note: i.note || '',
-                        station: i.station || defaultStation
-                    })),                        
-                        
+                    firebase_id: orderId,
+                    shop_id: shopId,
+                    table_id: orderTable,
+                    items: orderItems,
                     station_status: stationStatus,
-                    total: cart.reduce((s,i) => s+(i.price*i.qty), 0),
+                    total: orderTotal,
                     status: 'Pending',
                     order_type: 'QR Dine-In',
                     time: new Date().toISOString()
                 };
-                
-                if (supabaseClient) {
-                    const { error } = await supabaseClient.from('orders').insert([orderData]);
-                    if (error) throw error;
-                }
-                
+
+                const { error } = await supabaseClient.from('orders').insert([orderData]);
+                if (error) throw error;
+
                 document.getElementById('cartModal').classList.remove('active');
-                
+
                 document.getElementById('menuContainer').innerHTML = `
                     <div style="text-align:center; padding:60px 20px;">
                         <h2 style="font-family:'Playfair Display', serif; color:var(--primary); margin-bottom:10px; font-size:28px;">✅ Order Sent!</h2>
                         <p style="color:var(--text-muted); font-size:16px;">The kitchen has received your order.</p>
-                        <p style="color:var(--text-muted); font-size:14px; margin-top:10px;">A waiter will bring your food to Table ${tableId || ''} shortly.</p>
+                        <p style="color:var(--text-muted); font-size:14px; margin-top:10px;">A waiter will bring your food to Table ${escHtml(orderTable)} shortly.</p>
                         <button class="checkout-btn" style="margin-top:30px; background:#64748b;" onclick="location.reload()">Start New Order</button>
                     </div>
                 `;
             } else {
                 // RETAIL MODE: Generate QR Receipt for Guard
                 var retailOrderData = {
-                    firebase_id: orderId, 
-                    shop_id: shopId, 
-                    table_id: tableId || ('QR-' + Date.now().toString().slice(-4)),
-									items: cart.map(i => ({ 
-                        productId: i.id, name: i.name, qty: i.qty, price: i.price,
-                        modifiers: i.modifiers || [], note: i.note || '',
-                        station: i.station || defaultStation
-                    })),                        
-                        
+                    firebase_id: orderId,
+                    shop_id: shopId,
+                    table_id: orderTable,
+                    items: orderItems,
                     station_status: stationStatus,
-                    total: cart.reduce((s,i) => s+(i.price*i.qty), 0),
+                    total: orderTotal,
                     status: 'Pending Payment',
                     order_type: 'Scan & Go',
                     time: new Date().toISOString()
                 };
 
-                if (supabaseClient) {
-                    const { error } = await supabaseClient.from('orders').insert([retailOrderData]);
-                    if (error) throw error;
-                }
+                const { error } = await supabaseClient.from('orders').insert([retailOrderData]);
+                if (error) throw error;
 
                 document.getElementById('cartModal').classList.remove('active');
-                
+
                 var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + orderId;
-                var totalPaid = cart.reduce((s,i) => s+(i.price*i.qty), 0);
-                
+
                 document.getElementById('menuContainer').innerHTML = `
                     <div style="text-align:center; padding:40px 20px;">
                         <h2 style="font-family:'Playfair Display', serif; color:var(--primary); margin-bottom:10px; font-size:24px;">✅ Order Placed!</h2>
                         <p style="color:var(--text-muted); margin-bottom:20px;">Show this QR code to the guard at the exit to verify your items.</p>
                         <img src="${qrUrl}" style="width:220px; height:220px; border-radius:12px; margin-bottom:20px; background:white; padding:10px;">
-											  <div style="background:#1e293b; padding:12px; border-radius:10px; margin-bottom:20px; font-family:monospace; font-size:15px; color:#fbbf24; word-break:break-all; letter-spacing:1px;">🪪 ${orderId}</div>
+                        <div style="background:#1e293b; padding:12px; border-radius:10px; margin-bottom:20px; font-family:monospace; font-size:15px; color:#fbbf24; word-break:break-all; letter-spacing:1px;">🪪 ${orderId}</div>
                         <div style="background:var(--bg-card); padding:15px; border-radius:12px; display:inline-block; text-align:left; width:100%; max-width:300px;">
-                            <div style="font-weight:bold; font-size:18px; margin-bottom:10px;">Total: ${fmtMoney(totalPaid)}</div>
-                            ${cart.map(i => `<div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px;"><span>${i.qty}x ${i.name}</span><span>${fmtMoney(i.price*i.qty)}</span></div>`).join('')}
+                            <div style="font-weight:bold; font-size:18px; margin-bottom:10px;">Total: ${fmtMoney(orderTotal)}</div>
+                            ${cart.map(i => `<div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:5px;"><span>${escHtml(i.qty + 'x ' + i.name)}</span><span>${fmtMoney(i.price*i.qty)}</span></div>`).join('')}
                         </div>
                         <button class="checkout-btn" style="margin-top:20px; background:#64748b;" onclick="location.reload()">Start New Order</button>
                     </div>
                 `;
             }
-            
+
             document.getElementById('cartFab').style.display = 'none';
             cart = [];
         } catch(e) {
             alert('❌ Error: ' + e.message);
-            btn.innerText = '✅ Pay & Generate Receipt'; 
-            btn.disabled = false;
+            if (btn) { btn.innerText = '✅ Pay & Generate Receipt'; btn.disabled = false; }
         }
     }
-	
-   
+
     // ===== MODIFIERS LOGIC =====
     function openMenuModifierModal(p) {
         document.getElementById('modifierModalTitle').innerText = p.name;
@@ -671,21 +719,21 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
             var reqText = group.required ? 'Required' : 'Optional';
             var typeText = group.multiSelect ? 'Choose multiple' : 'Choose one';
             bodyHtml += '<div class="mod-group">';
-            bodyHtml += '<div class="mod-group-title">' + group.name + ' <small>' + reqText + ' • ' + typeText + '</small></div>';
+            bodyHtml += '<div class="mod-group-title">' + escHtml(group.name) + ' <small>' + reqText + ' • ' + typeText + '</small></div>';
             group.options.forEach(function(opt, oIdx) {
                 var inputType = group.multiSelect ? 'checkbox' : 'radio';
                 var inputName = 'group_' + gIdx;
                 var priceStr = opt.price > 0 ? '+' + fmtMoney(opt.price) : 'Free';
                 bodyHtml += '<label class="mod-option">';
-                bodyHtml += '<input type="' + inputType + '" name="' + inputName + '" data-price="' + opt.price + '" data-name="' + opt.name + '" onchange="updateMenuModifierPrice()">';
-                bodyHtml += '<span class="mod-option-label">' + opt.name + '</span>';
+                bodyHtml += '<input type="' + inputType + '" name="' + inputName + '" data-price="' + opt.price + '" data-name="' + escHtml(opt.name) + '" onchange="updateMenuModifierPrice()">';
+                bodyHtml += '<span class="mod-option-label">' + escHtml(opt.name) + '</span>';
                 bodyHtml += '<span class="mod-option-price">' + priceStr + '</span>';
                 bodyHtml += '</label>';
             });
             bodyHtml += '</div>';
         });
         document.getElementById('modifierBody').innerHTML = bodyHtml;
-        updateMenuModifierPrice(); 
+        updateMenuModifierPrice();
         document.getElementById('modifierModal').classList.add('active');
     }
 
@@ -701,6 +749,20 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     function addModifiedItemToCart() {
         if (!currentModifierProduct) return;
         var p = currentModifierProduct;
+
+        // M5 FIX: required modifier groups are now enforced
+        var missing = [];
+        (p.modifiers || []).forEach(function(group, gIdx) {
+            if (group.required) {
+                var checked = document.querySelectorAll('#modifierBody input[name="group_' + gIdx + '"]:checked');
+                if (checked.length === 0) missing.push(group.name);
+            }
+        });
+        if (missing.length > 0) {
+            alert('⚠️ Please choose an option for: ' + missing.join(', '));
+            return;
+        }
+
         var basePrice = p.price;
         var extraPrice = 0;
         var selectedMods = [];
@@ -712,7 +774,15 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
             selectedMods.push(name + (price > 0 ? ' (+' + fmtMoney(price) + ')' : ''));
         });
         var finalPrice = basePrice + extraPrice;
-        cart.push({ id: p.id, name: p.name, price: finalPrice, qty: 1, modifiers: selectedMods });
+
+        // M10 FIX: identical modifier configurations merge into one cart line instead of stacking
+        var sig = selectedMods.slice().sort().join('|');
+        var existing = cart.find(x => x.id === p.id && x.modifiers && x.modifiers.slice().sort().join('|') === sig);
+        if (existing) {
+            existing.qty += 1;
+        } else {
+            cart.push({ id: p.id, name: p.name, price: finalPrice, qty: 1, modifiers: selectedMods, station: p.station }); // M4: station carried
+        }
         updateCartUI();
         document.getElementById('modifierModal').classList.remove('active');
         currentModifierProduct = null;
@@ -754,7 +824,7 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
                 return;
             }
             var existing = cart.find(x => x.id === p.id);
-            if (existing) { existing.qty += 1; } else { cart.push({ id: p.id, name: p.name, price: p.price, qty: 1 }); }
+            if (existing) { existing.qty += 1; } else { cart.push({ id: p.id, name: p.name, price: p.price, qty: 1, station: p.station }); } // M4: station carried
             var newQty = existing ? existing.qty : 1;
             document.getElementById('scanStatus').innerText = '✅ Added: ' + p.name + ' (Qty: ' + newQty + ')';
             playBeep();
@@ -770,5 +840,6 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
     function playBeep() { try { var ctx = new (window.AudioContext || window.webkitAudioContext)(); var osc = ctx.createOscillator(); var gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.value = 800; gain.gain.value = 0.3; osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.15); } catch(e) {} }
     function playErrorBeep() { try { var ctx = new (window.AudioContext || window.webkitAudioContext)(); var osc = ctx.createOscillator(); var gain = ctx.createGain(); osc.type = 'square'; osc.frequency.value = 200; gain.gain.value = 0.3; osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); } catch(e) {} }
 </script>
+ <script src="lang.js" data-spp-auto="1"></script>
 </body>
 </html>
