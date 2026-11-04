@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
+<script src="zoom-fix.js"></script>
     <meta charset="UTF-8">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>SmartShop POS</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#1a73e8">
+    <title>BizMaster</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">    
+  <meta name="theme-color" content="#1a73e8">
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
    
@@ -600,7 +601,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
             <rect x="44" y="8" width="6" height="32" rx="1" fill="#10b981"/>
             <polyline points="44,8 44,2 48,4" fill="none" stroke="#f59e0b" stroke-width="2"/>
         </svg>
-        <h1>SmartShop POS</h1>
+        <h1>BizMaster</h1>
         <p>Professional Sales Terminal</p>
     </div>
 </div>
@@ -622,7 +623,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 <!-- LOGIN SCREEN -->
   <div class="login-screen" id="loginScreen">
     <div class="login-box">
-        <h1>🏪 SmartShop POS</h1>
+        <h1>🏪 BizMaster</h1>
         <p style="color:#64748b; margin-bottom:10px;" id="loginSubtitle">Cashier Login</p>
 
                  <!-- OWNER DEVICE ACTIVATION -->
@@ -737,7 +738,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
  
   <div class="customer-screen" id="customerDisplay">
         <button class="cs-close-btn" onclick="toggleDisplay()">✖</button>
-        <div class="cs-store" id="csStoreName">🏪 SmartShop Pro</div>
+        <div class="cs-store" id="csStoreName">🏪 BizMaster</div>
         <div class="cs-items" id="csItems"><div style="color:#9ca3af;text-align:center;padding:20px;">Waiting for items...</div></div>
         <div class="cs-divider"></div>
         <div class="cs-total-box">
@@ -1300,6 +1301,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 	<script src="ssauth.js"></script>
   <script src="ssfiscal.js"></script>
   <script src="ssprint.js"></script>
+  <script src="lang.js" data-spp-auto="1"></script>
 <script>
   
 		// ===== GLOBAL UNIT CONVERSION ENGINE =====
@@ -3431,7 +3433,7 @@ function printReceiptPOS() {
     var printWindow = window.open('', '_blank', 'width=400,height=600');
     if (!printWindow) { alert('Popup blocked! Allow popups for this site to print.'); return; }
 
-    var brand = window.shopBranding || { name: 'SmartShop Pro', phone: '', address: '', tinNumber: '', vatNumber: '', receiptFooter: 'Thank you!' };
+    var brand = window.shopBranding || { name: 'BizMaster', phone: '', address: '', tinNumber: '', vatNumber: '', receiptFooter: 'Thank you!' };
 
     // ===== 3. BUILD HTML =====
     var html = '<!DOCTYPE html><html><head><title>Receipt</title>';
@@ -3448,7 +3450,7 @@ function printReceiptPOS() {
     html += '</style></head><body>';
 
     // ===== HEADER: SHOP BRANDING (TIN/VAT at top, next to phone) =====
-    html += '<h1>' + (brand.name || 'SmartShop Pro') + '</h1>';
+    html += '<h1>' + (brand.name || 'BizMaster') + '</h1>';
     if (brand.address) html += '<p class="brandline">' + brand.address + '</p>';
     if (brand.phone) html += '<p class="brandline">Tel: ' + brand.phone + '</p>';
     if (brand.tinNumber) html += '<p class="brandline">TIN: ' + brand.tinNumber + '</p>';
@@ -4249,7 +4251,7 @@ function handleWaiterCall(call) {
         const { data, error } = await supabaseClient.from('settings').select('*').eq('shop_id', getShopId()).single();
         if (data) {
             window.shopBranding = {
-                name: data.name || 'SmartShop Pro',
+                name: data.name || 'BizMaster',
                 phone: data.phone || '',
                 address: data.address || '',
                 currency: data.currency || 'Br ',
@@ -4259,10 +4261,10 @@ function handleWaiterCall(call) {
                 taxType: data.tax_type || 'TOT'
             };
         } else {
-            window.shopBranding = { name: 'SmartShop Pro', phone: '', address: '', currency: 'Br ', receiptFooter: 'Thank you for coming!' };
+            window.shopBranding = { name: 'BizMaster', phone: '', address: '', currency: 'Br ', receiptFooter: 'Thank you for coming!' };
         }
     } else {
-        window.shopBranding = { name: 'SmartShop Pro', phone: '', address: '', currency: 'Br ', receiptFooter: 'Thank you for coming!' };
+        window.shopBranding = { name: 'BizMaster', phone: '', address: '', currency: 'Br ', receiptFooter: 'Thank you for coming!' };
     }
     
     if (window.shopBranding.currency) {
@@ -5305,7 +5307,7 @@ async function unlinkDevice() {
 function printProformaBill() {
     if (cart.length === 0) { alert('Cart is empty!'); return; }
     
-    var brand = window.shopBranding || { name: 'SmartShop Pro', phone: '', address: '' };
+    var brand = window.shopBranding || { name: 'BizMaster', phone: '', address: '' };
     var now = new Date();
     
     var subtotal = cart.reduce((s,i) => s + (i.price * i.qty), 0);
@@ -5315,7 +5317,7 @@ function printProformaBill() {
     html.push('<!DOCTYPE html><html><head><title>Proforma Bill - ' + (currentTableName || 'Takeaway') + '</title>');
     html.push('<style>@page { margin: 0; size: 80mm auto; } body { font-family: "Courier New", monospace; width: 72mm; margin: 4mm auto; font-size: 12px; color: #000; } h1 { font-size: 18px; text-align: center; margin: 0; font-family: Arial, sans-serif; } .center { text-align: center; } .line { border-top: 1px dashed #000; margin: 8px 0; } .item { display: flex; justify-content: space-between; margin: 2px 0; } .total-row { display: flex; justify-content: space-between; margin: 3px 0; } .total-final { font-weight: bold; font-size: 14px; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 5px 0; margin: 5px 0; } .warning { font-weight: bold; font-size: 14px; text-align: center; margin-top: 10px; border: 1px solid #000; padding: 5px; }</style></head><body>');
     
-    html.push('<h1>' + (brand.name || 'SmartShop Pro') + '</h1>');
+    html.push('<h1>' + (brand.name || 'BizMaster') + '</h1>');
     if (brand.address) html.push('<p class="center">' + brand.address + '</p>');
     if (brand.phone) html.push('<p class="center">Tel: ' + brand.phone + '</p>');
     html.push('<div class="line"></div>');
