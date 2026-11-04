@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <meta name="theme-color" content="#0f172a">
+<script src="zoom-fix.js"></script>  
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+  <meta name="theme-color" content="#0f172a">
     <title>Kitchen Display</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
@@ -83,11 +84,11 @@
 .chat-input-area { padding: 10px; border-top: 1px solid #e2e8f0; display: flex; gap: 8px; background: #fff; }
 .chat-input { flex: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 20px; font-size: 14px; outline: none; }
 .chat-send-btn { background: #2563eb; color: white; border: none; padding: 0 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
-			
-		
-		</style>
+                        
+                
+                </style>
 </head>
-	
+        
 <body>
 
 <!-- Login Screen -->
@@ -122,7 +123,7 @@
     </div>
 </div>
 
-	
+        
 <!-- Main App -->
 <div id="mainApp" style="display:none;">
     <div class="header">
@@ -131,11 +132,13 @@
             <h2 id="shopHeader">Loading...</h2>
         </div>
         <div style="display:flex; gap:10px; align-items:center;">
+                      <span id="langMount"></span>
             <span id="offlineBadge" class="offline-badge">OFFLINE</span>
+            <a href="help.html" title="Help & Guide" style="background:#334155; color:#e2e8f0; padding:8px 12px; border-radius:8px; font-weight:bold; text-decoration:none; font-size:13px;">❓</a>
             <button class="logout-btn" onclick="kitchenLogout()">🚪 Logout</button>
         </div>
 
-			
+                        
 <!-- Live Intercom Button -->
 <button class="intercom-fab" onclick="toggleChat()">💬</button>
 
@@ -162,8 +165,8 @@
     </div>
 </div>
 
-			
-			
+                        
+                        
     </div>
 
     <div class="station-tabs">
@@ -191,10 +194,10 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
 <script src="smartcom.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-	<script src="config.js"></script>
-	<script src="ssauth.js"></script>
-	
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+        <script src="config.js"></script>
+        <script src="ssauth.js"></script>
+        
 <script>
    
 
@@ -203,14 +206,27 @@
     const SUPABASE_KEY = "sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8";
     let supabaseClient = null;
     if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: 'implicit' } });
         console.log("✅ Supabase Connected in Kitchen!");
     }
-	
+        
 
     let shopId = localStorage.getItem('kitchenShopId') || localStorage.getItem('shopId') || '';
     let chefList = [];
     let activeStation = 'All';
+
+    // ===== K1: HTML escaping helpers (XSS hardening) =====
+    function escHtml(s) {
+        return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+        });
+    }
+    function attrSafe(s) {
+        return String(s == null ? '' : s).replace(/[\\'"<>]/g, function(c) {
+            return { '\\': '\\\\', "'": "\\'", '"': '&quot;', '<': '&lt;', '>': '&gt;' }[c];
+        });
+    }
+    var activationBusy = false; // K3: true while activateDevice() is switching this device to a shop
 
     var urlShop = new URLSearchParams(window.location.search).get('shop');
     if (urlShop) {
@@ -221,12 +237,16 @@
 
 // ===== PHASE 1B: DEVICE AUTH — OWNER SIGN-IN (replaces anonymous) =====
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    // K3: while a device activation is running, activateDevice() drives the UI itself —
+    // reacting here with the OLD (stale) shop id would load the WRONG shop's orders.
+    if (activationBusy) return;
     var isRealUser = session && session.user && session.user.email && !session.user.is_anonymous;
     if (isRealUser) {
         if (typeof ensureDeviceMonitor === 'function') ensureDeviceMonitor();
-        if (localStorage.getItem('kitchenChefId')) {
+        var freshShopId = localStorage.getItem('kitchenShopId') || ''; // K3: never trust the stale global
+        if (localStorage.getItem('kitchenChefId') && freshShopId) {
             showMainApp();
-        } else if (shopId && shopId !== 'default') {
+        } else if (freshShopId && freshShopId !== 'default') {
             showChefLogin();
             loadChefList();
         } else {
@@ -249,11 +269,15 @@ function showOwnerActivation() {
     if (msg) { msg.textContent = ''; msg.style.color = '#ef4444'; }
 }
 
-	// ===== PHASE 1C: DEVICE MONITOR (KITCHEN) — register, check, lock =====
+        // ===== PHASE 1C: DEVICE MONITOR (KITCHEN) — register, check, lock =====
 var _deviceMonitorStarted = false;
+var _deviceMonitorChannel = null;   // K3: tracked so a shop change can re-register cleanly
+var _deviceMonitorInterval = null;  // K3: prevents duplicate 30s loops after re-registration
 function ensureDeviceMonitor() {
     if (_deviceMonitorStarted) return;
     _deviceMonitorStarted = true;
+    if (_deviceMonitorChannel) { try { supabaseClient.removeChannel(_deviceMonitorChannel); } catch(e) {} }
+    if (_deviceMonitorInterval) { try { clearInterval(_deviceMonitorInterval); } catch(e) {} }
 
     var deviceKey = localStorage.getItem('deviceKey_kitchen');
     if (!deviceKey) {
@@ -265,7 +289,7 @@ function ensureDeviceMonitor() {
 
     // STEP 1: Check if device exists + its current status
     supabaseClient.from('devices')
-        .select('id, status, device_name')
+        .select('id, status, device_name, shop_id')
         .eq('device_key', deviceKey)
         .maybeSingle()
         .then(function(result) {
@@ -283,6 +307,14 @@ function ensureDeviceMonitor() {
                     .update({ last_seen: new Date().toISOString() })
                     .eq('device_key', deviceKey)
                     .then(function(){}).catch(function(e){});
+                // K3: if this device was re-activated for a DIFFERENT shop, move it there too
+                var monShop = shopId || (typeof getShopId === 'function' ? getShopId() : '') || '';
+                if (existing.shop_id && existing.shop_id !== monShop) {
+                    supabaseClient.from('devices')
+                        .update({ shop_id: monShop, device_name: deviceName })
+                        .eq('device_key', deviceKey)
+                        .then(function(){}).catch(function(e){});
+                }
             } else {
                 // New device — register it for the first time
                 supabaseClient.from('devices').insert([{
@@ -296,7 +328,7 @@ function ensureDeviceMonitor() {
             }
 
             // STEP 2: Real-time monitor (instant lock, < 0.1 seconds)
-            supabaseClient.channel('device-monitor-' + deviceKey)
+            _deviceMonitorChannel = supabaseClient.channel('device-monitor-' + deviceKey)
                 .on('postgres_changes', {
                     event: 'UPDATE',
                     schema: 'public',
@@ -310,7 +342,7 @@ function ensureDeviceMonitor() {
                 .subscribe();
 
             // STEP 3: Safety net every 30 seconds
-            setInterval(async function() {
+            _deviceMonitorInterval = setInterval(async function() {
                 try {
                     const { data } = await supabaseClient.from('devices')
                         .select('status, device_name').eq('device_key', deviceKey).maybeSingle();
@@ -338,7 +370,7 @@ function showDeviceLocked(deviceName) {
             '<div style="font-size:60px;margin-bottom:15px;">⛔</div>' +
             '<h1 style="font-size:28px;margin-bottom:10px;">Device Disabled</h1>' +
             '<p style="font-size:16px;max-width:300px;color:#fecaca;line-height:1.6;">' +
-            (deviceName ? '"' + deviceName + '" has been ' : 'This device has been ') +
+            (deviceName ? '"' + escHtml(deviceName) + '" has been ' : 'This device has been ') +
             'disabled by the shop owner.<br>Contact your administrator.</p>';
         document.body.appendChild(lock);
     }
@@ -361,14 +393,21 @@ async function activateDevice() {
     if (!email || !pass) { if (msg) { msg.style.color = '#ef4444'; msg.textContent = '⚠️ Fill Email and Password.'; } return; }
     var btn = document.getElementById('ownerActivateBtn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Activating...'; }
+    var previousShopId = localStorage.getItem('kitchenShopId') || '';
+    activationBusy = true; // K3: while switching shops, onAuthStateChange must not touch the UI
     try {
         const { error } = await supabaseClient.auth.signInWithPassword({ email: email, password: pass });
         if (error) throw new Error(error.message === 'Invalid login credentials' ? '❌ Wrong email or password.' : error.message);
 
         var finalShopId = shopIdIn;
         if (finalShopId) {
-            const { data: shopRow } = await supabaseClient.from('shops').select('shop_id,name').eq('shop_id', finalShopId).maybeSingle();
-            if (!shopRow) throw new Error('❌ Shop ID "' + finalShopId + '" not found for this account. Check spelling — or leave empty to auto-detect.');
+            // K2: the typed Shop ID must BELONG to this account — without this check,
+            // anyone with ANY account could point a kitchen screen at someone else's shop.
+            const { data: shopRow } = await supabaseClient.from('shops').select('shop_id,name,owner_email,active').eq('shop_id', finalShopId).maybeSingle();
+            if (!shopRow) throw new Error('❌ Shop ID "' + finalShopId + '" not found. Check spelling — or leave empty to auto-detect.');
+            var ownerOk = shopRow.owner_email && String(shopRow.owner_email).toLowerCase() === String(email).toLowerCase();
+            if (!ownerOk) throw new Error('❌ Shop "' + finalShopId + '" does not belong to this email account.');
+            if (shopRow.active === false) throw new Error('❌ Shop "' + finalShopId + '" is deactivated.');
         } else {
             const { data: myShops } = await supabaseClient.from('shops').select('shop_id,name').eq('owner_email', email).eq('active', true);
             if (myShops && myShops.length === 1) {
@@ -384,15 +423,25 @@ async function activateDevice() {
         localStorage.setItem('kitchenShopId', finalShopId);
         localStorage.setItem('shopId', finalShopId);
         shopId = finalShopId;
+        if (previousShopId && previousShopId !== finalShopId) {
+            // K3: a chef logged in for the OLD shop must not auto-enter the NEW shop
+            localStorage.removeItem('kitchenChefId');
+            localStorage.removeItem('kitchenChefName');
+        }
+        // K3: (re)register this device under the FINAL shop right away — the auth
+        // listener skips itself during activation, so it cannot do this for us here.
+        _deviceMonitorStarted = false;
+        if (typeof ensureDeviceMonitor === 'function') ensureDeviceMonitor();
         if (msg) { msg.style.color = '#10b981'; msg.textContent = '✅ Activated for: ' + finalShopId; }
         showChefLogin();
         loadChefList();
     } catch (e) {
         if (msg) { msg.style.color = '#ef4444'; msg.textContent = e.message; }
     } finally {
+        activationBusy = false; // K3: safe — localStorage already holds the final (or old) shop id here
         if (btn) { btn.disabled = false; btn.textContent = '🔓 Activate Device'; }
     }
-}	
+}       
     function manualLinkKitchen() {
         var id = document.getElementById('loginShopId').value.trim();
         if (!id) { alert('Please enter Shop ID'); return; }
@@ -420,8 +469,8 @@ async function activateDevice() {
                         hashedPassword: emp.hashed_password, // FIX: Map snake_case to camelCase
                         password: emp.password
                     });
-								
-								}
+                                                                
+                                                                }
             });
             
             var sel = document.getElementById('loginChefName');
@@ -429,7 +478,7 @@ async function activateDevice() {
                 sel.innerHTML = '<option value="">No Chefs found</option>';
             } else {
                 sel.innerHTML = '<option value="">-- Select Chef --</option>';
-                chefList.forEach(c => { sel.innerHTML += `<option value="${c.id}">${c.name}</option>`; });
+                chefList.forEach(c => { sel.innerHTML += '<option value="' + escHtml(c.id) + '">' + escHtml(c.name) + '</option>'; });
             }
             sel.style.display = 'block'; 
             document.getElementById('loginPin').style.display = 'block';
@@ -472,6 +521,17 @@ function kitchenLogout() {
         
 
       var kitchenCallListener = null;
+    var handledServiceCalls = {}; // K6: one alert per service call on THIS device
+
+    function handleServiceCall(call) {
+        if (!call || !call.id) return;
+        if (handledServiceCalls[call.id]) return; // K6: offline catch-up + realtime can both deliver the same row
+        handledServiceCalls[call.id] = true;
+        if (Object.keys(handledServiceCalls).length > 200) handledServiceCalls = {}; // keep the map small
+        alert('🔔 TABLE ' + (call.table_id || 'Unknown') + ' IS CALLING FOR A WAITER!');
+        supabaseClient.from('service_calls').delete().eq('id', call.id).then(function(){}).catch(function(e){});
+    }
+
     async function fetchPendingWaiterCalls() {
         if (!supabaseClient) return;
         const { data, error } = await supabaseClient
@@ -481,10 +541,7 @@ function kitchenLogout() {
             .eq('status', 'pending');
             
         if (data && data.length > 0) {
-            data.forEach(call => {
-                alert('🔔 TABLE ' + (call.table_id || 'Unknown') + ' IS CALLING FOR A WAITER!');
-                supabaseClient.from('service_calls').delete().eq('id', call.id).then(()=>{});
-            });
+            data.forEach(call => handleServiceCall(call)); // K6: deduped
         }
     }
 
@@ -502,9 +559,8 @@ function kitchenLogout() {
                 (payload) => {
                     var call = payload.new;
                     if (call.status === 'pending') {
-                        alert('🔔 TABLE ' + (call.table_id || 'Unknown') + ' IS CALLING FOR A WAITER!');
-                        // Delete the call so it doesn't pop up again
-                        supabaseClient.from('service_calls').delete().eq('id', call.id).then(()=>{});
+                        // K6: deduped — the offline catch-up fetch may already have alerted this row
+                        handleServiceCall(call);
                     }
                 }
             ).subscribe();
@@ -516,7 +572,7 @@ function kitchenLogout() {
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
         listenForOrders();
-			        // Safety net: refresh every 30 seconds (catches anything realtime missed)
+                                // Safety net: refresh every 30 seconds (catches anything realtime missed)
         if (window.kitchenAutoRefresh) clearInterval(window.kitchenAutoRefresh);
         window.kitchenAutoRefresh = setInterval(function() { fetchAndRenderOrders(); }, 30000);
         listenForWaiterCallsKitchen(); 
@@ -524,14 +580,17 @@ function kitchenLogout() {
         // ===== SYSTEM LOCK LISTENER (SUPABASE) =====
         if (window.kitchenLockInterval) clearInterval(window.kitchenLockInterval);
         window.kitchenLockInterval = setInterval(async function() {
-            if (!supabaseClient) return;
+            if (!supabaseClient || !shopId) return;
             try {
-                const { data, error } = await supabaseClient.from('settings').select('system_locked').eq('shop_id', shopId).single();
+                // K7: .single() errors out when the shop has no settings row yet (or has duplicates)
+                // — .limit(1) handles 0, 1 or many rows gracefully.
+                const { data, error } = await supabaseClient.from('settings').select('system_locked').eq('shop_id', shopId).limit(1);
                 if (error) {
                     console.error("Lock check error:", error.message);
                     return;
                 }
-                if (data && data.system_locked === true) {
+                var settingsRow = (data && data[0]) || null;
+                if (settingsRow && settingsRow.system_locked === true) {
                     var lockScreen = document.getElementById('masterLockScreen');
                     if (!lockScreen) {
                         lockScreen = document.createElement('div');
@@ -551,9 +610,7 @@ function kitchenLogout() {
 
     var latestOrders = [];
 
-	
-    var latestOrders = [];
-
+        
     function filterStation(station, el) {
         activeStation = station;
         var btns = document.querySelectorAll('.station-tab');
@@ -588,7 +645,7 @@ function kitchenLogout() {
                     time: order.time
                 };
             });
-					            // Hide supermarket Scan & Go orders — they don't belong in the kitchen
+                                                    // Hide supermarket Scan & Go orders — they don't belong in the kitchen
             latestOrders = latestOrders.filter(function(o) { return o.orderType !== 'Scan & Go'; });
             renderUI();
         } catch(e) {
@@ -679,9 +736,9 @@ function kitchenLogout() {
                 (order.items || []).forEach(item => {
                     if (activeStation !== 'All' && (item.station || 'Kitchen') !== activeStation) return;
                     
-                    var modsHtml = (item.modifiers && item.modifiers.length > 0) ? '<div class="item-mod">➕ ' + item.modifiers.join(', ') + '</div>' : '';
-                    var noteHtml = item.note ? '<div class="item-note">📝 ' + item.note + '</div>' : '';
-                    itemsHtml += '<div class="item-row"><div class="item-name">' + item.qty + 'x ' + item.name + '</div>' + modsHtml + noteHtml + '</div>';
+                    var modsHtml = (item.modifiers && item.modifiers.length > 0) ? '<div class="item-mod">➕ ' + escHtml(item.modifiers.join(', ')) + '</div>' : '';
+                    var noteHtml = item.note ? '<div class="item-note">📝 ' + escHtml(item.note) + '</div>' : '';
+                    itemsHtml += '<div class="item-row"><div class="item-name">' + escHtml(item.qty + 'x ' + item.name) + '</div>' + modsHtml + noteHtml + '</div>';
                 });
                 
                 if (itemsHtml === '') return;
@@ -696,21 +753,21 @@ function kitchenLogout() {
 
                 var actionsHtml = '';
                 if (status === 'Pending') {
-                    actionsHtml = '<button class="btn btn-start" onclick="updateStatus(\'' + order.id + '\', \'Preparing\')">▶ Start</button>';
+                    actionsHtml = '<button class="btn btn-start" onclick="updateStatus(\'' + attrSafe(order.id) + '\', \'Preparing\')">▶ Start</button>';
                 } else if (status === 'Preparing') {
-                    actionsHtml = '<button class="btn btn-done" onclick="updateStatus(\'' + order.id + '\', \'Ready\')">✅ Mark Ready</button>';
+                    actionsHtml = '<button class="btn btn-done" onclick="updateStatus(\'' + attrSafe(order.id) + '\', \'Ready\')">✅ Mark Ready</button>';
                 } else if (status === 'Ready') {
-                  actionsHtml = '<button class="btn" style="background:#0f172a; color:#10b981; border:1px solid #10b981;" onclick="undoReady(\'' + order.id + '\')">↩️ Undo Ready</button>';
-								}
+                  actionsHtml = '<button class="btn" style="background:#0f172a; color:#10b981; border:1px solid #10b981;" onclick="undoReady(\'' + attrSafe(order.id) + '\')">↩️ Undo Ready</button>';
+                                                                }
                 
-                html += '<div class="ticket ' + status.toLowerCase() + ' ' + alarmClass + '"><div class="ticket-header"><div class="ticket-table">🪑 ' + (order.tableId || 'Takeaway') + '</div><div class="ticket-time">' + timeStr + ' <span class="ticket-timer">(' + timerStr + ')</span></div></div><div class="ticket-items">' + itemsHtml + '</div><div class="ticket-actions">' + actionsHtml + '</div></div>';
+                html += '<div class="ticket ' + status.toLowerCase() + ' ' + alarmClass + '"><div class="ticket-header"><div class="ticket-table">🪑 ' + escHtml(order.tableId || 'Takeaway') + '</div><div class="ticket-time">' + timeStr + ' <span class="ticket-timer">(' + timerStr + ')</span></div></div><div class="ticket-items">' + itemsHtml + '</div><div class="ticket-actions">' + actionsHtml + '</div></div>';
             });
             if (html === '') html = '<div class="empty-text">No orders for this station</div>';
         }
         document.getElementById(elementId).innerHTML = html;
     }
 
-	async function updateStatus(orderId, newStatus) {
+        async function updateStatus(orderId, newStatus) {
     try { 
         var updateData = {};
         if (newStatus === 'Preparing') {
@@ -732,8 +789,15 @@ function kitchenLogout() {
             if (allDone && Object.keys(stStatus).length > 0) updateData.status = 'Ready';
         }
         
-        const { error } = await supabaseClient.from('orders').update(updateData).eq('firebase_id', orderId);
+        // K5: .select('id') makes the update report HOW MANY rows it touched —
+        // without it a 0-row update (order already paid/removed) looks like success.
+        const { data: updatedRows, error } = await supabaseClient.from('orders').update(updateData).eq('firebase_id', orderId).select('id');
         if (error) throw error;
+        if (!updatedRows || updatedRows.length === 0) {
+            fetchAndRenderOrders();
+            alert('⚠️ Order could not be updated — it may already be paid or removed. The list is refreshing.');
+            return;
+        }
         
         var localOrder = latestOrders.find(o => o.id === orderId);
         if (localOrder) {
@@ -756,19 +820,44 @@ function kitchenLogout() {
         try {
             const { data: currentOrder } = await supabaseClient.from('orders')
                 .select('station_status').eq('firebase_id', orderId).maybeSingle();
+            if (!currentOrder) {
+                // K5: the order is gone (paid or deleted) — say so instead of writing nothing silently
+                fetchAndRenderOrders();
+                alert('⚠️ Order not found — it may already be paid or removed. The list is refreshing.');
+                return;
+            }
             var stStatus = (currentOrder && currentOrder.station_status) ? currentOrder.station_status : {};
             if (activeStation !== 'All') stStatus[activeStation] = false;
             else { for (var st in stStatus) stStatus[st] = false; }
             var updateData = { status: 'Preparing', station_status: stStatus };
-            const { error } = await supabaseClient.from('orders').update(updateData).eq('firebase_id', orderId);
+            // K5: verify the update actually touched a row
+            const { data: updatedRows, error } = await supabaseClient.from('orders').update(updateData).eq('firebase_id', orderId).select('id');
             if (error) throw error;
+            if (!updatedRows || updatedRows.length === 0) {
+                fetchAndRenderOrders();
+                alert('⚠️ Order could not be updated — it may already be paid or removed. The list is refreshing.');
+                return;
+            }
             var localOrder = latestOrders.find(o => o.id === orderId);
             if (localOrder) { localOrder.status = 'Preparing'; localOrder.stationStatus = stStatus; renderUI(); }
         } catch(e) { alert("Error: " + e.message); }
     }
 
     // ===== 🔐 MANAGER VERIFICATION (password dialog) =====
+    // K9: lockout counters live in localStorage so a page reload cannot reset them
+    var MGR_MAX_FAILS = 5;
+    var MGR_LOCK_MINUTES = 10;
+    function mgrLockedMinutesLeft() {
+        var until = parseInt(localStorage.getItem('kitchenMgrLockUntil') || '0', 10);
+        if (!until || Date.now() >= until) return 0;
+        return Math.max(1, Math.ceil((until - Date.now()) / 60000));
+    }
     async function verifyKitchenManager() {
+        var _locked = mgrLockedMinutesLeft();
+        if (_locked > 0) {
+            alert('🔒 Too many wrong attempts. Undo authorization is locked for ' + _locked + ' more minute(s).');
+            return false;
+        }
         var pass = prompt('🔐 UNDO REQUIRES AUTHORIZATION\n\nEnter Manager/Owner PIN or Admin password:');
         if (!pass) return false;
 
@@ -776,7 +865,7 @@ function kitchenLogout() {
         try {
             const { data: staff } = await supabaseClient.from('employees')
               .select('hashed_password, pin_salt, position').eq('shop_id', shopId)   
-							.in('position', ['Manager', 'Owner']);
+                                                        .eq('status', 'active').in('position', ['Manager', 'Owner']);
             for (var i = 0; i < (staff || []).length; i++) {
                           var matches = false;
                 if (staff[i].pin_salt && staff[i].hashed_password) {
@@ -785,7 +874,9 @@ function kitchenLogout() {
                     matches = (sha256(pass) === staff[i].hashed_password);
                 }
                 if (matches) {
-							return true; // ✅ Manager verified
+                    localStorage.removeItem('kitchenMgrFails');     // K9: success resets the counter
+                    localStorage.removeItem('kitchenMgrLockUntil');
+                                                        return true; // ✅ Manager verified
                 }
             }
         } catch(e) { console.warn('Staff check failed:', e.message); }
@@ -795,11 +886,24 @@ function kitchenLogout() {
             const { data: { user } } = await supabaseClient.auth.getUser();
             if (user && user.email) {
                 const { error } = await supabaseClient.auth.signInWithPassword({ email: user.email, password: pass });
-                if (!error) return true; // ✅ Admin verified
+                if (!error) {
+                    localStorage.removeItem('kitchenMgrFails');     // K9: success resets the counter
+                    localStorage.removeItem('kitchenMgrLockUntil');
+                    return true; // ✅ Admin verified
+                }
             }
         } catch(e) { console.warn('Admin check failed:', e.message); }
 
-        alert('❌ Wrong password. Undo cancelled.');
+        // K9: count the failure; lock the undo authorization after too many tries
+        var fails = parseInt(localStorage.getItem('kitchenMgrFails') || '0', 10) + 1;
+        localStorage.setItem('kitchenMgrFails', String(fails));
+        if (fails >= MGR_MAX_FAILS) {
+            localStorage.setItem('kitchenMgrLockUntil', String(Date.now() + MGR_LOCK_MINUTES * 60000));
+            localStorage.removeItem('kitchenMgrFails');
+            alert('❌ Wrong password ' + MGR_MAX_FAILS + ' times. Undo authorization is LOCKED for ' + MGR_LOCK_MINUTES + ' minutes.');
+        } else {
+            alert('❌ Wrong password. Undo cancelled. ' + (MGR_MAX_FAILS - fails) + ' attempt(s) left before lockout.');
+        }
         return false;
     }
     // ===== OFFLINE INDICATOR =====
@@ -888,7 +992,7 @@ function renderChatBubble(msg) {
         recipientTag = ' ➡️ ' + msg.recipient_name;
     }
     
-    bubble.innerHTML = msg.message + '<small>' + msg.sender_name + recipientTag + ' • ' + timeStr + '</small>';
+    bubble.innerHTML = escHtml(msg.message) + '<small>' + escHtml(msg.sender_name) + escHtml(recipientTag) + ' • ' + timeStr + '</small>'; // K1: escape DB text
     container.appendChild(bubble);
 }
 
@@ -930,7 +1034,7 @@ async function sendChatMessage() {
     } catch(e) { alert('❌ Failed to send: ' + e.message); input.value = text; }
 }
 
-	
+        
 </script>
 
 <script>
@@ -941,7 +1045,9 @@ async function sendChatMessage() {
         .catch(err => console.log('SW registration failed: ', err));
     });
   }
-	
+        
 </script>
+<!-- SLP-LANG-2 · language engine: English / አማርታ / Afaan Oromoo on the whole page -->
+<script src="lang.js" data-spp-auto="1"></script>
 </body>
 </html>
