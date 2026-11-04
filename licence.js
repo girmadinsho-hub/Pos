@@ -223,10 +223,10 @@
     var sid = MODE.shopId || shopIdFor(MODE.app);
     if (!sid) return null;
     try {
-      var r = await withTimeout(c.from('shops').select('*').eq('shop_id', sid).maybeSingle(), 9000);
-      if (!r || !r.data) return null;
-      var l = await withTimeout(c.from('licenses').select('*').eq('shop_id', sid).order('created_at', { ascending: false }).limit(10), 9000);
-      return computeStatus(r.data, (l && l.data) || []);
+      var r = await withTimeout(c.rpc('license_status', { p_shop: sid }), 9000);
+      var d = r && r.data;
+      if (!d || !d.shop) return null;
+      return computeStatus(d.shop, d.licenses || []);
     } catch (e) { return null; }
   }
 
@@ -458,9 +458,7 @@
       if (!(left >= 0)) return { ok: false, msgKey: 'ak.expired' };
       if (shopId && lic.shop_id !== shopId) return { ok: false, msgKey: 'ak.other' };
       if (!shopId) return { ok: true, licence: lic };      // claim flow handled by caller
-      var c = client();
-      var u = await withTimeout(c.from('shops').update({ plan: lic.plan }).eq('shop_id', shopId), 10000);
-      if (u.error) throw u.error;
+      /* plan/owner are Master-only now (shops_guard) — the key already carries them */
       return { ok: true, licence: lic };
     } catch (e) { return { ok: false, msgKey: 'msg.net' }; }
   }
@@ -469,21 +467,12 @@
      key together — claiming just attaches it to this owner's account. */
   async function claimShopByKey(key, email) {
     try {
-      var lic = await findKey(key);
-      if (!lic) return { ok: false, msgKey: 'ak.bad' };
-      if (lic.status && lic.status !== 'active') return { ok: false, msgKey: 'ak.bad' };
-      var left = Math.ceil((new Date(lic.expiry_date) - Date.now()) / 86400000);
-      if (!(left >= 0)) return { ok: false, msgKey: 'ak.expired' };
       var c = client();
-      var r = await withTimeout(c.from('shops').select('*').eq('shop_id', lic.shop_id).maybeSingle(), 10000);
-      var sh = r && r.data;
-      if (!sh) return { ok: false, msgKey: 'ak.bad' };
-      if (sh.owner_email && String(sh.owner_email).toLowerCase() !== String(email).toLowerCase()) {
-        return { ok: false, msgKey: 'ak.taken' };
-      }
-      var u = await withTimeout(c.from('shops').update({ owner_email: email, active: true, plan: lic.plan }).eq('shop_id', lic.shop_id), 10000);
-      if (u.error) throw u.error;
-      return { ok: true, shop: sh, licence: lic };
+      var r = await withTimeout(c.rpc('claim_license', { p_key: key.trim() }), 10000);
+      var d = r && r.data;
+      if (!d) return { ok: false, msgKey: 'msg.net' };
+      if (!d.ok) return { ok: false, msgKey: d.msg || 'ak.bad' };
+      return { ok: true, shop: d.shop, licence: d.licence };
     } catch (e) { return { ok: false, msgKey: 'msg.net' }; }
   }
 
@@ -516,7 +505,7 @@
       var r = await withTimeout(c.from('shops').select('*').ilike('owner_email', email).limit(12), 9000);
       var shops = (r && r.data) || [];
       if (!shops.length) return { code: 'unknown' };
-      var l = await withTimeout(c.from('licenses').select('*').order('created_at', { ascending: false }).limit(60), 9000);
+      var l = await withTimeout(c.from('licenses').select('*').in('shop_id', shops.map(function (s) { return s.shop_id; })).order('created_at', { ascending: false }).limit(60), 9000);
       var worst = { rank: -1 };
       for (var i = 0; i < shops.length; i++) {
         var st = computeStatus(shops[i], (l && l.data) || []);
