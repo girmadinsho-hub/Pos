@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="zoom-fix.js"></script>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+  <title>🏷️ Table QR Maker</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+    background: #f1f5f9; color: #0f172a; padding: 18px 12px 60px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  .tool-head { text-align: center; margin-bottom: 18px; }
+  .tool-head h1 { font-size: 24px; margin-bottom: 4px; }
+  .tool-head p { color: #64748b; font-size: 13px; }
+
+  .card {
+    background: #fff; border-radius: 14px; padding: 18px;
+    margin-bottom: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.08);
+  }
+  .card h2 { font-size: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+  .card h2 .step {
+    background: #0f172a; color: #fff; width: 22px; height: 22px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: none;
+  }
+  label { display: block; font-size: 12px; font-weight: 600; color: #334155; margin: 10px 0 4px; }
+  label small { font-weight: 400; color: #94a3b8; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 9px;
+    font-size: 14px; font-family: inherit; background: #fff; color: #0f172a;
+  }
+  input:focus, textarea:focus, select:focus { outline: 2px solid #0ea5e9; border-color: #0ea5e9; }
+  textarea { min-height: 140px; resize: vertical; line-height: 1.7; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 150px; }
+
+  .gen-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 6px; }
+  .gen-row > div { flex: 1; min-width: 90px; }
+  .gen-row button { flex: none; }
+
+  .btn {
+    border: none; border-radius: 10px; padding: 12px 20px; font-size: 14px; font-weight: 600;
+    cursor: pointer; font-family: inherit;
+  }
+  .btn-primary { background: #0f172a; color: #fff; }
+  .btn-primary:hover { background: #1e293b; }
+  .btn-outline { background: #fff; color: #0f172a; border: 1px solid #cbd5e1; }
+  .btn-outline:hover { background: #f8fafc; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
+
+  .hint { font-size: 12px; color: #64748b; margin-top: 8px; line-height: 1.5; }
+  .count-pill {
+    display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;
+    border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 600; margin-top: 8px;
+  }
+  .warn-pill {
+    display: none; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;
+    border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 600; margin-top: 8px;
+  }
+  .netwarn {
+    display: none; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+    border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px;
+  }
+  .tips { font-size: 13px; color: #475569; line-height: 1.8; }
+  .tips h2 { margin-bottom: 6px; }
+  .tips ul { padding-left: 20px; }
+
+  /* ═══ STICKER SHEET ═══ */
+  .sticker-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 14px;
+  }
+  .sticker {
+    background: #fff; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 1px 4px rgba(15,23,42,.12); border: 1px solid #e2e8f0;
+    display: flex; flex-direction: column; position: relative;
+  }
+  .sticker-head {
+    background: var(--band); color: #fff; text-align: center; padding: 7px 10px;
+    font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sticker-name {
+    text-align: center; font-size: 26px; font-weight: 800; padding: 10px 8px 4px;
+    color: #0f172a; word-break: break-word; line-height: 1.2;
+  }
+  .sticker-qr-wrap { padding: 6px 14px 2px; }
+  .sticker-qr { width: 100%; display: block; background: #fff; }
+  .qr-fallback {
+    display: none; border: 2px dashed #fca5a5; border-radius: 10px; padding: 14px 8px;
+    text-align: center; font-size: 11px; color: #991b1b; word-break: break-all; line-height: 1.6;
+  }
+  .sticker-hint {
+    text-align: center; font-size: 11px; color: #64748b; padding: 6px 8px 12px; letter-spacing: .5px;
+  }
+  .test-link {
+    display: block; text-align: center; font-size: 12px; color: #0ea5e9;
+    text-decoration: none; padding: 6px; border-top: 1px dashed #e2e8f0;
+  }
+  .test-link:hover { background: #f0f9ff; }
+
+  /* Themes — only the band changes; sticker body stays white so QRs scan well */
+  body[data-theme="classic"] { --band: #0f172a; }
+  body[data-theme="cafe"]    { --band: #7c2d12; }
+  body[data-theme="garden"]  { --band: #14532d; }
+  body[data-theme="royal"]   { --band: #1e3a8a; }
+
+  /* ═══ PRINT ═══ */
+  @page { size: A4; margin: 8mm; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .no-print { display: none !important; }
+    .wrap { max-width: none; }
+    .sticker-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 4mm; }
+    .sticker {
+      border-radius: 0; box-shadow: none; border: 1px dashed #94a3b8;
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    .sticker-head, .test-link { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .test-link { display: none !important; }
+    .sticker-name { font-size: 30px; }
+  }
+</style>
+</head>
+<body data-theme="classic">
+<div class="wrap">
+
+  <div class="tool-head no-print">
+    <h1>🏷️ Table QR Maker</h1>
+    <p style="margin-top:8px;"><a href="help.html" style="color:inherit; font-weight:700;">❓ Help &amp; Guide</a></p>
+    <p>One printable QR sticker per table — with <b>your own table names</b>, in any language or style.</p>
+  </div>
+
+  <!-- STEP 1 -->
+  <section class="card no-print">
+    <h2><span class="step">1</span> Your menu's address</h2>
+    <label>Menu web address (URL) <small>— your domain, or the full menu.html link</small></label>
+    <input type="text" id="baseUrl" placeholder="https://your-domain.com/menu.html" autocomplete="off">
+    <div class="hint">Both of these work: <b>https://your-domain.com</b> (we add /menu.html) or the full link <b>https://your-domain.com/menu.html</b>. Use your <b>public</b> address — not localhost.</div>
+
+    <div class="row">
+      <div>
+        <label>Shop ID <small>— the one customers' menus use</small></label>
+        <input type="text" id="shopId" placeholder="e.g. SHOP123" autocomplete="off">
+      </div>
+      <div>
+        <label>Sticker header <small>(optional) — your cafe name</small></label>
+        <input type="text" id="headText" placeholder="e.g. Maatii2" autocomplete="off">
+      </div>
+      <div>
+        <label>Sticker style</label>
+        <select id="themeSel">
+          <option value="classic">Classic — dark</option>
+          <option value="cafe">Cafe — brown</option>
+          <option value="garden">Garden — green</option>
+          <option value="royal">Royal — blue</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="card no-print">
+    <h2><span class="step">2</span> Your table names <small style="font-weight:400;color:#94a3b8;margin-left:4px;">one per line — any language, any style</small></h2>
+    <textarea id="namesInput" placeholder="Garden 1
+Garden 2
+Balcony 1
+VIP Room
+ጠረጴዛ ፩
+ጠረጴዛ ፪"></textarea>
+    <span class="count-pill" id="countPill">0 tables</span>
+    <span class="warn-pill" id="dupePill"></span>
+    <span class="warn-pill" id="longPill"></span>
+
+    <div class="gen-row">
+      <div>
+        <label>Quick fill: prefix</label>
+        <input type="text" id="genPrefix" placeholder="T" value="">
+      </div>
+      <div>
+        <label>Start at</label>
+        <input type="number" id="genStart" value="1" min="0">
+      </div>
+      <div>
+        <label>How many</label>
+        <input type="number" id="genCount" value="10" min="1" max="200">
+      </div>
+      <button class="btn btn-outline" onclick="fillGenerated()">⚡ Fill list</button>
+    </div>
+    <div class="hint">Quick fill types the names for you (T1, T2, T3…) — then edit the list freely: rename, reorder, add zones like “Rooftop A”. Duplicates are removed automatically.</div>
+  </section>
+
+  <!-- ACTIONS -->
+  <div class="actions no-print">
+    <button class="btn btn-primary" onclick="generate()">✨ Generate stickers</button>
+    <button class="btn btn-outline" onclick="window.print()">🖨️ Print sheet</button>
+    <button class="btn btn-outline" onclick="resetAll()">🗑️ Reset</button>
+  </div>
+
+  <div id="netWarn" class="netwarn no-print">
+    ⚠️ Some QR images could not load. Check your internet connection and press <b>Generate stickers</b> again before printing.
+  </div>
+
+  <!-- STEP 3 -->
+  <section class="card tips no-print">
+    <h2>📝 Good to know</h2>
+    <ul>
+      <li><b>Keep names short</b> — they appear on kitchen tickets and Call-Waiter alerts, so staff can read them at a glance.</li>
+      <li><b>Match your POS tables</b> — if your waiters also pick tables in the POS (T1, T2…), use the <b>same names here</b> so both systems speak one language.</li>
+      <li><b>Any language works</b> — Amharic, English, or names with emojis (🌿 Garden 1) are all fine.</li>
+      <li><b>Test before printing</b> — tap “▶ test” under any sticker. It opens the menu exactly as your customer would see it at that table.</li>
+      <li><b>Printing</b> — from a desktop browser: A4 paper, 3 stickers per row. The dashed border is your cutting guide.</li>
+    </ul>
+  </section>
+
+  <!-- STICKER SHEET -->
+  <div id="sheet" class="sticker-grid"></div>
+</div>
+
+<script>
+/*URL-LOGIC-START*/
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  // Accepts a bare domain or a full menu URL; returns a clean ".../menu.html" base.
+  function normalizeBase(raw) {
+    var u = String(raw || '').trim();
+    if (!u) return '';
+    if (!/^https?:\/\//i.test(u) && !/^localhost[:/]/i.test(u) && !/^file:/i.test(u)) u = 'https://' + u;
+    u = u.replace(/\s+/g, '%20');                 // handles local test files like "menu (2).html"
+    var h = u.indexOf('#'); if (h > -1) u = u.slice(0, h);   // drop old hash
+    var q = u.indexOf('?'); if (q > -1) u = u.slice(0, q);   // drop old query
+    u = u.replace(/\/+$/, '');                    // drop trailing slashes
+    if (!/\.html?$/i.test(u)) u = u + '/menu.html';
+    return u;
+  }
+
+  function buildMenuUrl(base, shop, table) {
+    return base + '?shop=' + encodeURIComponent(shop) + '&table=' + encodeURIComponent(table);
+  }
+
+  function parseNames(text) {
+    var seen = {}, names = [], dupes = [], long = [];
+    String(text || '').split(/\r?\n/).forEach(function(line) {
+      var n = line.trim();
+      if (!n) return;
+      if (seen[n]) { if (dupes.indexOf(n) === -1) dupes.push(n); return; }
+      seen[n] = true;
+      if (n.length > 24 && long.indexOf(n) === -1) long.push(n);
+      names.push(n);
+    });
+    return { names: names, dupes: dupes, long: long };
+  }
+/*URL-LOGIC-END*/
+
+  var LS_KEY = 'tableQrSetup_v1';
+
+  function el(id) { return document.getElementById(id); }
+
+  function fillGenerated() {
+    var prefix = el('genPrefix').value.trim();
+    var start = parseInt(el('genStart').value, 10);
+    var count = parseInt(el('genCount').value, 10);
+    if (isNaN(start)) start = 1;
+    if (isNaN(count) || count < 1) count = 1;
+    if (count > 200) count = 200;
+    var lines = [];
+    for (var i = 0; i < count; i++) lines.push(prefix + (start + i));
+    el('namesInput').value = lines.join('\n');
+    updateCount();
+  }
+
+  function updateCount() {
+    var r = parseNames(el('namesInput').value);
+    el('countPill').textContent = r.names.length + (r.names.length === 1 ? ' table' : ' tables');
+    el('dupePill').style.display = r.dupes.length ? 'inline-block' : 'none';
+    if (r.dupes.length) el('dupePill').textContent = ' duplicated removed: ' + r.dupes.slice(0, 3).join(', ') + (r.dupes.length > 3 ? '…' : '');
+    el('longPill').style.display = r.long.length ? 'inline-block' : 'none';
+    if (r.long.length) el('longPill').textContent = ' very long name: "' + r.long[0].slice(0, 18) + '…" — keep it short for the kitchen screen';
+  }
+
+  function saveSetup() {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        base: el('baseUrl').value, shop: el('shopId').value,
+        head: el('headText').value, theme: el('themeSel').value,
+        names: el('namesInput').value
+      }));
+    } catch (e) {}
+  }
+
+  function restoreSetup() {
+    // ?demo=1 fills a sample sheet so you can see how it looks before typing anything.
+    var demo = new URLSearchParams(window.location.search).get('demo');
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
+    if (demo && !saved) {
+      el('baseUrl').value = 'https://your-domain.com/menu.html';
+      el('shopId').value = 'SHOP123';
+      el('headText').value = 'Maatii2';
+      el('namesInput').value = 'Garden 1\nGarden 2\nBalcony 1\nBalcony 2\nVIP Room\nጠረጴዛ ፩\nጠረጴዛ ፪\n🌿 Terrace';
+    } else if (saved) {
+      el('baseUrl').value = saved.base || '';
+      el('shopId').value = saved.shop || '';
+      el('headText').value = saved.head || '';
+      el('themeSel').value = saved.theme || 'classic';
+      el('namesInput').value = saved.names || '';
+    }
+    updateCount();
+  }
+
+  function generate() {
+    var base = normalizeBase(el('baseUrl').value);
+    var shop = el('shopId').value.trim();
+    var head = el('headText').value.trim();
+    var theme = el('themeSel').value;
+
+    if (!base) { alert('Please enter your menu web address (URL) first.'); el('baseUrl').focus(); return; }
+    if (!shop) { alert('Please enter your Shop ID.'); el('shopId').focus(); return; }
+    var r = parseNames(el('namesInput').value);
+    if (r.names.length === 0) { alert('Please add at least one table name — one per line.'); el('namesInput').focus(); return; }
+    if (r.names.length > 200) { alert('Maximum is 200 stickers at once (you have ' + r.names.length + '). Remove some lines.'); return; }
+
+    el('baseUrl').value = base; // show the normalized URL back to the owner
+    document.body.setAttribute('data-theme', theme);
+    saveSetup();
+    updateCount();
+
+    var html = '';
+    r.names.forEach(function(name) {
+      var url = buildMenuUrl(base, shop, name);
+      var qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=14&ecc=M&data=' + encodeURIComponent(url);
+      html += '<div class="sticker">'
+        + '<div class="sticker-head">' + (head ? escHtml(head) : 'SCAN TO ORDER') + '</div>'
+        + '<div class="sticker-name">' + escHtml(name) + '</div>'
+        + '<div class="sticker-qr-wrap">'
+        + '<img class="sticker-qr" src="' + qrSrc + '" alt="QR for ' + escHtml(name) + '" loading="lazy"'
+        + ' onerror="this.style.display=\'none\';var f=this.parentNode.querySelector(\'.qr-fallback\');if(f)f.style.display=\'block\';document.getElementById(\'netWarn\').style.display=\'block\';">'
+        + '<div class="qr-fallback">⚠️ QR could not load.<br>Check internet, then press Generate again.<br><b>' + escHtml(url) + '</b></div>'
+        + '</div>'
+        + '<div class="sticker-hint">Point your camera · Order · Pay</div>'
+        + '<a class="test-link no-print" href="' + escHtml(url) + '" target="_blank" rel="noopener">▶ test this table</a>'
+        + '</div>';
+    });
+    el('sheet').innerHTML = html;
+    el('netWarn').style.display = 'none';
+  }
+
+  function resetAll() {
+    if (!confirm('Clear everything (URL, Shop ID, names, stickers)?')) return;
+    try { localStorage.removeItem(LS_KEY); } catch (e) {}
+    ['baseUrl', 'shopId', 'headText', 'namesInput', 'genPrefix'].forEach(function(id) { el(id).value = ''; });
+    el('themeSel').value = 'classic';
+    el('sheet').innerHTML = '';
+    updateCount();
+  }
+
+  el('namesInput').addEventListener('input', updateCount);
+  restoreSetup();
+</script>
+<!-- SLP-LANG-2 · language engine: English / አማርታ / Afaan Oromoo on the whole page -->
+<script src="lang.js" data-spp-auto="1"></script>
+</body>
+</html>
