@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="zoom-fix.js"></script>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
+  <meta name="theme-color" content="#4f46e5">
+<meta name="description" content="BizMaster Help & Guide — every process, step by step, in English, አማርኛ and Afaan Oromoo.">
+<title>BizMaster — Help &amp; Guide</title>
+<!-- ═══ SLP-HELP-1 · BizMaster HELP & GUIDE (identification marker — Ctrl+F "SLP-HELP-1")
+     · The guide that used to live on the index page now lives HERE.
+     · Every process is written step by step (numbered, ordered).
+     · Three languages: English · አማርኛ · Afaan Oromoo (SLP-LANG-1 + HELP_I18N below).
+     · The "Licences" section follows the SAME staged-disclosure rule as the app:
+       hidden during the silent trial days and for licensed-healthy accounts;
+       it appears only for the owner when there is something to act on
+       (last 5 days of the trial, renewal window, grace or locked). ═══ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Ethiopic:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+:root {
+  --ink:#0f172a; --sub:#64748b; --faint:#94a3b8; --line:#e2e8f0;
+  --brand:#4f46e5; --brand2:#7c3aed; --brand-ink:#3730a3; --brand-soft:#eef2ff; --brand-line:#c7d2fe;
+  --amber:#d97706; --amber-soft:#fffbeb; --amber-line:#fde68a;
+  --ok:#059669; --ok-soft:#ecfdf5; --ok-line:#a7f3d0;
+  --bg:#f8fafc; --card:#ffffff;
+  --shadow:0 1px 2px rgba(15,23,42,.05), 0 12px 32px -12px rgba(15,23,42,.18);
+  --r:18px;
+}
+html { scroll-behavior:smooth; }
+body { font-family:'Inter',-apple-system,'Segoe UI',system-ui,sans-serif; color:var(--ink); background:var(--bg); line-height:1.6; }
+body[data-lang="am"] { font-family:'Noto Sans Ethiopic','Inter',-apple-system,'Segoe UI',system-ui,sans-serif; }
+body[data-lang="am"] h1, body[data-lang="am"] h2, body[data-lang="am"] h3, body[data-lang="am"] .brand-name, body[data-lang="am"] .sn { font-family:'Noto Sans Ethiopic','Plus Jakarta Sans',system-ui,sans-serif; }
+h1,h2,h3 { font-family:'Plus Jakarta Sans','Inter',system-ui,sans-serif; line-height:1.2; letter-spacing:-.01em; }
+a { color:var(--brand); text-decoration:none; }
+.hidden { display:none !important; }
+
+/* ── NAV ── */
+nav { position:sticky; top:0; z-index:50; background:rgba(255,255,255,.92); backdrop-filter:blur(12px); border-bottom:1px solid var(--line); }
+.nav-in { max-width:1180px; margin:0 auto; padding:12px 22px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.brand { display:flex; align-items:center; gap:11px; }
+.logo { width:38px; height:38px; border-radius:11px; box-shadow:0 4px 14px rgba(99,102,241,.35); flex-shrink:0; }
+.brand-name { font-family:'Plus Jakarta Sans',sans-serif; font-weight:800; font-size:19px; color:var(--ink); }
+.brand-name em { font-style:normal; color:var(--brand); }
+.nav-title { font-size:13px; font-weight:800; color:var(--sub); background:var(--brand-soft); border:1px solid var(--brand-line); padding:8px 14px; border-radius:99px; }
+.nav-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.back-home { font-size:13px; font-weight:700; color:var(--sub); background:#fff; border:1px solid var(--line); padding:9px 14px; border-radius:11px; transition:all .13s; white-space:nowrap; }
+.back-home:hover { border-color:var(--brand-line); color:var(--brand-ink); }
+.langbar { display:inline-flex; align-items:center; gap:2px; background:#fff; border:1px solid var(--line); border-radius:99px; padding:3px; }
+.langbar button { border:none; background:none; font-family:inherit; font-size:11.5px; font-weight:800; color:var(--faint); padding:6px 11px; border-radius:99px; cursor:pointer; transition:all .13s; white-space:nowrap; }
+.langbar button:hover { color:var(--brand-ink); background:var(--brand-soft); }
+.langbar button.on { background:linear-gradient(135deg,#4f46e5,#7c3aed); color:#fff; }
+.print-btn { border:none; font-family:inherit; font-size:12.5px; font-weight:800; color:var(--brand-ink); background:var(--brand-soft); border:1px solid var(--brand-line); padding:9px 15px; border-radius:11px; cursor:pointer; transition:all .13s; white-space:nowrap; }
+.print-btn:hover { background:#e0e7ff; }
+
+/* ── LAYOUT ── */
+.page { max-width:1180px; margin:0 auto; padding:30px 22px 80px; display:grid; grid-template-columns:250px 1fr; gap:34px; align-items:start; }
+.toc { position:sticky; top:84px; background:#fff; border:1px solid var(--line); border-radius:20px; padding:18px 12px; box-shadow:var(--shadow); max-height:calc(100vh - 110px); overflow:auto; }
+.toc-title { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--faint); padding:0 12px 10px; }
+.toc a { display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; color:var(--sub); padding:9px 12px; border-radius:11px; transition:all .12s; }
+.toc a:hover { color:var(--brand-ink); background:var(--brand-soft); }
+.toc a .sn { width:26px; height:26px; border-radius:8px; background:var(--bg); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:var(--faint); flex-shrink:0; }
+.toc a.on { color:var(--brand-ink); background:var(--brand-soft); }
+.toc a.on .sn { background:linear-gradient(135deg,#4f46e5,#7c3aed); border-color:transparent; color:#fff; }
+.search-wrap { padding:0 12px 12px; border-bottom:1px dashed var(--line); margin-bottom:10px; }
+.search-wrap input { width:100%; padding:10px 12px; border-radius:11px; border:1.5px solid var(--line); font-family:inherit; font-size:13px; outline:none; transition:border-color .14s, box-shadow .14s; }
+.search-wrap input:focus { border-color:var(--brand); box-shadow:0 0 0 4px rgba(79,70,229,.14); }
+
+/* ── CONTENT ── */
+.guide-head { background:linear-gradient(120deg,#eef2ff,#faf5ff); border:1px solid var(--brand-line); border-radius:24px; padding:30px 30px 26px; margin-bottom:26px; }
+.guide-head h1 { font-size:clamp(26px,3.6vw,36px); font-weight:800; margin-bottom:8px; }
+.guide-head h1 span { background:linear-gradient(120deg,#312e81,#7c3aed); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+.guide-head p { color:var(--sub); font-size:14.5px; max-width:62ch; }
+.guide-badges { display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; }
+.guide-badges span { font-size:11.5px; font-weight:800; padding:6px 12px; border-radius:99px; background:#fff; border:1px solid var(--brand-line); color:var(--brand-ink); }
+
+section.card { background:#fff; border:1px solid var(--line); border-radius:22px; padding:28px 28px 22px; margin-bottom:22px; scroll-margin-top:96px; box-shadow:var(--shadow); }
+section.card.dim { opacity:.35; } /* search filter */
+.sec-head { display:flex; align-items:center; gap:14px; margin-bottom:8px; }
+.sec-ic { width:46px; height:46px; border-radius:13px; background:var(--brand-soft); border:1px solid var(--brand-line); display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+.sec-head h2 { font-size:21px; }
+.sec-sub { color:var(--sub); font-size:13.5px; margin:0 0 18px 60px; }
+
+.proc { background:var(--bg); border:1px solid var(--line); border-radius:16px; padding:18px 20px 16px; margin-bottom:14px; scroll-margin-top:96px; }
+.proc.dim { opacity:.25; }
+.proc h3 { font-size:15.5px; display:flex; align-items:center; gap:9px; margin-bottom:12px; }
+.proc h3 .pi { font-size:17px; }
+ol.steps-list { list-style:none; counter-reset:step; display:flex; flex-direction:column; gap:8px; }
+ol.steps-list li { counter-increment:step; position:relative; padding-left:38px; font-size:13.3px; color:#334155; line-height:1.55; }
+ol.steps-list li::before { content:counter(step); position:absolute; left:0; top:1px; width:25px; height:25px; border-radius:8px; background:#fff; border:1.5px solid var(--brand-line); color:var(--brand-ink); font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+.tip { margin-top:12px; font-size:12.3px; font-weight:600; color:#92400e; background:var(--amber-soft); border:1px solid var(--amber-line); border-radius:11px; padding:9px 13px; }
+.tip b { color:#92400e; }
+
+/* tables */
+table.gtab { width:100%; border-collapse:collapse; font-size:13px; }
+table.gtab th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); padding:9px 10px; border-bottom:1.5px solid var(--line); }
+table.gtab td { padding:10px; border-bottom:1px dashed var(--line); font-weight:600; color:#334155; vertical-align:top; }
+table.gtab td b { color:var(--ink); }
+table.gtab tr:last-child td { border-bottom:none; }
+.tg { font-size:11px; font-weight:800; color:var(--brand-ink); background:var(--brand-soft); border-radius:6px; padding:2px 8px; white-space:nowrap; }
+
+/* app tiles */
+.apps-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; }
+.app-tile { display:block; background:var(--bg); border:1px solid var(--line); border-radius:16px; padding:18px 16px; color:var(--ink); transition:all .15s; }
+.app-tile:hover { transform:translateY(-3px); box-shadow:var(--shadow); border-color:var(--brand-line); }
+.app-tile .ai { width:44px; height:44px; border-radius:12px; background:#fff; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:21px; margin-bottom:10px; }
+.app-tile b { display:block; font-family:'Plus Jakarta Sans',sans-serif; font-size:14.5px; margin-bottom:4px; }
+.app-tile small { display:block; font-size:11.8px; color:var(--sub); line-height:1.5; }
+.app-tile .go { display:inline-block; margin-top:9px; font-size:12px; font-weight:700; color:var(--brand); }
+
+/* licence section (conditional) */
+#lic-section { border-color:var(--amber-line); background:linear-gradient(180deg,#fffbeb,#fff); }
+#lic-section .sec-ic { background:var(--amber-soft); border-color:var(--amber-line); }
+.lic-table { width:100%; border-collapse:collapse; font-size:12.8px; margin:10px 0 4px; }
+.lic-table th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); padding:8px 9px; border-bottom:1.5px solid var(--line); }
+.lic-table td { padding:10px 9px; border-bottom:1px dashed var(--line); font-weight:600; color:#334155; }
+.btn-lic { border:none; cursor:pointer; font-family:inherit; font-size:13.5px; font-weight:800; padding:13px 22px; border-radius:13px; background:linear-gradient(135deg,#4f46e5,#7c3aed); color:#fff; box-shadow:0 10px 22px -8px rgba(79,70,229,.55); margin-top:12px; }
+
+/* no-results / footer */
+.no-results { text-align:center; color:var(--sub); font-weight:700; padding:30px 10px; display:none; }
+footer { text-align:center; padding:34px 20px 60px; color:var(--faint); font-size:12px; }
+footer b { color:var(--sub); }
+
+/* ── RESPONSIVE ── */
+@media (max-width:920px) {
+  .page { grid-template-columns:1fr; gap:20px; }
+  .toc { position:static; max-height:none; }
+  .sec-sub { margin-left:0; }
+}
+@media (max-width:560px) {
+  section.card { padding:20px 16px 16px; }
+  .guide-head { padding:20px 18px; }
+  .nav-title { display:none; }
+}
+@media print {
+  nav, .toc, .print-btn, .langbar, .guide-badges { display:none !important; }
+  .page { grid-template-columns:1fr; padding:0; }
+  section.card { box-shadow:none; break-inside:avoid; }
+  body { background:#fff; }
+}
+</style>
+</head>
+<body>
+<!-- ═══ NAV ═══ -->
+<nav>
+  <div class="nav-in">
+    <a class="brand" href="index.html" aria-label="BizMaster">
+      <svg class="logo" viewBox="0 0 48 48" aria-hidden="true">
+        <defs><linearGradient id="slpGh" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#a855f7"/>
+        </linearGradient></defs>
+        <rect x="2" y="2" width="44" height="44" rx="12" fill="url(#slpGh)"/>
+        <path d="M15 37V22a9 9 0 0 1 18 0v15" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round"/>
+        <circle cx="24" cy="28" r="2.7" fill="#fbbf24"/>
+      </svg>
+      <span class="brand-name">Selam<em>POS</em></span>
+    </a>
+    <div class="nav-right">
+      <span class="nav-title" data-i18n="h.chrome.title">Help &amp; Guide</span>
+      <div class="langbar" id="langbar" role="group" aria-label="Language"></div>
+      <button type="button" class="print-btn" onclick="window.print()" data-i18n="h.chrome.print">🖨 Print</button>
+      <a class="back-home" href="index.html" data-i18n="h.chrome.back">← Back</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page">
+  <!-- ═══ TABLE OF CONTENTS ═══ -->
+  <aside class="toc" id="toc">
+    <div class="search-wrap">
+      <input type="search" id="q" data-i18n-ph="h.chrome.search" placeholder="Search the guide…" autocomplete="off">
+    </div>
+    <div class="toc-title" data-i18n="h.chrome.contents">Contents</div>
+    <a href="#start" class="on"><span class="sn">1</span><span data-i18n="h.start.h">Getting started</span></a>
+    <a href="#door"><span class="sn">2</span><span data-i18n="h.door.h">The staff door</span></a>
+    <a href="#retail"><span class="sn">3</span><span data-i18n="h.retail.h">Retail</span></a>
+    <a href="#cafe"><span class="sn">4</span><span data-i18n="h.cafe.h">Café &amp; restaurant</span></a>
+    <a href="#kitchen"><span class="sn">5</span><span data-i18n="h.kitchen.h">Kitchen Display</span></a>
+    <a href="#hotel"><span class="sn">6</span><span data-i18n="h.hotel.h">Hotel Desk</span></a>
+    <a href="#apps"><span class="sn">7</span><span data-i18n="h.apps.h">The apps</span></a>
+    <a href="#roles"><span class="sn">8</span><span data-i18n="h.roles.h">Staff &amp; roles</span></a>
+    <a href="#data"><span class="sn">9</span><span data-i18n="h.data.h">Data &amp; language</span></a>
+    <a href="#lic" id="tocLic" class="hidden"><span class="sn">🔑</span><span data-i18n="h.lic.h">Licences</span></a>
+  </aside>
+
+  <!-- ═══ CONTENT ═══ -->
+  <main id="content">
+
+  <div class="guide-head">
+    <h1 data-i18n-html="h.chrome.h1">Help &amp; <span>Guide</span></h1>
+    <p data-i18n="h.chrome.p">Every process inside BizMaster, written step by step — for owners, cashiers, waiters, chefs and reception. Read it in English, አማርኛ or Afaan Oromoo with the buttons above.</p>
+    <div class="guide-badges">
+      <span data-i18n="h.chrome.b1">30+ processes</span>
+      <span data-i18n="h.chrome.b2">Step by step</span>
+      <span>English · አማርኛ · Oromoo</span>
+    </div>
+  </div>
+
+  <div class="no-results" id="noResults" data-i18n="h.chrome.nores">No section matches your search.</div>
+
+  <!-- ═══ 1 · GETTING STARTED ═══ -->
+  <section class="card" id="start">
+    <div class="sec-head"><div class="sec-ic">🚀</div><h2 data-i18n="h.start.h">Getting started</h2></div>
+    <p class="sec-sub" data-i18n="h.start.p">From zero to a working team — in four short processes.</p>
+
+    <div class="proc" id="p-acct">
+      <h3><span class="pi">📝</span><span data-i18n="p.acct.h">Create your account</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.acct.s1">Open the BizMaster page and press “Create your account”.</li>
+        <li data-i18n="p.acct.s2">Fill in your name, email and a password of at least 6 characters.</li>
+        <li data-i18n="p.acct.s3">Choose the businesses to open: retail, café and hotel — one of each type.</li>
+        <li data-i18n="p.acct.s4">Review the summary, tick the agreement box and press “Create my account”.</li>
+        <li data-i18n="p.acct.s5">Confirm the email link if asked — your businesses open instantly.</li>
+      </ol>
+    </div>
+
+    <div class="proc" id="p-first">
+      <h3><span class="pi">🔓</span><span data-i18n="p.first.h">First sign-in on a new device</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.first.s1">Go to Staff Sign In and open “Owner activates it once”.</li>
+        <li data-i18n="p.first.s2">The owner signs in with email and password — once per device.</li>
+        <li data-i18n="p.first.s3">“My businesses” opens, where the owner manages every shop.</li>
+        <li data-i18n="p.first.s4">From now on, staff only type name + password on this device.</li>
+      </ol>
+    </div>
+
+    <div class="proc" id="p-staff">
+      <h3><span class="pi">👥</span><span data-i18n="p.staff.h">Register your staff</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.staff.s1">Open a business in Admin (Admin → Staff).</li>
+        <li data-i18n="p.staff.s2">Press “Add staff” and type the person’s name and position.</li>
+        <li data-i18n="p.staff.s3">Give them a password or PIN — the position decides where they land.</li>
+        <li data-i18n="p.staff.s4">Save. The staff member signs in at the same door, on any device.</li>
+      </ol>
+      <p class="tip" data-i18n-html="p.staff.tip"><b>Positions:</b> Cashier · Waiter · Chef / Barista · Reception · Cleaner · Guard · Manager.</p>
+    </div>
+
+    <div class="proc" id="p-doorflow">
+      <h3><span class="pi">🚪</span><span data-i18n="p.doorflow.h">The daily routine</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.doorflow.s1">Each morning, every staff member opens the same BizMaster page.</li>
+        <li data-i18n="p.doorflow.s2">They type their name and password, and press “Sign in”.</li>
+        <li data-i18n="p.doorflow.s3">Each one lands in their own workplace — no app hunting.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ═══ 2 · THE STAFF DOOR (routing matrix — moved here from the index page) ═══ -->
+  <section class="card" id="door">
+    <div class="sec-head"><div class="sec-ic">🚪</div><h2 data-i18n="h.door.h">The staff door</h2></div>
+    <p class="sec-sub" data-i18n="h.door.p">Position + type of business = the right workplace, chosen automatically.</p>
+    <table class="gtab">
+      <tr><th data-i18n="mx.pos">Position</th><th data-i18n="mx.does">What they do</th><th data-i18n="mx.where">Where they land</th></tr>
+      <tr><td><b>💳 <span data-i18n="mx.cashier">Cashier</span></b><br><small style="color:var(--faint);" data-i18n="mx.cashier.d">Takes the money</small></td>
+          <td><span class="tg" data-i18n="mx.retail">Retail</span> <span data-i18n="mx.cashier.r">POS, full checkout — add items to the cart and take payment.</span><br><span class="tg" data-i18n="mx.cafehotel">Café / Hotel</span> <span data-i18n="mx.cashier.c">POS, bill payments — collect the bills waiters bring.</span></td>
+          <td data-i18n="mx.cashier.dest">POS Checkout / Bill Payments</td></tr>
+      <tr><td><b>📝 <span data-i18n="mx.waiter">Waiter</span></b><br><small style="color:var(--faint);" data-i18n="mx.waiter.d">Serves the tables</small></td>
+          <td><span class="tg" data-i18n="mx.cafehotel2">Café / Hotel</span> <span data-i18n="mx.waiter.c">Order screen — build the order and send it to the kitchen.</span><br><span class="tg" data-i18n="mx.retail2">Retail</span> <span data-i18n="mx.waiter.r">POS — helping at the counter.</span></td>
+          <td data-i18n="mx.waiter.dest">Waiter Order Screen</td></tr>
+      <tr><td><b>🍳 <span data-i18n="mx.chef">Chef / Barista</span></b><br><small style="color:var(--faint);" data-i18n="mx.chef.d">Makes the orders</small></td>
+          <td><span data-i18n="mx.chef.c">Kitchen Display — live tickets at your station.</span></td>
+          <td data-i18n="mx.chef.dest">Kitchen Display</td></tr>
+      <tr><td><b>🛎️ <span data-i18n="mx.rec">Reception · Cleaner · Guard</span></b><br><small style="color:var(--faint);" data-i18n="mx.rec.d">Runs the hotel</small></td>
+          <td><span class="tg" data-i18n="mx.hotel">Hotel</span> <span data-i18n="mx.rec.h">Hotel Desk — front desk, housekeeping or security view.</span><br><span class="tg" data-i18n="mx.other">Other</span> <span data-i18n="mx.rec.o">POS — general duty at this business.</span></td>
+          <td data-i18n="mx.rec.dest">Hotel Desk</td></tr>
+      <tr><td><b>👑 <span data-i18n="mx.owner">Owner / Manager</span></b><br><small style="color:var(--faint);" data-i18n="mx.owner.d">Leads the business</small></td>
+          <td><span data-i18n="mx.owner.c">Admin Dashboard — reports, staff, settings, every business.</span></td>
+          <td data-i18n="mx.owner.dest">Admin Dashboard</td></tr>
+      <tr><td><b>👤 <span data-i18n="mx.any">Any other position</span></b></td>
+          <td><span data-i18n="mx.any.c">POS opens with your business loaded — nothing is lost.</span></td>
+          <td data-i18n="mx.any.dest">POS</td></tr>
+    </table>
+  </section>
+  <!-- ═══ 3 · RETAIL ═══ -->
+  <section class="card" id="retail">
+    <div class="sec-head"><div class="sec-ic">🛒</div><h2 data-i18n="h.retail.h">Retail</h2></div>
+    <p class="sec-sub" data-i18n="h.retail.p">Counter sales, stock and reports — the daily workflow of a shop.</p>
+
+    <div class="proc" id="p-pos">
+      <h3><span class="pi">🧾</span><span data-i18n="p.pos.h">Take a payment (POS checkout)</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.pos.s1">Sign in and open POS.</li>
+        <li data-i18n="p.pos.s2">Find the product by searching, category or barcode scan.</li>
+        <li data-i18n="p.pos.s3">Tap the product — it jumps into the cart with its price.</li>
+        <li data-i18n="p.pos.s4">Adjust the quantity or apply a discount if needed.</li>
+        <li data-i18n="p.pos.s5">Press Charge, choose cash / card / mobile, and enter the received amount.</li>
+        <li data-i18n="p.pos.s6">The change is calculated — press Complete &amp; Print.</li>
+      </ol>
+    </div>
+
+    <div class="proc" id="p-hold">
+      <h3><span class="pi">⏸</span><span data-i18n="p.hold.h">Hold and recall a cart</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.hold.s1">Press Hold to park the current cart and give it a name.</li>
+        <li data-i18n="p.hold.s2">Serve the next customer with a fresh cart.</li>
+        <li data-i18n="p.hold.s3">Open Held Orders and tap the parked cart to bring it back.</li>
+      </ol>
+    </div>
+
+    <div class="proc" id="p-inv">
+      <h3><span class="pi">📦</span><span data-i18n="p.inv.h">Products &amp; inventory</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.inv.s1">In Admin → Products, press “Add product”.</li>
+        <li data-i18n="p.inv.s2">Fill in name, category, price, barcode and opening stock.</li>
+        <li data-i18n="p.inv.s3">Use “Stock in / out” for deliveries, waste and corrections.</li>
+        <li data-i18n="p.inv.s4">Watch the low-stock alert and reorder before you run out.</li>
+      </ol>
+    </div>
+
+    <div class="proc" id="p-qr">
+      <h3><span class="pi">📱</span><span data-i18n="p.qr.h">QR Scan &amp; Go (self-service)</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.qr.s1">Print the shop QR code and place it at the entrance.</li>
+        <li data-i18n="p.qr.s2">Customers scan it, pick their items and pay on their phone.</li>
+        <li data-i18n="p.qr.s3">The exit check shows the staff what was paid — release the customer.</li>
+      </ol>
+    </div>
+
+    <div class="proc" id="p-rep">
+      <h3><span class="pi">📊</span><span data-i18n="p.rep.h">Daily reports</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.rep.s1">Open Reports in Admin and pick the day (or a range).</li>
+        <li data-i18n="p.rep.s2">See totals, best sellers, payments and staff performance.</li>
+        <li data-i18n="p.rep.s3">Press Export to save or share the numbers.</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ═══ 4 · CAFÉ / RESTAURANT ═══ -->
+  <section class="card" id="cafe">
+    <div class="sec-head"><div class="sec-ic">☕</div><h2 data-i18n="h.cafe.h">Café &amp; restaurant</h2></div>
+    <p class="sec-sub" data-i18n="h.cafe.p">From menu to table to kitchen to bill — the full service flow.</p>
+
+    <div class="proc" id="p-menu">
+      <h3><span class="pi">📖</span><span data-i18n="p.menu.h">Build the menu &amp; recipes</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.menu.s1">In Admin → Menu, create categories (coffee, breakfast…).</li>
+        <li data-i18n="p.menu.s2">Add items with price, image and modifiers (size, extras).</li>
+        <li data-i18n="p.menu.s3">Open Recipes and set the ingredients and portions of each item.</li>
+        <li data-i18n="p.menu.s4">Every sale then reduces the stock of exactly what was used.</li>
+      </ol>
+    </div>
+
+    <div class="proc" id="p-order">
+      <h3><span class="pi">📝</span><span data-i18n="p.order.h">Take a table order (waiter)</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.order.s1">Sign in as waiter and open Tables.</li>
+        <li data-i18n="p.order.s2">Tap the table the guests are sitting at.</li>
+        <li data-i18n="p.order.s3">Add items and modifiers to the order.</li>
+        <li data-i18n="p.order.s4">Press “Send to kitchen” — the ticket appears instantly.</li>
+        <li data-i18n="p.order.s5">When the guests leave, request the bill for the table.</li>
+      </ol>
+    </div>
+
+    <div class="proc" id="p-flow">
+      <h3><span class="pi">🔁</span><span data-i18n="p.flow.h">From order to kitchen to table</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.flow.s1">The waiter sends the order — the kitchen ticket appears in real time.</li>
+        <li data-i18n="p.flow.s2">The kitchen marks items ready; the waiter sees the update.</li>
+        <li data-i18n="p.flow.s3">The waiter serves and marks the items as served.</li>
+      </ol>
+    </div>
+
+    <div class="proc" id="p-bill">
+      <h3><span class="pi">💳</span><span data-i18n="p.bill.h">Bill &amp; payment</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.bill.s1">The cashier opens Bills and picks the table.</li>
+        <li data-i18n="p.bill.s2">The bill lists every round that was sent to the kitchen.</li>
+        <li data-i18n="p.bill.s3">Apply a discount or split if needed, then take the payment.</li>
+        <li data-i18n="p.bill.s4">Print the receipt — the table frees up for the next guests.</li>
+      </ol>
+      <p class="tip" data-i18n="p.bill.tip">Guests can also order and pay themselves by scanning the table QR (Customer Menu).</p>
+    </div>
+  </section>
+
+  <!-- ═══ 5 · KITCHEN DISPLAY ═══ -->
+  <section class="card" id="kitchen">
+    <div class="sec-head"><div class="sec-ic">🍳</div><h2 data-i18n="h.kitchen.h">Kitchen Display</h2></div>
+    <p class="sec-sub" data-i18n="h.kitchen.p">Live tickets by station — built for the chef’s screen.</p>
+
+    <div class="proc" id="p-kd">
+      <h3><span class="pi">🖥</span><span data-i18n="p.kd.h">Work the tickets</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.kd.s1">Sign in as chef or barista — the display opens by itself.</li>
+        <li data-i18n="p.kd.s2">New orders arrive as tickets, oldest first, with a timer.</li>
+        <li data-i18n="p.kd.s3">Choose your station filter to see only your items.</li>
+        <li data-i18n="p.kd.s4">Tap an item to start it; the waiter sees the progress.</li>
+      </ol>
+    </div>
+
+    <div class="proc" id="p-ready">
+      <h3><span class="pi">✅</span><span data-i18n="p.ready.h">Ready and served</span></h3>
+      <ol class="steps-list">
+        <li data-i18n="p.ready.s1">Tap “Ready” when an item leaves your station.</li>
+        <li data-i18n="p.ready.s2">The waiter marks it “Served” when it reaches the table.</li>
+      </ol>
+      <p class="tip" data-i18n-html="p.ready.tip"><b>Waiter chat:</b> tap the ticket to send a quick message (“5 minutes”, “out of stock”).</p>
+    </div>
+  </section>
+<!-- ═══ END HELP CHUNK 3 ═══ -->
+
+<!-- ═══ LICENCES (staged disclosure: hidden during silent trial + healthy licence) ═══ -->
+<section class="card" id="lic-section" style="display:none">
+  <a id="lic"></a>
+  <div class="sec-ic">🔑</div>
+  <h2 data-i18n="p.lic.h">Licences — plans and renewal</h2>
+  <ol class="steps-list">
+    <li data-i18n="p.lic.s1">Open the Licences tab (or the banner) to see every plan and price.</li>
+    <li data-i18n="p.lic.s2">Pick the plan that covers your business type — monthly or yearly.</li>
+    <li data-i18n="p.lic.s3">Pay by Telebirr or CBE and send the reference — or paste the key you received.</li>
+    <li data-i18n="p.lic.s4">The licence activates instantly — every menu opens again.</li>
+    <li data-i18n="p.lic.s5">Before a licence ends you get a 5-day warning, so you never lose a day.</li>
+  </ol>
+  <p class="tip" data-i18n="p.lic.tip">Your data is never deleted at expiry — it waits safely for 90 days.</p>
+</section>
+
+</div>
+
+<!-- SLP-LANG-2 · language engine (shared with every app page) -->
+<script src="lang.js"></script>
+
+<!-- SLP-HELP-SCRIPT-1 · dictionary + search + scrollspy + licence disclosure -->
+<script>
+/* SLP-HELP-SCRIPT · the missing engine of help.html (was truncated in the
+   previous delivery): HELP_I18N dictionary + search + scrollspy + licence
+   staged-disclosure + language pills. Requires lang.js (SLP-LANG-2). */
+(function () {
+  'use strict';
+  function $(id) { return document.getElementById(id); }
+
+  /* ═════════ HELP_I18N — every help key in EN / አማርኛ / Afaan Oromoo ═════════ */
+  var EN = {
+    'h.chrome.h1': 'Help &amp; <span>Guide</span>',
+    'h.chrome.p': 'Every process inside BizMaster, written step by step — for owners, cashiers, waiters, chefs and reception. Read it in English, አማርኛ or Afaan Oromoo.',
+    'h.chrome.title': 'Help & Guide',
+    'h.chrome.print': '🖨 Print',
+    'h.chrome.back': '← Back',
+    'h.chrome.search': 'Search the guide…',
+    'h.chrome.contents': 'Contents',
+    'h.chrome.nores': 'No section matches your search.',
+    'h.chrome.b1': '30+ processes',
+    'h.chrome.b2': 'Step by step',
+    'h.start.h': 'Getting started',
+    'h.start.p': 'From zero to a working team — in four short processes.',
+    'h.door.h': 'The staff door',
+    'h.door.p': 'Position + type of business = the right workplace, chosen automatically.',
+    'h.roles.h': 'Staff & roles',
+    'h.apps.h': 'The apps',
+    'h.data.h': 'Data & language',
+    'h.lic.h': 'Licences',
+    'h.retail.h': 'Retail',
+    'h.retail.p': 'Counter sales, stock and reports — the daily workflow of a shop.',
+    'h.cafe.h': 'Café & restaurant',
+    'h.cafe.p': 'From menu to table to kitchen to bill — the full service flow.',
+    'h.hotel.h': 'Hotel Desk',
+    'h.kitchen.h': 'Kitchen Display',
+    'h.kitchen.p': 'Live tickets by station — built for the chef’s screen.',
+    'mx.where': 'Where they land',
+    'mx.does': 'What they do',
+    'mx.pos': 'Position',
+    'mx.other': 'Other',
+    'mx.owner': 'Owner / Manager',
+    'mx.owner.d': 'Leads the business',
+    'mx.owner.c': 'Admin Dashboard — reports, staff, settings, every business.',
+    'mx.owner.dest': 'Admin Dashboard',
+    'mx.cashier': 'Cashier',
+    'mx.cashier.d': 'Takes the money',
+    'mx.cashier.r': 'POS — helping at the counter.',
+    'mx.cashier.c': 'POS, full checkout — add items to the cart and take payment.',
+    'mx.cashier.dest': 'POS Checkout / Bill Payments',
+    'mx.waiter': 'Waiter',
+    'mx.waiter.d': 'Serves the tables',
+    'mx.waiter.c': 'Order screen — build the order and send it to the kitchen.',
+    'mx.waiter.dest': 'Waiter Order Screen',
+    'mx.chef': 'Chef / Barista',
+    'mx.chef.d': 'Makes the orders',
+    'mx.chef.c': 'Kitchen Display — live tickets at your station.',
+    'mx.chef.dest': 'Kitchen Display',
+    'mx.rec': 'Reception · Cleaner · Guard',
+    'mx.rec.d': 'Runs the hotel',
+    'mx.rec.h': 'Hotel Desk — front desk, housekeeping or security view.',
+    'mx.rec.o': 'POS — general duty at this business.',
+    'mx.rec.dest': 'Hotel Desk',
+    'mx.any': 'Any other position',
+    'mx.any.c': 'POS opens with your business loaded — nothing is lost.',
+    'mx.any.dest': 'POS',
+    'mx.retail': 'Retail',
+    'mx.cafehotel': 'Café / Hotel',
+    'mx.retail2': 'Retail',
+    'mx.cafehotel2': 'Café / Hotel',
+    'mx.hotel': 'Hotel',
+    'p.acct.h': 'Create your account',
+    'p.acct.s1': 'Open the BizMaster page and press “Create your account”.',
+    'p.acct.s2': 'Fill in your name, email and a password of at least 6 characters.',
+    'p.acct.s3': 'Choose the businesses to open: retail, café and hotel — one of each type.',
+    'p.acct.s4': 'Review the summary, tick the agreement box and press “Create my account”.',
+    'p.acct.s5': 'Confirm the email link if asked — your businesses open instantly.',
+    'p.staff.h': 'Register your staff',
+    'p.staff.s1': 'Open a business in Admin (Admin → Staff).',
+    'p.staff.s2': 'Press “Add staff” and type the person’s name and position.',
+    'p.staff.s3': 'Give them a password or PIN — the position decides where they land.',
+    'p.staff.s4': 'Save. The staff member signs in at the same door, on any device.',
+    'p.staff.tip': '<b>Positions:</b> Owner / Manager, Cashier, Waiter, Chef / Barista, Reception, Cleaner, Guard — each one opens its own workplace.',
+    'p.doorflow.h': 'The daily routine',
+    'p.doorflow.s1': 'Each morning, every staff member opens the same BizMaster page.',
+    'p.doorflow.s2': 'They type their name and password, and press “Sign in”.',
+    'p.doorflow.s3': 'Each one lands in their own workplace — no app hunting.',
+    'p.first.h': 'First sign-in on a new device',
+    'p.first.s1': 'Go to Staff Sign In and open “Owner activates it once”.',
+    'p.first.s2': 'The owner signs in with email and password — once per device.',
+    'p.first.s3': '“My businesses” opens, where the owner manages every shop.',
+    'p.first.s4': 'From now on, staff only type name + password on this device.',
+    'p.pos.h': 'Take a payment (POS checkout)',
+    'p.pos.s1': 'Sign in and open POS.',
+    'p.pos.s2': 'Find the product by searching, category or barcode scan.',
+    'p.pos.s3': 'Tap the product — it jumps into the cart with its price.',
+    'p.pos.s4': 'Adjust the quantity or apply a discount if needed.',
+    'p.pos.s5': 'Press Charge, choose cash / card / mobile, and enter the received amount.',
+    'p.pos.s6': 'The change is calculated — press Complete & Print.',
+    'p.inv.h': 'Products & inventory',
+    'p.inv.s1': 'In Admin → Products, press “Add product”.',
+    'p.inv.s2': 'Fill in name, category, price, barcode and opening stock.',
+    'p.inv.s3': 'Use “Stock in / out” for deliveries, waste and corrections.',
+    'p.inv.s4': 'Watch the low-stock alert and reorder before you run out.',
+    'p.rep.h': 'Daily reports',
+    'p.rep.s1': 'Open Reports in Admin and pick the day (or a range).',
+    'p.rep.s2': 'See totals, best sellers, payments and staff performance.',
+    'p.rep.s3': 'Press Export to save or share the numbers.',
+    'p.order.h': 'Take a table order (waiter)',
+    'p.order.s1': 'Sign in as waiter and open Tables.',
+    'p.order.s2': 'Tap the table the guests are sitting at.',
+    'p.order.s3': 'Add items and modifiers to the order.',
+    'p.order.s4': 'Press “Send to kitchen” — the ticket appears instantly.',
+    'p.order.s5': 'When the guests leave, request the bill for the table.',
+    'p.flow.h': 'From order to kitchen to table',
+    'p.flow.s1': 'The waiter sends the order — the kitchen ticket appears in real time.',
+    'p.flow.s2': 'The kitchen marks items ready; the waiter sees the update.',
+    'p.flow.s3': 'The waiter serves and marks the items as served.',
+    'p.bill.h': 'Bill & payment',
+    'p.bill.s1': 'The cashier opens Bills and picks the table.',
+    'p.bill.s2': 'The bill lists every round that was sent to the kitchen.',
+    'p.bill.s3': 'Apply a discount or split if needed, then take the payment.',
+    'p.bill.s4': 'Print the receipt — the table frees up for the next guests.',
+    'p.bill.tip': 'Guests can also order and pay themselves by scanning the table QR (Customer Menu).',
+    'p.menu.h': 'Build the menu & recipes',
+    'p.menu.s1': 'In Admin → Menu, create categories (coffee, breakfast…).',
+    'p.menu.s2': 'Add items with price, image and modifiers (size, extras).',
+    'p.menu.s3': 'Open Recipes and set the ingredients and portions of each item.',
+    'p.menu.s4': 'Every sale then reduces the stock of exactly what was used.',
+    'p.kd.h': 'Work the tickets',
+    'p.kd.s1': 'Sign in as chef or barista — the display opens by itself.',
+    'p.kd.s2': 'New orders arrive as tickets, oldest first, with a timer.',
+    'p.kd.s3': 'Choose your station filter to see only your items.',
+    'p.kd.s4': 'Tap an item to start it; the waiter sees the progress.',
+    'p.ready.h': 'Ready and served',
+    'p.ready.s1': 'Tap “Ready” when an item leaves your station.',
+    'p.ready.s2': 'The waiter marks it “Served” when it reaches the table.',
+    'p.ready.tip': '<b>Waiter chat:</b> tap the ticket to send a quick message (“5 minutes”, “out of stock”).',
+    'p.hold.h': 'Hold and recall a cart',
+    'p.hold.s1': 'Press Hold to park the current cart and give it a name.',
+    'p.hold.s2': 'Serve the next customer with a fresh cart.',
+    'p.hold.s3': 'Open Held Orders and tap the parked cart to bring it back.',
+    'p.qr.h': 'QR Scan & Go (self-service)',
+    'p.qr.s1': 'Print the shop QR code and place it at the entrance.',
+    'p.qr.s2': 'Customers scan it, pick their items and pay on their phone.',
+    'p.qr.s3': 'The exit check shows the staff what was paid — release the customer.',
+    'p.lic.h': 'Licences — plans and renewal',
+    'p.lic.s1': 'Open the Licences tab (or the banner) to see every plan and price.',
+    'p.lic.s2': 'Pick the plan that covers your business type — monthly or yearly.',
+    'p.lic.s3': 'Pay by Telebirr or CBE and send the reference — or paste the key you received.',
+    'p.lic.s4': 'The licence activates instantly — every menu opens again.',
+    'p.lic.s5': 'Before a licence ends you get a 5-day warning, so you never lose a day.',
+    'p.lic.tip': 'Your data is never deleted at expiry — it waits safely for 90 days.',
+  };
+
+  var AM = {
+    'h.chrome.h1': 'እገዳ &amp; <span>መመሪያ</span>',
+    'h.chrome.p': 'እያንዳንዱ ሂደት በ BizMaster ውስጥ፣ ደረጃ በደረጃ የተጻፈ — ለባለቤቶች፣ ለካሺሮች፣ ለኋላሽኖች፣ ለሼፎች እና ለመቀበያዎች። በእንግሊዝኛ፣ በአማርኛ ወይም በኦሮምኛ ያንብቡት።',
+    'h.chrome.title': 'እገዳ እና መመሪያ',
+    'h.chrome.print': '🖨 አትም',
+    'h.chrome.back': '← ተመለስ',
+    'h.chrome.search': 'መመሪያውን ይፈልጉ…',
+    'h.chrome.contents': 'ይዞታዎች',
+    'h.chrome.nores': 'ከፍለጋዎ ጋር የሚስማማ ክፍል የለም።',
+    'h.chrome.b1': '30+ ሂደቶች',
+    'h.chrome.b2': 'ደረጃ በደረጃ',
+    'h.start.h': 'ማስጀመር',
+    'h.start.p': 'ከዜሮ እስከ የሚሠራ ቡድን — በአራት አጭር ሂደቶች።',
+    'h.door.h': 'የሠራተኛው በር',
+    'h.door.p': 'ቦታ + የንግድ አይነት = ትክክለኛው የሥራ ቦታ፣ በራስ-ሰር የተመረጠ።',
+    'h.roles.h': 'ሠራተኞች እና ሚናዎች',
+    'h.apps.h': 'መተግበሪያዎቹ',
+    'h.data.h': 'መረጃ እና ቋንቋ',
+    'h.lic.h': 'ፈቃዶች',
+    'h.retail.h': 'ችርችር',
+    'h.retail.p': 'የመደብር ሽያጭ፣ ክምችት እና ሪፖርቶች — የሱቅ ዕለታዊ ሥራ።',
+    'h.cafe.h': 'ካፌ እና ሬስቶራንት',
+    'h.cafe.p': 'ከምናሌ እስከ ጠረጴዛ፣ ምግብ ቤት እና ሂሳብ — ሙሉ የአገልግሎት ፍሰት።',
+    'h.hotel.h': 'የሆቴል ጠረጴዛ',
+    'h.kitchen.h': 'የምግብ ቤት ማሳያ',
+    'h.kitchen.p': 'በቀጥታ ትኬቶች በጣቢያ — ለሼፉ ስክሪን የተሠራ።',
+    'mx.where': 'የሚደርሱበት ቦታ',
+    'mx.does': 'የሚሠሩት ሥራ',
+    'mx.pos': 'ቦታ',
+    'mx.other': 'ሌላ',
+    'mx.owner': 'ባለቤት / ሥራ አስኪያጅ',
+    'mx.owner.d': 'ንግዱን ይመራል',
+    'mx.owner.c': 'የአስተዳደር ዳሽቦርድ — ሪፖርቶች፣ ሠራተኞች፣ ቅንብሮች፣ እያንዳንዱ ንግድ።',
+    'mx.owner.dest': 'የአስተዳደር ዳሽቦርድ',
+    'mx.cashier': 'ካሺር',
+    'mx.cashier.d': 'ገንዘቡን ይቀበላል',
+    'mx.cashier.r': 'POS — በካውንተሩ ላይ እርዳታ።',
+    'mx.cashier.c': 'POS፣ ሙሉ መክፈያ — ዕቃዎችን ወደ ጋሪ ጨምረው ክፍያ ይቀበሉ።',
+    'mx.cashier.dest': 'የPOS መክፈያ / የቢል ክፍያዎች',
+    'mx.waiter': 'ኋላሽን',
+    'mx.waiter.d': 'ጠረጴዛዎችን ያገለግላል',
+    'mx.waiter.c': 'የትዕዛዝ ማያ — ትዕዛዙን ይገንቡ እና ወደ ምግብ ቤት ይላኩ።',
+    'mx.waiter.dest': 'የኋላሽን ትዕዛዝ ማያ',
+    'mx.chef': 'ሼፍ / ባሪስታ',
+    'mx.chef.d': 'ትዕዛዞችን ይሠራል',
+    'mx.chef.c': 'የምግብ ቤት ማሳያ — በቀጥታ ትኬቶች በጣቢያዎች ውስጥ።',
+    'mx.chef.dest': 'የምግብ ቤት ማሳያ',
+    'mx.rec': 'መቀበያ · ጽዳት · ጠባቂ',
+    'mx.rec.d': 'ሆቴሉን ያንቀሳቅሳል',
+    'mx.rec.h': 'የሆቴል ጠረጴዛ — የፊት ጠረጴዛ፣ የክፍል ጽዳት ወይም የጥበቃ እይታ።',
+    'mx.rec.o': 'POS — በዚህ ንግድ ውስጥ አጠቃላይ ሥራ።',
+    'mx.rec.dest': 'የሆቴል ጠረጴዛ',
+    'mx.any': 'ማንኛውም ሌላ ቦታ',
+    'mx.any.c': 'POS ንግድዎ ተጭኖ ይከፈታል — ምንም አይጠፋም።',
+    'mx.any.dest': 'POS',
+    'mx.retail': 'ችርችር',
+    'mx.cafehotel': 'ካፌ / ሆቴል',
+    'mx.retail2': 'ችርችር',
+    'mx.cafehotel2': 'ካፌ / ሆቴል',
+    'mx.hotel': 'ሆቴል',
+    'p.acct.h': 'መለያዎን ይፍጠሩ',
+    'p.acct.s1': 'የ BizMaster ገጹን ይክፈቱ እና «መለያዎን ይፍጠሩ» የሚለውን ይንኩ።',
+    'p.acct.s2': 'ስምዎን፣ ኢሜይልዎን እና ቢያንስ 6 ፊደላት ያለው የይለፍ ቃል ይሙሉ።',
+    'p.acct.s3': 'የሚከፍቱትን ንግዶች ይምረጡ፡ ችርችር፣ ካፌ እና ሆቴል — ከየዓይነቱ አንድ።',
+    'p.acct.s4': 'ማጠቃለያውን ይመልከቱ፣ የመስማማት ሳጥኑን ይስቡ እና «መለያዬን ፍጠር» የሚለውን ይንኩ።',
+    'p.acct.s5': 'ተጠየቁ እንደሆነ የኢሜይል አገናኙን ያረጋግጡ — ንግዶችዎ ወዲያውኑ ይከፈታሉ።',
+    'p.staff.h': 'ሠራተኞችዎን ያስገቡ',
+    'p.staff.s1': 'ንግድ በአስተዳደር ውስጥ ይክፈቱ (አስተዳደር → ሠራተኞች)።',
+    'p.staff.s2': '«ሠራተኛ ጨምር» የሚለውን ይንኩ እና የሰውየውን ስም እና ቦታ ይጻፉ።',
+    'p.staff.s3': 'የይለፍ ቃል ወይም ፒን ይስጡት — ቦታው የሚያድርሳቸውን ቦታ ይወስናል።',
+    'p.staff.s4': 'አስቀምጡ። ሠራተኛው በዚያው በር፣ በማንኛውም መሣሪያ ላይ ይገባል።',
+    'p.staff.tip': '<b>ቦታዎች፡</b> ባለቤት / ሥራ አስኪያጅ፣ ካሺር፣ ኋላሽን፣ ሼፍ / ባሪስታ፣ መቀበያ፣ ጽዳት፣ ጠባቂ — እያንዳንዱ የራሱን የሥራ ቦታ ይከፍታል።',
+    'p.doorflow.h': 'ዕለታዊ ልማድ',
+    'p.doorflow.s1': 'እያንዳንዱ ጠዋት ሁሉም ሠራተኛ ተመሳሳዩን የ BizMaster ገጽ ይከፍታል።',
+    'p.doorflow.s2': 'ስማቸውን እና የይለፍ ቃላቸውን ጽፈው «ግባ» የሚለውን ይንኩ።',
+    'p.doorflow.s3': 'እያንዳንዱ በራሱ የሥራ ቦታ ይቆማል — መተግበሪያ መፈለግ አያስፈልግም።',
+    'p.first.h': 'በአዲስ መሣሪያ ላይ የመጀመሪያ መግቢያ',
+    'p.first.s1': 'ወደ ሠራተኛ መግቢያ ሂዱ እና «ባለቤት አንድ ጊዜ ያስነሳል» የሚለውን ይክፈቱ።',
+    'p.first.s2': 'ባለቤቱ በኢሜይል እና በይለፍ ቃል ይገባል — በእያንዳንዱ መሣሪያ አንድ ጊዜ።',
+    'p.first.s3': '«የእኔ መደብሮች» ይከፈታል፣ ባለቤቱ ሁሉንም ሱቆች የሚያስተዳድርበት።',
+    'p.first.s4': 'ከዛን ጊዜ ጀምሮ ሠራተኞች በዚህ መሣሪያ ላይ ስም + የይለፍ ቃል ብቻ ይጻፋሉ።',
+    'p.pos.h': 'ክፍያ መቀበል (የPOS መክፈያ)',
+    'p.pos.s1': 'ግበው POS ይክፈቱ።',
+    'p.pos.s2': 'ምርቱን በፍለግ፣ በምድብ ወይም በባርኮድ ቃኝ ያግኙት።',
+    'p.pos.s3': 'ምርቱን ይንኩ — በዋጋው ወደ ጋሪ ይዘላል።',
+    'p.pos.s4': 'ብዛቱን ያስተካክሉ ወይም ቅናሽ ይተግብሩ።',
+    'p.pos.s5': 'ክፈልን ይንኩ፣ ጥሬ / ካርድ / ሞባይል ይምረጡ እና የተቀበሉትን መጠን ያስገቡ።',
+    'p.pos.s6': 'ተለዋዋጭ ተሰላ — ጨርሰህ አትምን ይንኩ።',
+    'p.inv.h': 'ምርቶች እና ዕቃ መጠባበቂያ',
+    'p.inv.s1': 'በአስተዳደር → ምርቶች «ምርት ጨምር» የሚለውን ይንኩ።',
+    'p.inv.s2': 'ስም፣ ምድብ፣ ዋጋ፣ ባርኮድ እና የመክፈቻ ክምችት ይሙሉ።',
+    'p.inv.s3': 'ለማድረሻዎች፣ ለብክለት እና ለማስተካከያዎች «ክምችት ግባ / ውጣ» ይጠቀሙ።',
+    'p.inv.s4': 'የዝቅተኛ ክምችት ማስጠንቀቂያውን ይከታተሉ እና ከመርባትዎ በፊት ያድርጉ።',
+    'p.rep.h': 'ዕለታዊ ሪፖርቶች',
+    'p.rep.s1': 'በአስተዳደር ውስጥ ሪፖርቶችን ይክፈቱ እና ቀኑን (ወይም ክልሉን) ይምረጡ።',
+    'p.rep.s2': 'ጠቅላላዎችን፣ ተወዳጆችን፣ ክፍያዎችን እና የሠራተኞች አፈጻጸም ይመልከቱ።',
+    'p.rep.s3': 'ቁጥሮቹን ለማስቀመጥ ወይም ለማጋራት ላክን ይንኩ።',
+    'p.order.h': 'የጠረጴዛ ትዕዛዝ መውሰድ (ኋላሽን)',
+    'p.order.s1': 'እንደ ኋላሽን ግበው ጠረጴዛዎችን ይክፈቱ።',
+    'p.order.s2': 'እንግዶቹ የተቀመጡበትን ጠረጴዛ ይንኩ።',
+    'p.order.s3': 'ዕቃዎችን እና ማስተካከያዎችን ወደ ትዕዛዙ ጨምሩ።',
+    'p.order.s4': '«ወደ ምግብ ቤት ላክ» የሚለውን ይንኩ — ትኬቱ ወዲያውኑ ይታያል።',
+    'p.order.s5': 'እንግዶቹ ሲሄዱ ለጠረጴዛው ሂሳብ ይጠይቁ።',
+    'p.flow.h': 'ከትዕዛዝ እስከ ምግብ ቤት እና ጠረጴዛ',
+    'p.flow.s1': 'ኋላሽኑ ትዕዛዙን ይልካል — የምግብ ቤት ትኬቱ በቀጥታ ይታያል።',
+    'p.flow.s2': 'ምግብ ቤቱ ዕቃዎችን ዝግጁ ይሠራል፤ ኋላሽኑ ማሻሻያውን ያያል።',
+    'p.flow.s3': 'ኋላሽኑ ያቀርባል እና ዕቃዎቹን የተቀረቡ ይሠራል።',
+    'p.bill.h': 'ሂሳብ እና ክፍያ',
+    'p.bill.s1': 'ካሺሩ ሂሳቦችን ይከፍታል እና ጠረጴዛውን ይምረጣል።',
+    'p.bill.s2': 'ሂሳቡ ወደ ምግብ ቤት የተላከውን እያንዳንዱን ዙር ይዘረዝራል።',
+    'p.bill.s3': 'ቅናሽ ወይም ክፍፍል ከተፈለገ ይተግብሩ፣ ከዚያ ክፍያውን ይቀበሉ።',
+    'p.bill.s4': 'ደረሰኙን ያትሙ — ጠረጴዛው ለቀጣዩ እንግዶች ይለቃል።',
+    'p.bill.tip': 'እንግዶች በጠረጴዛ QR (የደንበኛ ምናሌ) በራሳቸውም መዘዝ እና መክፈል ይችላሉ።',
+    'p.menu.h': 'ምናሌ እና አሰራሮች መገንባት',
+    'p.menu.s1': 'በአስተዳደር → ምናሌ ውስጥ ምድቦችን ይፍጥሩ (ቡና፣ ቁርስ…)።',
+    'p.menu.s2': 'ዕቃዎችን በዋጋ፣ በምስል እና በማስተካከያዎች (መጠን፣ ተጨማሪዎች) ያክሉ።',
+    'p.menu.s3': 'አሰራሮችን ይክፈቱ እና ግብዣዎችን እና እርክንሽዎችን ያዘጋጁ።',
+    'p.menu.s4': 'እያንዳንዱ ሽያጭ ከተጠቀሙት በትክክል ክምችትን ይቀንሳል።',
+    'p.kd.h': 'ትኬቶችን መሥራት',
+    'p.kd.s1': 'እንደ ሼፍ ወይም ባሪስታ ግቡ — ማሳያው በራሱ ይከፈታል።',
+    'p.kd.s2': 'አዳዲስ ትዕዛዞች እንደ ትኬቶች ይመጣሉ፣ የድሮው ቀድሞ፣ ከሰዓት ጋር።',
+    'p.kd.s3': 'የራስዎን ጣቢያ ማጣሪያ ይምረጡ ዕቃዎችዎን ብቻ ለማየት።',
+    'p.kd.s4': 'ዕቃን ለመጀመር ይንኩ፤ ኋላሽኑ እድገቱን ያያል።',
+    'p.ready.h': 'ዝግጁ እና የቀረበ',
+    'p.ready.s1': 'ዕቃ ከጣቢያዎ ሲወጣ «ዝግጁ» ይንኩ።',
+    'p.ready.s2': 'ኋላሽኑ ወደ ጠረጴዛው ሲደርስ «ቀረበ» ይሠራል።',
+    'p.ready.tip': '<b>የኋላሽን ውይይት፡</b> ፈጣን መልእክት ለመላክ ትኬቱን ይንኩ («5 ደቂቃ»፣ «ክምችት የለም»)።',
+    'p.hold.h': 'ጋሪ ማቆም እና መመለስ',
+    'p.hold.s1': 'ወቅቱን ጋሪ ለማቆም እና ስም ለመስጠት አቆምን ይንኩ።',
+    'p.hold.s2': 'ቀጣዩን ደንበኛ በአዲስ ጋሪ ያገለግሉ።',
+    'p.hold.s3': 'የተያዙ ትዕዛዞችን ይክፈቱ እና የቆመውን ጋሪ ለማመልስ ይንኩ።',
+    'p.qr.h': 'QR ቃኝ እና ሂድ (በራስ አገልግሎት)',
+    'p.qr.s1': 'የሱቅ QR ኮዱን አትሙ እና በመግቢያው ላይ ያስቀምጡ።',
+    'p.qr.s2': 'ደንበኞች ይቃኙት፣ ዕቃዎቻቸውን ይምረጡ እና በስልካቸው ላይ ይክፈሉ።',
+    'p.qr.s3': 'የመውጫ ፍተሻው ለሠራተኞቹ የተከፈለውን ያሳያል — ደንበኛውን ያስለቅቁ።',
+    'p.lic.h': 'ፈቃዶች — ዕቅዶች እና እድሳት',
+    'p.lic.s1': 'የፈቃዶች ትርፉን ይክፈቱ (ወይም ባነሩን) ሁሉንም ዕቅድ እና ዋጋ ለማየት።',
+    'p.lic.s2': 'ንግድዎን የሚሸፍነውን ዕቅድ ይምረጡ — ወርሃዊ ወይም ዓመታዊ።',
+    'p.lic.s3': 'በቴሌብር ወይም ሲቢኢ ይክፈሉ እና ማጣቀሻውን ይላኩ — ወይም የተቀበሉትን ቁልፍ ይለጥፉ።',
+    'p.lic.s4': 'ፈቃዱ ወዲያውኑ ይሠራል — ሁሉም ምናሌዎች እንደገና ይከፈታሉ።',
+    'p.lic.s5': 'ፈቃዱ ከመጨረሱ በፊት የ5-ቀን ማስጠንቀቂያ ያገኛሉ — ስለዚህ ቀን በጭራሽ አያጣም።',
+    'p.lic.tip': 'መረጃዎ በማበቂያው ጊዜ አይሰረዝም — 90 ቀናት በደህና ይጠበቃል።',
+  };
+
+  var OM = {
+    'h.chrome.h1': 'Gargaarsa &amp; <span>Qajeelfama</span>',
+    'h.chrome.p': 'Adeemsa BizMaster hunduu, tarkaanfii tarkaanfiidhaan barreeffame — abbootiin alangaa, kashiirootaaf, tajaajiltootaaf, sheeffootaaf fi fudhannoo. Afaan Ingiliffaa, አማርኛ ykn Afaan Oromootiin dubbadhu.',
+    'h.chrome.title': 'Gargaarsa fi Qajeelfama',
+    'h.chrome.print': '🖨 Maxxansi',
+    'h.chrome.back': '← Deebii',
+    'h.chrome.search': 'Qajeelfama barbaadi…',
+    'h.chrome.contents': 'Qabiyyee',
+    'h.chrome.nores': 'Kutaa barbaacha kee waliin wal simu hin jiru.',
+    'h.chrome.b1': 'Adeemsa 30+',
+    'h.chrome.b2': 'Tarkaanfii tarkaanfiidhaan',
+    'h.start.h': 'Jalqabbii',
+    'h.start.p': 'Zeeroo irraa gara damee hojjetu — adeemsa afur gabaabaa keessatti.',
+    'h.door.h': 'Bifticha hojjetaa',
+    'h.door.p': 'Idaddoo + gosa daldalaa = bakka hojii sirrii, ofumaa filame.',
+    'h.roles.h': 'Hojjattoota fi gahee',
+    'h.apps.h': 'Appoota',
+    'h.data.h': 'Daataa fi afaan',
+    'h.lic.h': 'Eeyyamoota',
+    'h.retail.h': 'Daldalaa',
+    'h.retail.p': 'Gurgurtaa alaabaa, kuusaa fi gabaasota — tajaajila guyyaa suuqii.',
+    'h.cafe.h': 'Kafee fi restoraantii',
+    'h.cafe.p': 'Meenyii irraa gara taabulii, kicenii fi herregaatti — sochii tajaajila guutuu.',
+    'h.hotel.h': 'Diiha Hotela',
+    'h.kitchen.h': 'Agarsiisa Kicenii',
+    'h.kitchen.p': 'Tikiitii jiru kabinaan — agarsiisa sheeffaaf ijaarame.',
+    'mx.where': 'Bakka itti bira galan',
+    'mx.does': 'Waan hojjatan',
+    'mx.pos': 'Idaddoo',
+    'mx.other': 'Kan biraa',
+    'mx.owner': 'Abbaa alangaa / Bulcha',
+    'mx.owner.d': 'Daldala bulcha',
+    'mx.owner.c': 'Daashboordii Bulchinsa — gabaasota, hojjattoota, qindaa\'ina, daldala hunda.',
+    'mx.owner.dest': 'Daashboordii Bulchinsa',
+    'mx.cashier': 'Kashirii',
+    'mx.cashier.d': 'Qarshii fudhata',
+    'mx.cashier.r': 'POS — gabatee irratti gargaara.',
+    'mx.cashier.c': 'POS, kaffalaa guutuu — meeshaalee kaarattaatti dabalisi, kaffaltii fudhadhu.',
+    'mx.cashier.dest': 'Kaffalii POS / Kaffaltii Biilota',
+    'mx.waiter': 'Tajaajiltaa',
+    'mx.waiter.d': 'Taabulota tajaajila',
+    'mx.waiter.c': 'Agarsiisa ajajaa — ajaja ijaari, gara kiceniitti ergi.',
+    'mx.waiter.dest': 'Agarsiisa Ajajaa Tajaajiltaa',
+    'mx.chef': 'Sheeffa / Baariistaa',
+    'mx.chef.d': 'Ajajota hojjeda',
+    'mx.chef.c': 'Agarsiisa Kicenii — tikiitii jiru kabina kee irratti.',
+    'mx.chef.dest': 'Agarsiisa Kicenii',
+    'mx.rec': 'Fudhannoo · Qulqulleessaa · Eegataa',
+    'mx.rec.d': 'Hotela bulcha',
+    'mx.rec.h': 'Diiha Hotela — agarsiisa fuulduraa, qulqulleessaa ykn eegumsaa.',
+    'mx.rec.o': 'POS — tajaajila waliigalaa daldala kana keessatti.',
+    'mx.rec.dest': 'Diiha Hotela',
+    'mx.any': 'Idaddoo biraa kamiyyuu',
+    'mx.any.c': 'POS daldala kee fe\'amee bana — waan hin balleeffamne.',
+    'mx.any.dest': 'POS',
+    'mx.retail': 'Daldalaa',
+    'mx.cafehotel': 'Kafee / Hotela',
+    'mx.retail2': 'Daldalaa',
+    'mx.cafehotel2': 'Kafee / Hotela',
+    'mx.hotel': 'Hotela',
+    'p.acct.h': 'Akkaawuntii kee uumi',
+    'p.acct.s1': 'Fuula BizMaster bani, "Akkaawuntii kee uumi" tuqi.',
+    'p.acct.s2': 'Maqaa kee, imeelii kee fi jecha iccitii qubee 6 ol guuti.',
+    'p.acct.s3': 'Daldala banamu filadhu: daldalaa, kafee fi hotela — gosa tokko tokko irraa tokko.',
+    'p.acct.s4': 'Guduunfa ilaali, santuu wal simtuu keeksi, "Akkaawuntii koo uumi" tuqi.',
+    'p.acct.s5': 'Yoo gaafatame linkii imeelii mirkaneessi — daldalaan kee ifatti banamu.',
+    'p.staff.h': 'Hojjattoota kee galchi',
+    'p.staff.s1': 'Daldala Bulchiinsa keessatti bani (Bulchiinsa → Hojjetaa).',
+    'p.staff.s2': '"Hojjetaa dabali" tuqi, maqaa fi idaddoo namaa barreessi.',
+    'p.staff.s3': 'Jecha iccitii ykn PIN kenni — idaddoon bakka itti gala murteessa.',
+    'p.staff.s4': 'Olkaa\'i. Hojjetaan bifticha tokkotti, meeshaa kamiifuyyuu seena.',
+    'p.staff.tip': '<b>Idaddoo:</b> Abbaa alangaa / Bulcha, Kashirii, Tajaajiltaa, Sheeffa / Baariistaa, Fudhannoo, Qulqulleessaa, Eegataa — tokkoon tokkoon bakka hojii ofii bana.',
+    'p.doorflow.h': 'Tajaajila guyyaa guyyaa',
+    'p.doorflow.s1': 'Ganama tokko tokko, hojjetaan hundi fuula BizMaster tokko bana.',
+    'p.doorflow.s2': 'Maqaa fi jecha iccitii barreessanii "Seeni" tuqani.',
+    'p.doorflow.s3': 'Tokkoon tokkoon bakka hojii isanii ofii gala — appi bitachuu hin barbaachisu.',
+    'p.first.h': 'Seensa jalqabaa meeshaa haaraa irratti',
+    'p.first.s1': ' gara Seensa Hojjetaa deemi, "Abbaan alangaa yeroo tokko kakaasa" bani.',
+    'p.first.s2': 'Abbaan alangaa imeelii fi jecha iccitiin seena — meeshaa tokkoof yeroo tokko.',
+    'p.first.s3': '"Dukaalee koo" bana, abbaan alangaa suuqii hunda itti bulcha.',
+    'p.first.s4': 'Amma irraa eegalee, hojjattoonni maqaa + jecha iccitii qofa barreessu.',
+    'p.pos.h': 'Kaffaltii fudhachuu (kaffalii POS)',
+    'p.pos.s1': 'Seenii POS bani.',
+    'p.pos.s2': 'Oomisha barbaachuu, ramaddii ykn baarkoodii saaniin argadhu.',
+    'p.pos.s3': 'Oomisha tuqi — gatiin isaa kaarattaatti seena.',
+    'p.pos.s4': 'Baay\'ina sirreessi ykn hir\'isa raawwadhu.',
+    'p.pos.s5': 'Kaffali tuqi, qarshii / kaartii / moobiilaa fili, hamma argatte galchi.',
+    'p.pos.s6': 'Jijjiirama qarshii herregaameera — Xumuusi & Maxxansi tuqi.',
+    'p.inv.h': 'Oomishoota fi kuusaa',
+    'p.inv.s1': 'Bulchiinsa → Oomishoota keessatti "Oomisha dabali" tuqi.',
+    'p.inv.s2': 'Maqaa, ramaddii, gatii, baarkoodii fi kuusaa jalqabaa guuti.',
+    'p.inv.s3': 'Geessota, balleessuu fi sirreessuuf "Kuusaa seensa / baafata" fayyadami.',
+    'p.inv.s4': 'Akeekkachiisa kuusaa xiqqaa ilaali, xumuruu kee dura irra deebi biti.',
+    'p.rep.h': 'Gabaasota guyyaa',
+    'p.rep.s1': 'Bulchiinsa keessatti Gabaasota bani, guyyaa (ykn yeroo) fili.',
+    'p.rep.s2': 'Waliigalota, beekamoota, kaffaltota fi hojii hojjattootaa ilaali.',
+    'p.rep.s3': 'Lakkoofsota olkaa\'uuf ykn qooduuf Ergi tuqi.',
+    'p.order.h': 'Ajaja taabulii fudhachuu (tajaajiltaa)',
+    'p.order.s1': 'Akka tajaajiltaa seenii, Taabulota bani.',
+    'p.order.s2': 'Taabulii dhiyyatotni barbaachisani irratti tuqi.',
+    'p.order.s3': 'Meeshaalee fi jijjiirtoota gara ajajaatti dabalisi.',
+    'p.order.s4': '"Gara kiceniitti ergi" tuqi — tikiitiin ifatti mul\'ata.',
+    'p.order.s5': 'Dhiyyatotni yeroo ba\'an, herrega taabulichaaf gaafadhu.',
+    'p.flow.h': 'Ajaja irraa gara kicenii fi taabulii',
+    'p.flow.s1': 'Tajaajiltaan ajaja erga — tikiitiin kicenii kallattiin mul\'ata.',
+    'p.flow.s2': 'Kichiini meeshaalee qopheessa; tajaajiltaan haaromsa ilaala.',
+    'p.flow.s3': 'Tajaajiltaan dhiyeessa, meeshaalee akka dhiyeeffame mallattoo godha.',
+    'p.bill.h': 'Herrega fi kaffaltii',
+    'p.bill.s1': 'Kashiriin Herregota bana, taabulicha fili.',
+    'p.bill.s2': 'Herregaan raawundii kiceniitti ergame hunda agarsiisa.',
+    'p.bill.s3': 'Hir\'isa ykn qooda yoo barbaachise raawwadhu, kaffaltii fudhadhu.',
+    'p.bill.s4': 'Rishii maxxansi — taabuliin dhiyyatota itti aanuuf bilisaata.',
+    'p.bill.tip': 'Dhiyyatoniis ofumaan QR taabulii saanuun ajajuu fi kaffaluu danda\'u (Meenyii Fayyadamaa).',
+    'p.menu.h': 'Meenyii fi seera soorataa ijaaruu',
+    'p.menu.s1': 'Bulchiinsa → Meenyii keessatti ramaddii uumi (buna, soorata ganamaa…).',
+    'p.menu.s2': 'Meeshaalee gatii, footoo fi jijjiirtoota waliin dabalisi (hamma, dabalata).',
+    'p.menu.s3': 'Seera soorataa bani, deeggarsa fi qooda meeshaa tokko tokkoo saagi.',
+    'p.menu.s4': 'Gurgurtaan tokko tokko kuusaa waan tamsa\'ame sirriitti hir\'isa.',
+    'p.kd.h': 'Tikiitota hojechuu',
+    'p.kd.s1': 'Akka sheeffa ykn baariistaa seenii — agarsiisaan ofumaa bana.',
+    'p.kd.s2': 'Ajajni haaraa tikiitii ta\'ee dhufu, duraa dura, yaalii waliin.',
+    'p.kd.s3': 'Filannoo kabina kee fili meeshaalee kee qofa ilaaluuf.',
+    'p.kd.s4': 'Meeshaa jalqabuuf tuqi; tajaajiltaan haaromsa ilaala.',
+    'p.ready.h': 'Qophaa\'eera fi dhiyeesse',
+    'p.ready.s1': 'Meeshaan kabina kee irraa yeroo baatu "Qophaa\'e" tuqi.',
+    'p.ready.s2': 'Tajaajiltaan taabulii ga\'u "Dhiyeesse" mallattoo godha.',
+    'p.ready.tip': '<b>Haasaa tajaajiltaa:</b> ergamsa saffisaa erguuf tikiitii tuqi ("daqiiqaa 5", "kuusaa hin jiru").',
+    'p.hold.h': 'Kaarattaa dhaabuu fi deebisuu',
+    'p.hold.s1': 'Kaarattaa ammaa dhaabuuf maqaa kennuuf Eegi tuqi.',
+    'p.hold.s2': 'Fayyadama itti aanu kaarattaa haaraa waliin tajaajili.',
+    'p.hold.s3': 'Ajajawwan Eegaman bani, kaarattaa eegame deebisuuf tuqi.',
+    'p.qr.h': 'QR Illeessi & Deemi (ofumaa tajaajila)',
+    'p.qr.s1': 'Koodii QR suuqii maxxansi, bawaa irratti kaa\'i.',
+    'p.qr.s2': 'Fayyadamtonni saani, meeshaalee filu, bilbila isaanii irratti kaffalu.',
+    'p.qr.s3': 'Iddoon ba\'uu sitti waan kaffalame agarsiisa — fayyadama baafsi.',
+    'p.lic.h': 'Eeyyamoota — pilaanota fi haaromsa',
+    'p.lic.s1': 'Cabii Eeyyamootaa bani (ykn baanarii) pilaanota fi gatii hunda ilaaluuf.',
+    'p.lic.s2': 'Pilaana daldala kee dheessu fili — ji\'a ji\'aaf ykn wagga waggaaf.',
+    'p.lic.s3': 'Telebirr ykn CBE tiin kaffali, wabii ergi — ykn furtuu argatte paste godhi.',
+    'p.lic.s4': 'Eeyyaamni ifatti dalaga — meenyii hundi amma banamu.',
+    'p.lic.s5': 'Eeyyaamni dhuma dura akeekkachiisa guyyaa 5 argatta — guyyaa tokkollee hin dheessitu.',
+    'p.lic.tip': 'Daataan kee yeroo dhumaatti hin balleeffamu — guyyaa 90 nageenyaan eegama.',
+  };
+
+  /* merge into the shared dictionary, then light up the page */
+  function merge() {
+    var I = window.I18N;
+    if (!I) return;
+    I.en = I.en || {}; I.am = I.am || {}; I.om = I.om || {};
+    for (var k in EN) { if (I.en[k] == null) I.en[k] = EN[k]; }
+    for (var k2 in AM) { if (I.am[k2] == null) I.am[k2] = AM[k2]; }
+    for (var k3 in OM) { if (I.om[k3] == null) I.om[k3] = OM[k3]; }
+  }
+
+  function boot() {
+    merge();
+    if (!window.LANG) return;
+    if ($('langbar')) LANG.pills($('langbar'));
+    try { LANG.setLang(LANG.detect(), true); } catch (e) {}
+    LANG.apply();
+    /* TOC + search */
+    var q = $('q'), cards = [].slice.call(document.querySelectorAll('section.card')), nores = null;
+    function filter() {
+      if (!q) return;
+      var v = q.value.replace(/\s+/g, ' ').trim().toLowerCase(), n = 0;
+      cards.forEach(function (c) {
+        var hit = !v || c.textContent.replace(/\s+/g, ' ').toLowerCase().indexOf(v) > -1;
+        c.classList.toggle('dim', !hit);
+        if (hit) n++;
+      });
+      if ($('nores')) $('nores').style.display = n ? 'none' : 'block';
+    }
+    if (q) q.addEventListener('input', filter);
+    /* scrollspy: highlight the toc link of the section in view */
+    var links = [].slice.call(document.querySelectorAll('.toc a[href^="#"]'));
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          links.forEach(function (a) { a.classList.toggle('on', a.getAttribute('href') === '#' + en.target.id); });
+        });
+      }, { rootMargin: '-15% 0px -70% 0px' });
+      cards.forEach(function (c) { io.observe(c); });
+    }
+    /* language pills refresh on switch */
+    document.addEventListener('langchange', function () {
+      var bar = $('langbar');
+      if (!bar) return;
+      var bs = bar.querySelectorAll('button');
+      for (var i = 0; i < bs.length; i++) {
+        for (var L = 0; L < (window.SLP_LANGS || []).length; L++) {
+          if (bs[i].textContent === window.SLP_LANGS[L].short) {
+            bs[i].className = (window.SLP_LANGS[L].k === LANG.currentLang()) ? 'on' : '';
+          }
+        }
+      }
+    });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+
+  /* ── licence section: staged disclosure (same rule as the app) ──
+     hidden during the silent trial days and for healthy licences;
+     revealed when there is something to act on. */
+  (function () {
+    var lic = $('lic-section');
+    if (!lic) return;
+    lic.style.display = 'none';
+    function decide(st) {
+      var code = st && st.code;
+      var show = (code === 'warn' || code === 'grace' || code === 'locked' || (st && st.renewWarn));
+      lic.style.display = show ? '' : 'none';
+    }
+    function check() {
+      try {
+        if (window.SPP && typeof window.SPP.getStatus === 'function') { decide(window.SPP.getStatus()); return; }
+        if (window.SPP && window.SPP.G && window.SPP.G.status) { decide(window.SPP.G.status); return; }
+      } catch (e) {}
+      setTimeout(check, 3000);
+    }
+    if (window.SPP) check();
+    else { var t = setInterval(function () { if (window.SPP) { clearInterval(t); check(); } }, 2000); setTimeout(function () { clearInterval(t); }, 30000); }
+  })();
+})();
+
+</script>
+</body>
+</html>
