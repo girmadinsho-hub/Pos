@@ -858,7 +858,7 @@ function kitchenLogout() {
             alert('🔒 Too many wrong attempts. Undo authorization is locked for ' + _locked + ' more minute(s).');
             return false;
         }
-        var pass = prompt('🔐 UNDO REQUIRES AUTHORIZATION\n\nEnter Manager/Owner PIN or Admin password:');
+        var pass = await prompt('🔐 UNDO REQUIRES AUTHORIZATION\n\nEnter Manager/Owner PIN or Admin password:');
         if (!pass) return false;
 
         // Method 1: check Manager/Owner PIN in employees table
