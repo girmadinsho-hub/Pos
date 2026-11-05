@@ -3383,8 +3383,7 @@ async function completePayment() {
         currentTableName = '';
         window._pendingTableOrderIds = null;
         var ct = document.getElementById('cartTitle');
-        if (ct) ct.innerText = 'CART';
-
+        if (ct) ct.innerText = window.t('cartTitle');
         // 3. Refresh every open list ON THIS DEVICE
         if (typeof openTablesModal === 'function' && document.getElementById('tablesModal') && document.getElementById('tablesModal').classList.contains('active')) openTablesModal();
         if (typeof openTableBillsModal === 'function' && document.getElementById('tableBillsModal') && document.getElementById('tableBillsModal').classList.contains('active')) openTableBillsModal();
@@ -4692,7 +4691,7 @@ async function openTablesModal() {
     cart = [];
     currentTableName = tableName;
     var cartTitle = document.getElementById('cartTitle');
-    if (cartTitle) cartTitle.innerText = 'CART - ' + tableName;
+    if (cartTitle) cartTitle.innerText = window.t('cartTitle') + ' - ' + tableName;
     updateCart();
     document.getElementById('tablesModal').classList.remove('active');
 }
@@ -6204,8 +6203,7 @@ window.selectTable = async function(tableName, isBusy) {
     cart = [];
     currentTableName = tableName;
     var t = document.getElementById('cartTitle');
-    if (t) t.innerText = 'CART - ' + tableName;
-    updateCart();
+    if (t) t.innerText = window.t('cartTitle') + ' - ' + tableName;    updateCart();
     var m = document.getElementById('tablesModal');
     if (m) m.classList.remove('active');
 };
