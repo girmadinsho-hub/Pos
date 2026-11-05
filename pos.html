@@ -1870,8 +1870,7 @@ function holdOrder() {
       cart = [];
       currentTableName = ''; 
       var cartTitle = document.getElementById('cartTitle');
-      if (cartTitle) cartTitle.innerText = 'CART';
-      updateCart();
+if (cartTitle) cartTitle.innerText = t('cartTitle');      updateCart();
       alert('✅ Order held! Table is now Busy (Red).');
       return;
   }
@@ -2974,8 +2973,8 @@ function clearCart(){
     cart=[]; 
     isCartLocked=false; 
     var cartTitle = document.getElementById('cartTitle');
-    if (cartTitle) cartTitle.innerText = 'CART';
-    updateCart(); 
+if (cartTitle) cartTitle.innerText = t('cartTitle');
+  updateCart(); 
 }
 function updateCart(){
     document.getElementById('cartCount').textContent=cart.reduce((s,i)=>s+i.qty,0);
@@ -6330,8 +6329,7 @@ async function sendWaiterOrderToKitchen() {
         cart = [];
         currentTableName = '';
         var cartTitle = document.getElementById('cartTitle');
-        if (cartTitle) cartTitle.innerText = 'CART';
-        updateCart();
+if (cartTitle) cartTitle.innerText = t('cartTitle');        updateCart();
     } catch(e) {
         alert('❌ Error sending order: ' + e.message);
     } finally {
