@@ -45,8 +45,7 @@ function scInit() {
         SC.id = 'admin'; SC.name = 'Admin'; SC.role = 'Admin';
     }
     try { SC.shop = (typeof getShopId === 'function') ? getShopId() : null; } catch(e) { SC.shop = null; }
-    if (!SC.shop) SC.shop = localStorage.getItem('shopId') || localStorage.getItem('kitchenShopId') || 'default';
-}
+if (!SC.shop) SC.shop = localStorage.getItem('shopId') || localStorage.getItem('hotelShopId') || localStorage.getItem('kitchenShopId') || 'default';}
 
 // ===== ENVIRONMENT DETECTION =====
 function scIsV4() {
@@ -340,10 +339,7 @@ function scSend(p) {
     if (p.reply_to) {
         msg.reply_to_id = p.reply_to.id;
     }
-    if (val === 'All' || val === 'Cashier' || val === 'Kitchen' || val === 'Admin') {
-        msg.recipient = val;
-    } else {
-        msg.recipient = 'Direct'; msg.recipient_id = val; msg.recipient_name = nm;
+ if (val === 'All' || val === 'Cashier' || val === 'Kitchen' || val === 'Admin' || val === 'Reception' || val === 'Cleaner' || val === 'Guard') {        msg.recipient = 'Direct'; msg.recipient_id = val; msg.recipient_name = nm;
     }
 
        supabaseClient.from('chat_messages').insert([msg]).then(function(r) {
@@ -1036,8 +1032,7 @@ async function scCallFromChat(video) {
     if (!sel) { alert('Open a chat first.'); return; }
     const val = sel.value;
     const nm = sel.options[sel.selectedIndex].text.replace('👤 ', '').replace('🟢 ', '').replace(' ⚫ ', '');
-    if (val === 'All' || val === 'Cashier' || val === 'Kitchen' || val === 'Admin') {
-        alert('⚠️ Select a SPECIFIC person from the Direct Message list first (look for 🟢).');
+ if (val === 'All' || val === 'Cashier' || val === 'Kitchen' || val === 'Admin' || val === 'Reception' || val === 'Cleaner' || val === 'Guard') {        alert('⚠️ Select a SPECIFIC person from the Direct Message list first (look for 🟢).');
         return;
     }
     await scFetchPresence();   // fresh online status before ringing
@@ -1210,17 +1205,24 @@ function scToggleSound() {
 
 // ── Round 15: unread badge (the promised feature, finally alive) ──
 function scUpdateBadge() {
+    // 🆕 Round 18: badge on EVERY page — v4 tab badge + hotel floating button badge
     var el = document.getElementById('stab19');
-    if (!el) return;
     var b = document.getElementById('scUnreadBadge');
-    if (!b) {
-        b = document.createElement('span');
-        b.id = 'scUnreadBadge';
-        b.style.cssText = 'background:#ef4444;color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;margin-left:auto;flex-shrink:0;';
-        el.appendChild(b);
+    if (el) {
+        if (!b) {
+            b = document.createElement('span');
+            b.id = 'scUnreadBadge';
+            b.style.cssText = 'background:#ef4444;color:#fff;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 5px;margin-left:auto;flex-shrink:0;';
+            el.appendChild(b);
+        }
+        if (SC.unread > 0) { b.textContent = SC.unread > 99 ? '99+' : SC.unread; b.style.display = 'inline-flex'; }
+        else { b.style.display = 'none'; }
     }
-    if (SC.unread > 0) { b.textContent = SC.unread > 99 ? '99+' : SC.unread; b.style.display = 'inline-flex'; }
-    else { b.style.display = 'none'; }
+    var fb = document.getElementById('scFabBadge');
+    if (fb) {
+        if (SC.unread > 0) { fb.textContent = SC.unread > 99 ? '99+' : SC.unread; fb.style.display = 'flex'; }
+        else { fb.style.display = 'none'; }
+    }
 }
 
 // ================================================================
