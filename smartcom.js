@@ -339,7 +339,11 @@ function scSend(p) {
     if (p.reply_to) {
         msg.reply_to_id = p.reply_to.id;
     }
- if (val === 'All' || val === 'Cashier' || val === 'Kitchen' || val === 'Admin' || val === 'Reception' || val === 'Cleaner' || val === 'Guard') {        msg.recipient = 'Direct'; msg.recipient_id = val; msg.recipient_name = nm;
+ if (val === 'All' || val === 'Cashier' || val === 'Kitchen' || val === 'Admin' || val === 'Reception' || val === 'Cleaner' || val === 'Guard') 
+ {
+        msg.recipient = val;
+    } else {
+        msg.recipient = 'Direct'; msg.recipient_id = val; msg.recipient_name = nm;
     }
 
        supabaseClient.from('chat_messages').insert([msg]).then(function(r) {
