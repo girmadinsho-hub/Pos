@@ -5959,8 +5959,7 @@ window.SLP_PAT = [
     { re: /^(.*?) has an UNPAID bill\./, am: "$1 ያልተከፈለ ሂሳብ አለበት።", om: "$1 herrega hin kaffalamne qaba." },
     { re: /^Table (\w+) — (.*)$/, am: "ጠረጴዛ $1 — $2", om: "Taabulii $1 — $2" },
     { re: /^Order (\S+)$/, am: "ትዕዛዝ $1", om: "Ajaja $1" },
-    { re: /^(\d+) (item|items|round|rounds)(.*)$/, am: "$1 $2$3", om: "$1 $2$3" },
-    { re: /^(.*?) checked in to Room (\w+)$/, am: "$1 ወደ ክፍል $2 ገብቷል", om: "$1 kutaa $2 seenesseera" },
+    { re: /^(\d+) (item|items)(.*)$/, am: "$1 $2$3", om: "$1 $2$3" },    { re: /^(.*?) checked in to Room (\w+)$/, am: "$1 ወደ ክፍል $2 ገብቷል", om: "$1 kutaa $2 seenesseera" },
     { re: /^(.*?) is Sold Out!$/, am: "$1 ተሽጧል!", om: "$1 gurgurameera!" },
     { re: /^(.*?) is deactivated\.$/, am: "$1 ተሰናክሏል።", om: "$1 dhaabfameera." },
     { re: /^(.*?) not found\./, am: "$1 አልተገኘም።", om: "$1 hin argamne." },
@@ -7576,4 +7575,219 @@ window.SLP_PAT.push(
     } catch (e) {}
   }
 })();
+
+/* ═══ QA PACK 3b · custom dialogs — printer chooser + printed receipts +
+   payment summary + round picker + chat overlay + branch/SMS dialogs +
+   sheet menu. Keys are space-normalized (engine collapses whitespace).
+   Existing entries always win. 2026-11-06 ═══ */
+(function () {
+  var ADD = {
+    am: {
+      /* ── pos.html: round picker / exit verify / recipe / loyalty ── */
+      "order_XXXXX...": "ትዕዛዝ_XXXXX...",
+      "This table has": "ይህ ጠረጴዛ",
+      ". Select which to load for payment:": "አለው። ለክፍያ የሚጫነውን ይምረጡ፡",
+      "🧪 Formulation": "🧪 የድብልቅ ዝርዝር",
+      "📝 Instructions": "📝 መመሪያ",
+      "Table/Ref:": "ጠረጴዛ/ማጣቀሻ፡",
+      /* ── ssprint.js: printer chooser modal ── */
+      "🖨️ Choose Printer": "🖨️ ማተሚያ ይምረጡ",
+      "Works with every printer type. Pick how this device prints — you will not be asked again (change it anytime in Settings).": "ከሁሉም የማተሚያ ዓይነቶች ጋር ይሰራል። ይህ መሣሪያ እንዴት እንደሚታትም ይምረጡ — ደግመን አይጠየቅዎም (በSettings ውስጥ በየጊዜው መቀየር ይቻላል)።",
+      "Paper size": "የወረቀት መጠን",
+      "P58E & pocket printers": "P58E እና ትንሽ ማተሚያዎች",
+      "Standard POS printers": "መደበኛ POS ማተሚያዎች",
+      "🔵 Bluetooth Thermal Printer": "🔵 የብሉቱዝ ተርማል ማተሚያ",
+      "Portable 58/80mm thermal — fast & auto-cut": "ተሸካሚ 58/80ሚሜ ተርማል — ፈጣን እና ራስ-ቆራጭ",
+      "🔌 USB Thermal Printer": "🔌 የUSB ተርማል ማተሚያ",
+      "Thermal printer connected by cable": "በኬብል የተገናኘ ተርማል ማተሚያ",
+      "📄 All Other Printers (WiFi, HP, Epson...)": "📄 ሁሉም ሌሎች ማተሚያዎች (WiFi፣ HP፣ Epson...)",
+      "Uses the phone's print system — works with everything": "የስልክዎን የማተሚያ ስርዓት ይጠቀማል — ከሁሉም ጋር ይሰራል",
+      "🧪 Test Print": "🧪 የሙከራ ማተሚያ",
+      /* ── ssprint.js: printer alerts ── */
+      "No receipt to print.": "ለማተም ደረሰኝ የለም።",
+      "No receipt to print. Complete a sale first.": "ለማተም ደረሰኝ የለም። መጀመሪያ ሽያጭ ይፈጽሙ።",
+      "✅ Printed (Bluetooth thermal).": "✅ ታትሟል (ብሉቱዝ ተርማል)።",
+      "✅ Printed (USB thermal).": "✅ ታትሟል (USB ተርማል)።",
+      "✅ Saved: System print. Choose your printer in the print preview.": "✅ ተቀምጧል፡ የስርዓት ማተሚያ። በማተሚያ ቅድመ እይታ ውስጥ ማተሚያዎን ይምረጡ።",
+      "✅ Saved! Now select your printer...": "✅ ተቀምጧል! አሁን ማተሚያዎን ይምረጡ...",
+      "Choose a printer type first.": "መጀመሪያ የማተሚያ ዓይነት ይምረጡ።",
+      /* ── receipt labels (printed via SLP_T — print window has no lang.js) ── */
+      "Tel:": "ስልክ፡",
+      "TIN:": "የግብር ቁጥር፡",
+      "Date:": "ቀን፡",
+      "Invoice:": "ደረሰኝ ቁጥር፡",
+      "Cashier:": "ካሺር፡",
+      "Order:": "ትዕዛዝ፡",
+      "Subtotal": "ንዑስ ድምር",
+      "Discount": "ቅናሽ",
+      "Tax": "ግብር",
+      "TOTAL": "ጠቅላላ",
+      "Payment": "ክፍያ",
+      "Thank you for coming!": "ስለመጡ እናመሰግናለን!",
+      /* ── shared.js: contact / branch / SMS dialogs ── */
+      "📞 Contact Your Provider": "📞 አቅራቢዎን ይገናኙ",
+      "📞 Contact Your Provider: 💬 WhatsApp: +251973316100 📧 girmadinsho@gmail.com": "📞 አቅራቢዎን ይገናኙ፡\n💬 ዋትስአፕ፡ +251973316100\n📧 girmadinsho@gmail.com",
+      "Loading shops…": "ሱፎችን በመጫን ላይ…",
+      "Loading branches…": "ቅርንጫፎችን በመጫን ላይ…",
+      "No branches yet. Use the form above to add one.": "እስካሁን ቅርንጫፎች የሉም። አንድ ለመጨመር ከላይ ያለውን ማስገቢያ ይጠቀሙ።",
+      "Error loading branches.": "ቅርንጫፎችን በመጫን ላይ ስህተት።",
+      "Only available for Enterprise plans.": "ለEnterprise ዕቅዶች ብቻ ይገኝል።",
+      "Enter branch name!": "የቅርንጫፍ ስም ይጻፉ!",
+      "Branch name:": "የቅርንጫፍ ስም፡",
+      "✅ Branch updated!": "✅ ቅርንጫፍ ተዘምኗል!",
+      "Deactivate this branch? Products and sales will not be deleted.": "ይህ ቅርንጫፍ ይቋረጥ? ምርቶች እና ሽያጭ አይሰረዙም።",
+      "✅ Branch deactivated.": "✅ ቅርንጫፍ ተቋርጧል።",
+      "⚠️ This feature requires an Enterprise licence.": "⚠️ ይህ ባህርይ የEnterprise ፍቃድ ይፈልጋል።",
+      "📞 Phone (optional — for direct send)": "📞 ስልክ (አማራጭ — በቀጥታ ለመላክ)",
+      "Local numbers get +": "የሀገር ውስጥ ቁጥሮች ላይ +",
+      "added automatically. Worldwide: type with + (e.g., +44…).": "በራስ-ሰር ይጨመራል። ለዓለም አቀፍ ቁጥሮች፡ ከ+ ጋር ይጻፉ (ለምሳሌ +44…)።",
+      "912 345 678 or +44…": "912 345 678 ወይም +44…",
+      "Enter a phone number for SMS.": "ለSMS የስልክ ቁጥር ይጻፉ።",
+      "❌ No valid phone number stored. Add a phone number to that record first.": "❌ ትክክለኛ የስልክ ቁጥር አልተቀመጠም። መጀመሪያ በዚያ መዝገብ ላይ የስልክ ቁጥር ይጨምሩ።",
+      /* ── sheet.js: spreadsheet menu ── */
+      "Sort A → Z": "A → Z ደርድር",
+      "Sort Z → A": "Z → A ደርድር",
+      "Hide Column": "ዓምድ ደብቅ",
+      "Show All Columns": "ሁሉንም ዓምዶች አሳይ",
+      "XLSX export failed.": "XLSX ማውጣት አልተሳካም።",
+      /* ── smartcom.js: video-call overlay ── */
+      "🎧 Two phones in one room? Use a headset to avoid echo.": "🎧 በአንድ ክፍል ውስጥ ሁለት ስልኮች? ድምፅ እንዳይመሳሰል ሄድሰት ይጠቀሙ።",
+      "Tap to switch camera": "ካሜራ ለመቀየር ይንኩ",
+      "Mute": "ድምፅ አጥፋ",
+      "Camera on/off": "ካሜራ አብራ/አጥፋ",
+      "Switch front/back camera": "የፊት/የኋላ ካሜራ ቀይር"
+    },
+    om: {
+      /* ── pos.html: round picker / exit verify / recipe / loyalty ── */
+      "order_XXXXX...": "ordara_XXXXX...",
+      "This table has": "Taabuliin kun",
+      ". Select which to load for payment:": "qaba. Kaffalaa fe'uuf kam fili:",
+      "🧪 Formulation": "🧪 Tarreecha Albuudaa",
+      "📝 Instructions": "📝 Qajeelfama",
+      "Table/Ref:": "Taabula/Wabii:",
+      /* ── ssprint.js: printer chooser modal ── */
+      "🖨️ Choose Printer": "🖨️ Maxxansituu Fili",
+      "Works with every printer type. Pick how this device prints — you will not be asked again (change it anytime in Settings).": "Maxxansituu gosa kamiiyyu waliin hojjeta. Meeshiin kun akkamitti akka maxxanu fili — irra deebi'ee hin gaafatamu (Settings keessatti yeroo kamiyyuu jijjiiramuu danda'a).",
+      "Paper size": "Guddina Waraqaa",
+      "P58E & pocket printers": "P58E fi maxxansitoota citaa",
+      "Standard POS printers": "Maxxansitoota POS istaandaardii",
+      "🔵 Bluetooth Thermal Printer": "🔵 Maxxansituu Teermallii Bluutuusii",
+      "Portable 58/80mm thermal — fast & auto-cut": "Teermallii carraa'aa 58/80mm — saffisaa fi of-murruu",
+      "🔌 USB Thermal Printer": "🔌 Maxxansituu Teermallii USB",
+      "Thermal printer connected by cable": "Maxxansituu teermallii keebiliin wal qabame",
+      "📄 All Other Printers (WiFi, HP, Epson...)": "📄 Maxxansitoota Biroo Hundaa (WiFi, HP, Epson...)",
+      "Uses the phone's print system — works with everything": "Sistiem maxxansaa telefoniiti fayyadama — waan hundaa waliin hojjeta",
+      "🧪 Test Print": "🧪 Maxxansa Yaalii",
+      /* ── ssprint.js: printer alerts ── */
+      "No receipt to print.": "Baasii maxxanuu hin jiru.",
+      "No receipt to print. Complete a sale first.": "Baasii maxxanuu hin jiru. Dargagaa tokko dura raawwadhu.",
+      "✅ Printed (Bluetooth thermal).": "✅ Maxxameera (teermallii Bluutuusii).",
+      "✅ Printed (USB thermal).": "✅ Maxxameera (teermallii USB).",
+      "✅ Saved: System print. Choose your printer in the print preview.": "✅ Qusameera: maxxansa sistiimii. Maxxansituu kee maxxana dursaa keessatti fili.",
+      "✅ Saved! Now select your printer...": "✅ Qusameera! Amma maxxansituu kee fili...",
+      "Choose a printer type first.": "Dura gosa maxxansituu fili.",
+      /* ── receipt labels (printed via SLP_T — print window has no lang.js) ── */
+      "Tel:": "Bilbila:",
+      "TIN:": "Lakkoofsa Gibiraa:",
+      "Date:": "Guyyaa:",
+      "Invoice:": "Lakkoofsa Baasii:",
+      "Cashier:": "Kashirii:",
+      "Order:": "Ordara:",
+      "Subtotal": "Ida'ama Xiqqaa",
+      "Discount": "Gadhiisa",
+      "Tax": "Gibira",
+      "TOTAL": "Waliigalaa",
+      "Payment": "Kaffala",
+      "Thank you for coming!": "Kottaniif galata galchaa!",
+      /* ── shared.js: contact / branch / SMS dialogs ── */
+      "📞 Contact Your Provider": "📞 Kennaa Tajaajilaa Qunnamsiisi",
+      "📞 Contact Your Provider: 💬 WhatsApp: +251973316100 📧 girmadinsho@gmail.com": "📞 Kennaa tajaajilaa qunnamsiisi:\n💬 WhatsApp: +251973316100\n📧 girmadinsho@gmail.com",
+      "Loading shops…": "Dukaanota fe'aa jira…",
+      "Loading branches…": "Affiloota fe'aa jira…",
+      "No branches yet. Use the form above to add one.": "Amma affiloonni hin jiranu. Tokko dabalachuuf galmeessa ol kanaa fayyadami.",
+      "Error loading branches.": "Dogoggora affiloota fe'uu.",
+      "Only available for Enterprise plans.": "Qopheessa Enterprise qofaaf argama.",
+      "Enter branch name!": "Maqaa affilaa barreessi!",
+      "Branch name:": "Maqaa Affilaa:",
+      "✅ Branch updated!": "✅ Affilli haaromameera!",
+      "Deactivate this branch? Products and sales will not be deleted.": "Affila kana jeequmsuu barbaaddaa? Meeshonniifi gurgurtoonni hin haqamani.",
+      "✅ Branch deactivated.": "✅ Affilli jeeqameera.",
+      "⚠️ This feature requires an Enterprise licence.": "⚠️ Amala kana qopheessa Enterprise barbaada.",
+      "📞 Phone (optional — for direct send)": "📞 Bilbila (filannoo — erguu direetiif)",
+      "Local numbers get +": "Lakkoofsota biyya keessaa irratti +",
+      "added automatically. Worldwide: type with + (e.g., +44…).": "ofumaan dabalata. Addunyaa irratti: + waliin barreessi (fkn +44…).",
+      "912 345 678 or +44…": "912 345 678 ykn +44…",
+      "Enter a phone number for SMS.": "SMS'aaf lakkoofsa bilbilaa barreessi.",
+      "❌ No valid phone number stored. Add a phone number to that record first.": "❌ Lakkoofsa bilbilaa sirrii hin qusamne. Dura galmeen sanaa irratti lakkoofsa bilbilaa dabalisi.",
+      /* ── sheet.js: spreadsheet menu ── */
+      "Sort A → Z": "A → Z Tarteeffadhu",
+      "Sort Z → A": "Z → A Tarteeffadhu",
+      "Hide Column": "Kolaa Dhoksi",
+      "Show All Columns": "Koloota Hundaa Agarsiisi",
+      "XLSX export failed.": "XLSX baafachuu hin milkoofne.",
+      /* ── smartcom.js: video-call overlay ── */
+      "🎧 Two phones in one room? Use a headset to avoid echo.": "🎧 Bilbila lama kuta tokko keessaa? Gulaalaa akka hin uumamneef sassaabuu fayyadami.",
+      "Tap to switch camera": "Kaameraa Jijjiiruuf Cuqaasi",
+      "Mute": "Dheebisi",
+      "Camera on/off": "Kaameraa Bani/Cufi",
+      "Switch front/back camera": "Kaameraa Duraa/Duubaa Jijjiiri"
+    }
+  };
+  window.SLP_PHR = window.SLP_PHR || {};
+  for (var L in ADD) {
+    var d = window.SLP_PHR[L] = window.SLP_PHR[L] || {};
+    for (var k in ADD[L]) if (d[k] == null) d[k] = ADD[L][k];
+  }
+})();
+
+/* QA PACK 3b · dynamic patterns (space-normalized runtime text) */
+window.SLP_PAT.push(
+  { re: /^💵 Cash: Br ([\d.,]+) \| 💳 Card: Br ([\d.,]+)$/, am: "💵 ጥሬ ገንዘብ፡ Br $1 | 💳 ካርድ፡ Br $2", om: "💵 Qolqolaa: Br $1 | 💳 Kaardii: Br $2" },
+  { re: /^📱 Mobile: Br ([\d.,]+) \| 📝 Credit: Br ([\d.,]+)$/, am: "📱 ሞባይል፡ Br $1 | 📝 በዳይ፡ Br $2", om: "📱 Moobiilii: Br $1 | 📝 Balaa: Br $2" },
+  { re: /^\(worth Br ([\d.,]+)\)$/, am: "(ዋጋው Br $1)", om: "(gatiin Br $1)" },
+  { re: /^(\d+) rounds$/, am: "$1 ዙሮች", om: "$1 raawundii" },
+  { re: /^Round (\d+) — (.+)$/, am: "ዙር $1 — $2", om: "Raawundii $1 — $2" },
+  { re: /^❌ Print failed: (.+) You can change the printer in Printer Settings\.$/, am: "❌ ማተም አልተሳካም፡ $1\n\nማተሚያዎን በማተሚያ ቅንብሮች ውስጥ ማቀየር ይችላሉ።", om: "❌ Maxxansuu hin milkoofne: $1\n\nMaxxansituu kee Maxxansa Qindaa'ina keessatti jijjiidhu dandeessa." },
+  { re: /^❌ Print failed: (.+)$/, am: "❌ ማተም አልተሳካም፡ $1", om: "❌ Maxxansuu hin milkoofne: $1" },
+  { re: /^Switch to branch "(.+)"\? The page will reload with the new branch data\.$/, am: "ወደ ቅርንጫፍ \"$1\" ይቀየሩ? ገጹ በአዲሱ የቅርንጫፍ መረጃ እንደገና ይጫናል።", om: "Gara affilaa \"$1\"tti jijjiiruu barbaaddaa? Fuulli daata affilaa haaraa waliin of deebisa." },
+  { re: /^⚠️ You have reached the maximum number of branches \((\d+)\)\.$/, am: "⚠️ ወደ ከፍተኛው የቅርንጫፎች ብዛት ($1) ደርሰዋል።", om: "⚠️ Baay'ina affiloota olaanaa ($1) ga'eera." },
+  { re: /^✅ Branch "(.+)" created!$/, am: "✅ ቅርንጫፍ \"$1\" ተፈጥሯል!", om: "✅ Affilli \"$1\" uumameera!" },
+  { re: /^❌ Add shop failed: (.+)$/, am: "❌ ሱፍ መጨመር አልተሳካም፡ $1", om: "❌ Dukaan dabaluu hin milkoofne: $1" },
+  { re: /^❌ Edit shop failed: (.+)$/, am: "❌ ሱፍ ማስተካከል አልተሳካም፡ $1", om: "❌ Dukaan sirreeffachuu hin milkoofne: $1" },
+  { re: /^❌ Delete shop failed: (.+)$/, am: "❌ ሱፍ ማጥፋት አልተሳካም፡ $1", om: "❌ Dukaan balleessuu hin milkoofne: $1" },
+  { re: /^Ringing\.\.\. (\d+)s$/, am: "እየደዋወል ነው... $1ሰ", om: "Waamichaa jira... $1s" }
+);
+
+/* QA PACK 3b · build-time translator for print windows/popups.
+   The auto-engine only watches THIS document — receipts printed via
+   window.open + document.write (and ESC/POS thermal text) need labels
+   translated at BUILD time: ssprint.js wraps labels with SLP_T(...). */
+window.SLP_T = function (s) {
+  try {
+    var CUR = (window.LANG && typeof window.LANG.currentLang === 'function') ? window.LANG.currentLang() : 'en';
+    if (CUR !== 'am' && CUR !== 'om') return s;
+    var d = (window.SLP_PHR || {})[CUR];
+    if (!d) return s;
+    var t = String(s).replace(/\s+/g, ' ').trim();
+    if (!t || t.length > 160) return s;
+    if (!/[A-Za-z\u1200-\u137F]/.test(t) || t.length < 2) return s;
+    if (d[t] != null) return d[t];
+    var EMOJI_RE = /^((?:[\u2190-\u21FF\u2300-\u27BF\u2B00-\u2BFF\uFE0F\u200D\u20E3\u2705\u274C\u2714\u2716\u2764]|[\uD800-\uDBFF][\uDC00-\uDFFF])+)(\s?)([\s\S]*)$/;
+    var pre = '', stem = t, post = '';
+    var e = t.match(EMOJI_RE);
+    if (e && e[3] && /[A-Za-z]/.test(e[3])) { pre = e[1] + e[2]; stem = e[3]; }
+    var pm = stem.match(/([:\s…]+)$/);
+    if (pm && pm[1].length < stem.length) { post = pm[1]; stem = stem.slice(0, stem.length - pm[1].length); }
+    if (stem && stem !== t && d[stem] != null) return pre + d[stem] + post;
+    var PATS = window.SLP_PAT || [];
+    for (var i = 0; i < PATS.length; i++) {
+      var r = PATS[i];
+      var lang = (CUR === 'am') ? r.am : r.om;
+      if (!lang) continue;
+      try { if (r.re && r.re.test(t)) return t.replace(r.re, lang); } catch (e2) {}
+      if (stem && stem !== t) { try { if (r.re && r.re.test(stem)) return pre + stem.replace(r.re, lang) + post; } catch (e2) {} }
+    }
+  } catch (e) {}
+  return s;
+};
 
