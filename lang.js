@@ -6346,6 +6346,54 @@ function slpSwapMonths(s) {
   }
 })();
 
+/* ═══ QA PACK 1 · final trilingual QA 2026-11-05 — hotel desk chips/intercom
+   + kitchen & hotel alert gaps. Existing entries always win. ═══ */
+(function () {
+  var ADD = {
+    am: {
+      /* ── hotel desk (v7 modernization strings) ── */
+      "💬 Hotel Intercom": "💬 የሆቴል ኢንተርኮም",
+      "✅ Room ready": "✅ ክፍል ዝግጁ",
+      "🛏️ Checked in": "🛏️ ገብቷል",
+      "🔔 Checkout": "🔔 ውጣ",
+      "🧴 Amenities": "🧴 መጠቀሚያዎች",
+      "📢 Everyone (all staff)": "📢 ሁሉም (ለሁሉም ሠራተኞች)",
+      "Chat is still loading — try again in a few seconds.": "ውይይቱ አሁንም በመጫን ላይ ነው — ከጥቂት ሰከንዶች በኋላ እንደገና ይሞክሩ።",
+      "🔐 UNDO REQUIRES AUTHORIZATION\n\nEnter Manager/Owner PIN or Admin password:": "🔐 መልሶ ማስቀረት ማረጋገጫ ይፈልጋል\n\nየሥራ አስኪያጅ/ባለቤት PIN ወይም የአስተዳዳሪ የመግቢያ ቃል ያስገቡ፡"
+    },
+    om: {
+      /* ── hotel desk (v7 modernization strings) ── */
+      "💬 Hotel Intercom": "💬 Interkomii Hotela",
+      "✅ Room ready": "✅ Kutichi qopheesseera",
+      "🛏️ Checked in": "🛏️ Seeneera",
+      "🔔 Checkout": "🔔 Bahu",
+      "🧴 Amenities": "🧴 Meeshaalee",
+      "📢 Everyone (all staff)": "📢 Hundumaa (hojjetaanota hundaa)",
+      "Chat is still loading — try again in a few seconds.": "Waamichi kun ammo fe'aa jira — sekondii mura'a booda irra deebi'ii yaali.",
+      "🔐 UNDO REQUIRES AUTHORIZATION\n\nEnter Manager/Owner PIN or Admin password:": "🔐 DEEBIISUUN KAKAABSA BARBAADA\n\nPIN tallyaa/abbaa alangaa ykn jecha icciitii bulchaa galchi:"
+    }
+  };
+  window.SLP_PHR = window.SLP_PHR || {};
+  for (var L in ADD) {
+    var d = window.SLP_PHR[L] = window.SLP_PHR[L] || {};
+    for (var k in ADD[L]) if (d[k] == null) d[k] = ADD[L][k];
+  }
+})();
+
+/* QA PACK 1 · alert patterns (dynamic text: room numbers, names, minutes) */
+window.SLP_PAT.push(
+  { re: /^What is the problem in Room (.*)\?$/, am: "በክፍል $1 ላይ ምን ችግር አለ?", om: "Kutaa $1 keessatti rakkoon maal jira?" },
+  { re: /^✅ Device activated for: (.*)$/, am: "✅ መሣሪያ ለ$1 ተቀስቀሰ", om: "✅ Meeshiin kanaaf kakaasameera: $1" },
+  { re: /^🔒 Too many attempts\. Locked (.*) min\.$/, am: "🔒 በጣም ብዙ ሙከራዎች። ለ$1 ደቂቃዎች ተቆልፏል።", om: "🔒 Yaalii baay'ee taasifame. Minittiwwan $1 dabalataaf cufameera." },
+  { re: /^📶 Network error: (.*)$/, am: "📶 የአውታረ መረብ ስህተት፡ $1", om: "📶 Dogoggora sartuu: $1" },
+  { re: /^✅ New checkout: (.*)$/, am: "✅ አዲስ መውጣት፡ $1", om: "✅ Bahu haaraa: $1" },
+  { re: /^❌ Cancel the reservation for Room (.*)\?\\nThe room becomes free\.$/, am: "❌ የክፍል $1 ቀዳታ ይሰረዝ?\\nክፍሉ ነጻ ይሆናል።", om: "❌ Kabajji kutaa $1 haqamuu qabaa?\\nKutichi bilisa ta'a." },
+  { re: /^Error loading chefs: (.*)$/, am: "ሼፎችን በመጫን ላይ ስህተት፡ $1", om: "Dogoggora biyyooftaa sheefota: $1" },
+  { re: /^🔔 TABLE (.*) IS CALLING FOR A WAITER!$/, am: "🔔 ጠረጴዛ $1 አስተናጋጅ እየጠራ ነው!", om: "🔔 Taabulii $1 tajaajilattuu waamaa jira!" },
+  { re: /^❌ Wrong password (.*) times\. Undo authorization is LOCKED for (.*) minutes\.$/, am: "❌ የተሳሳተ የመግቢያ ቃል $1 ጊዜ። የመልሶ ማጽደቅ ስልጣን ለ$2 ደቂቃዎች ተቆልፏል።", om: "❌ Jecha icciitii yeroo $1 dogoggore. Murtiin deebii minittiwwan $2 dabalataaf cufameera." },
+  { re: /^❌ Failed to send: (.*)$/, am: "❌ መላክ አልተሳካም፡ $1", om: "❌ Erguu hin milkoofne: $1" }
+);
+
   /* ── auto engine ── */
 /* ═══════════════════════════════════════════════════════════════════
    AUTO-TRANSLATION ENGINE (inside the SLP-LANG-2 IIFE)
