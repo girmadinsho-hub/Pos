@@ -616,7 +616,7 @@ async function htlReserveArrive(roomId) {
     if (!room) return;
     var rs = htlReservedStayFor(roomId);
     if (!rs) { alert('No reservation found for this room.'); return; }
-    if (!confirm('🚪 ' + rs.guest_name + ' has arrived — check them in now?\n\nCheck-in becomes today; planned checkout stays ' + (rs.planned_checkout ? String(rs.planned_checkout).slice(0,10) : 'open') + '.')) return;
+    if (!await confirm('🚪 ' + rs.guest_name + ' has arrived — check them in now?\n\nCheck-in becomes today; planned checkout stays ' + (rs.planned_checkout ? String(rs.planned_checkout).slice(0,10) : 'open') + '.')) return;
     try {
         await htlSb.from('guest_stays').update({ status: 'active', check_in: new Date().toISOString() }).eq('id', rs.id);
         await htlSb.from('rooms').update({ status: 'occupied' }).eq('id', roomId);
@@ -631,7 +631,7 @@ async function htlReserveArrive(roomId) {
 async function htlCancelResv(roomId) {
     var room = HTL.rooms.find(function(r){ return r.id === roomId; });
     if (!room) return;
-    if (!confirm('❌ Cancel the reservation for Room ' + room.room_number + '?\nThe room becomes free.')) return;
+    if (!await confirm('❌ Cancel the reservation for Room ' + room.room_number + '?\nThe room becomes free.')) return;
     try {
         await htlSb.from('guest_stays').update({ status: 'cancelled' }).eq('room_id', roomId).eq('status', 'reserved');
         await htlSb.from('rooms').update({ status: 'available' }).eq('id', roomId);
