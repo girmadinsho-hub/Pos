@@ -7,7 +7,9 @@ var SS_PRINT = { method: null, paper: '58' };   // method: 'ble'|'usb'|'system'
 (function(){ try { var s = JSON.parse(localStorage.getItem('ss_printer') || 'null'); if (s) SS_PRINT = s; } catch(e){} })();
 function ssPrintSave() { localStorage.setItem('ss_printer', JSON.stringify(SS_PRINT)); }
 function ssCharWidth() { return SS_PRINT.paper === '80' ? 46 : 31; }
-
+/* QA PACK 3b · build-time translator — print windows/popups don't run lang.js,
+   so receipt labels are translated when the receipt string is built. */
+function prT(s) { return (typeof window.SLP_T === 'function') ? window.SLP_T(s) : s; }
 // ---------- ESC/POS byte helpers ----------
 function prCat(parts) {
     var t = 0; parts.forEach(function(p){ t += p.length; });
@@ -38,26 +40,26 @@ function prBuildReceipt() {
     var p = [prInit(), prAlign(1)];
     if (s.brand && s.brand.name) p.push(prBig(true), prBold(true), new TextEncoder().encode(s.brand.name + '\n'), prBig(false), prBold(false));
     if (s.brand && s.brand.address) p.push(new TextEncoder().encode(s.brand.address + '\n'));
-    if (s.brand && s.brand.phone) p.push(new TextEncoder().encode('Tel: ' + s.brand.phone + '\n'));
-    if (s.brand && s.brand.tinNumber) p.push(new TextEncoder().encode('TIN: ' + s.brand.tinNumber + '\n'));
+    if (s.brand && s.brand.phone) p.push(new TextEncoder().encode(prT('Tel:') + ' ' + s.brand.phone + '\n'));
+    if (s.brand && s.brand.tinNumber) p.push(new TextEncoder().encode(prT('TIN:') + ' ' + s.brand.tinNumber + '\n'));
     p.push(prAlign(0), prLine(),
-        prRow('Date: ' + s.dateStr + ' ' + s.timeStr, ''),
-        prRow('Invoice: ' + s.invoiceNo, ''));
-    if (s.cashier) p.push(prRow('Cashier: ' + s.cashier, ''));
-    if (s.orderType) p.push(prRow('Order: ' + s.orderType, ''));
+        prRow(prT('Date:') + ' ' + s.dateStr + ' ' + s.timeStr, ''),
+        prRow(prT('Invoice:') + ' ' + s.invoiceNo, ''));
+    if (s.cashier) p.push(prRow(prT('Cashier:') + ' ' + s.cashier, ''));
+    if (s.orderType) p.push(prRow(prT('Order:') + ' ' + s.orderType, ''));
     p.push(prLine());
     s.items.forEach(function(it) {
         p.push(new TextEncoder().encode(String(it.name).substring(0, ssCharWidth()) + '\n'));
         p.push(prRow('  ' + it.qty + ' x ' + n2(it.price), n2(it.price * it.qty)));
         if (it.modifiers && it.modifiers.length) p.push(new TextEncoder().encode('  + ' + it.modifiers.join(', ').substring(0, ssCharWidth() - 2) + '\n'));
     });
-    p.push(prLine(), prRow('Subtotal', n2(s.subtotal)));
-    if (s.discount > 0) p.push(prRow('Discount', '-' + n2(s.discount)));
-    if (s.tax > 0) p.push(prRow('Tax ' + (s.taxRate || 0) + '%', n2(s.tax)));
-    p.push(prBold(true), prBig(true), prRow('TOTAL', n2(s.total)), prBig(false), prBold(false));
+    p.push(prLine(), prRow(prT('Subtotal'), n2(s.subtotal)));
+    if (s.discount > 0) p.push(prRow(prT('Discount'), '-' + n2(s.discount)));
+    if (s.tax > 0) p.push(prRow(prT('Tax') + ' ' + (s.taxRate || 0) + '%', n2(s.tax)));
+    p.push(prBold(true), prBig(true), prRow(prT('TOTAL'), n2(s.total)), prBig(false), prBold(false));
     var pay = s.splitMode ? s.payments.map(function(x){ return x.method + ' ' + n2(x.amount); }).join(' + ') : (s.payments && s.payments[0] ? s.payments[0].method : 'cash');
-    p.push(prRow('Payment', pay), prLine(), prAlign(1),
-        new TextEncoder().encode(((s.brand && s.brand.receiptFooter) || 'Thank you for coming!') + '\n'),
+    p.push(prRow(prT('Payment'), pay), prLine(), prAlign(1),
+        new TextEncoder().encode(((s.brand && s.brand.receiptFooter) || prT('Thank you for coming!')) + '\n'),
         prFeed(3), prCut());
     return prCat(p);
 }
@@ -172,15 +174,15 @@ function prSystemPrint() {
         '.r { display: flex; justify-content: space-between; margin: 2px 0; }' +
         '</style></head><body>';
     var b = s.brand || {};
-    html += '<h1>' + (b.name || 'SmartShop Pro') + '</h1>';
+    html += '<h1>' + (b.name || 'BizMaster') + '</h1>';
     if (b.address) html += '<p class="c">' + b.address + '</p>';
-    if (b.phone) html += '<p class="c">Tel: ' + b.phone + '</p>';
-    if (b.tinNumber) html += '<p class="c">TIN: ' + b.tinNumber + '</p>';
+    if (b.phone) html += '<p class="c">' + prT('Tel:') + ' ' + b.phone + '</p>';
+    if (b.tinNumber) html += '<p class="c">' + prT('TIN:') + ' ' + b.tinNumber + '</p>';
     html += '<div class="line"></div>';
-    html += '<div class="r"><span>Date: ' + s.dateStr + ' ' + s.timeStr + '</span></div>';
-    html += '<div class="r"><span>Invoice: ' + s.invoiceNo + '</span></div>';
-    if (s.cashier) html += '<div class="r"><span>Cashier: ' + s.cashier + '</span></div>';
-    if (s.orderType) html += '<div class="r"><span>Order: ' + s.orderType + '</span></div>';
+    html += '<div class="r"><span>' + prT('Date:') + ' ' + s.dateStr + ' ' + s.timeStr + '</span></div>';
+    html += '<div class="r"><span>' + prT('Invoice:') + ' ' + s.invoiceNo + '</span></div>';
+    if (s.cashier) html += '<div class="r"><span>' + prT('Cashier:') + ' ' + s.cashier + '</span></div>';
+    if (s.orderType) html += '<div class="r"><span>' + prT('Order:') + ' ' + s.orderType + '</span></div>';
     html += '<div class="line"></div>';
     s.items.forEach(function(it) {
         html += '<div>' + String(it.name) + '</div>';
@@ -188,14 +190,14 @@ function prSystemPrint() {
         if (it.modifiers && it.modifiers.length) html += '<div style="font-size:10px;">+ ' + it.modifiers.join(', ') + '</div>';
     });
     html += '<div class="line"></div>';
-    html += '<div class="r"><span>Subtotal</span><span>' + n2(s.subtotal) + '</span></div>';
-    if (s.discount > 0) html += '<div class="r"><span>Discount</span><span>-' + n2(s.discount) + '</span></div>';
-    if (s.tax > 0) html += '<div class="r"><span>Tax ' + (s.taxRate || 0) + '%</span><span>' + n2(s.tax) + '</span></div>';
-    html += '<div class="total"><span>TOTAL</span><span>' + n2(s.total) + '</span></div>';
+    html += '<div class="r"><span>' + prT('Subtotal') + '</span><span>' + n2(s.subtotal) + '</span></div>';
+    if (s.discount > 0) html += '<div class="r"><span>' + prT('Discount') + '</span><span>-' + n2(s.discount) + '</span></div>';
+    if (s.tax > 0) html += '<div class="r"><span>' + prT('Tax') + ' ' + (s.taxRate || 0) + '%</span><span>' + n2(s.tax) + '</span></div>';
+    html += '<div class="total"><span>' + prT('TOTAL') + '</span><span>' + n2(s.total) + '</span></div>';
     var pay = s.splitMode ? s.payments.map(function(x){ return x.method + ' ' + n2(x.amount); }).join(' + ') : (s.payments && s.payments[0] ? s.payments[0].method : 'cash');
-    html += '<div class="r"><span>Payment</span><span>' + pay + '</span></div>';
+    html += '<div class="r"><span>' + prT('Payment') + '</span><span>' + pay + '</span></div>';
     html += '<div class="line"></div>';
-    html += '<p class="c" style="font-weight:bold;">' + (b.receiptFooter || 'Thank you for coming!') + '</p>';
+    html += '<p class="c" style="font-weight:bold;">' + (b.receiptFooter || prT('Thank you for coming!')) + '</p>';
     html += '</body></html>';
     printWindow.document.open(); printWindow.document.write(html); printWindow.document.close();
     printWindow.focus();
