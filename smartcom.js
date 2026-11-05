@@ -1042,7 +1042,7 @@ async function scCallFromChat(video) {
     await scFetchPresence();   // fresh online status before ringing
     var p = SC.presenceMap[val];
     if (!p || !p.online) {
-        if (confirm('⚫ ' + nm + ' appears OFFLINE (their app is not open).\n\nRing anyway? (they may get a missed-call message later)')) scCall(val, nm, video);
+        if (await confirm('⚫ ' + nm + ' appears OFFLINE (their app is not open).\n\nRing anyway? (they may get a missed-call message later)')) scCall(val, nm, video);
         return;
     }
     scCall(val, nm, video);
