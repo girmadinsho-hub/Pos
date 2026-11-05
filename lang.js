@@ -8201,3 +8201,272 @@ window.SLP_T = function (s) {
     })();
   } catch (e) { try { console.log('[lang] pack4 dialog installer skipped: ' + e.message); } catch (e2) {} }
 })();
+
+/* ═══ QA PACK 5 · master.html — Master Admin goes trilingual · 2026-11-06
+   master.html never loaded lang.js: page + dialogs were English-only and
+   popups were raw browser dialogs. With the lang.js include added to the
+   page, this pack covers the last gaps: Master panel cards & settings,
+   licence/shop lifecycle dialogs (dynamic), enterprise configurator,
+   ghost-shop tools, prompt option buttons. Existing entries win. ═══ */
+(function () {
+  'use strict';
+
+  var ADD = {
+    am: {
+      /* ── loading / access screens ── */
+      "Master Administration": "ዋና አስተዳደር",
+      "Verifying Master Access...": "የዋና መዳረሻ በመፈተሽ ላይ...",
+      "Master Access": "የዋና መዳረሻ",
+      "Authorized personnel only.": "ለተፈቀዱ ሠራተኞች ብቻ።",
+      "🔓 Access Panel": "🔓 የመግቢያ ክፍል",
+      "Your 4-digit extra security PIN (different from your password).": "የ4-አሃዝ ተጨማሪ የደህንነት ፒንዎ (ከየመግቢያ ቃልዎ የተለየ)።",
+      "👑 Master Panel": "👑 የዋና ክፍል",
+      /* ── sidebar ── */
+      "📋 Master Menu": "📋 የዋና ምናጫ",
+      "🔑 Licenses & Payments": "🔑 ፍቃዶች እና ክፍያዎች",
+      "🏪 Shops Command Center": "🏪 የሱፎች ትእዛዝ ማዕከል",
+      "📊 Reports & Tools": "📊 ሪፖርቶች እና መሣሪያዎች",
+      "⚙️ Settings & Plans": "⚙️ ቅንብሮች እና ዕቅዶች",
+      /* ── licence generator card ── */
+      "🔑 Generate Licence Key": "🔑 የፍቃድ ቁልፍ ይፍጠሩ",
+      "30 Days": "30 ቀናት",
+      "90 Days (10% off)": "90 ቀናት (10% ቅናሽ)",
+      "180 Days (15% off)": "180 ቀናት (15% ቅናሽ)",
+      "365 Days (20% off)": "365 ቀናት (20% ቅናሽ)",
+      "Generate Single Key": "አንድ ቁልፍ ይፍጠሩ",
+      "💰 Payment History": "💰 የክፍያ ታሪክ",
+      /* ── command center ── */
+      "🏪 All Shops — The Command Center": "🏪 ሁሉም ሱፎች — ትእዛዝ ማዕከል",
+      "Every shop, license key, expiry & action in one place": "እያንዳንዱ ሱቅ፣ የፍቃድ ቁልፍ፣ የማበጀት ቀን እና ተግባር በአንድ ቦታ",
+      "📊 CEO Dashboard": "📊 የዋና ሥራ አስኪያጅ ሰሌዳ",
+      "🔍 Shop Data Snapshot": "🔍 የሱቅ መረጃ አጭር እይታ",
+      "📊 Load": "📊 ይጫን",
+      "📜 Audit Log": "📜 የክለሳ መዝገብ",
+      /* ── system tools / danger zone ── */
+      "🛠️ System Tools": "🛠️ የስርዓት መሣሪያዎች",
+      "💾 Backup Data": "💾 መረጃ አስቀምጥ",
+      "📂 Restore Data": "📂 መረጃ መልስ",
+      "⚠️ Danger Zone": "⚠️ አደገኛ ክልል",
+      "🗑️ DELETE ALL DATA FOR A SHOP": "🗑️ ለሱቅ ሁሉንም መረጃ ይሰርዙ",
+      "👻 Find & Wipe Ghost Shops": "👻 የመንፈስ ሱፎችን ያግኙ እና ይሰርዙ",
+      /* ── plan manager ── */
+      "🏢 Plan Manager — Control Everything": "🏢 የዕቅድ አስተዳደር — ሁሉንም ይቆጣጠሩ",
+      "All prices, limits, features & Enterprise pricing for every plan — retail, café & hotel. Changes apply instantly. Nothing hardcoded.": "ሁሉም ዋጋዎች፣ ገደቦች፣ ባህርያት እና የEnterprise ዋጋ ለእያንዳንዱ ዕቅድ — ማሳለፍ፣ ካፌ እና ሆቴል። ለውጦች ወዲያውኑ ይተገበራሉ። ምንም የተተከለ የለም።",
+      "💾 Save All Plans": "💾 ሁሉንም ዕቅዶች ያስቀምጡ",
+      "Price = Base + (branches−1)×per-branch + (cashiers−1)×per-cashier": "ዋጋ = መሠረት + (ቅርንጫፎች−1)×በቅርንጫፍ + (ካሺሮች−1)×በካሺር",
+      /* ── configuration ── */
+      "⚙️ General Configuration": "⚙️ አጠቃላይ ቅንብሮች",
+      "Default Trial Days (new registrations)": "ነባሪ የሙከራ ቀናት (አዲስ ምዝገባዎች)",
+      "Trial Countdown Warning — days left before the banner shows (Round 13)": "የሙከራ ቆጣሪ ማስጠንቀቂያ — ከባነር ከመታየቱ በፊት የቀሩ ቀናት (Round 13)",
+      "Trial Shops Per Type — max shops of each type per trial account": "በዓይነት የሙከራ ሱፎች — በእያንዳንዱ የሙከራ መለያ የእያንዳንዱ ዓይነት ከፍተኛ ሱፎች",
+      "💾 Save Configuration": "💾 ቅንብሮችን ያስቀምጡ",
+      /* ── security & contacts ── */
+      "🔐 Master Security": "🔐 የዋና ደህንነት",
+      "🔑 Change Master Password": "🔑 የዋና የመግቢያ ቃል ይቀይሩ",
+      "📞 Support Contacts (All Customer Screens)": "📞 የድጋፍ አድራሻዎች (በሁሉም የደንበኛ ማያዎች)",
+      "Phone / WhatsApp (with country code) *": "ስልክ / ዋትስአፕ (ከሀገር ኮድ ጋር) *",
+      "Email": "ኢሜይል",
+      "Telegram (optional)": "ቴሌግራም (አማራጭ)",
+      "Facebook (optional)": "ፌስቡክ (አማራጭ)",
+      "Instagram (optional)": "ኢንስታግራም (አማራጭ)",
+      "Website (optional)": "ድረ-ገጽ (አማራጭ)",
+      "💾 Save Contacts": "💾 አድራሻዎችን ያስቀምጡ",
+      "e.g., 30": "ለምሳሌ፡ 30",
+      "e.g., 5": "ለምሳሌ፡ 5",
+      "e.g., 1": "ለምሳሌ፡ 1",
+      /* ── rendered rows / badges ── */
+      "TRIAL": "ሙከራ",
+      "BLOCKED": "ተቆልፏል",
+      "Start:": "መጀመሪያ፡",
+      "📧 Owner:": "📧 ባለቤት፡",
+      "No plans — run seed SQL.": "ዕቅዶች የሉም — የseed SQL ያሂዱ።",
+      "No plans found — run the plans seed SQL.": "ዕቅዶች አልተገኙም — የዕቅዶች የseed SQL ያሂዱ።",
+      /* ── prompt option buttons (standard dialog box) ── */
+      "📅 7 days": "📅 7 ቀናት",
+      "📅 30 days (1 month)": "📅 30 ቀናት (1 ወር)",
+      "📅 90 days (3 months)": "📅 90 ቀናት (3 ወራት)",
+      "📅 180 days (6 months)": "📅 180 ቀናት (6 ወራት)",
+      "📅 365 days (1 year)": "📅 365 ቀናት (1 ዓመት)",
+      "1 shop": "1 ሱቅ",
+      "2 shops": "2 ሱፎች",
+      "3 shops": "3 ሱፎች",
+      "5 shops": "5 ሱፎች",
+      "7 shops": "7 ሱፎች",
+      "10 shops": "10 ሱፎች",
+      "♾️ Unlimited shops": "♾️ ወሰን የለሽ ሱፎች",
+      "2 per shop": "2 በሱቅ",
+      "3 per shop": "3 በሱቅ",
+      "5 per shop": "5 በሱቅ",
+      "7 per shop": "7 በሱቅ",
+      "10 per shop": "10 በሱቅ",
+      "♾️ Unlimited": "♾️ ወሰን የለሽ"
+    },
+    om: {
+      /* ── loading / access screens ── */
+      "Master Administration": "Bulchiinsa Guddaa",
+      "Verifying Master Access...": "Seensa Guddaa mirkaneessaa jira...",
+      "Master Access": "Seensa Guddaa",
+      "Authorized personnel only.": "Qofa ogeessota hayyamaniitiif.",
+      "🔓 Access Panel": "🔓 Paaneeli seensaa",
+      "Your 4-digit extra security PIN (different from your password).": "Piinii nageenya dabalataa lakkoofsa afur kee (jecha icciitiis waliin adda).",
+      "👑 Master Panel": "👑 Paaneelii Guddaa",
+      /* ── sidebar ── */
+      "📋 Master Menu": "📋 Menyuu Guddaa",
+      "🔑 Licenses & Payments": "🔑 Liizii fi Kaffalaa",
+      "🏪 Shops Command Center": "🏪 Iddoo Bulchiinsa Dukaalota",
+      "📊 Reports & Tools": "📊 Riportii fi Meeshaalee",
+      "⚙️ Settings & Plans": "⚙️ Qindaa'ina fi Pilaanota",
+      /* ── licence generator card ── */
+      "🔑 Generate Licence Key": "🔑 Furtuu liizii uumi",
+      "30 Days": "Guyyaa 30",
+      "90 Days (10% off)": "Guyyaa 90 (kasoo 10%)",
+      "180 Days (15% off)": "Guyyaa 180 (kasoo 15%)",
+      "365 Days (20% off)": "Guyyaa 365 (kasoo 20%)",
+      "Generate Single Key": "Furtuu tokko uumi",
+      "💰 Payment History": "💰 Seenaa kaffalaa",
+      /* ── command center ── */
+      "🏪 All Shops — The Command Center": "🏪 Dukaalota Hundaa — Iddoo Bulchiinsa",
+      "Every shop, license key, expiry & action in one place": "Dukaal hunda, furtuu liizii, guyyaa dhumaa fi hojii bakka tokkotti",
+      "📊 CEO Dashboard": "📊 Dashiboordii Bulchaa",
+      "🔍 Shop Data Snapshot": "🔍 Iddoo deetaa dukaalaa",
+      "📊 Load": "📊 Laadi",
+      "📜 Audit Log": "📜 Galmee qorannoo",
+      /* ── system tools / danger zone ── */
+      "🛠️ System Tools": "🛠️ Meeshaalee sirnaa",
+      "💾 Backup Data": "💾 Deetaa ol kaa'i",
+      "📂 Restore Data": "📂 Deetaa deebisi",
+      "⚠️ Danger Zone": "⚠️ Naannoo balaa",
+      "🗑️ DELETE ALL DATA FOR A SHOP": "🗑️ DEETAA DUKAALAA HUNDA BALLEESSI",
+      "👻 Find & Wipe Ghost Shops": "👻 Dukaalota mookaa barbaadi fi balleessi",
+      /* ── plan manager ── */
+      "🏢 Plan Manager — Control Everything": "🏢 Bulchaa Pilaanaa — Hundaa too'adhu",
+      "All prices, limits, features & Enterprise pricing for every plan — retail, café & hotel. Changes apply instantly. Nothing hardcoded.": "Gatii, daangaa, amaloota fi gatii Enterprise pilaana hundaaf — retail, kafee fi hotela. Jijjiirraan yeroo san raawwatama. Wantoonni natti qindaa'an hin jiru.",
+      "💾 Save All Plans": "💾 Pilaanota hundaa ol kaa'i",
+      "Price = Base + (branches−1)×per-branch + (cashiers−1)×per-cashier": "Gatii = Bu'uuraa + (afdilee−1)×afdii tokkoof + (kashiyarota−1)×kashiyar tokkoof",
+      /* ── configuration ── */
+      "⚙️ General Configuration": "⚙️ Qindaa'ina waliigalaa",
+      "Default Trial Days (new registrations)": "Guyyaa yaalii durtii (galmeewwan haaraa)",
+      "Trial Countdown Warning — days left before the banner shows (Round 13)": "Akeekkachiisa herergaa yaalii — guyyaa hafatan banneri mul'atu dura (Round 13)",
+      "Trial Shops Per Type — max shops of each type per trial account": "Dukaalota yaalii gosa tokkoof — daanga dukaalota gosa kanaa herrega yaalii tokkof",
+      "💾 Save Configuration": "💾 Qindaa'ina ol kaa'i",
+      /* ── security & contacts ── */
+      "🔐 Master Security": "🔐 Nageenya Guddaa",
+      "🔑 Change Master Password": "🔑 Jecha icciitii Guddaa jijjiiri",
+      "📞 Support Contacts (All Customer Screens)": "📞 Quunfamsa deggarsaa (Fuullotta kallattii hunda)",
+      "Phone / WhatsApp (with country code) *": "Bilbila / WhatsApp (koodii biyyaa waliin) *",
+      "Email": "Imeelii",
+      "Telegram (optional)": "Telegiraamii (filannoo)",
+      "Facebook (optional)": "Feisbuukii (filannoo)",
+      "Instagram (optional)": "Insistaagraamii (filannoo)",
+      "Website (optional)": "Websaayitii (filannoo)",
+      "💾 Save Contacts": "💾 Quunfamsa ol kaa'i",
+      "e.g., 30": "fkn: 30",
+      "e.g., 5": "fkn: 5",
+      "e.g., 1": "fkn: 1",
+      /* ── rendered rows / badges ── */
+      "TRIAL": "YAALII",
+      "BLOCKED": "CUFAME",
+      "Start:": "Banaa:",
+      "📧 Owner:": "📧 Abbaa:",
+      "No plans — run seed SQL.": "Pilaanon hin jiru — SQL seed raawwadhu.",
+      "No plans found — run the plans seed SQL.": "Pilaanon hin argamne — SQL seed pilaanaa raawwadhu.",
+      /* ── prompt option buttons (standard dialog box) ── */
+      "📅 7 days": "📅 guyyaa 7",
+      "📅 30 days (1 month)": "📅 guyyaa 30 (ji'a 1)",
+      "📅 90 days (3 months)": "📅 guyyaa 90 (ji'a 3)",
+      "📅 180 days (6 months)": "📅 guyyaa 180 (ji'a 6)",
+      "📅 365 days (1 year)": "📅 guyyaa 365 (waggaa 1)",
+      "1 shop": "dukaal 1",
+      "2 shops": "dukaalota 2",
+      "3 shops": "dukaalota 3",
+      "5 shops": "dukaalota 5",
+      "7 shops": "dukaalota 7",
+      "10 shops": "dukaalota 10",
+      "♾️ Unlimited shops": "♾️ Dukaalota daangaa hin qabne",
+      "2 per shop": "2 dukaal tokkoof",
+      "3 per shop": "3 dukaal tokkoof",
+      "5 per shop": "5 dukaal tokkoof",
+      "7 per shop": "7 dukaal tokkoof",
+      "10 per shop": "10 dukaal tokkoof",
+      "♾️ Unlimited": "♾️ Daangaa hin qabne"
+    }
+  };
+  window.SLP_PHR = window.SLP_PHR || {};
+  for (var L in ADD) {
+    var d = window.SLP_PHR[L] = window.SLP_PHR[L] || {};
+    for (var k in ADD[L]) { if (!d[k]) d[k] = ADD[L][k]; }
+  }
+
+  /* ═══ QA PACK 5b · master.html dynamic dialog patterns ═══ */
+  window.SLP_PAT = window.SLP_PAT || [];
+  window.SLP_PAT.push(
+    { re: /^❌ Login Failed: (.*)$/, am: "❌ መግቢያ አልተሳካም፡ $1", om: "❌ Seensa hin milkoofne: $1" },
+    { re: /^❌ Error: (.*)$/, am: "❌ ስህተት፡ $1", om: "❌ Dogoggora: $1" },
+    { re: /^❌ Backup failed: (.*)$/, am: "❌ ማስቀመጥ አልተሳካም፡ $1", om: "❌ Ol kaa'uun hin milkoofne: $1" },
+    { re: /^❌ Restore failed: (.*)$/, am: "❌ መመለስ አልተሳካም፡ $1", om: "❌ Deebisuun hin milkoofne: $1" },
+    { re: /^❌ Load failed: (.*)$/, am: "❌ መጫን አልተሳካም፡ $1", om: "❌ Laachuu hin milkoofne: $1" },
+    { re: /^❌ Scan error: (.*)$/, am: "❌ የመፈለግ ስህተት፡ $1", om: "❌ Dogoggora firriishii: $1" },
+    { re: /^Extend "(.*)" — select duration:$/, am: "«$1»ን ያስረዝዙ — ቆይታ ይምረጡ፡", om: "\"$1\" dheeressi — yeroo filadhu:" },
+    { re: /^✅ Extend "(.*)" by (\d+) days\? \(No payment recorded here — record it via Payment History if needed\.\)$/, am: "✅ «$1» በ$2 ቀናት ይራዘም? (ክፍያ እዚህ አይመዘገብም — ከሆነ ያስፈልግ በክፍያ ታሪክ ይመዝገቡ።)", om: "✅ \"$1\" guyyaa $2 dheeressuu? (Kaffaltiin asitti hin galmeeffamu — barbaachisaa taate Seenaa Kaffalaa irraan galmeessi.)" },
+    { re: /^✅ (.*) extended to (.*) \(Plan unchanged: (.*)\)$/, am: "✅ $1 እስከ $2 ድረስ ተራዝሟል (ዕቅዱ አልተቀየረም፡ $3)", om: "✅ $1 gara $2 dheeratameera (pilaanichi hin jijjiiramin: $3)" },
+    { re: /^Change "(.*)" to which plan\?$/, am: "«$1» ወደ የትኛው ዕቅድ ይቀየር?", om: "\"$1\" gara pilaana kamitti jijjiiramuu?" },
+    { re: /^Change "(.*)" to (.*) \((.*)\)\?$/, am: "«$1» ወደ $2 ($3) ይቀየር?", om: "\"$1\" gara $2 ($3) jijjiiramuu?" },
+    { re: /^✅ (.*) is now on (.*) \((.*)\)!$/, am: "✅ $1 አሁን በ$2 ($3) ላይ ነው!", om: "✅ $1 amma $2 ($3) irratti jira!" },
+    { re: /^Create license for "(.*)" — plan:$/, am: "ለ«$1» ፍቃድ ይፍጠሩ — ዕቅድ፡", om: "\"$1\" koofii liizii uumi — pilaana:" },
+    { re: /^🏢 Enterprise Configuration: 🏪 Branches: (.*) 👥 Cashiers\/shop: (.*) 💰 Computed price: (.*) Br\/month Create\?$/, am: "🏢 የEnterprise ልማት፡ 🏪 ቅርንጫፎች፡ $1 👥 ካሺሮች/ሱቅ፡ $2 💰 የተሰላ ዋጋ፡ $3 ብር/ወር ይፈጠር?", om: "🏢 Qindaa'ina Enterprise: 🏪 Afdilee: $1 👥 Kashiyarota/dukaal: $2 💰 Gatii herregame: $3 Br/ji'a uumu?" },
+    { re: /^✅ License for (.*)! 🔑 (.*) 📋 (.*) 🏢 (.*) branches · (.*) cashiers ⏰ (\d+) days$/, am: "✅ ለ$1 ፍቃድ! 🔑 $2 📋 $3 🏢 $4 ቅርንጫፎች · $5 ካሺሮች ⏰ $6 ቀናት", om: "✅ Liizii $1 koofii! 🔑 $2 📋 $3 🏢 afdilee $4 · kashiyarota $5 ⏰ guyyaa $6" },
+    { re: /^✅ License for (.*)! 🔑 (.*) 📋 (.*) ⏰ (\d+) days$/, am: "✅ ለ$1 ፍቃድ! 🔑 $2 📋 $3 ⏰ $4 ቀናት", om: "✅ Liizii $1 koofii! 🔑 $2 📋 $3 ⏰ guyyaa $4" },
+    { re: /^🗑️ DELETE the license key for "(.*)"\? 🔑 Key: (.*) 📋 Plan: (.*) ⏰ Expires: (.*) The SHOP is NOT deleted — it returns to free\/trial status\.$/, am: "🗑️ ለ«$1» ያለውን የፍቃድ ቁልፍ ይሰርዙ? 🔑 ቁልፍ፡ $2 📋 ዕቅድ፡ $3 ⏰ ያልቃል፡ $4 ሱቁ አይሰረዝም — ወደ ነጻ/ሙከራ ሁኔታ ይመለሳል።", om: "🗑️ Furtuu liizii \"$1\" qabu balleessi? 🔑 Furtuu: $2 📋 Pilaana: $3 ⏰ Dhuma: $4 Dukaalli hin balleeffamu — gara haala faaraa/yaalii deebi'a." },
+    { re: /^🚨 FINAL CONFIRM Delete key (.*) permanently\?$/, am: "🚨 የመጨረሻ ማረጋገጫ — ቁልፍ $1 በቋለኝነት ይሰረዝ?", om: "🚨 Mirkaneessa dhuma — furtuu $1 dhaabbatti balleessuu?" },
+    { re: /^✅ License deleted! (.*) is now on trial\/free status\.$/, am: "✅ ፍቃዱ ተሰርዟል! $1 አሁን በሙከራ/ነጻ ሁኔታ ላይ ነው።", om: "✅ Liiziin balleeffameera! $1 amma haala yaalii/faaraa irratti jira." },
+    { re: /^💣 DELETE SHOP "(.*)" \((.*)\) FOREVER\? Products, sales, staff, recipes, license — EVERYTHING erased\. This CANNOT be undone\.$/, am: "💣 ሱቅ «$1» ($2) ለዘለቃለም ይሰረዝ? ምርቶች፣ ሽያጭ፣ ሠራተኞች፣ ድብልቆች፣ ፍቃድ — ሁሉም ይጠፋል። ይህ መመለስ አይችልም።", om: "💣 Dukaal \"$1\" ($2) yeroo hundaaf balleessuu? Oomishoota, gurgurtaa, hojjattoota, resipee, liizii — hundi ni balleessamu. Kun deebisuu hin danda'amu." },
+    { re: /^🚨 FINAL CONFIRM Really erase "(.*)" and ALL its data from the database\?$/, am: "🚨 የመጨረሻ ማረጋገጫ — «$1»ን እና ሁሉንም መረጃውን ከመረጃ ቤቱ እውነተኛ እንዲጠፋ ይረጋገጡ?", om: "🚨 Mirkaneessa dhuma — \"$1\" fi deetaa isaa hunda dataabeesii irraa dhugumatti balleessuu?" },
+    { re: /^⚠️ DELETE ALL DATA for shop "(.*)"\? Products, sales, staff — EVERYTHING\. This cannot be undone\.$/, am: "⚠️ ለሱቅ «$1» ሁሉም መረጃ ይሰረዝ? ምርቶች፣ ሽያጭ፣ ሠራተኞች — ሁሉም። ይህ መመለስ አይችልም።", om: "⚠️ Deetaan hundi dukaalaa \"$1\" balleeffamuu? Oomishoota, gurgurtaa, hojjattoota — hundi. Kun deebisuu hin danda'amu." },
+    { re: /^🚨 FINAL WARNING! Are you ABSOLUTELY sure about "(.*)"\?$/, am: "🚨 የመጨረሻ ማስጠንቀቂያ! ስለ«$1» ፍጹም እርግጠኛ ነዎት?", om: "🚨 Akeekkachiisa dhuma! \"$1\" koofii guutummaatti mirkaneessaa jirtaa?" },
+    { re: /^✅ Shop "(.*)" completely deleted from database\.$/, am: "✅ ሱቅ «$1» ከመረጃ ቤቱ ሙሉ በሙሉ ተሰርዟል።", om: "✅ Dukaal \"$1\" dataabeesii irraa guutummaatti balleeffameera." },
+    { re: /^✅ Shop "(.*)" completely deleted\.$/, am: "✅ ሱቅ «$1» ሙሉ በሙሉ ተሰርዟል።", om: "✅ Dukaal \"$1\" guutummaatti balleeffameera." },
+    { re: /^FOUND GHOST DATA! Shop ID: (.*) Wipe ALL data for this shop\?$/, am: "የመንፈስ መረጃ ተገኝቷል! የሱቅ መለያ፡ $1 ለዚህ ሱቅ ሁሉንም መረጃ ይሰርዙ?", om: "DEETAA MOOKAA argame! IDn suuqii: $1 Deetaan hundi dukaal kanaa balleeffamuu?" },
+    { re: /^Wiping (.*)\.\.\.$/, am: "$1 በመሰረዝ ላይ…", om: "$1 balleessaa jira..." },
+    { re: /^✅ Ghost shop (.*) wiped!$/, am: "✅ የመንፈስ ሱቅ $1 ተሰርዟል!", om: "✅ Dukaalni mookaa $1 balleeffameera!" },
+    { re: /^✅ Saved! 📅 Trial days: (\d+) ⏰ Warning at (\d+) day\(s\) left 🏪 (\d+) shop\(s\) per type on trial$/, am: "✅ ተቀምጧል! 📅 የሙከራ ቀናት፡ $1 ⏰ ማስጠንቀቂያ በ$2 ቀናት ሲቀር 🏪 በዓይነት $3 ሱፎች በሙከራ ላይ", om: "✅ Ol kaa'ameera! 📅 Guyyaa yaalii: $1 ⏰ Akeekkachiisa guyyaa $2 hafan irratti 🏪 Gosa tokkoof dukaalota $3 yaalii irratti" },
+    { re: /^🆕 NEW CUSTOMER REGISTERED! 🏪 (.*) 🆔 (.*) 📧 (.*) 📱 (.*) 📅 Trial ends: (.*)$/, am: "🆕 አዲስ ደንበኛ ተመዝግቧል! 🏪 $1 🆔 $2 📧 $3 📱 $4 📅 ሙከራ፡ $5 ያበቃል", om: "🆕 Kallattii haaraa galmeessameera! 🏪 $1 🆔 $2 📧 $3 📱 $4 📅 Yaaliin $5 dhuma" }
+  );
+
+  /* ═══ QA PACK 5c · dialog translation bridge (long messages) ═══
+     The engine + SLP_T both cap translation at 160 chars, so long
+     warnings (lock-devices 231 chars, free-plan 279 chars…) showed
+     in English inside the standard dialog box. This late wrapper
+     translates dialog text up to 300 chars BEFORE whatever dialog
+     system is active (shared.js pages AND the pack-4 installer),
+     then delegates. Already-translated text passes through safely. */
+  try {
+    (function () {
+      if (window.__sdBr) return;
+      window.__sdBr = 1;
+      function TS(s) {
+        try {
+          if (typeof s !== 'string') return s;
+          var CUR = (window.LANG && typeof window.LANG.currentLang === 'function') ? window.LANG.currentLang() : 'en';
+          if (CUR !== 'am' && CUR !== 'om') return s;
+          var d = (window.SLP_PHR || {})[CUR];
+          if (!d) return s;
+          var t = s.replace(/\s+/g, ' ').trim();
+          if (!t || t.length > 300 || !/[A-Za-z]/.test(t)) return s;
+          if (d[t] != null) return d[t];
+          var pats = window.SLP_PAT || [], i, m;
+          for (i = 0; i < pats.length; i++) {
+            m = (CUR === 'am') ? pats[i].am : pats[i].om;
+            if (!m) continue;
+            try { if (pats[i].re && pats[i].re.test(t)) return t.replace(pats[i].re, m); } catch (e) {}
+          }
+          return s;
+        } catch (e) { return s; }
+      }
+      var A = window.alert, C = window.confirm, P = window.prompt;
+      window.alert = function (m) { return A.call(window, TS(String(m == null ? '' : m))); };
+      window.confirm = function (m) { return C.call(window, TS(String(m == null ? '' : m))); };
+      window.prompt = function (m, d, o) { return P.call(window, TS(String(m == null ? '' : m)), d, o); };
+    })();
+  } catch (e) { try { console.log('[lang] pack5 bridge skipped: ' + e.message); } catch (e2) {} }
+})();
+
