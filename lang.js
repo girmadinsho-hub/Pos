@@ -7791,3 +7791,413 @@ window.SLP_T = function (s) {
   return s;
 };
 
+/* ═══ QA PACK 4 · admin-clean.html UI + STANDARD DIALOG BOX on every page
+   · 2026-11-06 ═══
+   (a) ~90 admin phrases — sidebar cards, product form, money/staff labels,
+       auth + module alert texts. Existing entries always win.
+   (b) dynamic dialog patterns (space-normalized, $1/$2 captures).
+   (c) STANDARD DIALOG BOX installer — hotel / kitchen / staff / index /
+       help (pages without shared.js) still show raw browser popups.
+       This installs the same styled centered box used by pos/admin,
+       translated at build time. Pages that already have shared.js's
+       system are left untouched. ═══ */
+(function () {
+  'use strict';
+
+  var ADD = {
+    am: {
+      /* ── admin-clean.html page strings ── */
+      "🔓 Sign In": "🔓 ይግቡ",
+      "🔓 Unlock": "🔓 ይከፈት",
+      "💰 Revenue": "💰 ገቢ",
+      "💎 Net Profit": "💎 የተጣራ ትርፍ",
+      "📈 Gross Profit": "📈 አጠቃላይ ትርፍ",
+      "📈 Sales (7 Days)": "📈 ሽያጭ (7 ቀናት)",
+      "💸 Expenses": "💸 ወጪዎች",
+      "🔔 Salary": "🔔 ደመወዝ",
+      "🏦 Loans": "🏦 ብድሮች",
+      "💳 Credit": "💳 ብድር",
+      "💳 Payment Methods": "💳 የክፍያ ዘዴዎች",
+      "🧮 Stock Count": "🧮 የዕቃ ቆጠራ",
+      "🚚 Transfer": "🚚 ማስተላለፍ",
+      "🚨 Restock": "🚨 ዕቃ መሙላት",
+      "📅 Expiring": "📅 የሚያልቅ",
+      "📅 Expiry (optional)": "📅 የማበጀት ቀን (አማራጭ)",
+      "📅 Week": "📅 ሳምንት",
+      "📅 Month": "📅 ወር",
+      "📅 Year": "📅 ዓመት",
+      "📊 Stock Qty": "📊 የዕቃ ብዛት",
+      "📦 Product Name": "📦 የምርት ስም",
+      "📦 Bulk Pricing (quantity discounts)": "📦 የብዛት ዋጋ (የብዛት ቅናሾች)",
+      "💵 Selling Price *": "💵 የሽያጭ ዋጋ *",
+      "🖼️ Image (optional)": "🖼️ ምስል (አማራጭ)",
+      "📱 Show on Customer QR Menu": "📱 በደንበኛ QR ምናጫ ላይ ማሳየት",
+      "🏷️ Product Type — the 4-type law": "🏷️ የምርት ዓይነት — የ4 ዓይነት ሕግ",
+      "🎨 Has Variants (colors, sizes…)": "🎨 ተለዋጭነቶች አሉት (ቀለሞች፣ መጠኖች…)",
+      "🛠️ Modifiers & Add-ons (e.g., Extras, Sugar, Size)": "🛠️ መቀየሪያዎች እና ተጨማሪዎች (ለምሳሌ፡ ተጨማሪዎች፣ ስኳር፣ መጠን)",
+      "🍳 Prep Station (kitchen routing)": "🍳 የዝግጅት ጣቢያ (የምድር ማስተላለፍ)",
+      "🍹 Bar / Cold": "🍹 ባር / ቀዝቃዛ",
+      /* ── standard dialog chrome ── */
+      "Input": "ማስገቢያ",
+      "Type here...": "እዚህ ይጻፉ...",
+      /* ── auth / module alerts (static) ── */
+      "📋 Shop ID copied!": "📋 የሱቅ መለያ ተቀድቷል!",
+      "Address:": "አድራሻ፡",
+      "Please choose an image file (jpg, png, webp).": "እባክዎ የምስል ፋይል ይምረጡ (jpg, png, webp)።",
+      "✅ Image uploaded! It will show on the customer menu.": "✅ ምስሉ ተጭኗል! በደንበኛ ምናጫ ላይ ይታያል።",
+      "⚠️ Uploaded as inline image (storage offline). The photo will still work, but the storage version is faster.": "⚠️ እንደ ውስጣዊ ምስል ተጭኗል (ማከሻው አይሠራም)። ፎቶው ቢሆንም ይሠራል — ነገር ግን የማከሻው ቅጽ የበለጠ ፈጣን ነው።",
+      "Customer name:": "የደንበኛ ስም፡",
+      "Customer phone:": "የደንበኛ ስልክ፡",
+      "Total amount:": "ጠቅላላ መጠን፡",
+      "⏰ Trial ended. Contact your provider to activate a plan.": "⏰ የሙከራ ጊዜው አልቋል። ዕቅድ ለማስጀመር አቅራቢዎን ይገናኙ።",
+      "✅ Continuing on the Free plan. 15 products · 1 cashier · all your data is safe. Upgrade anytime: License tab.": "✅ በFree ዕቅድ ላይ ቀጥለዋል። 15 ምርቶች · 1 ካሺር — መረጃዎ ሁሉ ደህን ነው። በየጊዜው ያሻሽሉ፡ በLicense ንዑስ ገጽ።",
+      "⏭ Skip this occurrence? No expense is recorded — the next due date simply moves forward. (Use when a payment was waived or already paid elsewhere.)": "⏭ ይህን ጊዜ ይዘለሉ? ምንም ወጪ አይመዘገብም — ቀጣዩ የመክፈያ ቀን ብቻ ወደ ፊት ይሸጋጋል። (ክፍያ ሲቀር ወይም በሌላ ቦታ በተከፈለበት ጊዜ ይጠቀሙ።)",
+      "Person / business name:": "የሰው / የንግድ ስም፡",
+      "Type (receivable = they owe you / payable = you owe them):": "ዓይነት (ገቢ = እነሱ ይገዙዎታል / ወጪ = እርስዎ ይገዙባቸዋል):",
+      "Phone (optional):": "ስልክ (አማራጭ):",
+      "Description (optional):": "መገለጫ (አማራጭ):",
+      "Name:": "ስም፡",
+      "Account name:": "የመለያ ስም፡",
+      "Account name (e.g., CBE Main, Awash):": "የመለያ ስም (ለምሳሌ፡ CBE ዋና፣ Awash):",
+      "Opening balance:": "የመክፈቻ ሚዛን፡",
+      "Balance:": "ሚዛን፡",
+      "Description:": "መገለጫ፡",
+      "📍 Getting your location… Please allow location access. Stand at your shop entrance for the best accuracy.": "📍 አካባቢዎን በመፈለግ ላይ… እባክዎ የቦታ መዳረሻን ይፍቀዱ። ለተሻለ ትክክለኝነት በሱቁ በር ላይ ቆመው ይጠብቁ።",
+      "🔒 Lock ALL staff devices NOW? Every POS, Kitchen, and Hotel terminal will be disabled instantly. Use when: device stolen, after closing time, or suspected misuse.": "🔒 የሁሉም ሠራተኛ መሣሪያዎች አሁን ይቆለሉ? እያንዳንዱ POS፣ ምድር እና ሆቴል ተርሚናል ወዲያውኑ ይሰናከላል። በዚህ ጊዜ ይጠቀሙ፡ መሣሪያ ሲሰረቅ፣ ከመዝጊያ በኋላ፣ ወይም የተጠቀም ጥርጣሬ ሲኖር።",
+      "⚠️ DELETE ALL DATA PERMANENTLY. This removes products, sales, staff, expenses, hotel records — EVERYTHING. (Fiscal receipts are kept for tax audit.) Enter YOUR account email to confirm:": "⚠️ እስከመጨረሻው ሁሉንም መረጃ ይሰረዙ። ይህ ምርቶችን፣ ሽያጭን፣ ሠራተኞችን፣ ወጪዎችን፣ የሆቴል መዝገቦችን — ሁሉንም ያስወግዳል። (የግብር ክለሳ ስለሚያስፈልግ የፊስካል ደረሰኞች ይቆያሉ።) ለማረጋገጥ የመለያዎን ኢሜይል ይጻፉ፡",
+      "🗑️ Move to the Free plan? Free plan: full menus, soft limits — 15 products · 1 cashier. Your data is NOT deleted. Your provider completes the switch in one minute — the licence stays active on other devices until then.": "🗑️ ወደ Free ዕቅድ ይሻሉ? Free ዕቅድ፡ ሙሉ ምናጫዎች፣ ለስላሳ ገደቦች — 15 ምርቶች · 1 ካሺር። መረጃዎ አይሰረዝም። አቅራቢዎ መቀየሩን በአንድ ደቂቃ ይፈጽማል — ፍቃዱ እስከዚያ ጊዜ ድረስ በሌሎች መሣሪያዎች ላይ ንቁ ይቆያል።",
+      /* ── module UI labels ── */
+      "No sales": "ሽያጭ የለም",
+      "💰 Deposit": "💰 ቅድም ክፍያ",
+      "💰 Settle": "💰 ይፈታ",
+      "💰 Total": "💰 ጠቅላላ",
+      "👁️ Show Paid": "👁️ የተከፈለውን አሳይ",
+      "➕ New Note": "➕ አዲስ ማስታወሻ",
+      "All Types": "ሁሉም ዓይነቶች",
+      "All Accounts": "ሁሉም መለያዎች",
+      "📤 Withdraw": "📤 አውጣ",
+      "ERCA Report": "የERCA ሪፖርት",
+      "POS Terminal": "የPOS ተርሚናል",
+      "QR customer menu": "የQR የደንበኛ ምናጫ",
+      "QR menu — for customer tables": "የQR ምናጫ — ለደንበኛ ጠረጴዛዎች",
+      "Detailed Sales": "ዝርዝር ሽያጭ",
+      "Hotel rooms": "የሆቴል ክፍሎች",
+      "Tax reports": "የግብር ሪፖርቶች",
+      "· Card": "· ካርድ",
+      "· Mobile": "· ሞባይል",
+      "· Credit": "· ብድር",
+      "guest house": "የእንግዳ ቤት",
+      "fast food": "ፈጣን ምግብ",
+      "this device": "ይህ መሣሪያ",
+      "NET PAYABLE": "የተጣራ ተከፋይ",
+      "NET PAY:": "የተጣራ ክፍያ፡",
+      "NET PAID:": "የተጣራ የተከፈለ፡",
+      "Tips/Bonus/Overtime (paid together)": "ትርፍ/ጉርሻ/የተጨመረ ሰዓት (በአንድ ጋር ይከፈላል)",
+      "BALANCE OWED": "የቀረ ብድር",
+      "PAID+ADV": "ተከፈል+ቅድም",
+      "Pay salary": "ደመወዝ ከፍል",
+      "Block login": "መግቢያ አግዳ",
+      "Allow login": "መግቢያ ፍቀድ",
+      "Account number": "የመለያ ቁጥር",
+      "e.g., Abebe Kebede": "ለምሳሌ፡ አበበ ከበደ",
+      "e.g., 1234": "ለምሳሌ፡ 1234",
+      "🔍 Name or position…": "🔍 ስም ወይም የሥራ ደረጃ…",
+      "Update failed": "ማሻሻል አልተሳካም",
+      "🔑 PIN": "🔑 ፒን",
+      "FROM (Br)": "ከ (ብር)",
+      "TO (Br)": "እስከ (ብር)",
+      "— night 1": "— ሌሊት 1"
+    },
+    om: {
+      /* ── admin-clean.html page strings ── */
+      "🔓 Sign In": "🔓 Seeni",
+      "🔓 Unlock": "🔓 Banaa",
+      "💰 Revenue": "💰 Galii",
+      "💎 Net Profit": "💎 Bu'aa qulqulluu",
+      "📈 Gross Profit": "📈 Bu'aa waliigalaa",
+      "📈 Sales (7 Days)": "📈 Gurgurtaa (Guyyaa 7)",
+      "💸 Expenses": "💸 Baasii",
+      "🔔 Salary": "🔔 Mindaa",
+      "🏦 Loans": "🏦 Liqii",
+      "💳 Credit": "💳 Boruu",
+      "💳 Payment Methods": "💳 Malawwan kaffalaa",
+      "🧮 Stock Count": "🧮 Herrega kuusaa",
+      "🚚 Transfer": "🚚 Ce'umsa",
+      "🚨 Restock": "🚨 Kuusaa guutuu",
+      "📅 Expiring": "📅 Dhuma bira jira",
+      "📅 Expiry (optional)": "📅 Guyyaa dhuma bira (filannoo)",
+      "📅 Week": "📅 Torban",
+      "📅 Month": "📅 Ji'a",
+      "📅 Year": "📅 Waggaa",
+      "📊 Stock Qty": "📊 Baay'ina kuusaa",
+      "📦 Product Name": "📦 Maqaa oomishaa",
+      "📦 Bulk Pricing (quantity discounts)": "📦 Gatii baay'inaa (kasoo safaraa)",
+      "💵 Selling Price *": "💵 Gatii gurgurtaa *",
+      "🖼️ Image (optional)": "🖼️ Mala (filannoo)",
+      "📱 Show on Customer QR Menu": "📱 Menyuu QR kallattii irratti agarsiisi",
+      "🏷️ Product Type — the 4-type law": "🏷️ Gosa oomishaa — seera gosoota afur",
+      "🎨 Has Variants (colors, sizes…)": "🎨 Garaagarummaa qaba (mallattoo, safara…)",
+      "🛠️ Modifiers & Add-ons (e.g., Extras, Sugar, Size)": "🛠️ Dabalataawwan (fkn: Dabalata, Shukkara, Safara)",
+      "🍳 Prep Station (kitchen routing)": "🍳 Iddoo qopheessaa (raabsa keettii)",
+      "🍹 Bar / Cold": "🍹 Baar / Qorraa",
+      /* ── standard dialog chrome ── */
+      "Input": "Galchii",
+      "Type here...": "Asitti barreessi...",
+      /* ── auth / module alerts (static) ── */
+      "📋 Shop ID copied!": "📋 IDn suuqii kopiyaadameera!",
+      "Address:": "Teessoo:",
+      "Please choose an image file (jpg, png, webp).": "Maaloo fayila mala filadhu (jpg, png, webp).",
+      "✅ Image uploaded! It will show on the customer menu.": "✅ Malti ol kaaframeera! Menyuu kallattii irratti mul'ata.",
+      "⚠️ Uploaded as inline image (storage offline). The photo will still work, but the storage version is faster.": "⚠️ Akka mala sararaa keessaa ol kaaframeera (kuusni hin sochoone). Foddaan garuu hojjedhaa, verishiniin kuusaa immoo saffisa qaba.",
+      "Customer name:": "Maqaa kallattii:",
+      "Customer phone:": "Bilbila kallattii:",
+      "Total amount:": "Baay'ina waliigalaa:",
+      "⏰ Trial ended. Contact your provider to activate a plan.": "⏰ Yeroon yaalii dhumeera. Pilaana kakaasuuf dhiyeessa kee beeksi.",
+      "✅ Continuing on the Free plan. 15 products · 1 cashier · all your data is safe. Upgrade anytime: License tab.": "✅ Pilaana Faaraa irratti itti fufaadha. Oomishoota 15 · Kashier tokko — deetaan kee hundi nageenya qaba. Yeroo barbaaddetti: maxxansa Liizii.",
+      "⏭ Skip this occurrence? No expense is recorded — the next due date simply moves forward. (Use when a payment was waived or already paid elsewhere.)": "⏭ Yeroo kana darbi? Baasiin tokkollee hin galmeeffamu — guyyaan kaffalaa itti aanu fuulduratti ofiin deema. (Yeroo kaffaltiin dhabame ykn biraa kaffalame fayyadami.)",
+      "Person / business name:": "Maqaa namaa / daldalaa:",
+      "Type (receivable = they owe you / payable = you owe them):": "Gosa (argamsiisa = isaan si liqeesu / kaffalaa = ati isaan liqeesa):",
+      "Phone (optional):": "Bilbila (filannoo):",
+      "Description (optional):": "Ibsa (filannoo):",
+      "Name:": "Maqaa:",
+      "Account name:": "Maqaa akkaawuntii:",
+      "Account name (e.g., CBE Main, Awash):": "Maqaa akkaawuntii (fkn: CBE Guddaa, Awash):",
+      "Opening balance:": "Miiqaan banaa:",
+      "Balance:": "Miiqaa:",
+      "Description:": "Ibsa:",
+      "📍 Getting your location… Please allow location access. Stand at your shop entrance for the best accuracy.": "📍 Bakkootta kee barbaadaa jira… Maaloo galchi iddoo hayyami. Madaansa gaaf hin qabduuf baha dukaalaa keetti dhaabbadhu.",
+      "🔒 Lock ALL staff devices NOW? Every POS, Kitchen, and Hotel terminal will be disabled instantly. Use when: device stolen, after closing time, or suspected misuse.": "🔒 Meeshan hojjattootaa hundi amma cufamu? Terminaliin POS, Keettii fi Hotela hundinuu yeroo san cufamu. Yeroo kanatti fayyadami: meeshiin yeroo hate, erga cufame booda, ykn yaaddoo fayyadama faallaa.",
+      "⚠️ DELETE ALL DATA PERMANENTLY. This removes products, sales, staff, expenses, hotel records — EVERYTHING. (Fiscal receipts are kept for tax audit.) Enter YOUR account email to confirm:": "⚠️ Deetaa hunda dhaabbatti balleessi. Kun oomishoota, gurgurtaa, hojjattoota, baasii, galmeewwan hotela — hunda balleessa. (Riisitootni fiskalaa yaalii belaatiif eegamu.) Mirkaneessuuf imeelii akkaawuntii kee barreessi:",
+      "🗑️ Move to the Free plan? Free plan: full menus, soft limits — 15 products · 1 cashier. Your data is NOT deleted. Your provider completes the switch in one minute — the licence stays active on other devices until then.": "🗑️ Gara pilaana Faaraatti dhaqaa? Pilaana Faaraa: menyoota guutuu, daangawwan laafaa — oomishoota 15 · cashier tokko. Deetaan kee hin balleeffamu. Dhiyeessi kee jijjiiricha daqiiqaa tokko keessatti xumura — liiziin kaarraa biraa irratti yeroo sanaa dhumaatti socho'aa ta'a.",
+      /* ── module UI labels ── */
+      "No sales": "Gurgurtaa hin jiru",
+      "💰 Deposit": "💰 Galii duraa",
+      "💰 Settle": "💰 Haadhu",
+      "💰 Total": "💰 Waliigalaa",
+      "👁️ Show Paid": "👁️ Kaffalame agarsiisi",
+      "➕ New Note": "➕ Yaadannoo haaraa",
+      "All Types": "Gosa hundaa",
+      "All Accounts": "Akkaawuntii hundaa",
+      "📤 Withdraw": "📤 Baafadhu",
+      "ERCA Report": "Riportii ERCA",
+      "POS Terminal": "Terminaalii POS",
+      "QR customer menu": "Menyuu kallattii QR",
+      "QR menu — for customer tables": "Menyuu QR — manawwan kallattii",
+      "Detailed Sales": "Gurgurtaa ifaa",
+      "Hotel rooms": "Kutaalee hotela",
+      "Tax reports": "Riportota belaa",
+      "· Card": "· Kaardii",
+      "· Mobile": "· Moobilii",
+      "· Credit": "· Boruu",
+      "guest house": "Mana kabajaa",
+      "fast food": "Nyaata saffisaa",
+      "this device": "Qubeen kun",
+      "NET PAYABLE": "Kaffalaa qulqulluu",
+      "NET PAY:": "Kaffalaa qulqulluu:",
+      "NET PAID:": "Kaffalamee qulqulluu:",
+      "Tips/Bonus/Overtime (paid together)": "Boonasii/To'annoo/Yeroo dabalataa (waliin kaffalama)",
+      "BALANCE OWED": "Liqii hafan",
+      "PAID+ADV": "Kaffalame+Dursee",
+      "Pay salary": "Mindaa kaffali",
+      "Block login": "Seensaa cufi",
+      "Allow login": "Seensaa bani",
+      "Account number": "Lakkoofsa akkaawuntii",
+      "e.g., Abebe Kebede": "fkn: Abebe Kebede",
+      "e.g., 1234": "fkn: 1234",
+      "🔍 Name or position…": "🔍 Maqaa ykn iddoo…",
+      "Update failed": "Haaromsuu hin milkoofne",
+      "🔑 PIN": "🔑 Piinii",
+      "FROM (Br)": "Irraa (Br)",
+      "TO (Br)": "Gee (Br)",
+      "— night 1": "— halkan 1"
+    }
+  };
+  window.SLP_PHR = window.SLP_PHR || {};
+  for (var L in ADD) {
+    var d = window.SLP_PHR[L] = window.SLP_PHR[L] || {};
+    for (var k in ADD[L]) { if (!d[k]) d[k] = ADD[L][k]; }
+  }
+
+  /* ═══ QA PACK 4b · dynamic dialog patterns (space-normalized text) ═══ */
+  window.SLP_PAT = window.SLP_PAT || [];
+  window.SLP_PAT.push(
+    { re: /^Switch to "(.*)"\? The page reloads with that shop\.$/, am: "ወደ «$1» ይቀየሩ? ገጹ በዚያ ሱቅ እንደገና ይጫናል።", om: "Gara \"$1\" jijjiiramuu? Fuulichi suuqii sanaa waliin deebi'ee laaddama." },
+    { re: /^Switch to branch "(.*)"\? The page will reload with the new branch data\.$/, am: "ወደ ቅርንጫፍ «$1» ይቀየሩ? ገጹ በአዲሱ ቅርንጫፍ መረጃ እንደገና ይጫናል።", om: "Gara afdii \"$1\" jijjiiramuu? Fuulichi deetaa afdii haaraa waliin deebi'ee laaddama." },
+    { re: /^⚠️ You have reached the maximum number of branches \((\d+)\)\.$/, am: "⚠️ የቅርንጫፎች ከፍተኛ ገደብ ላይ ደርሰዋል ($1)።", om: "⚠️ Daanga afdilee ol'aantutti geejjebdeetta ($1)." },
+    { re: /^✅ Branch "(.*)"\s*created!$/, am: "✅ ቅርንጫፍ «$1» ተፈጥሯል!", om: "✅ Afdii \"$1\" uumameera!" },
+    { re: /^❌ Add shop failed: (.*)$/, am: "❌ ሱቅ መጨመር አልተሳካም፡ $1", om: "❌ Dukaal uumuun hin milkoofne: $1" },
+    { re: /^❌ Edit shop failed: (.*)$/, am: "❌ ሱቅ ማስተናገድ አልተሳካም፡ $1", om: "❌ Dukaal sirreessuun hin milkoofne: $1" },
+    { re: /^❌ Delete shop failed: (.*)$/, am: "❌ ሱቅ ማስወገድ አልተሳካም፡ $1", om: "❌ Dukaal balleessuun hin milkoofne: $1" },
+    { re: /^Delete failed: (.*)$/, am: "መሰረዝ አልተሳካም፡ $1", om: "Balleessuun hin milkoofne: $1" },
+    { re: /^❌ Image upload failed: (.*)$/, am: "❌ ምስል መጫን አልተሳካም፡ $1", om: "❌ Mala ol kaa'uun hin milkoofne: $1" },
+    { re: /^📤 Send payment reminders\? (\d+) customer\(s\) will get a friendly WhatsApp message\. Each message opens in WhatsApp — you tap send there\.$/, am: "📤 የክፍያ አስታወሻዎች ይላኩ? $1 ደንበኞች ሰላምታ የዋትስአፕ መልእክት ያገኛሉ። እያንዳንዱ መልእክት በዋትስአፕ ውስጥ ይከፈታል — እርስዎ እዚያ መላኩን ይንኩ።", om: "📤 Beeksisa kaffalaa erguu? Kallattoonni $1 ergaa jaalalaa WhatsApp argatu. Ergaan hundi WhatsApp keessatti bana — ati asitti erguu cuqaasi." },
+    { re: /^💰 Mark as FULLY PAID\? (.*) — (.*) The record STAYS in the list with a ✅ PAID badge \(your proof of collection\)\. Remove it later with 🗑️ when you no longer need it\.$/, am: "💰 ሙሉ በሙሉ ተከፈለ ተብሎ ይመዘገብ? $1 — $2 መዝገቡ በዝርዝሩ ውስጥ ከ✅ ተከፈለ ምልክት ጋር ይቆያል (የማስቀመጥዎ ማስረጃ)። በኋላ ላይ፣ ሲኖርዎት፣ በ🗑️ ይሰርዙት።", om: "💰 Guutuu kaffalameetti galmeessuu? $1 — $2 Galmeen listii keessatti mallattoo ✅ KAFFALAMEE waliin hafu (mirkansa qabaachuu keetiif). Yeroo hin barbaanneef 🗑️ haqi." },
+    { re: /^↩️ Undo — mark as UNPAID again\? (.*) — (.*)$/, am: "↩️ መልሶ ማስቀመጥ — ያልተከፈለ እንደሆነ ይመዘገብ? $1 — $2", om: "↩️ Deebisiisuu — akka kaffalamuu hin qabneetti galmeessi? $1 — $2" },
+    { re: /^🗑️ Delete this recurring bill\? (.*) — (.*) Recorded expenses stay in your history\.$/, am: "🗑️ ይህን ቀጣይ ወጪ ይሰርዙ? $1 — $2 የተመዘገቡ ወጪዎች በታሪክዎ ውስጥ ይቆያሉ።", om: "🗑️ Baasii kana sochii qabu balleessi? $1 — $2 Baasii galmeeffamoon seenaa kee keessatti hafu." },
+    { re: /^🗑️ Delete this note\? "(.*)"$/, am: "🗑️ ይህን ማስታወሻ ይሰርዙ? «$1»", om: "🗑️ Yaadannoo kana balleessi? \"$1\"" },
+    { re: /^⛔ Revoke "(.*)"\? It will be locked INSTANTLY — the staff member using it cannot work until you restore\.$/, am: "⛔ «$1» ይቁም? ወዲያውኑ ይቆለላል — እስከ እርስዎ እስኪመልሱት ድረስ አገልጋዩ መሥራት አይችልም።", om: "⛔ \"$1\" haqi? Yeroo san cufama — erga deebisittii kaatti hojjachuun hin danda'u." },
+    { re: /^✅ Restore "(.*)"\?$/, am: "✅ «$1» ይመለስ?", om: "✅ \"$1\" deebisuu?" },
+    { re: /^New points balance for (.*):$/, am: "ለ$1 አዲስ የነጥብ ሚዛን፡", om: "Miiqaan poyintii haaraa $1 koofii:" },
+    { re: /^🗑️ Delete loyalty record for (.*)\? \((.*) points · (.*)\)$/, am: "🗑️ ለ$1 የታማኝነት መዝገብ ይሰረዝ? ($2 ነጥቦች · $3)", om: "🗑️ Galmeen jaalalaa $1 koofii balleessuu? (poyintii $2 · $3)" },
+    { re: /^✅ Loan recorded: (.*) — (.*)$/, am: "✅ ብድር ተመዝግቧል፡ $1 — $2", om: "✅ Liqii galmeeffameera: $1 — $2" },
+    { re: /^🗑️ Delete this loan record\? (.*) — (.*)$/, am: "🗑️ ይህን የብድር መዝገብ ይሰረዝ? $1 — $2", om: "🗑️ Galmeen liqii kana balleessi? $1 — $2" },
+    { re: /^🗑️ Delete "(.*)" and ALL its transactions\?$/, am: "🗑️ «$1» እና ሁሉንም ግብይቶቹ ይሰረዙ?", om: "🗑️ \"$1\" fi maamiloota isaa hunda balleessi?" },
+    { re: /^Account: (.*) Enter account number \(1-(\d+)\):$/, am: "መለያ፡ $1 የመለያ ቁጥር ይጻፉ (1-$2)፡", om: "Akkaawuntii: $1 Lakkoofsa akkaawuntii barreessi (1-$2):" },
+    { re: /^❌ Insufficient funds! Balance: (.*)$/, am: "❌ በቂ ገንዘብ የለም! ሚዛን፡ $1", om: "❌ Qarshii ga'aa hin jiru! Miiqaa: $1" },
+    { re: /^✅ Recorded\. New balance: (.*)$/, am: "✅ ተመዝግቧል። አዲስ ሚዛን፡ $1", om: "✅ Galmeeffameera. Miiqaa haaraa: $1" },
+    { re: /^Deposit (.*) to (.*)\? New balance: (.*)$/, am: "$1 ወደ $2 ይቀመጥ? አዲስ ሚዛን፡ $3", om: "$1 gara $2 kaa'amu? Miiqaa haaraa: $3" },
+    { re: /^Withdraw (.*) from (.*)\? New balance: (.*)$/, am: "$1 ከ$2 ይውጣ? አዲስ ሚዛን፡ $3", om: "$1 bara $2 baafamu? Miiqaa haaraa: $3" },
+    { re: /^🎨 "(.*)" is one of (\d+) variants\. Delete the ENTIRE group \((\d+) products\)\? OK = delete ALL variants Cancel = delete only this one$/, am: "🎨 «$1» ከ$2 ተለዋጭነቶች አንዱ ነው። ቡድኑን በሙሉ ይሰረዙ ($3 ምርቶች)? OK = ሁሉንም ተለዋጭነቶች ይሰርዝ፣ Cancel = ይህን ብቻ ይሰርዝ።", om: "🎨 \"$1\" variants $2 keessaa tokko dha. Kophii guutuu balleessi (oomishoota $3)? OK = hunduu balleessi, Cancel = kana qofu balleessi." },
+    { re: /^⚠️ FINAL WARNING Delete all (\d+) variants permanently\?$/, am: "⚠️ የመጨረሻ ማስጠንቀቂያ — ሁሉንም $1 ተለዋጭነቶች በቋለኝነት ይሰርዙ?", om: "⚠️ Akeekkachiisa dhuma — variants $1 hunda dhaabbatti balleessi?" },
+    { re: /^Delete "(.*)" permanently\?$/, am: "«$1» በቋለኝነት ይሰረዝ?", om: "\"$1\" dhaabbatti balleessuu?" },
+    { re: /^Transfer (\d+) (.*) of (.*) to the selected branch\?$/, am: "$3 ውስጥ ያለው $1 $2 ወደ ተመረጠው ቅርንጫፍ ይተላለፍ?", om: "$1 $2 oomishaa $3 gara afdii filatutti ce'amu?" },
+    { re: /^🗑️ Delete the recipe for "(.*)"\? The product itself is NOT deleted — only its recipe\. After deletion, selling this product will NOT deduct ingredient stock\.$/, am: "🗑️ ለ«$1» ያለው የድብልቅ ዝርዝር ይሰረዝ? ምርቱ በራሱ አይሰረዝም — የድብልቅ ዝርዝሩ ብቻ። ከሰረዙ በኋላ ይህን ምርት ማሸግ የግብይት ዕቃን አይቀንስም።", om: "🗑️ Resipee \"$1\" qabu balleessi? Oomishichi ofii isaa hin balleeffamu — resipee isaa qofu. Balleessu booda, oomisha kana gurguruun kuusaa meemallaa hin hir'isu." },
+    { re: /^Load failed: (.*)$/, am: "መጫን አልተሳካም፡ $1", om: "Laachuu hin milkoofne: $1" },
+    { re: /^Key: (.*)$/, am: "ቁልፍ፡ $1", om: "Furtuu: $1" },
+    { re: /^🔄 Switch to "(.*)"\? The page reloads with that shop's data\.$/, am: "🔄 ወደ «$1» ይቀየሩ? ገጹ በሱቁ መረጃ እንደገና ይጫናል።", om: "🔄 Gara \"$1\" jijjiiramuu? Fuulichi deetaa suuqii sanaa waliin deebi'ee laaddama." },
+    { re: /^✅ Shop created! 🏪 (.*) 🔑 (.*) 📋 Type: (.*) Switch to it from the My Shops card above\.$/, am: "✅ ሱቅ ተፈጥሯል! 🏪 $1 🔑 $2 📋 ዓይነት፡ $3 ከላይ ካለው የሱፎቼ ካርድ ወደ እሱ ይቀይሩ።", om: "✅ Dukaal uumameera! 🏪 $1 🔑 $2 📋 Gosa: $3 Kaardii Dukaalee koo irraa gara isaatti jijjiiri." },
+    { re: /^❌ Shop ID "(.*)" is taken\. Try another\.$/, am: "❌ የሱቅ መለያ «$1» ተወስዷል። ሌላ ይሞክሩ።", om: "❌ IDn suuqii \"$1\" fudhateera. Kan biraa yaali." },
+    { re: /^Plan "(.*)" not found\.$/, am: "ዕቅድ «$1» አልተገኘም።", om: "Pilaanichi \"$1\" hin argamne." },
+    { re: /^🔒 Type switching is available during trial only\. Your plan "(.*)" is locked to (.*)\. Activate a different plan or create a new shop to change type\.$/, am: "🔒 የዓይነት መቀየር በሙከራ ጊዜ ብቻ ይገኝል። ዕቅድዎ «$1» ወደ $2 ተቆልፏል። ዓይነት ለመቀየር ሌላ ዕቅድ ያስጀምሩ ወይም አዲስ ሱቅ ይፍጠሩ።", om: "🔒 Jijjiirtuu gosa yeroo yaalii qofaaf argama. Pilaanaan kee \"$1\" gara $2 cufameera. Gosa jijjiiruuf pilaana biraa kakaasi ykn dukaal haaraa uumi." },
+    { re: /^✅ Switched to (.*)! Your data is safe\. The tools for (.*) are now active\.$/, am: "✅ ወደ $1 ተቀይረዋል! መረጃዎ ደህን ነው። ለ$1 ያሉት መሣሪያዎች አሁን ንቁ ናቸው።", om: "✅ Gara $1 jijjiiramtetta! Deetaan kee nageenya qaba. Meeshan $1 argaman amma socho'oodha." },
+    { re: /^🔑 New 4-digit login PIN for (.*):$/, am: "🔑 ለ$1 አዲስ 4-አሃዝ የመግቢያ ፒን፡", om: "🔑 Piinii seensaa lakkoofsa afur haaraa $1 koofii:" },
+    { re: /^✅ PIN updated for (.*)\.$/, am: "✅ ለ$1 ፒን ተዘምኗል።", om: "✅ Piiniin $1 koofii haaromseera." },
+    { re: /^Set (.*)'s PIN to (.*)\? They use it on POS \/ Kitchen \/ Hotel Desk\.$/, am: "የ$1 ፒን ወደ $2 ይስተናገድ? እነሱ በPOS / ምድር / ሆቴል ዴስክ ይጠቀሙበታል።", om: "Piinii $1 gara $2 sirreeffamuu? POS / Keettii / Desikii Hotela fayyadamu." },
+    { re: /^🗑️ Delete supplier "(.*)"\? Their (\d+) order record\(s\) stay in history\.$/, am: "🗑️ አቅራቢ «$1» ይሰረዝ? የ$2 ዘዘያ መዝገቦች በታሪክ ይቆያሉ።", om: "🗑️ Dhiyeessaa \"$1\" balleessuu? Galmeewwan ajajaa $2 isaanii seenaa keessatti hafu." },
+    { re: /^🗑️ Delete supplier "(.*)"\?$/, am: "🗑️ አቅራቢ «$1» ይሰረዝ?", om: "🗑️ Dhiyeessaa \"$1\" balleessuu?" }
+  );
+
+  /* ═══ QA PACK 4c · STANDARD DIALOG BOX installer ═══ */
+  try {
+    (function () {
+      if (window.__sdStd) return;
+      window.__sdStd = 1;
+      /* shared.js already gives pos/admin the styled system — leave those alone */
+      if (typeof window.showConfirm === 'function') return;
+
+      function T(s) {
+        try { return (typeof window.SLP_T === 'function') ? window.SLP_T(String(s)) : String(s); }
+        catch (e) { return String(s); }
+      }
+      function esc(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      if (!document.getElementById('slpSdCss')) {
+        var st = document.createElement('style');
+        st.id = 'slpSdCss';
+        st.textContent =
+          '.standard-dialog-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;animation:sdFade .2s ease}'
+          + '@keyframes sdFade{from{opacity:0}to{opacity:1}}'
+          + '.standard-dialog-box{background:#fff;border-radius:16px;padding:24px;width:90%;max-width:400px;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center;animation:sdUp .25s ease}'
+          + '@keyframes sdUp{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}'
+          + '.standard-dialog-icon{font-size:44px;margin-bottom:10px}'
+          + '.standard-dialog-title{font-size:17px;font-weight:800;color:#1e293b;margin-bottom:8px}'
+          + '.standard-dialog-message{font-size:15px;color:#475569;margin-bottom:18px;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:45vh;overflow-y:auto;text-align:left}'
+          + '.standard-dialog-input{width:100%;padding:13px;border:2px solid #e2e8f0;border-radius:10px;font-size:16px;margin-bottom:16px;text-align:center;outline:none;box-sizing:border-box}'
+          + '.standard-dialog-input:focus{border-color:#2563eb}'
+          + '.standard-dialog-buttons{display:flex;gap:10px;flex-wrap:wrap}'
+          + '.standard-dialog-btn{padding:12px 22px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;flex:1;min-width:110px}'
+          + '.standard-dialog-btn:active{transform:scale(.97)}'
+          + '.standard-dialog-btn-primary{background:#2563eb;color:#fff}'
+          + '.standard-dialog-btn-secondary{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0}'
+          + '.standard-dialog-opts{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}'
+          + '.standard-dialog-opt{padding:12px;border:2px solid #e2e8f0;border-radius:10px;font-size:15px;font-weight:600;background:#fff;color:#1e293b;cursor:pointer;width:100%;box-sizing:border-box}'
+          + '.standard-dialog-opt:active{transform:scale(.97)}'
+          + 'body.dark .standard-dialog-box{background:#1e293b;color:#e2e8f0}'
+          + 'body.dark .standard-dialog-title{color:#f1f5f9}'
+          + 'body.dark .standard-dialog-message{color:#94a3b8}'
+          + 'body.dark .standard-dialog-input,body.dark .standard-dialog-opt{background:#0f172a;border-color:#334155;color:#e2e8f0}';
+        (document.head || document.documentElement).appendChild(st);
+      }
+
+      function box(icon, title, message, bodyHtml, buttonsHtml) {
+        var ov = document.createElement('div');
+        ov.className = 'standard-dialog-overlay';
+        ov.innerHTML = '<div class="standard-dialog-box">'
+          + '<div class="standard-dialog-icon">' + icon + '</div>'
+          + '<div class="standard-dialog-title">' + esc(T(title)) + '</div>'
+          + '<div class="standard-dialog-message">' + esc(T(message)) + '</div>'
+          + (bodyHtml || '')
+          + '<div class="standard-dialog-buttons">' + buttonsHtml + '</div>'
+          + '</div>';
+        document.body.appendChild(ov);
+        return ov;
+      }
+      function done(ov, cb, val) {
+        if (ov.parentNode) ov.parentNode.removeChild(ov);
+        if (cb) cb(val);
+      }
+
+      /* Alert — OK only */
+      window.showAlert = function (message, title, callback) {
+        var ov = box('⚠️', title || 'SmartShop Pro', message, '',
+          '<button type="button" class="standard-dialog-btn standard-dialog-btn-primary" id="slpSdOk">' + esc(T('OK')) + '</button>');
+        var ok = ov.querySelector('#slpSdOk');
+        if (ok) ok.onclick = function () { done(ov, callback); };
+        ov.addEventListener('click', function (e) { if (e.target === ov) done(ov, callback); });
+      };
+
+      /* Confirm — Cancel + OK */
+      window.showConfirm = function (message, title, callback) {
+        var ov = box('❓', title || 'Confirm', message, '',
+          '<button type="button" class="standard-dialog-btn standard-dialog-btn-secondary" id="slpSdCancel">' + esc(T('Cancel')) + '</button>'
+          + '<button type="button" class="standard-dialog-btn standard-dialog-btn-primary" id="slpSdOk">' + esc(T('OK')) + '</button>');
+        var ok = ov.querySelector('#slpSdOk'), ca = ov.querySelector('#slpSdCancel');
+        if (ok) ok.onclick = function () { done(ov, callback, true); };
+        if (ca) ca.onclick = function () { done(ov, callback, false); };
+        ov.addEventListener('click', function (e) { if (e.target === ov) done(ov, callback, false); });
+      };
+
+      /* Prompt — input OR option buttons (master.html passes 'value|label' lists) */
+      window.showPrompt = function (message, defaultValue, title, callback, options) {
+        title = title || 'Input';
+        var val = (defaultValue === null || defaultValue === undefined) ? '' : String(defaultValue);
+        var opts = [], i, p;
+        if (options && options.length) {
+          for (i = 0; i < options.length; i++) {
+            p = String(options[i]).split('|');
+            var v = p.shift();
+            opts.push({ v: v, l: p.join('|') || v });
+          }
+        }
+        var mid, okBtn;
+        if (opts.length) {
+          mid = '<div class="standard-dialog-opts">';
+          for (i = 0; i < opts.length; i++) {
+            mid += '<button type="button" class="standard-dialog-opt" data-v="' + esc(opts[i].v) + '">' + esc(T(opts[i].l)) + '</button>';
+          }
+          mid += '</div>';
+          okBtn = '';
+        } else {
+          mid = '<input type="text" class="standard-dialog-input" id="slpSdInput" value="' + esc(val).replace(/"/g, '&quot;') + '" placeholder="' + esc(T('Type here...')) + '">';
+          okBtn = '<button type="button" class="standard-dialog-btn standard-dialog-btn-primary" id="slpSdOk">' + esc(T('OK')) + '</button>';
+        }
+        var ov = box('✏️', title, message, mid,
+          '<button type="button" class="standard-dialog-btn standard-dialog-btn-secondary" id="slpSdCancel">' + esc(T('Cancel')) + '</button>' + okBtn);
+        var inp = ov.querySelector('#slpSdInput');
+        if (inp) {
+          try { inp.focus(); inp.select(); } catch (e) {}
+          inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') done(ov, callback, inp.value); });
+        }
+        var ok = ov.querySelector('#slpSdOk'), ca = ov.querySelector('#slpSdCancel');
+        if (ok) ok.onclick = function () { done(ov, callback, inp ? inp.value : val); };
+        if (ca) ca.onclick = function () { done(ov, callback, null); };
+        var ob = ov.querySelectorAll('.standard-dialog-opt');
+        for (i = 0; i < ob.length; i++) {
+          (function (b) { b.onclick = function () { done(ov, callback, b.getAttribute('data-v')); }; })(ob[i]);
+        }
+        ov.addEventListener('click', function (e) { if (e.target === ov) done(ov, callback, null); });
+      };
+
+      /* Route the native functions to the standard dialog box */
+      window.alert = function (m) { window.showAlert(m, 'SmartShop Pro', null); };
+      window.confirm = function (m) {
+        return new Promise(function (res) { window.showConfirm(m, 'Confirm', res); });
+      };
+      window.prompt = function (m, d, opts) {
+        return new Promise(function (res) { window.showPrompt(m, d, 'Input', res, opts); });
+      };
+    })();
+  } catch (e) { try { console.log('[lang] pack4 dialog installer skipped: ' + e.message); } catch (e2) {} }
+})();
