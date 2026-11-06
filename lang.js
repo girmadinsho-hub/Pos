@@ -8470,3 +8470,246 @@ window.SLP_T = function (s) {
   } catch (e) { try { console.log('[lang] pack5 bridge skipped: ' + e.message); } catch (e2) {} }
 })();
 
+/* ═══ QA PACK 6 · final dialog coverage — every remaining gap app-wide · 2026-11-06
+   Final QA sweep found the last untranslated dialog texts: advanced.js
+   (stock tools, employee actions, image upload), v4-* admin modules
+   (money, staff payroll, suppliers, products, settings, expenses),
+   hotel check-in/out alerts, master.html PIN + validation, pos.html
+   PIN/table-call, shared.js branch limit, smartcom.js call errors.
+   Patterns match space-normalized runtime text (emoji + punctuation kept)
+   so they fire in the engine AND the pack-5c dialog bridge. Existing
+   entries always win. ═══ */
+(function () {
+  'use strict';
+
+  var ADD = {
+    am: {
+      /* ── advanced.js static dialogs ── */
+      "Please select dates": "ቀኖችን ይምረጡ",
+      "Please select a date": "ቀን ይምረጡ",
+      "Result div not found!": "የውጤት ክፍል አልተገኘም!",
+      "Please enter a commission rate (e.g., 2 for 2%)": "የኮሚሽን መጠን ያስገቡ (ለምሳሌ፡ 2 ለ2%)",
+      "Hide this setup guide? You can always find the Device Link Center in Settings.": "ይህን መመሪያ ይደበቁ? የመሣሪያ አገናኝ ማዕከልን ሁልጊዜ በቅንብሮች ውስጥ ማግኘት ይችላሉ።",
+      "Please select a product and enter a valid quantity.": "ምርት ይምረጡ እና ትክክለኛ ብዛት ያስገቡ።",
+      "✅ Manual invoice saved and stock updated!": "✅ ማዕድን ደረሰኝ ተቀምጧል እና ዕቃዎች ተዘምነዋል!",
+      "Are you sure you want to adjust the stock? Missing items will be logged as losses.": "ዕቃዎችን ማስተካከል ይፈልጋሉ? የጎደሉ ዕቃዎች እንደ ኪሳር ይመዘገባሉ።",
+      "No changes detected. Stock counts match the system.": "ምንም ለውጥ አልተገኘም። የዕቃ ቆጠራው ከስርዓቱ ጋር ይስማማል።",
+      "Please select a branch, product, and enter a valid quantity.": "ቅርንጫፍ እና ምርት ይምረጡ፣ ከዚያ ትክክለኛ ብዛት ያስገቡ።",
+      "✅ Image compressed and ready! Click 'Save' to finish.": "✅ ምስሉ ተጨምሯል እና ዝግጁ ነው! ለማጠናቀቅ 'አስቀምጥ'ን ይንኩ።",
+      "❌ Product not found in database.": "❌ ምርቱ በመረጃ ቤቱ አልተገኘም።",
+      "Name is required!": "ስም ያስፈልጋል!",
+      "✅ Employee updated!": "✅ ሠራተኛው ተዘምኗል!",
+      /* ── master.html validation + PIN ── */
+      "Enter valid trial days.": "ትክክለኛ የሙከራ ቀናት ያስገቡ።",
+      "Enter valid warning days (0 = never show banner).": "ትክክለኛ የማስጠንቀቂያ ቀናት ያስገቡ (0 = ባነር በጭራሽ አይታይም)።",
+      "Enter valid shops per type.": "ትክክለኛ በዓይነት የሚፈቀዱ ሱፎች ያስገቡ።",
+      "🔐 CREATE YOUR APP PIN This is an EXTRA lock for this device (separate from your password). Choose any 4 digits:": "🔐 የመተግበሪያ ፒንዎን ይፍጠሩ ይህ ለዚህ መሣሪያ ተጨማሪ ቁልፍ ነው (ከየመግቢያ ቃልዎ የተለየ)። ማንኛውም 4 አሃዞችን ይምረጡ፡",
+      "❌ App PIN must be exactly 4 digits (e.g., 2580). This is NOT your password — a quick extra lock.": "❌ የመተግበሪያ ፒኑ በክፍተኛው 4 አሃዝ መሆን አለበት (ለምሳሌ፡ 2580)። ይህ የመግቢያ ቃልዎ አይደለም — ፈጣን ተጨማሪ ቁልፍ ነው።",
+      "📧 Owner's email (the customer who will sign in with this key):": "📧 የባለቤት ኢሜይል (በዚህ ቁልፍ የሚገባው ደንበኛ)፡",
+      "A valid owner email is required — without it, the customer can never access this shop.": "ትክክለኛ የባለቤት ኢሜይል ያስፈልጋል — ያለው ደንበኛው ይህን ሱቅ በጭራሽ መድረስ አይችልም።",
+      /* ── misc ── */
+      "Needs repair": "ጥገና ያስፈልጋል",
+      "Cafe": "ካፌ"
+    },
+    om: {
+      /* ── advanced.js static dialogs ── */
+      "Please select dates": "Guyyaa filadhu",
+      "Please select a date": "Guyyaa tokko filadhu",
+      "Result div not found!": "Iddoon bu'aa hin argamne!",
+      "Please enter a commission rate (e.g., 2 for 2%)": "Sadarkaa komishinii galchi (fkn: 2 lakkoofsa 2%)",
+      "Hide this setup guide? You can always find the Device Link Center in Settings.": "Qajeelfa kana dhoksuu barbaaddaa? Iddoon Hidhannaa Meeshaa yeroo hunda Qindaa'ina keessaa argachuu dandeessa.",
+      "Please select a product and enter a valid quantity.": "Oomisha filadhu fi baay'ina barbaachisu galchi.",
+      "✅ Manual invoice saved and stock updated!": "✅ Riisiin harkaan ol kaa'amee stockiin haaromameera!",
+      "Are you sure you want to adjust the stock? Missing items will be logged as losses.": "Stockiin sirreeffamuu barbaaddaa? Wantoota hin jirne akka baleetti galmeeffamu.",
+      "No changes detected. Stock counts match the system.": "Jijjiirama kamiyyuu hin argamne. Herregnii stockii sirnaa waliin wal sima.",
+      "Please select a branch, product, and enter a valid quantity.": "Afdii fi oomisha filadhu, itti aanu baay'ina barbaachisu galchi.",
+      "✅ Image compressed and ready! Click 'Save' to finish.": "✅ Fakkii compressed ta'ee diyaarudha! Xumuruuf 'Ol kaa'i' cuqaasi.",
+      "❌ Product not found in database.": "❌ Oomishichi dataabeesii keessatti hin argamne.",
+      "Name is required!": "Maqaan barbaachisa!",
+      "✅ Employee updated!": "✅ Hojjataan haaromameera!",
+      /* ── master.html validation + PIN ── */
+      "Enter valid trial days.": "Guyyaa yaalii barbaachisu galchi.",
+      "Enter valid warning days (0 = never show banner).": "Guyyaa akeekkachiisaa barbaachisu galchi (0 = banneri dhuguma hin mul'atu).",
+      "Enter valid shops per type.": "Dukaalota gosa tokkoof barbaachisu galchi.",
+      "🔐 CREATE YOUR APP PIN This is an EXTRA lock for this device (separate from your password). Choose any 4 digits:": "🔐 APP PIN kee uumi Kun meeshaa kanaaf cufa dabalataa dha (jecha icciitii kee irraa adda). Lakkoofsa afur kamiyyuu filadhu:",
+      "❌ App PIN must be exactly 4 digits (e.g., 2580). This is NOT your password — a quick extra lock.": "❌ PINiin appii guutummaatti lakkoofsa afur qabaachuu qaba (fkn: 2580). Kun jecha icciitii kee miti — cufa dabalataa saffisaa dha.",
+      "📧 Owner's email (the customer who will sign in with this key):": "📧 Imeelii abbaa qabeenyaa (kallatichi furtuu kanaan seenamu):",
+      "A valid owner email is required — without it, the customer can never access this shop.": "Imeelii abbaa qabeenyaa barbaachisaa dha — malee kallatichi dukaala kana dhuguma gahuu hin danda'u.",
+      /* ── misc ── */
+      "Needs repair": "Tajaajila barbaachisa",
+      "Cafe": "Kafee"
+    }
+  };
+  window.SLP_PHR = window.SLP_PHR || {};
+  for (var L in ADD) {
+    var d = window.SLP_PHR[L] = window.SLP_PHR[L] || {};
+    for (var k in ADD[L]) { if (!d[k]) d[k] = ADD[L][k]; }
+  }
+
+  /* ═══ QA PACK 6b · final dynamic dialog patterns ═══ */
+  window.SLP_PAT = window.SLP_PAT || [];
+  window.SLP_PAT.push(
+    /* ── advanced.js · stock tools ── */
+    { re: /^Warning: Stock is low \((.+)\)\. Do you still want to proceed\?$/, am: "ማስጠንቀቂያ፡ ዕቃዎች በቀርበት ላይ ናቸው ($1)። መቀጠል ይፈልጋሉ?", om: "Akeekkachiisa: stockiin xiqqaa dhufeera ($1). Itti fufuu barbaaddaa?" },
+    { re: /^Warning: Stock is low \((.+)\)\. Proceed anyway\?$/, am: "ማስጠንቀቂያ፡ ዕቃዎች በቀርበት ላይ ናቸው ($1)። ያለምንም መቀጠል?", om: "Akeekkachiisa: stockiin xiqqaa dhufeera ($1). Sigmoida itti fuu?" },
+    { re: /^❌ Error adjusting stock: (.*)$/, am: "❌ ዕቃዎችን በማስተካከል ላይ ስህተት፡ $1", om: "❌ Dogoggora yeroo stockii sirreeffuu: $1" },
+    { re: /^✅ Stock adjusted successfully! (\d+) items updated\.$/, am: "✅ ዕቃዎች በተሳካ ሁኔታ ተስተካክለዋል! $1 ንጥሎች ተዘምነዋል።", om: "✅ Stockiin milkaa'in sirreeffameera! Wantoota $1 haaromamanii jiru." },
+    { re: /^Error loading branches: (.*)$/, am: "ቅርንጫፎችን በመጫን ላይ ስህተት፡ $1", om: "Dogoggora yeroo afdilee laachuu: $1" },
+    { re: /^Not enough stock available! Current stock: (.*)$/, am: "በቂ ዕቃዎች የሉም! የአሁኑ ዕቃ፡ $1", om: "Stockiin gahuu hin qabu! Stockii ammaa: $1" },
+    { re: /^Not enough stock! Current: (.*)$/, am: "በቂ ዕቃዎች የሉም! የአሁኑ፡ $1", om: "Stockiin gahuu hin qabu! Ammaa: $1" },
+    { re: /^✅ Transfer Successful! (.*) of (.*) was transferred\. Your updated stock here is: (.*)$/, am: "✅ ማስተላለፉ ተሳክቷል! $1 ከ$2 ተላልፏል። የተዘመነው ዕቃዎ እዚህ፡ $3", om: "✅ Darbiinsaan milkoofte! $1 $2 irraa darbeera. Stockiin kee haaromame asitti: $3" },
+    { re: /^❌ Error transferring stock: (.*)$/, am: "❌ ዕቃዎችን በማስተላለፍ ላይ ስህተት፡ $1", om: "❌ Dogoggora yeroo stockii darbuu: $1" },
+    { re: /^❌ Upload failed: (.*)$/, am: "❌ ማስቀመጥ አልተሳካም፡ $1", om: "❌ Ol kaa'uun hin milkoofne: $1" },
+    { re: /^❌ Could not read product: (.*)$/, am: "❌ ምርቱን ማንበብ አልተቻለም፡ $1", om: "❌ Oomishichii dubbisuu hin dandeenye: $1" },
+    /* ── advanced.js · employee actions ── */
+    { re: /^Deactivate (.+)\?$/, am: "የ$1 ሥራ ያቁሙ?", om: "$1 dhiisuu?" },
+    { re: /^Activate (.+)\?$/, am: "$1ን ያግብሩ?", om: "$1 banaa?" },
+    { re: /^✅ (.*) deactivated\.$/, am: "✅ $1 ተወግዟል።", om: "✅ $1 dhiifameera." },
+    { re: /^✅ (.*) activated\.$/, am: "✅ $1 ተመልሶ ገብሯል።", om: "✅ $1 deebi'ee baneera." },
+    { re: /^⚠️ PERMANENTLY DELETE (.+)\? This cannot be undone\.$/, am: "⚠️ $1ን ለዘለቃለም ይሰርዙ? ይህ መመለስ አይችልም።", om: "⚠️ $1 dhaabbatti balleessuu? Kun deebisuu hin danda'amu." },
+    { re: /^✅ (.*) permanently deleted\.$/, am: "✅ $1 ለዘለቃለም ተሰርዟል።", om: "✅ $1 dhaabbatti balleeffameera." },
+    /* ── advanced.js + v4-products.js · customer QR menu ── */
+    { re: /^👁️ Show "(.+)" on the customer QR menu\?$/, am: "👁️ «$1»ን በደንበኛ QR ምናጫ ላይ ያሳዩ?", om: "👁️ \"$1\" menyuu QR kallattii irratti agarsiisuu?" },
+    { re: /^🚫 Hide "(.+)" from the customer QR menu\?$/, am: "🚫 «$1»ን ከደንበኛ QR ምናጫ ይደብቁ?", om: "🚫 \"$1\" menyuu QR kallattii irraa dhoksuu?" },
+    /* ── hotel.html · desk alerts ── */
+    { re: /^✅ Room (.*) → 🔧 Maintenance\. All staff notified in the intercom\.$/, am: "✅ ክፍል $1 → 🔧 ጥገና። ሁሉም ሠራተኞች በኢንተርኮም ተሳልከዋል።", om: "✅ Kuta $1 → 🔧 Tajaajila. Hojjattoonni hundi interkomii keessan beeksifamanii jiru." },
+    { re: /^✅ (.*) checked in to Room (.*)! Checkout: (.*) Rate: (.*)\/night$/, am: "✅ $1 እስከ ክፍል $2 ገቧል! መውጫ፡ $3 ክፍያ፡ $4/ሌሊት", om: "✅ $1 kuta $2 seeneera! Baafata: $3 Gatii: $4/halkan" },
+    { re: /^✅ (.*) checked in to Room (.*)!$/, am: "✅ $1 እስከ ክፍል $2 ገቧል!", om: "✅ $1 kuta $2 seeneera!" },
+    { re: /^✅ Checked out! 💰 Deposit covered all charges — no sale recorded\. Room → 🧹 Cleaning · Guard notified 🔔$/, am: "✅ ወጥቷል! 💰 ተቀማጭው ሁሉንም ክፍያ ሸፍኗል — ሽያጭ አልተመዘገበም። ክፍል → 🧹 ጽዳት · ጠባቂ ተሳልኮታል 🔔", om: "✅ Baheera! 💰 Deposiitin kaffaltii hunda baafate — gurgurtaa hin galmeeffamne. Kuta → 🧹 Qulqulleessuu · Tiktessaa beeksifameera 🔔" },
+    { re: /^✅ Checked out! Payment recorded\. Room → 🧹 Cleaning · Guard notified 🔔$/, am: "✅ ወጥቷል! ክፍያ ተመዝግቧል። ክፍል → 🧹 ጽዳት · ጠባቂ ተሳልኮታል 🔔", om: "✅ Baheera! Kaffaltiin galmeeffameera. Kuta → 🧹 Qulqulleessuu · Tiktessaa beeksifameera 🔔" },
+    /* ── hotel.js + v4-hotel.js ── */
+    { re: /^✅ Room (.*) added!$/, am: "✅ ክፍል $1 ታክሏል!", om: "✅ Kuta $1 dabalameera!" },
+    { re: /^(.*) 📤 Send booking confirmation to the guest on WhatsApp\?$/, am: "$1\n📤 የቀጠሮ ማረጋገጫውን ለእንግዳው በዋትስአፕ ይላኩ?", om: "$1\n📤 Mirkaneessa bookicha kallattii WhatsApp erguu?" },
+    { re: /^(.*) 📤 Send the folio receipt to the guest on WhatsApp\?$/, am: "$1\n📤 የፎሊዮ ደረሰኙን ለእንግዳው በዋትስአፕ ይላኩ?", om: "$1\n📤 Riisii foliyoo kallattii WhatsApp erguu?" },
+    { re: /^(.*) 📤 Send reservation confirmation on WhatsApp\?$/, am: "$1\n📤 የቀጠሮ ማረጋገጫውን በዋትስአፕ ይላኩ?", om: "$1\n📤 Mirkaneessa qabaannaa WhatsApp irratti erguu?" },
+    /* ── pos.html ── */
+    { re: /^❌ Wrong PIN!$/, am: "❌ የተሳሳተ ፒን!", om: "❌ PIN dogoggora!" },
+    { re: /^❌ Wrong PIN! (\d+) attempt\(s\) left before 10-min lock\.$/, am: "❌ የተሳሳተ ፒን! ከ10-ደቂቃ መቆለፍ በፊት $1 ሙከራ(ዎች) ቀርቷል።", om: "❌ PIN dogoggora! Cufuu daqiiqaa 10 dura yaalii $1 hafan." },
+    { re: /^⚠️ "(.+)" is virtual but has no recipe — nothing to restore\.$/, am: "⚠️ «$1» ምናባዊ ነው ግን ድብልቅ የለውም — የሚመለስ ነገር የለም።", om: "⚠️ \"$1\" virtual dha garuu resipee hin qabu — deebisuu wanti hin jiru." },
+    { re: /^🔔 TABLE (.*) IS CALLING FOR ASSISTANCE!$/, am: "🔔 ጠረጴዛ $1 እርዳታ እየጠራ ነው!", om: "🔔 TAABULII $1 deggarsa kadachaa jira!" },
+    /* ── shared.js ── */
+    { re: /^⚠️ You have reached the maximum number of branches \((.+)\)\.$/, am: "⚠️ ከፍተኛውን የቅርንጫፎች ብዛት ($1) ላይ ደርሰዋል።", om: "⚠️ Daangaa guddaa afdilee ($1) gaheetta." },
+    /* ── smartcom.js ── */
+    { re: /^❌ Could not get location: (.*)$/, am: "❌ አካባቢን ማግኘት አልተቻለም፡ $1", om: "❌ Iddoo argachuu hin dandeenye: $1" },
+    { re: /^❌ Send failed: (.*)$/, am: "❌ መላክ አልተሳካም፡ $1", om: "❌ Erguun hin milkoofne: $1" },
+    { re: /^❌ Camera switch failed: (.*)$/, am: "❌ ካሜራ መቀየር አልተሳካም፡ $1", om: "❌ Kameraa jijjiiruu hin milkoofne: $1" },
+    { re: /^⚫ (.*) appears OFFLINE \(their app is not open\)\. Ring anyway\? \(they may get a missed-call message later\)$/, am: "⚫ $1 ከመስመር ውጭ ይመስላል (መተግበሪያቸው አልተከፈተም)። እንደገና እንድንጠራ ነው? (ኋላ የማይመለስ ጥሪ መልእክት ሊያገኙ ይችላሉ)", om: "⚫ $1 al-taatee mul'ata (appiin isaanii hin banamne). Sigmoida bilbaalu barbaaddaa? (yeroo booda ergaa bilbila hin qabne argachuu danda'u)" },
+    /* ── v4-credits.js ── */
+    { re: /^✅ (.*) settled — (.*) collected! The record stays as ✅ PAID \(proof\)\.$/, am: "✅ $1 አስተናግዷል — $2 ተሰበሰበ! መዝገቡ እንደ ✅ ተከፍለ (ማስረጃ) ይቆያል።", om: "✅ $1 raawwateera — $2 walitti qabame! Galmeen akka ✅ KAFFALAME (ragaa)tti hafu." },
+    /* ── v4-expenses.js ── */
+    { re: /^✅ Recurring bill added: (.*) · (.*) · (.*)$/, am: "✅ ተደጋጋሚ ደረሰኝ ታክሏል፡ $1 · $2 · $3", om: "✅ Baasiin irra deebii dabalameera: $1 · $2 · $3" },
+    { re: /^✅ Recorded: (.*) — (.*) Next due: (.*)$/, am: "✅ ተመዝግቧል፡ $1 — $2 ቀጣዩ ቀን፡ $3", om: "✅ Galmeeffameera: $1 — $2 Guyyaa itti aanu: $3" },
+    { re: /^⏭ Skipped\. Next due: (.*)$/, am: "⏭ ዘልሏል። ቀጣዩ ቀን፡ $1", om: "⏭ Darbameera. Guyyaa itti aanu: $1" },
+    { re: /^✅ Expense recorded: (.*)$/, am: "✅ ወጪ ተመዝግቧል፡ $1", om: "✅ Baasiin galmeeffameera: $1" },
+    { re: /^No expenses in Today\.$/, am: "ዛሬ ወጪዎች የሉም።", om: "Har'a baasii hin jiru." },
+    { re: /^No expenses in This Week\.$/, am: "በዚህ ሳምንት ወጪዎች የሉም።", om: "Torban kana keessatti baasii hin jiru." },
+    { re: /^No expenses in This Month\.$/, am: "በዚህ ወር ወጪዎች የሉም።", om: "Ji'a kana keessatti baasii hin jiru." },
+    { re: /^No expenses in This Year\.$/, am: "በዚህ ዓመት ወጪዎች የሉም።", om: "Waggaa kana keessatti baasii hin jiru." },
+    { re: /^No expenses in All Time\.$/, am: "በማንኛውም ጊዜ ወጪዎች የሉም።", om: "Yeroo hunda baasii hin jiru." },
+    { re: /^No expenses in (.*)\.$/, am: "በ$1 ውስጥ ወጪዎች የሉም።", om: "Baasii $1 keessatti hin jiru." },
+    /* ── v4-losses.js ── */
+    { re: /^✅ Loss recorded: (.*) — (.*)$/, am: "✅ ኪሳር ተመዝግቧል፡ $1 — $2", om: "✅ Baleen galmeeffameera: $1 — $2" },
+    { re: /^✅ Record deleted — stock restored \(\+(.+)\)\.$/, am: "✅ መዝገቡ ተሰርዟል — ዕቃዎች ተመልሰዋል (+$1)።", om: "✅ Galmeen balleeffameera — stockiin deebi'eera (+$1)." },
+    { re: /^No losses in Today\.$/, am: "ዛሬ ኪሳሮች የሉም።", om: "Har'a balee hin jiru." },
+    { re: /^No losses in This Week\.$/, am: "በዚህ ሳምንት ኪሳሮች የሉም።", om: "Torban kana keessatti balee hin jiru." },
+    { re: /^No losses in This Month\.$/, am: "በዚህ ወር ኪሳሮች የሉም።", om: "Ji'a kana keessatti balee hin jiru." },
+    { re: /^No losses in This Year\.$/, am: "በዚህ ዓመት ኪሳሮች የሉም።", om: "Waggaa kana keessatti balee hin jiru." },
+    { re: /^No losses in All Time\.$/, am: "በማንኛውም ጊዜ ኪሳሮች የሉም።", om: "Yeroo hunda balee hin jiru." },
+    { re: /^No losses in (.*)\.$/, am: "በ$1 ውስጥ ኪሳሮች የሉም።", om: "Balee $1 keessatti hin jiru." },
+    { re: /^Nothing to print in Today\.$/, am: "ዛሪ ለህትመት ምንም የለም።", om: "Har'a maxxansuuf wanti hin jiru." },
+    { re: /^Nothing to print in This Week\.$/, am: "በዚህ ሳምንት ለህትመት ምንም የለም።", om: "Torban kana keessatti maxxansuuf wanti hin jiru." },
+    { re: /^Nothing to print in This Month\.$/, am: "በዚህ ወር ለህትመት ምንም የለም።", om: "Ji'a kana keessatti maxxansuuf wanti hin jiru." },
+    { re: /^Nothing to print in This Year\.$/, am: "በዚህ ዓመት ለህትመት ምንም የለም።", om: "Waggaa kana keessatti maxxansuuf wanti hin jiru." },
+    { re: /^Nothing to print in All Time\.$/, am: "በማንኛውም ጊዜ ለህትመት ምንም የለም።", om: "Yeroo hunda maxxansuuf wanti hin jiru." },
+    { re: /^Nothing to print in (.*)\.$/, am: "በ$1 ውስጥ ለህትመት ምንም የለም።", om: "$1 keessatti maxxansuuf wanti hin jiru." },
+    /* ── v4-money.js ── */
+    { re: /^Update (.*) to (.*) points \(worth (.*)\)\?$/, am: "$1ን ወደ $2 ነጥቦች ይዘምኑ? (ዋጋ $3)", om: "$1 gara pointii $2 haaromsuu? (gatii $3)" },
+    { re: /^💰 Mark as received from (.*)\? (.*)$/, am: "💰 ከ$1 የተቀበሉትን ይመዝገቡ? $2", om: "💰 Iddoo $1 irraa fudhame akka galmeeffamu mallatteessuu? $2" },
+    { re: /^📤 Mark as paid to (.*)\? (.*)$/, am: "📤 ለ$1 የተከፈለውን ይመዝገቡ? $2", om: "📤 Iddoo $1itti kaffalame akka galmeeffamu mallatteessuu? $2" },
+    { re: /^💰 Deposit amount for (.*)\:$/, am: "💰 ለ$1 የተቀማጭ መጠን፡", om: "💰 Baay'ina deposii $1 koofii:" },
+    { re: /^📤 Withdraw amount for (.*)\:$/, am: "📤 ለ$1 የማውጣት መጠን፡", om: "📤 Baay'ina fudachuu $1 koofii:" },
+    { re: /^Deposit (.*) to (.*)\? New balance: (.*)$/, am: "$2 ውስጥ $1 ይቀምጡ? አዲስ ሚዛን፡ $3", om: "$2 keessatti $1 ol kaa'uu? Miidaa haaraa: $3" },
+    /* ── v4-products.js ── */
+    { re: /^⚠️ Product limit reached for your plan \((.*)\)\. Upgrade: License tab\.$/, am: "⚠️ ለዕቅድዎ የምርት ገደብ ላይ ደርሰዋል ($1)። ማሳደግ፡ የፍቃድ ትር።", om: "⚠️ Daangaa oomishii pilaana kee gaheetta ($1). Dabalataa: Taabana liizii." },
+    { re: /^✅ "(.+)" added! 🎨 Variants created — finish their prices if needed\.$/, am: "✅ «$1» ታክሯል! 🎨 ልዩ ቅርጾች ተፈጥረዋል — ከሆነ ያስፈልግ ዋጋዎቻቸውን ይፈጽሙ።", om: "✅ \"$1\" dabalameera! 🎨 Variantoota uumameera — barbaachisaa taate gatii isaanii xumuri." },
+    { re: /^✅ "(.+)" added!$/, am: "✅ «$1» ታክሯል!", om: "✅ \"$1\" dabalameera!" },
+    { re: /^✅ Variant group deleted \((\d+) products\)\.$/, am: "✅ የልዩ ቅርጽ ቡድን ተሰርዟል ($1 ምርቶች)።", om: "✅ Gareen variantii balleeffameera (oomishoota $1)." },
+    { re: /^✅ Product deleted\. \((\d+) sibling variant\(s\) remain\.\)$/, am: "✅ ምርቱ ተሰርዟል። ($1 የቅንብር ልዩ ቅርጾች ቀርተዋል።)", om: "✅ Oomishichi balleeffameera. (Variantoota obboleeyyii $1 hafaniiru.)" },
+    { re: /^✅ Product deleted\.$/, am: "✅ ምርቱ ተሰርዟል።", om: "✅ Oomishichi balleeffameera." },
+    { re: /^✅ "(.+)" updated! 📥 \+(.+) stock added & purchase logged\.$/, am: "✅ «$1» ተዘምኗል! 📥 +$2 ዕቃ ታክሎ ግዥ ተመዝግቧል።", om: "✅ \"$1\" haaromameera! 📥 +$2 stock dabalameera fi bituun galmeeffameera." },
+    { re: /^✅ "(.+)" updated!$/, am: "✅ «$1» ተዘምኗል!", om: "✅ \"$1\" haaromameera!" },
+    { re: /^Import (\d+) product\(s\)\? \((\d+) duplicate row\(s\) will be skipped\.\)$/, am: "$1 ምርት(ዎች) ይጫኑ? ($2 መደጋገም ያለባቸው ረድፎች ይዘለላሉ።)", om: "Oomishoota $1 galchuu? (Safartuu dachaawaa $2 darbu.)" },
+    { re: /^Import (\d+) product\(s\)\?$/, am: "$1 ምርት(ዎች) ይጫኑ?", om: "Oomishoota $1 galchuu?" },
+    { re: /^✅ (\d+) product\(s\) imported! (\d+) duplicate\(s\) skipped\.$/, am: "✅ $1 ምርት(ዎች) ተጭነዋል! $2 መደጋገም ያለባቸው ተዘልለዋል።", om: "✅ Oomishoota $1 galchameera! Dachaawwan $2 darbamanii jiru." },
+    { re: /^✅ (\d+) product\(s\) imported!$/, am: "✅ $1 ምርት(ዎች) ተጭነዋል!", om: "✅ Oomishoota $1 galchameera!" },
+    { re: /^❌ Import failed: (.*)$/, am: "❌ መጫን አልተሳካም፡ $1", om: "❌ Galchuu hin milkoofne: $1" },
+    { re: /^✅ Transferred! Your stock here: (.*)$/, am: "✅ ተላልፏል! ዕቃዎ እዚህ፡ $1", om: "✅ Darbeera! Stockiin kee asitti: $1" },
+    { re: /^✅ Stock adjusted: (\d+) item\(s\)\. 🗑️ (\d+) shortage\(s\) logged as losses\.$/, am: "✅ ዕቃዎች ተስተካክለዋል፡ $1 ንጥል(ዎች)። 🗑️ $2 እጥረት(ዎች) እንደ ኪሳር ተመዝግበዋል።", om: "✅ Stockiin sirreeffameera: wantoota $1. 🗑️ Tippiin $2 akka baleetti galmeeffame." },
+    { re: /^✅ Stock adjusted: (\d+) item\(s\)\.$/, am: "✅ ዕቃዎች ተስተካክለዋል፡ $1 ንጥል(ዎች)።", om: "✅ Stockiin sirreeffameera: wantoota $1." },
+    { re: /^Too many combinations \((\d+)\)\. Max 50\.$/, am: "በጣም ብዙ ጥምረቶች ($1)። ከፍተኛ 50።", om: "Wal makaa hedduu ($1). Daangaa guddaa 50." },
+    { re: /^⚠️ Plan limit: room for only (.*) more products, but variants need (.*)\. Upgrade: License tab\.$/, am: "⚠️ የዕቅድ ገደብ፡ ለ$1 ተጨማሪ ምርቶች ብቻ ነው፣ ግን ልዩ ቅርጾች $2 ይፈልጋሉ። ማሳደግ፡ የፍቃድ ትር።", om: "⚠️ Daangaa pilaanaa: oomishoota $1 qofaaf ijjeera, garuu variantoonni $2 barbaadu. Dabalataa: Taabana liizii." },
+    { re: /^✅ (\d+) variant price\(s\) updated!$/, am: "✅ $1 የልዩ ቅርጽ ዋጋ(ዎች) ተዘምነዋል!", om: "✅ Gatii variantii $1 haaromameera!" },
+    /* ── v4-recipes.js ── */
+    { re: /^✅ Recipe saved!(.*)$/, am: "✅ ድብልቁ ተቀምጧል!$1", om: "✅ Resippiin ol kaa'ameera!$1" },
+    /* ── v4-reports.js ── */
+    { re: /^Save manual invoice\? (.*) × (.*) = (.*)$/, am: "ማዕድን ደረሰኝ ይቀምጡ? $1 × $2 = $3", om: "Riisii harkaan ol kaa'uu? $1 × $2 = $3" },
+    { re: /^✅ Manual invoice saved & stock updated! (.*)$/, am: "✅ ማዕድን ደረሰኝ ተቀምጧል እና ዕቃዎች ተዘምነዋል! $1", om: "✅ Riisii harkaan ol kaa'ameera fi stockiin haaromameera! $1" },
+    /* ── v4-settings.js ── */
+    { re: /^✅ Branding saved! Name, phone, address, currency updated everywhere\.$/, am: "✅ የሱቅ መለያ ተቀምጧል! ስም፣ ስልክ፣ አድራሻ፣ ገንዘብ በየትኛውም ቦታ ተዘምነዋል።", om: "✅ Brandiin ol kaa'ameera! Maqaan, bilbila, teessoon, maallaan hunda dabalataa haaromamanii jiru." },
+    { re: /^✅ Branding saved! Name, phone, address, currency and GPS updated everywhere\.$/, am: "✅ የሱቅ መለያ ተቀምጧል! ስም፣ ስልክ፣ አድራሻ፣ ገንዘብ እና GPS በየትኛውም ቦታ ተዘምነዋል።", om: "✅ Brandiin ol kaa'ameera! Maqaan, bilbila, teessoon, maallaan fi GPSn hunda dabalataa haaromamanii jiru." },
+    { re: /^✅ Tax saved! VAT (.*)% — POS will charge it\.$/, am: "✅ ግብር ተቀምጧል! ቫት $1% — ፒኦኤስ ያስከፍላል።", om: "✅ Belchiin ol kaa'ameera! VAT $1% — POSn kaffala." },
+    { re: /^✅ Tax saved! TOT shop: tax stays OFF \(law\)\.$/, am: "✅ ግብር ተቀምጧል! የTOT ሱቅ፡ ግብር ዝግ ይቆያል (ሕግ)።", om: "✅ Belchiin ol kaa'ameera! Dukaala TOT: belchiin CUFaa hafu (seera)." },
+    { re: /^✅ POS settings saved! Shop type: (.*)$/, am: "✅ የፒኦኤስ ቅንብሮች ተቀምጠዋል! የሱቅ ዓይነት፡ $1", om: "✅ Qindaa'inni POS ol kaa'ameera! Gosa dukaalaa: $1" },
+    { re: /^✅ Calendar: Ethiopian \(ቆጸራ\)$/, am: "✅ ቀን መቁጠሪያ፡ ኢትዮጵያዊ (ቆጸራ)", om: "✅ Kalandara: Itoophiyaa (ቆጸራ)" },
+    { re: /^✅ Calendar: Gregorian$/, am: "✅ ቀን መቁጠሪያ፡ ጎሪጎሪያን", om: "✅ Kalandara: Gregorian" },
+    { re: /^📋 Shop ID copied: (.*)$/, am: "📋 የሱቅ መለያ ተቀድቷል፡ $1", om: "📋 IDn dukaalaa copiesameera: $1" },
+    { re: /^Shop ID: (.*)$/, am: "የሱቅ መለያ፡ $1", om: "IDn dukaalaa: $1" },
+    { re: /^This key belongs to shop "(.*)"\. Switch this device to that shop\?$/, am: "ይህ ቁልፍ ለሱቅ «$1» ይመለከታል። ይህን መሣሪያ ወደዚያ ሱቅ ይቀይሩ?", om: "Furtuun kun dukaala \"$1\" tiif ta'a. Meeshaa kana gara dukaala sanaa jijjiiruu?" },
+    { re: /^✅ License activated! 📋 Plan: (.*) 📅 Expires: (.*) \((\d+) days left\)$/, am: "✅ ፍቃድ ተነቃቷል! 📋 ዕቅድ፡ $1 📅 ያልቃል፡ $2 ($3 ቀናት ቀርቷል)", om: "✅ Liiziin baneera! 📋 Pilaana: $1 📅 Dhuma: $2 (guyyaa $3 hafan)" },
+    { re: /^❌ Activation failed: (.*)$/, am: "❌ ማንቃት አልተሳካም፡ $1", om: "❌ Baneessuu hin milkoofne: $1" },
+    { re: /^📋 Key copied: (.*)$/, am: "📋 ቁልፉ ተቀድቷል፡ $1", om: "📋 Furtuun copiesameera: $1" },
+    { re: /^❌ Registration failed: (.*)$/, am: "❌ ምዝገባ አልተሳካም፡ $1", om: "❌ Galmeessuu hin milkoofne: $1" },
+    { re: /^🛒 Name your Retail shop\:$/, am: "🛒 የማሳለፍ ሱቅዎን ይሰይሙ፡", om: "🛒 Dukaala retail kee maqaa himi:" },
+    { re: /^☕ Name your Cafe shop\:$/, am: "☕ የካፌ ሱቅዎን ይሰይሙ፡", om: "☕ Dukaala kafee kee maqaa himi:" },
+    { re: /^🏨 Name your Hotel shop\:$/, am: "🏨 የሆቴል ሱቅዎን ይሰይሙ፡", om: "🏨 Dukaala hotela kee maqaa himi:" },
+    { re: /^Name your Retail shop\:$/, am: "የማሳለፍ ሱቅዎን ይሰይሙ፡", om: "Dukaala retail kee maqaa himi:" },
+    { re: /^Name your Cafe shop\:$/, am: "የካፌ ሱቅዎን ይሰይሙ፡", om: "Dukaala kafee kee maqaa himi:" },
+    { re: /^Name your Hotel shop\:$/, am: "የሆቴል ሱቅዎን ይሰይሙ፡", om: "Dukaala hotela kee maqaa himi:" },
+    { re: /^Name your (.*) shop\:$/, am: "የ$1 ሱቅዎን ይሰይሙ፡", om: "Dukaala $1 kee maqaa himi:" },
+    /* ── v4-shops.js ── */
+    { re: /^🔄 Switch to "(.*)"\? The page reloads with that shop's data\.$/, am: "🔄 ወደ «$1» ይቀየሩ? ገጹ በዚያ ሱቅ መረጃ እንደገና ይጫናል።", om: "🔄 Gara \"$1\" jijjiiramuu? Fuulli deetaa dukaalaa sanaan irra deebi'ee laadda." },
+    { re: /^🔒 Type switching is available during trial only\. Your plan "(.*)" is locked to (.*)\. Activate a different plan or create a new shop to change type\.$/, am: "🔒 ዓይነት መቀየር በሙከራ ወቅት ብቻ ይቻላል። ዕቅድዎ «$1» በ$2 ላይ ተቆልፏል። ዓይነቱን ለመቀየር የተለየ ዕቅድ ያንቁሩ ወይም አዲስ ሱቅ ይፍጠሩ።", om: "🔒 Gosa jijjiiruun yeroo yaalii qofa danda'ama. Pilaanichi kee \"$1\" gara $2 cufameera. Gosa jijjiiruuf pilaana addaa baneessi ykn dukaala haaraa uumi." },
+    { re: /^🛒 Switch your shop to (.*) type\? ✅ Your products, sales, and all data are PRESERVED ✅ Only the tools change \(kitchen\/tables appear or disappear\) ✅ You can switch again anytime during trial$/, am: "🛒 ሱቅዎን ወደ $1 ዓይነት ይቀይሩ? ✅ ምርቶችዎ፣ ሽያጭዎ እና ሁሉም መረጃ ይጠበቃሉ ✅ መሣሪያዎቹ ብቻ ይቀየራሉ (የምግብ ቤት/ጠረጴዛዎች ይታያሉ ወይም አይታዩም) ✅ በሙከራ ወቅት በየጊዜው መቀየር ይችላሉ", om: "🛒 Dukaala kee gara gosa $1tti jijjiiruu? ✅ Oomishoonni, gurgurtoonni fi deetaan hundi EEGAMU ✅ Qofa meeshaaleen jijjiiramu (kiceni/taabulonni mul'atu ykn hin mul'inne) ✅ Yeroo yaalii yeroo barbaachisu irra deebi'ee jijjiiruu dandeessa" },
+    { re: /^☕ Switch your shop to (.*) type\? ✅ Your products, sales, and all data are PRESERVED ✅ Only the tools change \(kitchen\/tables appear or disappear\) ✅ You can switch again anytime during trial$/, am: "☕ ሱቅዎን ወደ $1 ዓይነት ይቀይሩ? ✅ ምርቶችዎ፣ ሽያጭዎ እና ሁሉም መረጃ ይጠበቃሉ ✅ መሣሪያዎቹ ብቻ ይቀየራሉ (የምግብ ቤት/ጠረጴዛዎች ይታያሉ ወይም አይታዩም) ✅ በሙከራ ወቅት በየጊዜው መቀየር ይችላሉ", om: "☕ Dukaala kee gara gosa $1tti jijjiiruu? ✅ Oomishoonni, gurgurtoonni fi deetaan hundi EEGAMU ✅ Qofa meeshaaleen jijjiiramu (kiceni/taabulonni mul'atu ykn hin mul'inne) ✅ Yeroo yaalii yeroo barbaachisu irra deebi'ee jijjiiruu dandeessa" },
+    { re: /^🏨 Switch your shop to (.*) type\? ✅ Your products, sales, and all data are PRESERVED ✅ Only the tools change \(kitchen\/tables appear or disappear\) ✅ You can switch again anytime during trial$/, am: "🏨 ሱቅዎን ወደ $1 ዓይነት ይቀይሩ? ✅ ምርቶችዎ፣ ሽያጭዎ እና ሁሉም መረጃ ይጠበቃሉ ✅ መሣሪያዎቹ ብቻ ይቀየራሉ (የምግብ ቤት/ጠረጴዛዎች ይታያሉ ወይም አይታዩም) ✅ በሙከራ ወቅት በየጊዜው መቀየር ይችላሉ", om: "🏨 Dukaala kee gara gosa $1tti jijjiiruu? ✅ Oomishoonni, gurgurtoonni fi deetaan hundi EEGAMU ✅ Qofa meeshaaleen jijjiiramu (kiceni/taabulonni mul'atu ykn hin mul'inne) ✅ Yeroo yaalii yeroo barbaachisu irra deebi'ee jijjiiruu dandeessa" },
+    { re: /^Switch your shop to (.*) type\? ✅ Your products, sales, and all data are PRESERVED ✅ Only the tools change \(kitchen\/tables appear or disappear\) ✅ You can switch again anytime during trial$/, am: "ሱቅዎን ወደ $1 ዓይነት ይቀይሩ? ✅ ምርቶችዎ፣ ሽያጭዎ እና ሁሉም መረጃ ይጠበቃሉ ✅ መሣሪያዎቹ ብቻ ይቀየራሉ (የምግብ ቤት/ጠረጴዛዎች ይታያሉ ወይም አይታዩም) ✅ በሙከራ ወቅት በየጊዜው መቀየር ይችላሉ", om: "Dukaala kee gara gosa $1tti jijjiiruu? ✅ Oomishoonni, gurgurtoonni fi deetaan hundi EEGAMU ✅ Qofa meeshaaleen jijjiiramu (kiceni/taabulonni mul'atu ykn hin mul'inne) ✅ Yeroo yaalii yeroo barbaachisu irra deebi'ee jijjiiruu dandeessa" },
+    /* ── v4-staff.js ── */
+    { re: /^✅ (.*) registered! 🔑 PIN set — they can now log in to POS\/Kitchen\/Hotel\.$/, am: "✅ $1 ተመዝግቧል! 🔑 ፒን ተቀምጧል — አሁን ወደ ፒኦኤስ/ምግብ ቤት/ሆቴል ሊገቡ ይችላሉ።", om: "✅ $1 galmeessameera! 🔑 PINiin kaa'ameera — amma POS/Kicini/Hotela seenuu danda'u." },
+    { re: /^✅ (.*) registered! 📤 You can now send purchase orders to their WhatsApp\.$/, am: "✅ $1 ተመዝግቧል! 📤 አሁን የግዥ ትዕዛዞችን ወደ ዋትስአፋቸው መላክ ይችላሉ።", om: "✅ $1 galmeessameera! 📤 Amma ordara bituu gara WhatsApp isaanii erguu dandeessa." },
+    { re: /^Pay (.*)\? Gross: (.*) Deductions: (.*) NET PAID: (.*) ✅ Recorded under Expenses → Salaries & Wages$/, am: "$1ን ይክፈሉ? ድርብ፡ $2 ቀንሶዎች፡ $3 የተከፈለ፡ $4 ✅ በወጪዎች → ደመወዞች ይመዘገባል", om: "$1 kaffaluu? Gita: $2 Hir'attoonni: $3 KAFFALAME: $4 ✅ Baasii → Mindaa galmeeffama" },
+    { re: /^Pay (.*)\? Gross: (.*) Deductions: (.*) NET PAID: (.*)$/, am: "$1ን ይክፈሉ? ድርብ፡ $2 ቀንሶዎች፡ $3 የተከፈለ፡ $4", om: "$1 kaffaluu? Gita: $2 Hir'attoonni: $3 KAFFALAME: $4" },
+    { re: /^✅ (.*) paid (.*) \(net\)\. 🏛️ Withheld: (.*) — see Analytics\.$/, am: "✅ $1 ተከፍሏል $2 (የተጣራ)። 🏛️ የተያዘ፡ $3 — በትንተና ይመልከቱ።", om: "✅ $1 kaffalameera $2 (qulqulluu). 🏛️ Hafe: $3 — Analiizisii ilaali." },
+    { re: /^✅ (.*) paid (.*) \(net\)\.$/, am: "✅ $1 ተከፍሏል $2 (የተጣራ)።", om: "✅ $1 kaffalameera $2 (qulqulluu)." },
+    { re: /^➖ Salary Advance — (.*) Owed now: (.*) Max advance \(1 month salary limit\): (.*) Amount\:$/, am: "➖ የደመወዝ ቅድሚያ ክፍያ — $1 አሁን ያልተከፈለ፡ $2 ከፍተኛ ቅድሚያ (1 ወር የደመወዝ ገደብ)፡ $3 መጠን፡", om: "➖ Dabalata mindaa — $1 Ammaa hin kaffalamne: $2 Dabalata guddaa (daangaa mindaa ji'a 1): $3 Baay'ina:" },
+    { re: /^✅ Advance of (.*) recorded \(also in Expenses\)\.$/, am: "✅ የ$1 ቅድሚያ ክፍያ ተመዝግቧል (በወጪዎችም ውስጥ)።", om: "✅ Dabalataan $1 galmeeffameera (Baasii keessattis)." },
+    { re: /^✅ (.*) brackets saved — payslips recalculate instantly\.$/, am: "✅ $1 ደረጃዎች ተቀምጠዋል — የደመወዝ ወረቀቶች ወዲያውኑ እንደገና ይሰላሉ።", om: "✅ Kurfeewwan $1 ol kaa'amaniiru — warraqabni mindaa yeroo san irra deebi'ee herregama." },
+    { re: /^✅ Pension saved: employee (.*)% · employer (.*)%\.$/, am: "✅ ጡረታ ተቀምጧል፡ ሠራተኛ $1% · ቀላሽ $2%።", om: "✅ Peenshoonin ol kaa'ameera: hojjataa $1% · workii $2%." },
+    { re: /^✅ (.*) updated\.$/, am: "✅ $1 ተዘምኗል።", om: "✅ $1 haaromameera." },
+    { re: /^🔒 Block (.*) from logging in\? They cannot sign into POS, Kitchen, or Hotel until you allow again\. Their records, salary and ledger stay untouched\.$/, am: "🔒 $1ን ከመግቢያ ይከለክሉ? እንደገና እስኪፈቅዱ ድረስ ወደ ፒኦኤስ፣ ምግብ ቤት ወይም ሆቴል መግባት አይችሉም። መዝገቦቻቸው፣ ደመወዛቸው እና መዝገበ ገንዘባቸው ሳይነኩ ይቆያሉ።", om: "🔒 $1 seensaa cufuu? Akka ati irra deebisee hayyamutti dura POS, Kicini ykn Hotela seenuu hin danda'u. Galmeewwan, mindaa fi leejariin isaanii hin tuqamne hafu." },
+    { re: /^🔒 (.*) blocked from login\.$/, am: "🔒 $1 ከመግቢያ ተከልክሏል።", om: "🔒 $1 seensaa irraa cufameera." },
+    { re: /^👤 Allow (.*) to log in again\?$/, am: "👤 $1 እንደገና እንዲገባ ይፈቀዱ?", om: "👤 $1 irra deebi'ee akka seenu hayyamuu?" },
+    { re: /^👤 (.*) can log in again\.$/, am: "👤 $1 እንደገና መግባት ይችላል።", om: "👤 $1 irra deebi'ee seenuu danda'a." },
+    { re: /^✅ (.*) deactivated \(reactivate anytime via 👤 button or Edit\)\.$/, am: "✅ $1 ተወግዟል (በየጊዜው በ👤 አዝራር ወይም በማስተካከያ መመለስ ይቻላል)።", om: "✅ $1 dhiifameera (yeroo barbaachisu butoonii 👤 ykn Edittiin deebisuu danda'a)." },
+    { re: /^⚠️ PERMANENTLY DELETE (.*)\? Ledger, PIN — all gone\. Recorded salary expenses stay in Expenses\.$/, am: "⚠️ $1ን ለዘለቃለም ይሰርዙ? መዝገበ ገንዘብ፣ ፒን — ሁሉም ይጠፋል። የተመዘገቡ የደመወዝ ወጪዎች በወጪዎች ውስጥ ይቆያሉ።", om: "⚠️ $1 dhaabbatti balleessuu? Leejarii, PIN — hundi bakkatti balleeffamu. Baasii mindaa galmeeffame Baasii keessatti hafu." },
+    /* ── v4-stock.js ── */
+    { re: /^🗑️ Remove EXPIRED stock\? (.*) — (.*) (.*) Loss value: (.*) Stock goes to 0 and a loss is recorded\.$/, am: "🗑️ የተበላሸ ዕቃ ይሰረዙ? $1 — $2 $3 የኪሳር ዋጋ፡ $4 ዕቃው ወደ 0 ይሄዳል እና ኪሳር ይመዘገባል።", om: "🗑️ Stockiin yeroo dhume balleessuu? $1 — $2 $3 Gatii balee: $4 Stockiin gara 0 deema fi baleen galmeeffama." },
+    { re: /^✅ Expired stock removed and logged as loss \((.*)\)\.$/, am: "✅ የተበላሸው ዕቃ ተሰርዞ እንደ ኪሳር ተመዝግቧል ($1)።", om: "✅ Stockiin yeroo dhume haqameera akka baleetti galmeeffameera ($1)." },
+    /* ── v4-suppliers.js ── */
+    { re: /^Create order (.*)\? (.*) items · estimated (.*)$/, am: "ትዕዛዝ $1 ይፈጠሩ? $2 ንጥሎች · ግምታዊ $3", om: "Ordara $1 uumu? Wantoota $2 · tilmaama $3" },
+    { re: /^✅ Order created! 📤 Send it to (.*) on WhatsApp now\?$/, am: "✅ ትዕዛዝ ተፈጥሯል! 📤 አሁን ወደ $1 በዋትስአፕ ይላኩት?", om: "✅ Ordariin uumameera! 📤 Amma gara $1 WhatsApp erguu?" },
+    { re: /^✅ Order (.*) created!$/, am: "✅ ትዕዛዝ $1 ተፈጥሯል!", om: "✅ Ordarrii $1 uumameera!" },
+    { re: /^Save this delivery\? (.*)$/, am: "ይህን ማድረሻ ይቀምጡ? $1", om: "Kun qooda ol kaa'uu? $1" },
+    { re: /^Cancel the WHOLE order (.*)\? All (.*) pending item\(s\) cancelled — no stock change\. \(Tip: to cancel only SOME items, use 📥 Receive and tap 🚫 on them\.\)$/, am: "መላውን ትዕዛዝ $1 ይሰርዙ? ሁሉም $2 በመጠበቅ ላይ ያሉ ንጥሎች ይሰረዛሉ — ዕቃ ለውጥ የለም። (ምክር፡ በጥቂቱ ንጥሎችን ለመሰረዝ 📥 ተቀበልን ይጠቀሙ እና በእነሱ ላይ 🚫 ይንኩ።)", om: "Ordara guutuu $1 haquu? Wantoota $2 eegamu hundi haqamu — stockiin hin jijjiiramu. (Gorsii: wantoota MURRAA qofa haquuf 📥 Fudhii fayyadami fi isaan irratti 🚫 cuqaasi.)" }
+  );
+})();
+
