@@ -626,8 +626,8 @@
             // finally reach the right station tab on the kitchen display.
             var stationStatus = {};
             cart.forEach(function(item) {
-                var st = item.station || defaultStation;
-                stationStatus[st] = false;
+                if (!item.station) return;
+                stationStatus[item.station] = false;
             });
 
             // Generate a unique ID for the order
@@ -635,7 +635,7 @@
             var orderItems = cart.map(i => ({
                 productId: i.id, name: i.name, qty: i.qty, price: i.price,
                 modifiers: i.modifiers || [], note: i.note || '',
-                station: i.station || defaultStation
+                station: i.station || ''
             }));
             var orderTotal = cart.reduce((s,i) => s+(i.price*i.qty), 0);
             var orderTable = tableId || ('QR-' + Date.now().toString().slice(-4));
