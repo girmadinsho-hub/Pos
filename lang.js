@@ -8785,5 +8785,32 @@ window.SLP_T = function (s) {
     { re: /^Save this delivery\? (.*)$/, am: "ይህን ማድረሻ ይቀምጡ? $1", om: "Kun qooda ol kaa'uu? $1" },
     { re: /^Cancel the WHOLE order (.*)\? All (.*) pending item\(s\) cancelled — no stock change\. \(Tip: to cancel only SOME items, use 📥 Receive and tap 🚫 on them\.\)$/, am: "መላውን ትዕዛዝ $1 ይሰርዙ? ሁሉም $2 በመጠበቅ ላይ ያሉ ንጥሎች ይሰረዛሉ — ዕቃ ለውጥ የለም። (ምክር፡ በጥቂቱ ንጥሎችን ለመሰረዝ 📥 ተቀበልን ይጠቀሙ እና በእነሱ ላይ 🚫 ይንኩ።)", om: "Ordara guutuu $1 haquu? Wantoota $2 eegamu hundi haqamu — stockiin hin jijjiiramu. (Gorsii: wantoota MURRAA qofa haquuf 📥 Fudhii fayyadami fi isaan irratti 🚫 cuqaasi.)" }
   );
+})
+  
+/* BIZ-LANG-5 · Fix Pack 6 (product registration round) — station "None" option,
+   full type labels (filter/badges/edit cards), loss-warning dialog. */
+(function () {
+  var ADD = {
+    am: {
+      "None (no prep)": "የለም (አያስተናገድም)",
+      "🛒 Sell Direct": "🛒 ቀጥታ ሽያጭ", "🧪 Raw Material": "🧪 ጥሬ ዕቃ",
+      "🍔 Prepared": "🍔 ተሠርቷል", "🥚 Dual Use": "🥚 ሁለት ጥቅም",
+      "☕ Coffee / Hot": "☕ ቡና / ትኩስ",
+      "⚠️ Cost price is higher than selling price — this product sells at a loss. Save anyway?": "⚠️ የወጪ ዋጋ ከሽያጭ ዋጋ በላይ ነው — ይህ ምርት በኪሳራ ይሸጣል። አሁንም ይቀመጥ?"
+    },
+    om: {
+      "None (no prep)": "Homaa miti (hin qopheeffamu)",
+      "🛒 Sell Direct": "🛒 Gurgurcha Kallattii", "🧪 Raw Material": "🧪 Meemidduu",
+      "🍔 Prepared": "🍔 Hojjedameera", "🥚 Dual Use": "🥚 Faayidaa lama qabu",
+      "☕ Coffee / Hot": "☕ Buna / Ho'a",
+      "⚠️ Cost price is higher than selling price — this product sells at a loss. Save anyway?": "⚠️ Gatii baasiin gatii gurguraa caalaa waan ta'eef oomishni kun kuffisaan gurgurama. Ammas ol kaa'uu barbaaddaa?"
+    }
+  };
+  ['am','om'].forEach(function(L){
+    window.SLP_PHR = window.SLP_PHR || {};
+    var d = window.SLP_PHR[L] = window.SLP_PHR[L] || {};
+    for (var k in ADD[L]) if (d[k] == null) d[k] = ADD[L][k];
+  });
 })();
+  
 
