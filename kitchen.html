@@ -690,7 +690,7 @@ function kitchenLogout() {
         
         latestOrders.forEach(order => {
             var hasItemsForStation = (order.items || []).some(function(item) {
-                return (item.station || 'Kitchen') === activeStation;
+                return (item.station || '') === activeStation;
             });
             
             if (activeStation !== 'All' && !hasItemsForStation) return;
@@ -734,8 +734,7 @@ function kitchenLogout() {
                 var itemsHtml = '';
                 
                 (order.items || []).forEach(item => {
-                    if (activeStation !== 'All' && (item.station || 'Kitchen') !== activeStation) return;
-                    
+if (activeStation !== 'All' && (item.station || '') !== activeStation) return;                    
                     var modsHtml = (item.modifiers && item.modifiers.length > 0) ? '<div class="item-mod">➕ ' + escHtml(item.modifiers.join(', ')) + '</div>' : '';
                     var noteHtml = item.note ? '<div class="item-note">📝 ' + escHtml(item.note) + '</div>' : '';
                     itemsHtml += '<div class="item-row"><div class="item-name">' + escHtml(item.qty + 'x ' + item.name) + '</div>' + modsHtml + noteHtml + '</div>';
