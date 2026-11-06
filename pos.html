@@ -2910,8 +2910,8 @@ function addToCart(prodId, qty) {
     } else {
         cart.push({
             id: p.id, name: p.name, price: price, qty: qty,
-            unit: p.unit || '', stock: p.stock, costPrice: p.costPrice || 0,
-            isVirtual: isVirtual, station: p.station || 'Kitchen'
+             unit: p.unit || '', stock: p.stock, costPrice: p.costPrice || 0,
+            isVirtual: isVirtual, station: p.station || ''
         });
     }
 
@@ -4839,7 +4839,7 @@ window._loadRoundsIntoCart = function(orders) {
                 costPrice: prod ? (prod.costPrice || 0) : 0,
                 isVirtual: prod ? !!prod.isVirtual : false,
                 modifiers: item.modifiers || [], note: item.note || '',
-                station: (prod && prod.station) || 'Kitchen'
+                station: (prod && prod.station) || ''
             });
         });
     });
@@ -4860,7 +4860,8 @@ function printKOT(orderData) {
     // 1. Group items by their station
     var stations = {};
     (orderData.items || []).forEach(function(item) {
-        var st = item.station || 'Kitchen';
+        if (!item.station) return;
+        var st = item.station;
         if (!stations[st]) stations[st] = [];
         stations[st].push(item);
     });
@@ -6045,7 +6046,8 @@ async function kotPrintPaper(orderData) {
     // Group items by station (Kitchen / Bar / Coffee) — one ticket per station
     var stations = {};
     orderData.items.forEach(function(item) {
-        var st = item.station || 'Kitchen';
+        if (!item.station) return;
+        var st = item.station;
         if (!stations[st]) stations[st] = [];
         stations[st].push(item);
     });
@@ -6285,10 +6287,10 @@ async function sendWaiterOrderToKitchen() {
                 if (!sendAnyway) { if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; } return; }            }
         }
     }
-    var stationStatus = {};
+   var stationStatus = {};
     cart.forEach(function(item) {
-        var st = item.station || 'Kitchen';
-        stationStatus[st] = false;
+        if (!item.station) return;
+        stationStatus[item.station] = false;
     });
 
     var orderData = {
@@ -6297,7 +6299,7 @@ async function sendWaiterOrderToKitchen() {
         items: cart.map(i => ({
             productId: i.id, name: i.name, qty: i.qty, price: i.price,
             modifiers: i.modifiers || [], note: i.note || '',
-            station: i.station || 'Kitchen'
+             station: i.station || ''
         })),
         stationStatus: stationStatus,
         total: cart.reduce((s,i) => s+(i.price*i.qty), 0),
