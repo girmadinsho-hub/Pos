@@ -6608,8 +6608,7 @@ window.SLP_PAT.push(
     var d = (PHR && PHR[CUR]) || null;
     if (!d) return null;
     var t = String(s).replace(/\s+/g, ' ').trim();
-    if (!t || t.length > 160) return null;
-    if (!/[A-Za-z\u1200-\u137F]/.test(t) || t.length < 2) return null; // numbers/prices/symbols only (Round 18: also let short labels like "A-Z" through)
+    if (!t || t.length > 400) return null;    if (!/[A-Za-z\u1200-\u137F]/.test(t) || t.length < 2) return null; // numbers/prices/symbols only (Round 18: also let short labels like "A-Z" through)
     if (d[t] != null) return d[t];
     /* runtime affix fallback: "📅 Week" → stem "Week"; "Total:" → stem "Total" */
     var pre = '', stem = t, post = '';
@@ -7769,8 +7768,7 @@ window.SLP_T = function (s) {
     var d = (window.SLP_PHR || {})[CUR];
     if (!d) return s;
     var t = String(s).replace(/\s+/g, ' ').trim();
-    if (!t || t.length > 160) return s;
-    if (!/[A-Za-z\u1200-\u137F]/.test(t) || t.length < 2) return s;
+    if (!t || t.length > 400) return s;    if (!/[A-Za-z\u1200-\u137F]/.test(t) || t.length < 2) return s;
     if (d[t] != null) return d[t];
     var EMOJI_RE = /^((?:[\u2190-\u21FF\u2300-\u27BF\u2B00-\u2BFF\uFE0F\u200D\u20E3\u2705\u274C\u2714\u2716\u2764]|[\uD800-\uDBFF][\uDC00-\uDFFF])+)(\s?)([\s\S]*)$/;
     var pre = '', stem = t, post = '';
@@ -8467,7 +8465,83 @@ window.SLP_T = function (s) {
       window.confirm = function (m) { return C.call(window, TS(String(m == null ? '' : m))); };
       window.prompt = function (m, d, o) { return P.call(window, TS(String(m == null ? '' : m)), d, o); };
     })();
+ 
   } catch (e) { try { console.log('[lang] pack5 bridge skipped: ' + e.message); } catch (e2) {} }
+})();
+
+/* ═══ QA PACK 5 · master.html — true-gap translations + long-dialog engine fix · 2026-11-06
+   Field report (verified against live lang.js with a VM harness):
+   · master.html sidebar, plan manager labels and most dialogs were already
+     translated by earlier packs — only the 22 phrases below were still English.
+   · 5 dynamic patterns were missing (Plan Manager error, EXPIRED-ago chips,
+     day counts, feature count, payment total).
+   · BONUS FIX shipped with this pack: the 160-char ceiling in SLP_T() and
+     translateString() was raised to 400 — long dialogs like
+     "🗑️ DELETE the license key for …" (166 chars) were silently skipped
+     before, even though their patterns existed since Round 19. */
+(function () {
+  var ADD = {
+    am: {
+      "A valid owner email is required — without it, the customer can never access this shop.": "ትክክለኛ የባለቤት ኢሜይል ያስፈልጋል — ያለው ደንበኛው ይህን ሱቅ በጭራሽ ሊደረስበት አይችልም።",
+      "Enter valid shops per type.": "ትክክለኛ የሱቆች ብዛት በየአይነቱ አስገባ።",
+      "Enter valid trial days.": "ትክክለኛ የሙከራ ቀናት አስገባ።",
+      "Enter valid warning days (0 = never show banner).": "ትክክለኛ የማስጠንቀቂያ ቀናት አስገባ (0 = ባነሩ በጭራሽ አያሳይም)።",
+      "❌ App PIN must be exactly 4 digits (e.g., 2580). This is NOT your password — a quick extra lock.": "❌ የመተግበሪያ PIN በትክክል 4 አሃዞች መሆን አለበት (ለምሳሌ 2580)። ይህ የእርስዎ የመግቢያ ቃል አይደለም — ፈጣን ተጨማሪ ቁልፍ ብቻ ነው።",
+      "📧 Owner's email (the customer who will sign in with this key):": "📧 የባለቤቱ ኢሜይል (በዚህ ቁልፍ የሚገባው ደንበኛ):",
+      "🔐 CREATE YOUR APP PIN This is an EXTRA lock for this device (separate from your password). Choose any 4 digits:": "🔐 የመተግበሪያ PIN ይፍጠሩ ይህ ለዚህ መሣሪያ ተጨማሪ ቁልፍ ነው (ከእርስዎ የመግቢያ ቃል የተለየ)። ማንኛውንም 4 አሃዞች ይምረጡ:",
+      "SmartShop Master": "SmartShop ዋና አስተዳዳሪ",
+      "📅 30 days": "📅 30 ቀናት",
+      "📅 90 days": "📅 90 ቀናት",
+      "📅 180 days": "📅 180 ቀናት",
+      "📅 365 days": "📅 365 ቀናት",
+      "Tagline": "የማስተዋወቂያ ሐረግ",
+      "Plan name": "የፕላን ስም",
+      "Enterprise": "ኢንተርፕራይዝ",
+      "no email": "ኢሜይል የለም",
+      "Extend days": "ቀናት ጨምር",
+      "Change plan": "ፕላን ቀይር",
+      "Generate key": "ቁልፍ ፍጠር",
+      "Block / Unblock": "አግድ / እገዳ አንሳ",
+      "Delete license KEY only": "የፈቃድ ቁልፉን ብቻ ሰርዝ",
+      "⚠️ DELETE SHOP + ALL DATA FOREVER": "⚠️ ሱቅን + ሁሉንም መረጃ ለዘላለም ሰርዝ"
+    },
+    om: {
+      "A valid owner email is required — without it, the customer can never access this shop.": "Imeelii abbaa qabamaa sirrii ta'uu qaba — yoo hin qabaanne, kiristiyaanri suuqicha seenuu hin danda'u.",
+      "Enter valid shops per type.": "Lakkoofsa suuqootaa gosa tokko tokkoof sirrii galchi.",
+      "Enter valid trial days.": "Guyyoota yaalii sirrii galchi.",
+      "Enter valid warning days (0 = never show banner).": "Guyyoota akeekkinaa sirrii galchi (0 = baanarri yeroo hundaa hin mul'atu).",
+      "❌ App PIN must be exactly 4 digits (e.g., 2580). This is NOT your password — a quick extra lock.": "❌ Piiniin App lakkoofsa 4 qofa ta'uu qaba (fakkeenyaaf, 2580). Kun jecha icciitii kee miti — cufuu dabalataa saffisaa qofa dha.",
+      "📧 Owner's email (the customer who will sign in with this key):": "📧 Imeelii abbaa qabaa (kiristiyaanri furtuu kanaan seenamu):",
+      "🔐 CREATE YOUR APP PIN This is an EXTRA lock for this device (separate from your password). Choose any 4 digits:": "🔐 PIINII APP KEE UUMI Kun meeshaa kanaaf cufuu dabalataa dha (jecha icciitii kee irraa adda). Lakkoofsa 4 kamiyyuu fili:",
+      "SmartShop Master": "Bulchituu SmartShop",
+      "📅 30 days": "📅 Guyyaa 30",
+      "📅 90 days": "📅 Guyyaa 90",
+      "📅 180 days": "📅 Guyyaa 180",
+      "📅 365 days": "📅 Guyyaa 365",
+      "Tagline": "Yaada Gabaabduu",
+      "Plan name": "Maqaa Pilaanaa",
+      "Enterprise": "Enterpraayzii",
+      "no email": "Imeelii hin jiru",
+      "Extend days": "Guyyaa Dabalisi",
+      "Change plan": "Pilaanaa Jijjiiri",
+      "Generate key": "Furtuu Uumi",
+      "Block / Unblock": "Cufi / Bani",
+      "Delete license KEY only": "Furtuu Eeyyama Qofa Balleessi",
+      "⚠️ DELETE SHOP + ALL DATA FOREVER": "⚠️ Suuqii + Daataa Hundaa Yeroo Hundaa Balleessi"
+    }
+  };
+  window.SLP_PHR = window.SLP_PHR || {};
+  for (var L in ADD) {
+    var d = window.SLP_PHR[L] = window.SLP_PHR[L] || {};
+    for (var k in ADD[L]) if (d[k] == null) d[k] = ADD[L][k];
+  }
+  window.SLP_PAT.push(
+    { re: /^❌ Plan Manager error: (.*)$/, am: "❌ የፕላን አስተዳዳሪ ስህተት፦ $1", om: "❌ Dogoggora Bulchaa Pilaanaa: $1" },
+    { re: /^❌ EXPIRED (\d+)d ago$/, am: "❌ አልፏል ከ$1 ቀን በፊት", om: "❌ Guyyoota $1 dura dhumeera" },
+    { re: /^✅ (\d+) days$/, am: "✅ $1 ቀናት", om: "✅ Guyyoota $1" },
+    { re: /^🔓 Features \((\d+) unlocked\)$/, am: "🔓 ባህሪያት ($1 ተከፍተዋል)", om: "🔓 Amaloota ($1 banaman)" },
+    { re: /^💰 Total: ([\d.,]+) Br$/, am: "💰 ጠቅላላ፦ $1 ብር", om: "💰 Walumaagalatti: $1 Bir" }
+  );
 })();
 
 /* ═══ QA PACK 6 · final dialog coverage — every remaining gap app-wide · 2026-11-06
