@@ -264,9 +264,9 @@ body.dark .maximized-card{background:#0f172a!important}
         <div class="v4-type" data-t="dual" onclick="v4PickType('dual')">🥚 <b>Dual Use</b><small>Sell AND recipe</small></div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <div><label>💵 Selling Price *</label><input type="number" class="v4-in" id="v4prodPrice" placeholder="0"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
         <div id="v4costWrap"><label>💰 Cost Price</label><input type="number" class="v4-in" id="v4prodCost" placeholder="0"></div>
+        <div><label>💵 Selling Price *</label><input type="number" class="v4-in" id="v4prodPrice" placeholder="0"></div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="v4stockWrap">
@@ -275,7 +275,7 @@ body.dark .maximized-card{background:#0f172a!important}
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="v4extraWrap">
-        <div><label>📂 Category</label><input class="v4-in" id="v4prodCategory" placeholder="e.g., Beverages"></div>
+       <div><label>📂 Category</label><input class="v4-in" id="v4prodCategory" list="v4catOpts" placeholder="e.g., Beverages"><datalist id="v4catOpts"></datalist></div>
         <div><label>📅 Expiry (optional)</label><input type="date" class="v4-in" id="v4prodExpiry"></div>
       </div>
 
@@ -361,7 +361,7 @@ body.dark .maximized-card{background:#0f172a!important}
       <select class="v4-in" id="v4prodCatFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:120px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()"><option value="">All Categories</option></select>
       <select class="v4-in" id="v4prodUnitFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:100px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()"><option value="">All Units</option></select>
       <select class="v4-in" id="v4prodTypeFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:110px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()">
-        <option value="">Type</option><option value="sell">🛒</option><option value="raw">🧪</option><option value="virtual">🍔</option><option value="dual">🥚</option>
+        <select class="v4-in" id="v4prodTypeFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:150px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()">
       </select>
       <select class="v4-in" id="v4prodSort" style="flex:0 0 auto;min-width:0;width:auto;max-width:100px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()">
         <option value="name-asc">A-Z</option><option value="name-desc">Z-A</option>
