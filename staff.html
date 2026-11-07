@@ -1,53 +1,52 @@
 <!DOCTYPE html>
 <!-- ═══════════════════════════════════════════════════════════════════
-     BizMaster · STAFF DOOR (staff.html) — 2026-11-02
+     BizMaster · STAFF DOOR v2 (staff.html) — 2026-11-07
      ─────────────────────────────────────────────────────────────────
-     THE SEPARATE DOOR RULE:
-       · This is the STAFF entrance ONLY — name + password, exactly as
-         the owner registered them. Each staff member lands at their
-         own workplace automatically (position routing below).
-       · There is NO admin / owner login on this page — no email
-         fields, no link to the owner door, nothing to discover. Staff
-         can never see or reach the admin sign-in window from here.
-       · The owner shares this link (or a QR of it) with the team:
-         staff.html            — shop is auto-detected
-         staff.html?shop=ID    — goes straight to one shop
-     Routing (position × business type) — same trusted logic as v4/v5:
-       Owner/Manager          → admin console (only if the OWNER made
-                                such a staff record — a deliberate act)
-       Cashier (retail)       → POS checkout
-       Cashier (café / hotel) → POS bill payments
-       Waiter                 → POS order mode
-       Chef / Barista         → Kitchen display (SSO)
-       Reception / Cleaner /
-       Guard / Housekeeping   → Hotel desk on hotels (SSO)
-     Language: English · አማርኛ · Afaan Oromoo (lang.js).
+     THE TWO-STEP STAFF DOOR (as requested by the owner):
+       STEP 1 · DEVICE UNLOCK
+         The device first asks for the ADMIN (owner) gmail + password.
+         Only that account's shops are loaded — nothing else is visible.
+         The admin session is NEVER saved on this device (it is used
+         only in memory to load the list, then thrown away).
+       STEP 2 · STAFF SIGN IN
+         Instead of typing a name, the staff member PICKS their name
+         from a dropdown — only staff registered under that admin
+         account (and that shop / café / hotel) appear in the list.
+         They enter the password/PIN the owner gave them and land in
+         their OWN workplace only:
+           Cashier            → POS (never the kitchen)
+           Waiter             → POS order mode
+           Chef / Barista     → Kitchen Display
+           Reception / Guard  → Hotel Desk (on hotels)
+           Owner / Manager    → Admin console
+         The shop / café / hotel name is shown at the top of the card.
+     Language: ONE 🌐 button in the header opens a dropdown with
+     English · አማርኛ · Afaan Oromoo (LANG.dropdown from lang.js).
+     The owner shares this link (or a QR of it) with the team:
+         staff.html            — pick shop after unlock
+         staff.html?shop=ID    — preselects one shop
      ═══════════════════════════════════════════════════════════════════ -->
 <html lang="en">
 <head>
-<script src="zoom-fix.js"></script>
   <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-  <meta name="theme-color" content="#0f172a">
+<meta name="theme-color" content="#0f172a">
 <title>BizMaster — Staff Sign In</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Ethiopic:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--ink:#0f172a;--ink2:#1e293b;--sub:#94a3b8;--line:#334155;--gold:#d4af37;--bg:#0f172a}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{font-family:'Inter',system-ui,sans-serif;background:radial-gradient(1200px 600px at 50% -10%,#1e3a8a 0%,var(--bg) 60%);color:#f8fafc;display:flex;flex-direction:column;min-height:100vh}
-body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,body[data-lang="am"] .door-note{font-family:'Noto Sans Ethiopic','Inter',sans-serif}
+body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,body[data-lang="am"] select,body[data-lang="am"] .door-note,body[data-lang="am"] .sub{font-family:'Noto Sans Ethiopic','Inter',sans-serif}
 .wordmark{display:inline-flex;align-items:baseline;gap:1px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:18px;letter-spacing:-.02em}
 .wordmark .biz{color:#f8fafc}.wordmark .master{color:var(--gold)}
 .topbar{width:100%;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .topbar .right{display:flex;align-items:center;gap:12px}
 .topbar a{color:var(--sub);text-decoration:none;font-size:12.5px;font-weight:600}
 .help-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(212,175,55,.12);color:var(--gold)!important;border-radius:999px;padding:6px 12px}
-#langbar{display:flex;gap:4px}
-#langbar button{border:1px solid var(--line);background:transparent;border-radius:8px;padding:4px 8px;font-size:10.5px;font-weight:700;color:var(--sub);cursor:pointer}
-#langbar button.on{border-color:var(--gold);color:var(--gold)}
 .wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:22px 18px 40px}
 .box{width:100%;max-width:380px;background:var(--ink2);border:1px solid var(--line);border-radius:22px;padding:30px 26px;box-shadow:0 30px 70px -30px rgba(0,0,0,.7)}
 .box .ic{font-size:38px;text-align:center}
@@ -56,6 +55,7 @@ body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,b
 .lbl{display:block;font-size:11px;font-weight:700;color:var(--sub);margin:14px 0 5px;text-transform:uppercase;letter-spacing:.06em}
 .fld{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;font-size:15px;font-family:inherit;background:#0b1220;color:#f8fafc;outline:none;transition:border-color .15s}
 .fld:focus{border-color:var(--gold)}
+.fld option{color:#0f172a}
 .btn{width:100%;padding:14px;margin-top:18px;border:0;border-radius:12px;background:var(--gold);color:#0f172a;font-weight:800;font-size:15px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif}
 .btn:active{transform:scale(.985)}
 .btn.loading{opacity:.6;pointer-events:none}
@@ -65,12 +65,10 @@ body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,b
 .msgbox.ok{background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
 .msgbox.warn{background:rgba(245,158,11,.12);color:#fcd34d;border:1px solid rgba(245,158,11,.3)}
 .hidden{display:none!important}
-.picks{margin-top:14px;display:flex;flex-direction:column;gap:8px}
-.pick{display:flex;align-items:center;gap:12px;background:#0b1220;border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;text-align:left;color:#f8fafc;font-family:inherit}
-.pick:hover{border-color:var(--gold)}
-.pick .pick-ic{font-size:20px}
-.pick b{font-size:14px;display:block}
-.pick small{color:var(--sub);font-size:11px}
+.shopchip{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.35);color:var(--gold);border-radius:12px;padding:11px 14px;font-size:14.5px;font-weight:800;margin-bottom:6px;flex-wrap:wrap;text-align:center}
+.shopchip small{display:block;width:100%;text-align:center;color:var(--sub);font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.shopsel{margin-bottom:2px}
+.lockbtn{display:block;margin:14px auto 0;background:none;border:none;color:var(--sub);font-size:11.5px;font-weight:600;text-decoration:underline;cursor:pointer;font-family:inherit}
 .door-note{margin-top:18px;text-align:center;font-size:11px;color:var(--sub);line-height:1.6}
 .foot{padding:14px 18px;text-align:center;color:var(--sub);font-size:11px}
 </style>
@@ -87,27 +85,48 @@ body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,b
 
 <div class="wrap">
   <div class="box">
-    <div class="ic">🧑‍🍳</div>
-    <h1 data-i18n="si.h2">Staff Sign In</h1>
-    <p class="sub" data-i18n="si.p">Type your name and password — exactly as the owner registered them.</p>
 
-    <label class="lbl" for="sfShop" data-i18n="sf.shop">Shop ID (optional)</label>
-    <input class="fld" id="sfShop" autocomplete="off" data-i18n-ph="sf.shopph" placeholder="Leave empty to find automatically">
-    <label class="lbl" for="staffName" data-i18n="si.name">Your name</label>
-    <input class="fld" id="staffName" autocomplete="off" data-i18n-ph="si.nameph" placeholder="e.g. Abebe">
-    <label class="lbl" for="staffPass" data-i18n="si.pass">Password</label>
-    <input class="fld" id="staffPass" type="password" autocomplete="current-password" data-i18n-ph="si.passph" placeholder="Your password">
+    <!-- ═══ STEP 1 · DEVICE UNLOCK (admin gmail + password) ═══ -->
+    <div id="lockCard">
+      <div class="ic">🔐</div>
+      <h1 data-i18n="si.h2">Staff Sign In</h1>
+      <p class="sub" data-i18n-html="sd.lock.p">The owner unlocks this device <b>once</b> with their email and password. Then each staff member picks their name from the list.</p>
 
-    <div id="signinMsg" class="msgbox err hidden"></div>
-    <div id="matchBox" class="picks hidden"></div>
+      <label class="lbl" for="adEmail" data-i18n="sd.email">Admin email</label>
+      <input class="fld" id="adEmail" type="email" autocomplete="off" placeholder="owner@gmail.com" data-i18n-ph="sd.email.ph">
+      <label class="lbl" for="adPass" data-i18n="sd.apass">Admin password</label>
+      <input class="fld" id="adPass" type="password" autocomplete="current-password" placeholder="Owner password" data-i18n-ph="sd.apass.ph">
 
-    <button type="button" class="btn" id="signinBtn" onclick="doSignIn()"><span id="btnLabel" data-i18n="si.btn">Verify &amp; Open</span></button>
+      <div id="unlockMsg" class="msgbox err hidden"></div>
 
-    <p class="door-note" data-i18n-html="sf.note">This is the staff entrance. Owners and admins sign in at their own separate door.</p>
+      <button type="button" class="btn" id="unlockBtn" onclick="doUnlock()"><span id="unlockBtnLbl" data-i18n="sd.unlock">🔓 Unlock Staff List</span></button>
+
+      <p class="door-note" data-i18n-html="sf.note">This is the staff entrance. Owners and admins sign in at their own separate door.</p>
+    </div>
+
+    <!-- ═══ STEP 2 · STAFF PICK NAME + PASSWORD ═══ -->
+    <div id="staffCard" class="hidden">
+      <div class="shopchip" id="shopChip"></div>
+      <select class="fld shopsel hidden" id="sfShopSel" onchange="onShopChange()"></select>
+
+      <div class="ic">🧑‍🍳</div>
+      <h1 data-i18n="si.h2">Staff Sign In</h1>
+      <p class="sub" data-i18n="sd.sub">Pick your name, enter your password — you open your own workplace.</p>
+
+      <label class="lbl" for="sfStaff" data-i18n="sd.staff">Your name</label>
+      <select class="fld" id="sfStaff" onchange="onStaffPick()"></select>
+      <label class="lbl" for="staffPass" data-i18n="si.pass">Password or PIN</label>
+      <input class="fld" id="staffPass" type="password" inputmode="numeric" autocomplete="current-password" data-i18n-ph="si.passph" placeholder="Your password">
+
+      <div id="signinMsg" class="msgbox err hidden"></div>
+
+      <button type="button" class="btn" id="signinBtn" onclick="doSignIn()"><span id="btnLabel" data-i18n="si.btn">Sign in</span></button>
+
+      <button type="button" class="lockbtn" onclick="lockDoor()" data-i18n="sd.lock">🔒 Lock this device</button>
+    </div>
+
   </div>
 </div>
-
-
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="config.js"></script>
@@ -115,9 +134,10 @@ body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,b
 <script src="lang.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════════
-//  BizMaster · STAFF DOOR — carried over from the approved v5 gateway
-//  (server-side password check + offline fallback + same-name picker
-//   + position routing). No admin anything.
+//  BizMaster · STAFF DOOR v2 — admin unlock → staff dropdown →
+//  password check (server-side + offline fallback) → position routing.
+//  The password verification and routing are the SAME trusted logic
+//  the old door used (edge function staff-login, lockout, SSO keys).
 // ═══════════════════════════════════════════════════════════════════
 var APP_NAME = 'BizMaster';
 function t(key, vars) { return window.LANG ? LANG.t(key, vars) : key; }
@@ -132,13 +152,22 @@ var CFG_URL = '', CFG_KEY = '';
 try { if (typeof SS_CONFIG !== 'undefined') { CFG_URL = SS_CONFIG.SUPABASE_URL || ''; CFG_KEY = SS_CONFIG.SUPABASE_KEY || ''; } } catch (e) {}
 if (!CFG_URL) CFG_URL = 'https://mtwcdvmdoxzcejzgypdw.supabase.co';
 if (!CFG_KEY) CFG_KEY = 'sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8';
+
+// Main client — stays ANONYMOUS, exactly like the old door (password
+// checks go through the edge function with the public key).
 var sb = null;
 if (window.supabase) { try { sb = window.supabase.createClient(CFG_URL, CFG_KEY, { auth: { flowType: 'implicit' } }); } catch (e) { sb = null; } }
 if (sb) window.SPP_SB = sb;
 
-var G = { busy: false };
+// Unlock client — used ONLY for the admin email+password gate.
+// persistSession:false → the owner session is NEVER written to this
+// device. It lives in memory just long enough to load the staff list.
+var sbx = null;
+if (window.supabase) { try { sbx = window.supabase.createClient(CFG_URL, CFG_KEY, { auth: { flowType: 'implicit', persistSession: false, autoRefreshToken: false, storageKey: 'sb-staffdoor-unlock' } }); } catch (e) { sbx = null; } }
 
-// ── Business-type classification ──
+var G = { busy: false, ubusy: false, shops: [], staff: [], shopId: '', byVal: {}, presetShop: '' };
+
+// ── Business-type classification (same as before) ──
 var TYPE_HOTEL = ['hotel','guest house','guesthouse','lodge','resort','pension','bnb','hostel'];
 var TYPE_FOOD = ['cafe','café','restaurant','coffee','bar','bakery','cafeteria','fast food','fastfood','food','juice','burger','pizza'];
 function typeGroup(t) {
@@ -148,6 +177,12 @@ function typeGroup(t) {
   return 'retail';
 }
 var POS_ICON = { Owner:'👑', Manager:'🛠️', Cashier:'💳', Waiter:'📝', Chef:'👨‍🍳', Barista:'☕', Reception:'🛎️', Cleaner:'🧹', Guard:'💂' };
+function shopIcon(shop) { var g = typeGroup(shop && shop.business_type); return (g === 'hotel') ? '🏨' : (g === 'cafe') ? '☕' : '🏪'; }
+function posLabel(p) {
+  var k = 'pos.' + String(p || '').trim().toLowerCase();
+  var s = t(k);
+  return (s === k) ? (p || t('side.staff')) : s;
+}
 
 // ── THE ROUTING MATRIX: position × business type → destination ──
 function routeFor(position, shopType) {
@@ -169,76 +204,133 @@ function routeFor(position, shopType) {
 
 // ── Messages / busy state ──
 function setMsg(kind, html) { var m = $('signinMsg'); if (m) { m.className = 'msgbox ' + kind + (html ? '' : ' hidden'); if (html) m.innerHTML = html; } }
+function setUMsg(kind, html) { var m = $('unlockMsg'); if (m) { m.className = 'msgbox ' + kind + (html ? '' : ' hidden'); if (html) m.innerHTML = html; } }
 function setBusy(on, label) {
   G.busy = on;
   var b = $('signinBtn'); if (b) b.classList[on ? 'add' : 'remove']('loading');
   var l = $('btnLabel'); if (l) l.textContent = on ? (label || t('si.btn.checking')) : t('si.btn');
 }
+function setUBusy(on, label) {
+  G.ubusy = on;
+  var b = $('unlockBtn'); if (b) b.classList[on ? 'add' : 'remove']('loading');
+  var l = $('unlockBtnLbl'); if (l) l.textContent = on ? (label || t('sd.checking')) : t('sd.unlock');
+}
 function netMsg(e) { if (e && e.message === 'TIMEOUT') return t('msg.timeout'); return t('msg.net', { err: (e && e.message) || 'network' }); }
 
-// ── Find staff by name (filtered by shop when the ID was given) ──
-async function findStaff(name, shopId) {
-  var q = sb.from('employees').select('firebase_id,id,name,position,status,shop_id').ilike('name', name).limit(25);
-  if (shopId) q = q.eq('shop_id', shopId);
-  var res = await withTimeout(q, 10000);
-  if (res.error) throw res.error;
-  var rows = res.data || [];
-  var low = name.trim().toLowerCase();
-  var exact = rows.filter(function (r) { return String(r.name || '').trim().toLowerCase() === low; });
-  return exact.length ? exact : rows;
+// ═══ STEP 1 · admin gmail + password → load THIS account's staff ═══
+async function doUnlock() {
+  if (G.ubusy) return;
+  var email = val('adEmail');
+  var pass = $('adPass').value || '';
+  if (!email || !pass) { setUMsg('err', t('act.fill')); (email ? $('adPass') : $('adEmail')).focus(); return; }
+  if (!sbx) { setUMsg('err', t('e.nosb')); return; }
+
+  setUBusy(true, t('sd.checking'));
+  setUMsg('info', t('sd.checking'));
+  try {
+    // 1) Verify the ADMIN account (in memory only — never saved on the device)
+    var r = await withTimeout(sbx.auth.signInWithPassword({ email: email, password: pass }), 12000);
+    if (r && r.error) throw { authFail: true };
+    if (!r || !r.data || !r.data.user) throw { authFail: true };
+    var mail = r.data.user.email || email;
+
+    // 2) Only the shops that belong to THIS admin account
+    var sh = await withTimeout(sbx.from('shops').select('shop_id,name,business_type,active').eq('owner_email', mail).eq('active', true).order('name'), 12000);
+    if (sh.error) throw sh.error;
+    var shops = sh.data || [];
+    if (!shops.length) { setUBusy(false); setUMsg('err', t('sd.noshops')); return; }
+
+    // 3) Only the staff of those shops (active accounts only)
+    var ids = shops.map(function (s) { return s.shop_id; });
+    var em = await withTimeout(sbx.from('employees').select('firebase_id,id,name,position,status,shop_id').in('shop_id', ids).order('name'), 12000);
+    if (em.error) throw em.error;
+    var staff = (em.data || []).filter(function (x) { return (x.status || 'active') !== 'inactive'; });
+
+    G.shops = shops; G.staff = staff; G.shopId = '';
+    enterStaffStep();
+  } catch (e) {
+    setUBusy(false);
+    if (e && e.authFail) { setUMsg('err', t('sd.wrong')); $('adPass').value = ''; $('adPass').focus(); return; }
+    setUMsg('err', netMsg(e));
+  }
 }
 
-// ── Staff sign-in flow ──
+// ═══ STEP 2 · build the staff screen ═══
+function enterStaffStep() {
+  setUBusy(false); setUMsg(null);
+  $('lockCard').classList.add('hidden');
+  $('staffCard').classList.remove('hidden');
+  buildShopUI();
+  buildStaffUI(false);
+  try { if (G.staff.length) $('sfStaff').focus(); } catch (e) {}
+}
+
+function buildShopUI() {
+  var sel = $('sfShopSel'), chip = $('shopChip');
+  var prev = G.shopId || '';
+  if (G.shops.length === 1) {
+    sel.classList.add('hidden'); chip.classList.remove('hidden');
+    var s = G.shops[0];
+    G.shopId = s.shop_id;
+    chip.innerHTML = '<span>' + shopIcon(s) + ' ' + esc(s.name || '') + '</span><small>' + t('sd.shop') + '</small>';
+  } else {
+    chip.classList.add('hidden'); sel.classList.remove('hidden');
+    var html = G.shops.map(function (s) {
+      return '<option value="' + esc(s.shop_id) + '">' + shopIcon(s) + ' ' + esc(s.name || '') + '</option>';
+    }).join('');
+    sel.innerHTML = html;
+    var want = '';
+    if (prev && G.shops.some(function (s) { return String(s.shop_id) === String(prev); })) want = prev;
+    else if (G.presetShop && G.shops.some(function (s) { return String(s.shop_id) === String(G.presetShop); })) want = G.presetShop;
+    else want = G.shops[0].shop_id;
+    sel.value = want;
+    G.shopId = want;
+  }
+}
+
+function onShopChange() { G.shopId = $('sfShopSel').value; buildStaffUI(false); }
+
+function buildStaffUI(keepSel) {
+  var sel = $('sfStaff');
+  var prev = keepSel ? String(sel.value || '') : '';
+  var list = G.staff.filter(function (e) { return String(e.shop_id || '') === String(G.shopId || ''); });
+  G.byVal = {};
+  var html = '<option value="">' + t('sd.staff.ph') + '</option>';
+  list.forEach(function (e) {
+    var v = String(e.firebase_id || e.id);
+    G.byVal[v] = e;
+    html += '<option value="' + esc(v) + '">' + (POS_ICON[e.position] || '👤') + ' ' + esc(e.name || '') + ' — ' + esc(posLabel(e.position)) + '</option>';
+  });
+  sel.innerHTML = html;
+  if (prev && G.byVal[prev]) sel.value = prev;
+  if (!list.length) setMsg('info', t('sd.nostaff')); else setMsg(null);
+}
+
+function onStaffPick() { if (String($('sfStaff').value || '')) { setMsg(null); try { $('staffPass').focus(); } catch (e) {} } }
+
+// ── Staff sign-in: dropdown name + password ──
 async function doSignIn() {
   if (G.busy) return;
-  var name = val('staffName');
+  var v = String($('sfStaff').value || '');
   var pass = $('staffPass').value || '';
-  var shop = val('sfShop');
-  if (!name) { setMsg('err', t('e.noname')); $('staffName').focus(); return; }
+  if (!v) { setMsg('err', t('sd.pick')); $('sfStaff').focus(); return; }
   if (!pass) { setMsg('err', t('e.nopass')); $('staffPass').focus(); return; }
   if (!sb) { setMsg('err', t('e.nosb')); return; }
+  var emp = G.byVal[v];
+  if (!emp) { setMsg('err', t('sd.pick')); return; }
 
-  hidePicker();
-  setBusy(true, t('si.btn.checking'));
-  setMsg('info', t('e.checking'));
-
-  var rows;
-  try { rows = await findStaff(name, shop); }
-  catch (e) { setBusy(false); setMsg('err', netMsg(e)); return; }
-
-  if (!rows || rows.length === 0) { setBusy(false); setMsg('err', t('e.notfound', { name: esc(name) })); return; }
-  var active = rows.filter(function (r) { return (r.status || 'active') !== 'inactive'; });
-  if (active.length === 0) { setBusy(false); setMsg('err', t('e.disabled')); return; }
-  if (active.length > 1) { setBusy(false); showPicker(active, pass); return; }
-
-  await verifyAndGo(active[0], pass);
+  await verifyAndGo(emp, pass);
 }
 
-// ── Same-name collision → let the staff member pick themselves ──
-async function showPicker(list, pass) {
-  setMsg('info', t('e.dup'));
-  var box = $('matchBox');
-  var names = {};
-  try {
-    var ids = list.map(function (r) { return r.shop_id; }).filter(Boolean);
-    if (ids.length) {
-      var res = await withTimeout(sb.from('shops').select('shop_id,name').in('shop_id', ids), 8000);
-      (res.data || []).forEach(function (s) { names[s.shop_id] = s.name; });
-    }
-  } catch (e) {}
-  box.innerHTML = '';
-  list.forEach(function (r) {
-    var b = document.createElement('button');
-    b.type = 'button'; b.className = 'pick';
-    var shopTxt = (r.shop_id && names[r.shop_id]) ? ' · ' + esc(names[r.shop_id]) : '';
-    b.innerHTML = '<span class="pick-ic">' + (POS_ICON[r.position] || '👤') + '</span>'
-      + '<span><b>' + esc(r.name) + '</b><small>' + esc(r.position || t('side.staff')) + shopTxt + '</small></span>';
-    b.onclick = function () { hidePicker(); verifyAndGo(r, pass); };
-    box.appendChild(b);
-  });
-  box.classList.remove('hidden');
+// ── Back to step 1 (clears everything) ──
+function lockDoor() {
+  G.shops = []; G.staff = []; G.shopId = ''; G.byVal = {};
+  $('adEmail').value = ''; $('adPass').value = ''; $('staffPass').value = '';
+  setMsg(null); setUMsg(null);
+  $('staffCard').classList.add('hidden');
+  $('lockCard').classList.remove('hidden');
+  try { $('adEmail').focus(); } catch (e) {}
 }
-function hidePicker() { var b = $('matchBox'); if (b) { b.classList.add('hidden'); b.innerHTML = ''; } }
 
 // ── Password verification: server check first, offline fallback second ──
 async function verifyAndGo(emp, pass) {
@@ -364,19 +456,26 @@ async function goStaff(emp) {
 function applyBrand() { document.title = APP_NAME + ' — ' + t('si.h2'); }
 document.addEventListener('DOMContentLoaded', function () {
   if (window.LANG) {
-    if ($('langbar')) LANG.pills($('langbar'));
+    if ($('langbar') && typeof LANG.dropdown === 'function') LANG.dropdown($('langbar'));
     try { LANG.setLang(LANG.detect(), true); } catch (e) {}
     LANG.apply();
   }
   applyBrand();
   try {
     var shop = new URLSearchParams(location.search).get('shop');
-    if (shop) $('sfShop').value = shop;
+    if (shop) G.presetShop = String(shop);
   } catch (e) {}
-  $('staffName').focus();
+  $('adEmail').focus();
 });
-document.addEventListener('langchange', applyBrand);
-document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !G.busy) doSignIn(); });
+document.addEventListener('langchange', function () {
+  applyBrand();
+  if (!$('staffCard').classList.contains('hidden')) { buildShopUI(); buildStaffUI(true); }
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && !G.busy && !G.ubusy) {
+    if ($('staffCard').classList.contains('hidden')) doUnlock(); else doSignIn();
+  }
+});
 </script>
 </body>
 </html>
