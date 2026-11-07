@@ -294,7 +294,7 @@ function v4stfRegister() {
     '</div>' +
     '<div style="display:flex;gap:6px">' +
     '<div style="flex:1"><label style="font-size:11px;font-weight:800;color:#475569">Phone</label><input class="v4-in" id="v4stfRPhone" placeholder="Phone"></div>' +
-    '<div style="flex:1"><label style="font-size:11px;font-weight:800;color:#475569">Login PIN (4 digits)</label><input class="v4-in" id="v4stfRPin" maxlength="4" placeholder="e.g., 1234"></div>' +
+    '<div style="flex:1"><label style="font-size:11px;font-weight:800;color:#475569">Login PIN (4 digits) *</label><input class="v4-in" id="v4stfRPin" maxlength="4" inputmode="numeric" placeholder="e.g., 1234 *"></div>' +
     '</div>' +
     '<label style="display:flex;align-items:center;gap:8px;margin:6px 0;font-size:12px;cursor:pointer"><input type="checkbox" id="v4stfRLock"> 🔒 Lock PIN (staff cannot change it themselves)</label>' +
     '<button class="v4-btn g" onclick="v4stfRegisterSave()">✅ Register</button>';
@@ -309,8 +309,8 @@ async function v4stfRegisterSave() {
   }
   if (v4stf.data.some(function(e){ return e.name.toLowerCase() === name.toLowerCase(); })) { alert('⚠️ An employee with this name already exists.'); return; }
   var pin = document.getElementById('v4stfRPin').value.trim();
-  var hashedPin = null, pinSalt = null;
-  if (pin) { pinSalt = ssRandomSalt(); hashedPin = await ssHashPin(pin, pinSalt); }
+  if (!/^\d{4}$/.test(pin)) { alert('🔑 Login PIN is required — exactly 4 digits (e.g., 1234). This is the password the staff member will use to sign in.'); return; }
+  var pinSalt = ssRandomSalt(), hashedPin = await ssHashPin(pin, pinSalt);
   var empId = 'emp_' + Date.now();
   try {
     const { error } = await supabaseClient.from('employees').insert([{
