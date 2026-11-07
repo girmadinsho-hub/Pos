@@ -5902,10 +5902,15 @@ function ensureDeviceMonitor() {
     if (_deviceMonitorStarted) return;
     _deviceMonitorStarted = true;
 
-    var deviceKey = localStorage.getItem('deviceKey_pos');
+    // BIZ-DEV-1 · shared device identity: if the Staff Door (staff.html v3.2)
+    // already registered this phone, the POS uses THE SAME devices row — so
+    // ONE 🔒 lock in Admin → 📱 Devices closes the Staff Door AND the POS
+    // on this device at the same moment (and ONE 🔓 unlock reopens both
+    // by themselves — v3.2 soft lock, no re-activation is ever asked).
+    var deviceKey = localStorage.getItem('deviceKey_biz') || localStorage.getItem('deviceKey_pos');
     if (!deviceKey) {
-        deviceKey = 'dev_pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-        localStorage.setItem('deviceKey_pos', deviceKey);
+        deviceKey = 'dev_biz_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+        localStorage.setItem('deviceKey_biz', deviceKey);
     }
 
     var deviceName = 'POS — ' + (getShopId() || 'Device');
@@ -5917,13 +5922,12 @@ function ensureDeviceMonitor() {
         .then(function(result) {
             var existing = result.data;
 
-            // If REVOKED — lock immediately
+            // If REVOKED — wall immediately, but keep watching (v3.2):
+            // when the owner taps 🔓 Unlock in Admin → 📱 Devices this
+            // screen lifts by itself — no re-activation is asked.
             if (existing && existing.status === 'revoked') {
                 showDeviceLocked(existing.device_name || deviceName);
-                return;
-            }
-
-            if (existing) {
+            } else if (existing) {
                 // Exists — update last_seen ONLY (never touch status)
                 supabaseClient.from('devices')
                     .update({ last_seen: new Date().toISOString() })
@@ -5949,15 +5953,18 @@ function ensureDeviceMonitor() {
                 }, function(payload) {
                     if (payload.new && payload.new.status === 'revoked') {
                         showDeviceLocked(payload.new.device_name);
+                    } else if (payload.new && payload.new.status === 'active') {
+                        hideDeviceLocked();   // v3.2 — owner unlocked: reopen by itself
                     }
                 }).subscribe();
 
-            // Safety net every 30 seconds
+            // Safety net every 30 seconds — locks AND reopens (v3.2)
             setInterval(async function() {
                 try {
                     const { data } = await supabaseClient.from('devices')
                         .select('status, device_name').eq('device_key', deviceKey).maybeSingle();
                     if (data && data.status === 'revoked') showDeviceLocked(data.device_name);
+                    else if (!data || data.status === 'active') hideDeviceLocked();
                     await supabaseClient.from('devices')
                         .update({ last_seen: new Date().toISOString() })
                         .eq('device_key', deviceKey);
@@ -5975,14 +5982,40 @@ function showDeviceLocked(deviceName) {
         lock.style.cssText = 'position:fixed;inset:0;background:rgba(220,38,38,0.97);color:white;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;';
         lock.innerHTML =
             '<div style="font-size:60px;margin-bottom:15px;">⛔</div>' +
-            '<h1 style="font-size:28px;margin-bottom:10px;">Device Disabled</h1>' +
+            '<h1 style="font-size:28px;margin-bottom:10px;">Device Locked</h1>' +
             '<p style="font-size:16px;max-width:300px;color:#fecaca;line-height:1.6;">' +
             (deviceName ? '"' + deviceName + '" has been ' : 'This device has been ') +
-            'disabled by the shop owner.<br>Contact your administrator.</p>';
+            'locked by the shop owner.</p>' +
+            '<p style="font-size:12px;color:#fca5a5;margin-top:10px;max-width:300px;line-height:1.6;">When the owner unlocks it (Admin → 📱 Devices), this screen reopens by itself — no activation is asked again.</p>' +
+            '<button type="button" onclick="v4posDeviceRetry()" style="margin-top:18px;background:#fff;color:#7f1d1d;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:800;cursor:pointer;">🔄 Check again — unlocked?</button>' +
+            '<p id="deviceLockMsg" style="font-size:11px;color:#fecaca;margin-top:10px;min-height:14px;"></p>';
         document.body.appendChild(lock);
     }
     lock.style.display = 'flex';
-    try { supabaseClient.auth.signOut(); } catch(e) {}
+    // v3.2 SOFT LOCK: the owner session is KEPT. Signing out here would
+    // force the Staff Door on this phone to ask for the owner email +
+    // password again after the owner unlocks — exactly what must never
+    // happen. The wall itself is the lock; it lifts on unlock.
+}
+
+// v3.2 · the owner unlocked (remote) → lift the wall, the POS continues.
+function hideDeviceLocked() {
+    var lock = document.getElementById('deviceLockScreen');
+    if (lock) lock.style.display = 'none';
+}
+
+// v3.2 · the 🔄 button on the red wall — instant check after the owner
+// says "I unlocked it" (realtime push + the 30 s poll also self-heal).
+async function v4posDeviceRetry() {
+    var m = document.getElementById('deviceLockMsg');
+    if (m) m.textContent = '⏳ Checking…';
+    if (!navigator.onLine) { if (m) m.textContent = '📴 Offline — connect to the internet first.'; return; }
+    try {
+        var key = localStorage.getItem('deviceKey_biz') || localStorage.getItem('deviceKey_pos');
+        const { data } = await supabaseClient.from('devices').select('status').eq('device_key', key).maybeSingle();
+        if (!data || data.status === 'active') hideDeviceLocked();
+        else if (m) m.textContent = '🔒 Still locked — the owner unlocks it from Admin → 📱 Devices.';
+    } catch (e) { if (m) m.textContent = '⚠️ Could not check — try again.'; }
 }
 // ===== EXIT QR VERIFICATION (GUARD — Scan & Go) =====
 function openExitVerifyModal() {
@@ -6550,3 +6583,5 @@ function formatIngredientIssues(issues) {
 </script>
 </body>
 </html>
+
+
