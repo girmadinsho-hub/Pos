@@ -12,8 +12,8 @@
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
    
-	
-	
+        
+        
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -285,10 +285,10 @@ body.dark #productContainer > div { background: #1e293b !important; color: #e2e8
 body.dark #productContainer .prod-name { color: #f1f5f9 !important; }
 body.dark #productContainer .prod-price { color: #60a5fa !important; }
 
-			
-			
-			
-			/* ===== PROFESSIONAL MODERN SHEET ===== */
+                        
+                        
+                        
+                        /* ===== PROFESSIONAL MODERN SHEET ===== */
 .modern-sheet-wrapper {
   background: #fff; border-radius: 12px; border: 1px solid #dadce0;
   overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
@@ -390,7 +390,7 @@ body.dark .modern-sheet-filter-dropdown label:hover { background: #334155; }
 .modern-sheet-filter-dropdown label { display: flex; align-items: center; gap: 8px; padding: 4px 8px; }
 #quickKeysContainer::-webkit-scrollbar { width:4px; }
 #quickKeysContainer::-webkit-scrollbar-thumb { background:#cbd5e1; border-radius:4px; }
-	#quickKeysContainer::-webkit-scrollbar {
+        #quickKeysContainer::-webkit-scrollbar {
     height: 4px;
 }
 #quickKeysContainer {
@@ -402,7 +402,7 @@ body.dark .modern-sheet-filter-dropdown label:hover { background: #334155; }
 }
 #quickKeysContainer::-webkit-scrollbar { height: 4px; }
 #quickKeysContainer::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-		
+                
 /* ===== MAXIMIZE / MINIMIZE STYLES (FIXED OVERLAP) ===== */
 .pos-maximized .sidebar,
 .pos-maximized .header,
@@ -477,7 +477,7 @@ body.dark .maximized-card {
     height: 80vh !important;
     overflow-y: auto !important;
 }
-		
+                
 /* The Floating Exit Button (Smaller) */
 #exitMaximizeBtn {
     position: fixed !important;
@@ -527,7 +527,7 @@ body { font-family: 'Inter', -apple-system, sans-serif !important; background: v
 .table-status-txt { font-size: 10px; font-weight: 400; margin-top: 4px; }
 
 
-	/* ===== LIVE INTERCOM CHAT ===== */
+        /* ===== LIVE INTERCOM CHAT ===== */
 .intercom-fab { position: fixed; bottom: 80px; right: 20px; background: #2563eb; color: white; border: none; width: 50px; height: 50px; border-radius: 50%; font-size: 24px; cursor: pointer; z-index: 250; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; }
 .intercom-fab:active { transform: scale(0.9); }
 .chat-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300; align-items: flex-end; justify-content: center; }
@@ -579,14 +579,14 @@ body.dark .standard-dialog-title { color:#f1f5f9; }
 body.dark .standard-dialog-message { color:#94a3b8; }
 body.dark .standard-dialog-input { background:#1e293b; border-color:#475569; color:#f1f5f9; }
 body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; border-color:#475569; }
-	
+        
 </style>
 </head>
 
 <body>
 
 
-	
+        
 <!-- Universal Floating Exit Button -->
 <button id="exitMaximizeBtn" onclick="exitMaximize()">🚪 Exit Full Screen</button>
 <!-- Splash Screen -->
@@ -606,7 +606,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     </div>
 </div>
 
-	
+        
 <script>
 (function() {
   setTimeout(function() {
@@ -619,7 +619,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 })();
 </script>
 
-	
+        
 <!-- LOGIN SCREEN -->
   <div class="login-screen" id="loginScreen">
     <div class="login-box">
@@ -636,7 +636,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
             <button class="login-btn" id="ownerActivateBtn" onclick="activateDevice()" style="margin-top:6px;">🔓 Activate Device</button>
             <p id="ownerActivateMsg" style="font-size:11px; color:#ef4444; margin-top:6px; text-align:center;"></p>
         </div>
-			
+                        
         <!-- HIDDEN MANUAL FALLBACK -->
         <div id="manualShopEntry" style="display:none; margin-bottom:15px;">
             <input type="text" class="login-input" id="posLoginShopId" placeholder="Enter Shop ID" style="margin-bottom:10px;">
@@ -666,7 +666,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 </div>
 
 <!-- MAIN APP -->
-<div id="mainApp" style="display:none;">	
+<div id="mainApp" style="display:none;">        
 <div class="header">
     <button class="hamburger" onclick="toggleSidebar()">☰</button>
     <div class="header-brand">
@@ -689,23 +689,23 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
   </div>
 </div>
 
-	
+        
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 <div class="sidebar" id="sidebar">
     <div style="padding:20px;font-weight:bold;border-bottom:1px solid #e2e8f0;">📋 Menu</div>
     <div class="sidebar-tab" onclick="openSellReportFromMenu()">📊 Sell Report</div>
     <div class="sidebar-tab" onclick="openSellHistoryFromMenu()">📋 Sell History</div>
     <div class="sidebar-tab" onclick="openNotebookFromMenu()">📓 Notebook</div>
-  	<div class="sidebar-tab" onclick="toggleChat()">💬 Staff Chat</div>
+        <div class="sidebar-tab" onclick="toggleChat()">💬 Staff Chat</div>
     <div class="sidebar-tab" onclick="openCustomerLookupFromMenu()">🔍 Customer Lookup</div>
     <div class="sidebar-tab" onclick="openPriceCheckFromMenu()">🏷️ Price Check</div>
     <div class="sidebar-tab" onclick="syncNow()">🔄 Sync Now</div>
-	  <div class="sidebar-tab" onclick="openClockModal()">⏰ Clock In / Out</div>
+          <div class="sidebar-tab" onclick="openClockModal()">⏰ Clock In / Out</div>
     <div class="sidebar-tab" id="openShiftBtn" onclick="openShift()">🔓 Open Shift</div>
     <div class="sidebar-tab" id="closeShiftBtn" onclick="closeShift()" style="display:none;color:#ef4444;">🔒 Close Shift</div>
-	<div class="sidebar-tab" onclick="openHeldOrdersFromMenu()">📋 Held Orders</div>
+        <div class="sidebar-tab" onclick="openHeldOrdersFromMenu()">📋 Held Orders</div>
     <div class="sidebar-tab" onclick="openVoidRefundFromMenu()">↩️ Void / Refund</div>
-      	<!-- MANAGER & OWNER MENU (Hidden by default) -->
+        <!-- MANAGER & OWNER MENU (Hidden by default) -->
     <div id="managerMenu" style="display:none; margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
            <div style="font-size:11px; color:var(--text-muted); padding:0 20px; text-transform:uppercase; font-weight:700;">Manager Tools</div>
            <div class="sidebar-tab" onclick="openVoidRefundFromMenu()">↩️ Void / Refund</div>
@@ -724,17 +724,17 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 
 
 
-	
-	
-	
+        
+        
+        
 <div class="container">
-	    <!-- ORDER TYPES -->
+            <!-- ORDER TYPES -->
     <div style="display:flex; gap:6px; margin-bottom:8px;">
         <button class="btn btn-sm" id="orderTypeDineIn" onclick="setOrderType('Dine-In', this)" style="flex:1; background:#2563eb; color:white; border:none; font-weight:600;">🍽️ Dine-In</button>
         <button class="btn btn-sm" id="orderTypeTakeaway" onclick="setOrderType('Takeaway', this)" style="flex:1; background:#fff; color:#64748b; border:1px solid #e2e8f0; font-weight:600;">🛍️ Takeaway</button>
         <button class="btn btn-sm" id="orderTypeDelivery" onclick="setOrderType('Delivery', this)" style="flex:1; background:#fff; color:#64748b; border:1px solid #e2e8f0; font-weight:600;">🛵 Delivery</button>
     </div>
-	
+        
   <div class="sync-info" id="syncInfo"></div>
  
   <div class="customer-screen" id="customerDisplay">
@@ -748,7 +748,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
        </div>
     </div>
 
-	
+        
     <div class="card" style="background:#fffbeb;">
         <div class="barcode-area">
             <input type="text" id="barcodeInput" placeholder="🏷️ Scan or type barcode..." onkeypress="if(event.key==='Enter')addByBarcode()">
@@ -758,8 +758,8 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     </div>
 
 
-	<div class="card cart-highlight">
-		
+        <div class="card cart-highlight">
+                
     <div class="card-title">🛒 <span id="cartTitle">CART</span> <span class="badge" id="cartCount">0</span></div>
     <div class="negotiate-toggle" id="negotiateToggleRow" style="display:none;"><label><input type="checkbox" id="enableNegotiate" onchange="updateCart()"> <span id="lblNegotiate">Negotiate Price</span></label></div>
     <div class="discount-row" id="discountToggleRow"><span>🏷️ Discount:</span><input type="number" id="discountPercent" value="0" min="0" max="100" onchange="updateCart()" placeholder="%"> % <span>or Br</span><input type="number" id="discountAmount" value="0" min="0" onchange="updateCart()" placeholder="Amount"><button class="btn-mini add" onclick="redeemLoyaltyPoints()" style="margin-left:4px;">🎁 Redeem</button></div>
@@ -775,7 +775,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     
     <!-- FIXED: Added 'div' and removed duplicates -->
     <div class="flex-row" style="margin-top:12px; flex-wrap:wrap; gap:6px;">
-			
+                        
         <button class="btn btn-outline" onclick="clearCart()" id="btnClear" style="flex:1; min-width:70px;">🗑️ Clear</button>
         <button class="btn btn-outline" onclick="holdOrder()" id="btnHold" style="flex:1; min-width:70px; background:#f59e0b; color:white; border:none;">📌 Hold</button>
         <button class="btn btn-outline" onclick="openHeldOrdersFromMenu()" id="btnHeld" style="flex:1; min-width:70px; background:#8b5cf6; color:white; border:none;">📋 Held</button>
@@ -788,23 +788,23 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <button class="btn btn-success" onclick="checkout()" id="btnPay" style="flex:2; min-width:100px;">💰 PAY NOW</button>
         <button class="btn btn-outline" onclick="openTablesModal()" id="btnTables" style="flex:1; min-width:70px; background:#0d64f0; color:white; border:none;">🪑 Tables</button>
         <button class="btn btn-outline" onclick="openTableBillsModal()" id="btnTableBills" style="flex:1; min-width:70px; background:#dc2626; color:white; border:none;">🧾 Table Bills</button>
-			  <button class="btn btn-outline" onclick="openExitVerifyModal()" id="btnVerifyExit" style="flex:1; min-width:70px; background:#0f766e; color:white; border:none; display:none;">🛡️ Verify Exit</button>
+                          <button class="btn btn-outline" onclick="openExitVerifyModal()" id="btnVerifyExit" style="flex:1; min-width:70px; background:#0f766e; color:white; border:none; display:none;">🛡️ Verify Exit</button>
     </div>
 </div>
 
-	
-	
+        
+        
       <!-- Product Card -->
-	<!-- 1. ADD id="posProductCard" to the outer card -->
+        <!-- 1. ADD id="posProductCard" to the outer card -->
 <div class="card" id="posProductCard">
-	
+        
    <div class="card-title">
     📦 <span id="lblProducts">Products</span> <span class="badge" id="productCount">0</span>
   </div>
 
   <!-- Search + Sort row -->
   <div class="search-row" style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
-		
+                
     <input type="text" class="search-box" id="searchInput" placeholder="🔍 Search…" oninput="filterProducts()" style="flex:2; min-width:120px;">
     <select id="posCategoryFilter" onchange="filterProducts()" style="padding:8px; border:2px solid #e2e8f0; border-radius:10px; font-size:12px;">
         <option value="">All Categories</option>
@@ -817,10 +817,10 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
       <option value="popular">Popular</option>
     </select>
   </div>
-	
+        
   <!-- View buttons (always on top) -->
   <div class="toolbar" style="display:flex; gap:6px; align-items:center; margin-bottom:6px;">
-		<button id="btnViewList" class="active" onclick="setView('list')">☰ List</button>
+                <button id="btnViewList" class="active" onclick="setView('list')">☰ List</button>
     <button id="btnViewGrid" onclick="setView('grid')">⊞ Grid</button>
     <button id="btnViewExcel" onclick="setView('excel')">📊 Excel</button>
       <!-- 2. CHANGE onclick to target 'posProductCard' -->
@@ -932,18 +932,18 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 </div>
 
 
-	
+        
 <div class="modal" id="receiptModal">
     <div class="modal-content" id="receiptModalContent">
         <h3>🧾 Sale Complete</h3>
         <pre id="receiptContent" style="white-space:pre-wrap; font-size:14px;"></pre>
-			
+                        
           <div class="flex-row" style="margin-top:10px; flex-wrap:wrap; gap:6px;">
             <button class="btn btn-primary" onclick="printSmart()" style="flex:1; min-width:120px;">🖨️ Print</button>
             <button class="btn btn-success" onclick="sendWhatsAppReceipt()" style="flex:1; min-width:120px; background:#25D366; color:white; border:none;">💬 WhatsApp</button>
             <button class="btn btn-outline" onclick="closeReceiptModal()" style="flex:1; min-width:100px;">Close</button>
         </div>
-			
+                        
     </div>
 </div>
 
@@ -960,7 +960,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 </div>
 
 
-	
+        
 <div class="modal" id="sellHistoryModal">
     <div class="modal-content" style="max-width:100%; width:100%; max-height:100vh; height:100vh; overflow-y:auto; border-radius:0;">
         <h3>📋 Sell History</h3>
@@ -971,7 +971,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
                 <option value="month">This Month</option>
                 <option value="all">All Time</option>
             </select>
-					
+                                        
             <select id="historyPaymentFilter" onchange="historyPaymentFilterValue=this.value; refreshHistory();">
                 <option value="">All Payments</option>
                 <option value="cash">Cash</option>
@@ -979,7 +979,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
                 <option value="mobile">Mobile</option>
                 <option value="credit">Credit</option>
             </select>
-					
+                                        
             <select id="historyShiftFilter" onchange="historyShiftFilterValue=this.value; refreshHistory();">
                 <option value="">All Shifts</option>
                 <option value="☀️ Morning">☀️ Morning</option>
@@ -987,7 +987,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
                 <option value="🌙 Evening">🌙 Evening</option>
             </select>
         </div>
-			
+                        
         <div class="card-title" onclick="toggleCard(this)" style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;">
             📅 Daily Sales Summary <span class="arrow open" style="flex-shrink:0;">▶</span>
             <div style="margin-left:auto;display:flex;gap:6px;flex-shrink:0;" onclick="event.stopPropagation()">
@@ -996,14 +996,14 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
                 <button class="btn-mini histsum-view-btn" data-view="grid" onclick="switchHistorySummaryView('grid')">⊞ Grid</button>
             </div>
         </div>
-			
+                        
         <div class="card-body">
             <div id="historySummaryContainer" style="max-height:40vh;overflow-y:auto;margin-bottom:12px;"></div>
             <div id="historySummaryLoadMore" style="text-align:center;display:none;">
                 <button class="btn btn-primary btn-sm" onclick="loadMoreHistorySummary()">⬇ Load More</button>
             </div>
         </div>
-			
+                        
         <div class="card-title" onclick="toggleCard(this)" style="display:flex;align-items:center;gap:10px;flex-wrap:nowrap;">
             📋 Detailed Sales <span class="arrow open" style="flex-shrink:0;">▶</span>
             <div style="margin-left:auto;display:flex;gap:6px;flex-shrink:0;" onclick="event.stopPropagation()">
@@ -1012,7 +1012,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
                 <button class="btn-mini histdet-view-btn" data-view="grid" onclick="switchDetailedHistoryView('grid')">⊞ Grid</button>
             </div>
         </div>
-			
+                        
         <div class="card-body">
             <div id="detailedHistoryContainer" style="max-height:40vh;overflow-y:auto;"></div>
             <div id="detailedHistoryLoadMore" style="text-align:center;display:none;">
@@ -1023,7 +1023,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     </div>
 </div>
 
-	
+        
 
 <div class="modal" id="customAlertModal">
   <div class="modal-content">
@@ -1040,7 +1040,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     <button class="scanner-close" onclick="stopBarcodeScanner()">✖</button>
     <div id="barcodeVideo"></div>
 </div>
-	
+        
   <!-- Hold Order Name Modal -->
 <div class="modal" id="holdNameModal">
     <div class="modal-content" style="max-width:400px;">
@@ -1091,7 +1091,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <button class="btn btn-outline btn-sm" onclick="closeNotebookModal()">Close</button>
     </div>
 
-	
+        
     <hr>
     <input type="text" id="noteSearchInput" class="search-box" placeholder="🔍 Search notes..." oninput="filterNotes()">
     <div id="notesListContainer" style="max-height:300px;overflow-y:auto;"></div>
@@ -1110,7 +1110,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     <div id="customerResult" style="margin-top:10px;"></div>
 </div>
 </div>
-	
+        
 <div class="modal" id="priceCheckModal"><div class="modal-content" style="max-width:500px;">
     <h3 data-lang-key="priceCheck">🏷️ Price Check</h3>
     <div style="display:flex;gap:8px;margin-bottom:8px;">
@@ -1141,12 +1141,12 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <div style="margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
              <button class="btn btn-outline" onclick="SS_PRINT.method=null; document.getElementById('settingsModal').classList.remove('active'); prOpenChooser();" style="width:100%; margin-top:8px;">🖨️ Printer Settings</button>
             <button class="btn btn-primary" onclick="document.getElementById('settingsModal').classList.remove('active')" style="width:100%;">Close</button>
-					   <button class="btn btn-danger" onclick="unlinkDevice()" style="margin-top:15px; width:100%;">🔗 Unlink Device (Switch Shop)</button>
+                                           <button class="btn btn-danger" onclick="unlinkDevice()" style="margin-top:15px; width:100%;">🔗 Unlink Device (Switch Shop)</button>
         </div>
     </div>
 </div>
 
-	
+        
 
 <!-- Modifier Popup Modal for POS -->
 <div class="modal" id="modifierModal">
@@ -1170,7 +1170,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     </div>
 </div>
 
-	
+        
 
 <!-- Tables Modal for POS -->
 <div class="modal" id="tablesModal">
@@ -1183,9 +1183,9 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     </div>
 </div>
 
-	
-	
-	<!-- Table Bills Modal for POS -->
+        
+        
+        <!-- Table Bills Modal for POS -->
 <div class="modal" id="tableBillsModal">
     <div class="modal-content" style="max-width: 500px; max-height: 85vh; overflow-y: auto;">
         <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1196,7 +1196,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     </div>
 </div>
 
-	<!-- Exit QR Verification Modal (Guard) -->
+        <!-- Exit QR Verification Modal (Guard) -->
 <div class="modal" id="exitVerifyModal">
     <div class="modal-content" style="max-width:420px; text-align:center;">
         <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1213,7 +1213,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     </div>
 </div>
 
-	<!-- Waiter Live Status Modal -->
+        <!-- Waiter Live Status Modal -->
 <div class="modal" id="waiterStatusModal">
     <div class="modal-content" style="max-width: 400px; max-height: 80vh; overflow-y: auto;">
         <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
@@ -1237,7 +1237,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <div id="kotTicketResult" style="font-size:12px; margin-top:8px;"></div>
     </div>
 </div>
-	
+        
 <!-- Clock In/Out Modal -->
 <div class="modal" id="clockModal">
     <div class="modal-content" style="max-width: 400px; text-align: center;">
@@ -1280,14 +1280,14 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         
     </div>
 </div>
-	
+        
 
 <!-- 2. Other Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha256/0.9.0/sha256.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.3/dist/quagga.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-	<script src="config.js"></script>
-	<script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+        <script src="config.js"></script>
+        <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/escpos-web@1.0.0/dist/escpos-web.min.js"></script>
 
@@ -1296,16 +1296,16 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 
 <!-- ☢️ NUCLEAR RESCUE — add this line! -->
 <script src="smartcom.js"></script>
-	<!-- 4. YOUR SHARED FILES -->
-<script src="sheet.js"></script>			 
+        <!-- 4. YOUR SHARED FILES -->
+<script src="sheet.js"></script>                         
 <script src="shared.js"></script>
-	<script src="ssauth.js"></script>
+        <script src="ssauth.js"></script>
   <script src="ssfiscal.js"></script>
   <script src="ssprint.js"></script>
   <script src="lang.js" data-spp-auto="1"></script>
 <script>
   
-		// ===== GLOBAL UNIT CONVERSION ENGINE =====
+                // ===== GLOBAL UNIT CONVERSION ENGINE =====
 var currentQROrderId = null; // Tracks if the current cart is from a QR Order
 function getConversionFactor(fromUnit, toUnit) {
     if (!fromUnit || !toUnit) return 1;
@@ -1343,8 +1343,8 @@ function getConversionFactor(fromUnit, toUnit) {
     return 1;
 }
 
-		
-	var posRecipeProductIds = []; // Stores IDs of products that have recipes	
+                
+        var posRecipeProductIds = []; // Stores IDs of products that have recipes       
 
 // ===== PASSWORD HASHING =====
 function hashPassword(password) { return sha256(password); }
@@ -1353,7 +1353,7 @@ async function verifyPassword(password, storedHash) { return sha256(password) ==
 
 
 
-		
+                
 function changeLanguage(lc) {
   // Safety: if called without argument, use global appLang or 'en'
   if (!lc) {
@@ -1464,9 +1464,9 @@ function releaseWakeLock() {
 
 
 
-		
+                
 
-		
+                
 // ===== MENU HANDLERS =====
 function openSellReportFromMenu() { closeSidebar(); document.getElementById('sellReportModal').classList.add('active'); showSellReport(); }
 function openSellHistoryFromMenu() {
@@ -1481,14 +1481,14 @@ function openSellHistoryFromMenu() {
     refreshHistory();
 }
 
-		
+                
 function openNotebookFromMenu() { closeSidebar(); document.getElementById('notebookModal').classList.add('active'); loadNotes(); }
 function openCustomerLookupFromMenu() { closeSidebar(); document.getElementById('customerLookupModal').classList.add('active'); }
 function openPriceCheckFromMenu() { closeSidebar(); document.getElementById('priceCheckModal').classList.add('active'); }
 function openSettingsFromMenu() { closeSidebar(); document.getElementById('settingsModal').classList.add('active'); }
 
 
-		
+                
 // ===== LIST / GRID HELPERS =====
 function renderList(containerId, data, page, perPage, loadMoreFunc) {
     var container = document.getElementById(containerId);
@@ -1514,7 +1514,7 @@ function renderList(containerId, data, page, perPage, loadMoreFunc) {
     container.innerHTML = html;
 }
 
-		
+                
 function loadMoreList(containerId, data, pageVar, perPage, loadMoreFunc) {
     var container = document.getElementById(containerId);
     var totalPages = Math.ceil(data.length / perPage);
@@ -1541,7 +1541,7 @@ function loadMoreList(containerId, data, pageVar, perPage, loadMoreFunc) {
     }
 }
 
-		
+                
 function renderGrid(containerId, data, page, perPage, loadMoreFunc) {
     var container = document.getElementById(containerId);
     if (!container) return;
@@ -1565,7 +1565,7 @@ function renderGrid(containerId, data, page, perPage, loadMoreFunc) {
     container.innerHTML = html;
 }
 
-		
+                
 function loadMoreGrid(containerId, data, pageVar, perPage, loadMoreFunc) {
     var container = document.getElementById(containerId);
     var totalPages = Math.ceil(data.length / perPage);
@@ -1591,7 +1591,7 @@ function loadMoreGrid(containerId, data, pageVar, perPage, loadMoreFunc) {
 }
 
 
-		
+                
 // ===== SELL REPORT =====
 var sellReportPeriod = 'today';
 function setReportPeriod(period, btn) {
@@ -1601,7 +1601,7 @@ function setReportPeriod(period, btn) {
     showSellReport();
 }
 
-	async function showSellReport() {
+        async function showSellReport() {
     if (!currentCashier) { alert('Login first!'); return; }
     var now = new Date();
     var startDate;
@@ -1624,7 +1624,7 @@ function setReportPeriod(period, btn) {
     allSales.forEach(s => {
         total += s.total || 0;
 
-			        var m = s.payment_method || 'cash';
+                                var m = s.payment_method || 'cash';
         if (m === 'split' && Array.isArray(s.payments)) {
             s.payments.forEach(function(p) {
                 var pm = p.method || 'cash'; var amt = p.amount || 0;
@@ -1653,7 +1653,7 @@ function setReportPeriod(period, btn) {
 }
 
 
-		
+                
 // ===== ENHANCED SELL HISTORY (DAILY SUMMARY + DETAILED) =====
 var historyPaymentFilterValue = '';
 var historyShiftFilterValue = '';
@@ -1673,7 +1673,7 @@ function getHistoryDateRange() {
     return new Date(0);
 }
 
-		
+                
 function setHistoryPeriod(period) {
     historyPeriod = period;
     historySummaryData = [];
@@ -1683,15 +1683,15 @@ function setHistoryPeriod(period) {
     refreshHistory();
 }
 
-		
+                
 function refreshHistory() {
     buildHistorySummary();
     buildDetailedHistory();
 }
 
 
-		
-		
+                
+                
 function loadMoreHistorySummary() { historySummaryPage++; renderHistorySummary(); }
 function switchHistorySummaryView(view) {
     historySummaryView = view;
@@ -1701,9 +1701,9 @@ function switchHistorySummaryView(view) {
     renderHistorySummary();
 }
 
-		
+                
 
-		
+                
 var historySummaryTable = null;
 var detailedHistoryTable = null;
 
@@ -1752,7 +1752,7 @@ function renderHistorySummary() {
         }
     }
 }
-	
+        
 function renderDetailedHistory() {
     var container = document.getElementById('detailedHistoryContainer');
     if (detailedHistoryView !== 'excel') {
@@ -1807,7 +1807,7 @@ function renderDetailedHistory() {
     }
 }
 
-		
+                
 function loadMoreDetailedHistory() { detailedHistoryPage++; renderDetailedHistory(); }
 function switchDetailedHistoryView(view) {
     detailedHistoryView = view;
@@ -1817,7 +1817,7 @@ function switchDetailedHistoryView(view) {
     renderDetailedHistory();
 }
 
-		
+                
 function renderListDirect(container, data) {
     var html = '';
     for (var i=0; i<data.length; i++) {
@@ -1900,7 +1900,7 @@ if (cartTitle) cartTitle.innerText = t('cartTitle');      updateCart();
   });
 }
 
-		
+                
 function confirmHoldName() {
   const name = document.getElementById('holdNameInput').value.trim();
   document.getElementById('holdNameModal').classList.remove('active');
@@ -1909,7 +1909,7 @@ function confirmHoldName() {
     holdNameResolve = null;
   }
 }
-		
+                
 
 function cancelHoldName() {
   document.getElementById('holdNameModal').classList.remove('active');
@@ -1981,9 +1981,9 @@ async function recallOrder(id) {
   document.getElementById('heldOrdersModal').classList.remove('active');
   alert('🔄 Order recalled for ' + currentTableName + '. Add more items and send to kitchen!');
 }
-		
+                
 
-		
+                
 // Delete a held order (with reliable confirmation)
 async function deleteHeldOrder(id) {
   // 1. Close the held orders modal so the confirmation is visible
@@ -2041,11 +2041,11 @@ function loadNotes() {
             filterNotes();
         });
 }
-		
-		
+                
+                
 function closeNotebookModal() { document.getElementById('notebookModal').classList.remove('active'); }
 
-		async function saveNote() {
+                async function saveNote() {
     var text = document.getElementById('noteTextArea').value.trim();
     if (!text) { alert('Please write something.'); return; }
     var category = document.getElementById('noteCategory').value;
@@ -2072,7 +2072,7 @@ async function deleteNote(id) {
         loadNotes(); // Refresh list
     } catch(e) { alert('❌ Error: ' + e.message); }
 }
-		
+                
 function filterNotes() {
     var searchText = document.getElementById('noteSearchInput')?.value.toLowerCase() || '';
     var filtered = notesData.filter(n => !searchText || n.text.toLowerCase().includes(searchText));
@@ -2133,7 +2133,7 @@ async function lookupCustomer() {
         resultDiv.innerHTML = '<p style="color:#ef4444">Error: ' + e.message + '</p>';
     }
 }
-		
+                
 
   // ===== PRICE CHECK =====
 
@@ -2183,13 +2183,13 @@ let historyPeriod='today', reportPeriod='today';
 let isCartLocked = false; // Prevents cashiers from editing cafe bills
 
 
-		
+                
 // ===== ONLINE STATUS & SYNC =====
 window.addEventListener('online',()=>{document.getElementById('offlineBadge').classList.remove('show');syncNow();});
 window.addEventListener('offline',()=>{document.getElementById('offlineBadge').classList.add('show');});
 async function syncNow(){
     if(!navigator.onLine||!supabaseClient)return;
-	    const info=document.getElementById('syncInfo');
+            const info=document.getElementById('syncInfo');
     info.classList.add('show');
     const count=await syncOfflineSales(db);
     info.textContent=count?`✅ Synced ${count} offline sale(s)`:'✅ All synced';
@@ -2208,7 +2208,7 @@ function isLicenseActive() {
 function onCashierSelected(){document.getElementById('loginPass').value='';document.getElementById('changePwdBox').style.display='none';}
 function showChangePassword(){document.getElementById('changePwdBox').style.display='block';document.getElementById('oldPwd').value='';document.getElementById('newPwd').value='';}
 
-		// ===== UNIFIED PIN LOGIN =====
+                // ===== UNIFIED PIN LOGIN =====
 
 async function changePassword(){
     const id=document.getElementById('cashierName').value;
@@ -2218,7 +2218,7 @@ async function changePassword(){
     const cashier=cashierList.find(c=>c.id===id);
     if(!cashier){alert('Cashier not found!');return;}
 
-	    var v = await ssVerifyStaffPin(getShopId(), id, oldPwd);
+            var v = await ssVerifyStaffPin(getShopId(), id, oldPwd);
     if (!v.ok) { alert('❌ Wrong old password!'); return; }
     
     try {
@@ -2232,7 +2232,7 @@ async function changePassword(){
     }
 }
 
-		
+                
 async function login() {
   const id = document.getElementById('cashierName').value;
   const pass = document.getElementById('loginPass').value.trim();
@@ -2290,9 +2290,9 @@ async function login() {
   syncNow();
   changeLanguage(appLang);
   initPOS();
-	listenForWaiterCalls();
-	requestWakeLock();
-	        // ⏰ Re-verify license every 30 minutes (catches expiry/revocation mid-shift)
+        listenForWaiterCalls();
+        requestWakeLock();
+                // ⏰ Re-verify license every 30 minutes (catches expiry/revocation mid-shift)
         if (window.ssLicenseTimer) clearInterval(window.ssLicenseTimer);
         window.ssLicenseTimer = setInterval(async function(){
             var r = await ssCheckLicense();
@@ -2331,9 +2331,9 @@ function logout(){
     loadCashierList();
     releaseWakeLock();
 }
-		
+                
 // ===== POS SETTINGS =====
-	
+        
   async function loadPosSettings(){
     if (!supabaseClient) return;
     
@@ -2405,7 +2405,7 @@ function logout(){
     if (waiterStatusBtn) waiterStatusBtn.style.display = 'none';
     if (btnTables) btnTables.style.display = 'none';
     if (btnTableBills) btnTableBills.style.display = 'none';
-	  var verifyExitBtn = document.getElementById('btnVerifyExit');
+          var verifyExitBtn = document.getElementById('btnVerifyExit');
     if (verifyExitBtn) verifyExitBtn.style.display = 'none';
 
     // Then show what this role deserves
@@ -2423,7 +2423,7 @@ function logout(){
             if (btnTables) btnTables.style.display = 'block';
             if (btnTableBills) btnTableBills.style.display = 'block';
 
-					 } else {
+                                         } else {
             if (clearBtn) clearBtn.style.display = 'block';
             if (holdBtn) holdBtn.style.display = 'block';
             if (heldBtn) heldBtn.style.display = 'block';
@@ -2434,7 +2434,7 @@ function logout(){
     if (typeof filterProducts === 'function') filterProducts();
     updateCart();
 }
-		
+                
 // ===== SHIFT =====
 function checkActiveShift() {
     if (!currentCashier) return;
@@ -2461,7 +2461,7 @@ function checkActiveShift() {
     }
 }
 
-		async function openShift(){
+                async function openShift(){
     const now=new Date().toLocaleString();
     if(!(await confirm(`Open shift now?\nStart time: ${now}`)))return;
     currentShiftId='shift_'+Date.now();
@@ -2525,10 +2525,10 @@ async function closeShift() {
         alert('❌ Error closing shift: ' + e.message);
     }
 }
-		
+                
 
 // ===== PRODUCTS =====
-		async function loadProducts(){
+                async function loadProducts(){
     if (!supabaseClient) return;
     const { data, error } = await supabaseClient.from('products').select('*').eq('shop_id', getShopId());
     if (error) { console.error("Load products error:", error.message); return; }
@@ -2558,7 +2558,7 @@ async function closeShift() {
     
     if (typeof populatePosCategoryFilter === 'function') populatePosCategoryFilter();
     if (typeof filterProducts === 'function') filterProducts();
-	  loadRecipeCache();
+          loadRecipeCache();
 }
 function setView(v) {
     // Map the button value to the internal view name
@@ -2600,7 +2600,7 @@ function setView(v) {
     // Re‑render the current products
     filterProducts();
 }
-		function populatePosCategoryFilter() {
+                function populatePosCategoryFilter() {
     var sel = document.getElementById('posCategoryFilter');
     if (!sel) return;
     var cats = ['All'];
@@ -2614,7 +2614,7 @@ function setView(v) {
     }).join('');
 }
 
-	function filterProducts() {
+        function filterProducts() {
     var q = document.getElementById('searchInput').value.toLowerCase();
     var selectedCategory = document.getElementById('posCategoryFilter')?.value || '';
 
@@ -2670,7 +2670,7 @@ function setView(v) {
 } 
 
 
-		
+                
 function appendProducts(filtered, currentPage, totalPages) {
     var container = document.getElementById('productContainer');
     if (!container) return;
@@ -2703,7 +2703,7 @@ function appendProducts(filtered, currentPage, totalPages) {
                 if (!virtualCheck.ok) low = ' ⛔';
                 else if (virtualCheck.optionalIssues.length > 0) low = ' ⚠️';
             }
-					
+                                        
             html += '<div class="product-row" style="display:flex; align-items:center; gap:8px; padding:8px 0;">' +
                 '<div style="flex:1; min-width:0; display:flex; align-items:baseline; gap:6px; overflow:hidden;">' +
                     '<span class="prod-name" style="font-weight:700; font-size:14px; white-space:nowrap;">' + sanitize(p.name) + low + '</span>' +
@@ -2745,7 +2745,7 @@ function appendProducts(filtered, currentPage, totalPages) {
     container.insertAdjacentHTML('beforeend', html);
     renderQuickKeys();
 }
-		
+                
 // 1. Fetch the list of products that have recipes
 
 async function loadPOSRecipeIds() {
@@ -2757,7 +2757,7 @@ async function loadPOSRecipeIds() {
         if (typeof filterProducts === 'function') filterProducts();
     } catch(e) { console.error("Error fetching recipe IDs:", e); }
 }
-		
+                
 function loadMoreProducts() {
     if (!window._lastFiltered) return;
 
@@ -2769,8 +2769,8 @@ function loadMoreProducts() {
     page++;
     appendProducts(filtered, page, totalPages);
 }
-		
-	
+                
+        
 function setCategory(cat){selectedCategory=cat;page=1;filterProducts();}
 function setSort(s){currentSort=s;page=1;filterProducts();}
 function changePage(d){page=Math.min(Math.max(page+d,1),999);filterProducts();}
@@ -2786,7 +2786,7 @@ function getBulkPrice(p,qty){
     return p.price;
 }
 
-		
+                
 
 function setupInfiniteScroll() {
     var productContainer = document.getElementById('productContainer');
@@ -2802,7 +2802,7 @@ function setupInfiniteScroll() {
     }
 }
 
-		
+                
 // ===== BARCODE =====
 function addByBarcode(){
     const bc=document.getElementById('barcodeInput').value.trim();
@@ -2843,7 +2843,7 @@ function startBarcodeScanner(){
         addByBarcode();
     });
 }
-		
+                
 function stopBarcodeScanner(){
     if(scannerActive){
         try{Quagga.stop();}catch(e){}
@@ -2872,6 +2872,8 @@ function confirmKeypad(){
 
 function addToCart(prodId, qty) {
     qty = qty || 1;
+    // v3.3 HARD LOCK — a locked device cannot even start a sale.
+    if (window.POS_DEVICE_LOCKED) { alert('⛔ This device is locked by the shop owner.'); return; }
     var p = products.find(function(x) { return x.id === prodId; });
     if (!p) return;
 
@@ -2968,8 +2970,8 @@ function updateCartQty(idx, qty) {
     }
     updateCart();
 }
-	
-		async function editCartPrice(idx){
+        
+                async function editCartPrice(idx){
     var input = await prompt('New unit price:', cart[idx].price);
     if (input === null) return;
     const newPrice = parseFloat(input);
@@ -3104,8 +3106,8 @@ function selectPayment(method, btn) {
     if (btn) btn.classList.add('selected');
     document.getElementById('creditFields').style.display = (method === 'credit') ? 'block' : 'none';
 }
-		function checkout() {
-	// 1. SECURITY CHECK: Block Managers/Owners from checkout
+                function checkout() {
+        // 1. SECURITY CHECK: Block Managers/Owners from checkout
     if (currentCashier.position !== 'Cashier') {
         alert("🔒 Only Cashiers can process payments.");
         return;
@@ -3126,6 +3128,8 @@ function selectPayment(method, btn) {
     document.getElementById('saleNote').value = '';
 }
 async function completePayment() {
+    // v3.3 HARD LOCK — a locked device cannot complete any payment.
+    if (window.POS_DEVICE_LOCKED) { alert('⛔ This device is locked by the shop owner — payment blocked.'); return; }
     var btn = document.getElementById('completePaymentBtn');
     if (btn.disabled) return;              // ← ADD THIS LINE
     btn.disabled = true;
@@ -3270,7 +3274,7 @@ async function completePayment() {
 
 
 
-	
+        
     // 4. Build Receipt
     var brand = window.shopBranding || { name: '', phone: '', address: '' };
     var now = new Date();
@@ -3316,7 +3320,7 @@ async function completePayment() {
         cashier: (currentCashier ? currentCashier.name : ''), orderType: currentOrderType,
         dateStr: dateStr, timeStr: timeStr };
     document.getElementById('receiptModal').classList.add('active');
-	    playAlert();
+            playAlert();
        ssChime();                             // ← ADD THIS LINE
 
     // 5. AUTOMATIC LOYALTY POINTS
@@ -3379,7 +3383,7 @@ async function completePayment() {
 
     if (typeof filterProducts === 'function') filterProducts();
     isCartLocked = false; 
-	    // ===== PAYMENT SWEEPER: clear paid items from EVERY view =====
+            // ===== PAYMENT SWEEPER: clear paid items from EVERY view =====
     try {
         // 1. Clear this table's held order
         if (currentTableName) {
@@ -3409,13 +3413,13 @@ async function completePayment() {
     btn.disabled = false;
     btn.textContent = '✅ Complete';
 }
-		// ===== (later in the file, before printReceiptPOS) =====
+                // ===== (later in the file, before printReceiptPOS) =====
 window.openTableBillSModalSafe = function() {
     clearTimeout(window.__tbRefresh);
     window.__tbRefresh = setTimeout(function() { openTableBillsModal(); }, 150);
 };
 
-				// ===== WORLD-CLASS RECEIPT PRINTER =====
+                                // ===== WORLD-CLASS RECEIPT PRINTER =====
 function printReceiptPOS() {
     // ===== 1. GET RECEIPT TEXT =====
     var receiptText = '';
@@ -3519,10 +3523,10 @@ function printReceiptPOS() {
     printBtns.forEach(b=>b.remove());
 }
 
-		
+                
 // ===== REDEEM LOYALTY =====
 
-			async function redeemLoyaltyPoints(){
+                        async function redeemLoyaltyPoints(){
     const phone = await prompt('Enter customer phone:');
     if(!phone) return;
 
@@ -3577,7 +3581,7 @@ async function verifyPosManager() {
     try {
         const { data: staff, error } = await supabaseClient.from('employees')
          .select('hashed_password, pin_salt, position, name')
-					.eq('shop_id', getShopId())
+                                        .eq('shop_id', getShopId())
             .in('position', ['Manager', 'Owner']);
         
         if (error) {
@@ -3592,7 +3596,7 @@ async function verifyPosManager() {
                     matches = (hashed === staff[i].hashed_password);
                 }
                 if (matches) {
-	// ✅ MATCH! Manager verified
+        // ✅ MATCH! Manager verified
                     showFloatingToast('✅ Authorized: ' + staff[i].name + ' (' + staff[i].position + ')', false);
                     return true;
                 }
@@ -3660,7 +3664,7 @@ async function loadRecentSalesForVoid() {
         container.innerHTML = '<p style="color:#ef4444;">Error loading sales: ' + e.message + '</p>';
     }
 }
-			
+                        
 // ===== SOUND / VIBRATION ALERTS =====
 function playAlert() {
     var sound = localStorage.getItem('posSound') !== '0';
@@ -3682,7 +3686,7 @@ function playAlert() {
     }
 }
 
-		
+                
 // ===== QUICK KEYS (FAVOURITES) =====
 function getFavourites() { try { return JSON.parse(localStorage.getItem('posFavourites') || '[]'); } catch(e) { return []; } }
 function isFavourite(productId) { return getFavourites().indexOf(productId) !== -1; }
@@ -3695,8 +3699,8 @@ function toggleFavourite(productId) {
     filterProducts();
     renderQuickKeys();
 }
-		
-	function renderQuickKeys() {
+                
+        function renderQuickKeys() {
     var container = document.getElementById('quickKeysContainer');
     if (!container) return;
     
@@ -3728,8 +3732,8 @@ function toggleFavourite(productId) {
 
 
 
-		
-		
+                
+                
 function initPosExcelTable() {
     if (window.posProductTable) return;
     
@@ -3768,12 +3772,12 @@ function initPosExcelTable() {
     });
 }
 
-		
+                
 
-		// ===== PROFESSIONAL RECEIPT PRINTER =====
+                // ===== PROFESSIONAL RECEIPT PRINTER =====
 
-		
-		function showReceipt(data) {
+                
+                function showReceipt(data) {
     var brand = window.shopBranding || { name: 'SmartShop', phone: '', address: '' };
 
     // 1. Build plain text receipt (for thermal / email / WhatsApp)
@@ -3867,7 +3871,7 @@ function addReceiptActions() {
 
     modalContent.appendChild(actionsDiv);
 }
-		
+                
 
 // ---------- Thermal Printer (Bluetooth ESC/POS) ----------
 function printReceiptThermal() {
@@ -3924,7 +3928,7 @@ function downloadPDFReceipt() {
 }
 
 
-		
+                
 // ---------- Email Receipt (native mail app — no service needed) ----------
 async function emailReceipt() {
     var receipt = window._lastReceipt;
@@ -3943,8 +3947,8 @@ async function emailReceipt() {
 
 
 
-		
-		
+                
+                
 // ---------- WhatsApp Share ----------
 async function shareViaWhatsApp() {
     var receipt = window._lastReceipt;
@@ -3956,7 +3960,7 @@ async function shareViaWhatsApp() {
 }
 
 
-		
+                
 // ---------- Copy to Clipboard ----------
 function copyReceiptText() {
     var receipt = window._lastReceipt;
@@ -3977,7 +3981,7 @@ function copyReceiptText() {
 }
 
 
-		// ===== UNIVERSAL MAXIMIZE LOGIC =====
+                // ===== UNIVERSAL MAXIMIZE LOGIC =====
 function maximizeTable(containerId) {
     const target = document.getElementById(containerId);
     if(!target) return alert('Table container not found: ' + containerId);
@@ -3996,7 +4000,7 @@ function maximizeTable(containerId) {
     parentCard.scrollTo(0, 0);
 }
 
-		
+                
 function exitMaximize() {
     // Remove the maximize class from all cards
     document.querySelectorAll('.maximized-card').forEach(el => el.classList.remove('maximized-card'));
@@ -4119,7 +4123,7 @@ async function openCashDrawer() {
         alert('❌ Cash drawer failed: ' + (e.message || e) + '\n\nTip: pair your ESC/POS printer with this phone first.');
     }
 }
-		
+                
 // ===== STAFF DUTY: CHANGE OWN PIN =====
 async function openChangePinModal() {
     var oldPin = await prompt("Enter your CURRENT PIN to verify it's you:");
@@ -4137,8 +4141,8 @@ async function openChangePinModal() {
     if (okSet) alert("✅ Your PIN has been changed successfully!");
     else alert("❌ Error changing PIN. Try again.");
 }
-		
-	// ===== ADMIN MAXIMIZE / MINIMIZE LOGIC =====
+                
+        // ===== ADMIN MAXIMIZE / MINIMIZE LOGIC =====
 function toggleAdminMaximize() {
     const body = document.body;
     const btn = document.getElementById('maximizeBtn');
@@ -4210,9 +4214,9 @@ function handleWaiterCall(call) {
         }
     });
 }
-		
-		
-		async function initPOS() { {
+                
+                
+                async function initPOS() { {
     changeLanguage();
 
     var sound = localStorage.getItem('posSound') !== '0';
@@ -4237,8 +4241,8 @@ function handleWaiterCall(call) {
         }
     }   // Load POS Settings (Shop Type, Cafe/Retail toggles)
     loadPosSettings();
-		listenForWaiterCalls();
-			        // 🔔 NEW QR ORDER ALERTS
+                listenForWaiterCalls();
+                                // 🔔 NEW QR ORDER ALERTS
         if (window.qrOrderChannel) { try { supabaseClient.removeChannel(window.qrOrderChannel); } catch(e) {} }
         window.qrOrderChannel = supabaseClient.channel('pos-qr-orders-' + getShopId())
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'orders', filter: 'shop_id=eq.' + getShopId() },
@@ -4315,22 +4319,22 @@ function handleWaiterCall(call) {
     }
 }
 
-		// 🏪 OWNER-SOLO — open Admin on this device (same session, PIN protected)
+                // 🏪 OWNER-SOLO — open Admin on this device (same session, PIN protected)
 function ssOpenAdmin() { location.href = 'admin-clean.html?from=pos'; }
 
-		function toggleSidebar() { 
+                function toggleSidebar() { 
     document.getElementById('sidebar').classList.toggle('open'); 
     document.getElementById('sidebarOverlay').classList.toggle('show'); 
 }
 
-		
+                
 function closeSidebar() { 
     document.getElementById('sidebar').classList.remove('open'); 
     document.getElementById('sidebarOverlay').classList.remove('show'); 
 }
-		
-		
-		// ===== POS SMART INITIALIZATION (LIKE KITCHEN & MENU) =====
+                
+                
+                // ===== POS SMART INITIALIZATION (LIKE KITCHEN & MENU) =====
 
 // 1. Capture Shop ID from URL immediately (if opened via Admin Link)
 var urlShop = new URLSearchParams(window.location.search).get('shop');
@@ -4437,10 +4441,10 @@ function manualLinkPos() {
     localStorage.setItem('shopId', id);
     location.reload(); 
 }
-		
+                
 
 
-		
+                
 // Manual Fallback Link
 function manualLinkPos() {
     var id = document.getElementById('posLoginShopId').value.trim();
@@ -4457,8 +4461,8 @@ var cashierList = [];
 
 
 
-		
-		
+                
+                
 async function viewRecipeGuidePOS(productId) {
     var contentDiv = document.getElementById('recipeViewerContentPOS');
     var modal = document.getElementById('recipeViewerModalPOS');
@@ -4542,7 +4546,7 @@ async function viewRecipeGuidePOS(productId) {
     }
 }
 
-		
+                
 
 // ===== POS MODIFIERS LOGIC =====
 var currentModifierProduct = null;
@@ -4562,7 +4566,7 @@ function checkModifiersBeforeAdd(prodId) {
     }
 }
 
-		
+                
 // 2. Open the Modal and draw the options
 function openModifierModal(p) {
     document.getElementById('modifierModalTitle').innerText = 'Customize: ' + p.name;
@@ -4591,7 +4595,7 @@ function openModifierModal(p) {
     document.getElementById('modifierModal').classList.add('active');
 }
 
-		
+                
 // 3. Calculate the new price based on selected options
 function updateModifierPrice() {
     if (!currentModifierProduct) return;
@@ -4606,7 +4610,7 @@ function updateModifierPrice() {
     document.getElementById('modifierTotalPrice').innerText = fmtMoney(basePrice + extraPrice);
 }
 
-		
+                
 // 4. Add the customized item to the cart
 function addModifiedProductToCart() {
     if (!currentModifierProduct) return;
@@ -4645,7 +4649,7 @@ function addModifiedProductToCart() {
     currentModifierProduct = null;
 }
 
-		
+                
 // ===== ORDER TYPES =====
 var currentOrderType = 'Dine-In'; // Default
 
@@ -4670,7 +4674,7 @@ function setOrderType(type, el) {
     }
 }
 
-		
+                
    // ===== POS TABLE MANAGEMENT =====
 var posTables = [];
 var currentTableName = '';
@@ -4745,7 +4749,7 @@ async function openTablesModal() {
     } catch(e) {
         showFloatingToast('❌ Tables failed — try again', true);
     }
-}	async function selectTable(tableName, isBusy) {
+}       async function selectTable(tableName, isBusy) {
     if (isBusy) {
         var confirmNew = await confirm('Table ' + tableName + ' has an UNPAID bill. Do you want to start a NEW order for this table?');
         if (!confirmNew) return;
@@ -4758,7 +4762,7 @@ async function openTablesModal() {
     updateCart();
     document.getElementById('tablesModal').classList.remove('active');
 }
-		
+                
 // ===== POS TABLE BILLS (QR ORDERS) =====
 
 window.openTableBillsModal = async function() {
@@ -4801,7 +4805,7 @@ window.openTableBillsModal = async function() {
             });
             var loadKey = (t.indexOf('QR-') === 0 || t === 'Takeaway' || t === 'Walk-in QR') ? g.rows[0].id : t;
             html += '<button class="btn btn-success btn-sm" style="width:100%;margin-top:8px;" onclick="loadTableBillToCart(\'' + loadKey + '\')">💳 Load & Pay</button>';
-      	html += '</div>';
+        html += '</div>';
         });
         listDiv.innerHTML = html;
     } catch(e) {
@@ -4915,9 +4919,9 @@ window._loadRoundsIntoCart = function(orders) {
     document.getElementById('tableBillsModal').classList.remove('active');
     alert('✅ Loaded ' + orders.length + ' round(s), ' + cart.reduce(function(s,i){return s+i.qty;},0) + ' items. Process the payment.');
 };
-	
+        
 
-	
+        
 // ===== PRINT KITCHEN/STATION ORDER TICKETS (SPLIT) =====
 function printKOT(orderData) {
     // 1. Group items by their station
@@ -4988,7 +4992,7 @@ function printStationTicket(orderData, stationName, items) {
         }, 500);
     }, 250);
 }
-		
+                
 
 // ===== QR ORDER TOAST NOTIFICATION =====
 function showQRToast(tableId, total) {
@@ -5007,7 +5011,7 @@ function showQRToast(tableId, total) {
         setTimeout(function() { toast.remove(); }, 500);
     }, 5000);
 }
-		
+                
 // ===== WAITER LIVE ORDER STATUS =====
 var waiterOrderListener = null;
 var lastWaiterStatuses = {}; // Tracks previous statuses to know when to beep
@@ -5079,12 +5083,12 @@ function closeWaiterStatus() {
 
 
 
-		
+                
 
 
 // ===== FEATURE 5: WHATSAPP DIGITAL RECEIPT =====
     async function sendWhatsAppReceipt() {
-		var receiptText = document.getElementById('receiptContent').textContent;
+                var receiptText = document.getElementById('receiptContent').textContent;
     if (!receiptText || receiptText.trim() === '') {
         alert('No receipt data found!');
         return;
@@ -5092,7 +5096,7 @@ function closeWaiterStatus() {
     
     // Ask for customer phone number
     var phone = await prompt('Enter customer WhatsApp number (with country code, e.g., 251912345678):');
-	if (!phone) return; // User cancelled
+        if (!phone) return; // User cancelled
     
     // Clean the phone number (remove spaces, dashes, plus signs)
     var cleanPhone = ssWaNum(phone);
@@ -5308,7 +5312,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 
 
 
-					
+                                        
 async function processClock(cashier, gpsLink, selfieData) {
     try {
         if (!supabaseClient) { alert('Database not connected!'); return; }
@@ -5356,7 +5360,7 @@ async function processClock(cashier, gpsLink, selfieData) {
     }
 }
 
-		
+                
 async function unlinkDevice() {
     if (await confirm('Are you sure? This will log you out and ask for a new Shop ID.')) {
         localStorage.removeItem('shopId');
@@ -5577,7 +5581,7 @@ async function buildHistorySummary() {
     }
 }
 
-		
+                
 async function buildDetailedHistory() {
     if (!currentCashier) return;
     var start = getHistoryDateRange();
@@ -5657,7 +5661,7 @@ async function loadCashierList(){
         if (sel) sel.innerHTML = '<option value="">Error loading. Try manual link.</option>';
     }
 }
-		
+                
 
 /* ================================================================
    SMARTSHOP UPGRADE — stock deduction + cart feedback
@@ -5750,8 +5754,8 @@ function ssBounceCart() {
    atomic (race-safe) via RPC, writes audit log,
    updates local UI + low-stock alerts. */
    
-	
-	async function ssDeductStock(cartItems, invoiceNo) {
+        
+        async function ssDeductStock(cartItems, invoiceNo) {
     var plan = {}, names = {}, soldAdd = {};
 
     function add(pid, qty, name) {
@@ -5896,17 +5900,26 @@ document.addEventListener('keydown', function (e) {
     if (b && !b.disabled) { e.preventDefault(); completePayment(); }
 });
 
-// ===== PHASE 1C: DEVICE MONITOR (POS) =====
+// ===== PHASE 1C: DEVICE MONITOR (POS) — v3.3 HARD LOCK =====
+// v3.3 rewrite: the old monitor started only for a signed-in owner
+// and DIED FOREVER if its very first database call failed (the lock
+// check, the realtime watch and the poll were all chained behind that
+// one call — a single hiccup and the POS never noticed a lock). Now:
+// the watch starts on EVERY page load for EVERY session, the realtime
+// watch is subscribed immediately, and the status is re-checked every
+// 15 s forever — one 🔒 in Admin → 📱 Devices walls this POS within
+// seconds no matter what, and 🔓 reopens it by itself.
 var _deviceMonitorStarted = false;
+window.POS_DEVICE_LOCKED = false;
 function ensureDeviceMonitor() {
     if (_deviceMonitorStarted) return;
     _deviceMonitorStarted = true;
 
-    // BIZ-DEV-1 · shared device identity: if the Staff Door (staff.html v3.2)
+    // BIZ-DEV-1 · shared device identity: if the Staff Door (staff.html)
     // already registered this phone, the POS uses THE SAME devices row — so
     // ONE 🔒 lock in Admin → 📱 Devices closes the Staff Door AND the POS
     // on this device at the same moment (and ONE 🔓 unlock reopens both
-    // by themselves — v3.2 soft lock, no re-activation is ever asked).
+    // by themselves — soft lock, no re-activation is ever asked).
     var deviceKey = localStorage.getItem('deviceKey_biz') || localStorage.getItem('deviceKey_pos');
     if (!deviceKey) {
         deviceKey = 'dev_biz_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
@@ -5915,66 +5928,79 @@ function ensureDeviceMonitor() {
 
     var deviceName = 'POS — ' + (getShopId() || 'Device');
 
-    supabaseClient.from('devices')
-        .select('id, status, device_name')
-        .eq('device_key', deviceKey)
-        .maybeSingle()
-        .then(function(result) {
-            var existing = result.data;
+    // Realtime lock (< 0.1 s) — subscribed IMMEDIATELY, not chained
+    // behind the first database call.
+    try {
+        supabaseClient.channel('device-monitor-' + deviceKey)
+            .on('postgres_changes', {
+                event: 'UPDATE', schema: 'public', table: 'devices',
+                filter: 'device_key=eq.' + deviceKey
+            }, function(payload) {
+                if (payload.new && payload.new.status === 'revoked') {
+                    showDeviceLocked(payload.new.device_name);
+                } else if (payload.new && payload.new.status === 'active') {
+                    hideDeviceLocked();   // owner unlocked: reopen by itself
+                }
+            }).subscribe();
+    } catch (e) {}
 
-            // If REVOKED — wall immediately, but keep watching (v3.2):
-            // when the owner taps 🔓 Unlock in Admin → 📱 Devices this
-            // screen lifts by itself — no re-activation is asked.
-            if (existing && existing.status === 'revoked') {
-                showDeviceLocked(existing.device_name || deviceName);
-            } else if (existing) {
-                // Exists — update last_seen ONLY (never touch status)
-                supabaseClient.from('devices')
-                    .update({ last_seen: new Date().toISOString() })
-                    .eq('device_key', deviceKey)
-                    .then(function(){}).catch(function(e){});
-            } else {
-                // New device — register
-                supabaseClient.from('devices').insert([{
-                    device_key: deviceKey,
-                    shop_id: getShopId(),
-                    device_name: deviceName,
-                    device_type: 'pos',
-                    status: 'active',
-                    last_seen: new Date().toISOString()
-                }]).then(function(){}).catch(function(e){});
+    // Status check + registration + heartbeat — runs IMMEDIATELY and
+    // then every 15 s, forever. Every round is independent: a failed
+    // round (offline, database hiccup) never stops the next one.
+    var deviceRound = async function () {
+        if (!navigator.onLine) return;
+        try {
+            const { data } = await supabaseClient.from('devices')
+                .select('id, status, device_name')
+                .eq('device_key', deviceKey)
+                .maybeSingle();
+            if (data && data.status === 'revoked') {
+                showDeviceLocked(data.device_name || deviceName);   // locked → wall
+                return;
             }
-
-            // Real-time lock (< 0.1 seconds)
-            supabaseClient.channel('device-monitor-' + deviceKey)
-                .on('postgres_changes', {
-                    event: 'UPDATE', schema: 'public', table: 'devices',
-                    filter: 'device_key=eq.' + deviceKey
-                }, function(payload) {
-                    if (payload.new && payload.new.status === 'revoked') {
-                        showDeviceLocked(payload.new.device_name);
-                    } else if (payload.new && payload.new.status === 'active') {
-                        hideDeviceLocked();   // v3.2 — owner unlocked: reopen by itself
-                    }
-                }).subscribe();
-
-            // Safety net every 30 seconds — locks AND reopens (v3.2)
-            setInterval(async function() {
+            if (!data || data.status === 'active') hideDeviceLocked();
+            if (!data) {
+                // New device — register (needs the device insert policy)
                 try {
-                    const { data } = await supabaseClient.from('devices')
-                        .select('status, device_name').eq('device_key', deviceKey).maybeSingle();
-                    if (data && data.status === 'revoked') showDeviceLocked(data.device_name);
-                    else if (!data || data.status === 'active') hideDeviceLocked();
+                    await supabaseClient.from('devices').insert([{
+                        device_key: deviceKey,
+                        shop_id: getShopId(),
+                        device_name: deviceName,
+                        device_type: 'pos',
+                        status: 'active',
+                        last_seen: new Date().toISOString()
+                    }]);
+                } catch (e) {}
+            } else {
+                // Exists — update last_seen ONLY (never touch status)
+                try {
                     await supabaseClient.from('devices')
                         .update({ last_seen: new Date().toISOString() })
                         .eq('device_key', deviceKey);
-                } catch(e) {}
-            }, 30000);
-        })
-        .catch(function(e) { console.warn('Device check failed:', e.message); });
+                } catch (e) {}
+            }
+        } catch (e) { /* next round retries in 15 s */ }
+    };
+    deviceRound();
+    setInterval(deviceRound, 15000);
 }
+// v3.3 — the watch runs on EVERY page load, for every session (owner,
+// cashier, staff-door arrival). It must not depend on the auth route
+// firing: a locked phone stays locked even for a reload straight into
+// the cashier screen.
+try { if (typeof supabaseClient !== 'undefined') ensureDeviceMonitor(); } catch (e) {}
 
 function showDeviceLocked(deviceName) {
+    window.POS_DEVICE_LOCKED = true;
+    // A locked device sells NOTHING. The cashier sign-in keys are
+    // cleared so a page reload cannot slip past the wall, and the
+    // sale functions (addToCart / completePayment) are hard-guarded:
+    // even if the wall itself failed to render, no sale can complete.
+    try {
+        localStorage.removeItem('posCashierId');
+        localStorage.removeItem('posCashierName');
+        localStorage.removeItem('posCashierRole');
+    } catch (e) {}
     var lock = document.getElementById('deviceLockScreen');
     if (!lock) {
         lock = document.createElement('div');
@@ -5988,7 +6014,8 @@ function showDeviceLocked(deviceName) {
             'locked by the shop owner.</p>' +
             '<p style="font-size:12px;color:#fca5a5;margin-top:10px;max-width:300px;line-height:1.6;">When the owner unlocks it (Admin → 📱 Devices), this screen reopens by itself — no activation is asked again.</p>' +
             '<button type="button" onclick="v4posDeviceRetry()" style="margin-top:18px;background:#fff;color:#7f1d1d;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:800;cursor:pointer;">🔄 Check again — unlocked?</button>' +
-            '<p id="deviceLockMsg" style="font-size:11px;color:#fecaca;margin-top:10px;min-height:14px;"></p>';
+            '<p id="deviceLockMsg" style="font-size:11px;color:#fecaca;margin-top:10px;min-height:14px;"></p>' +
+            '<p style="font-size:10px;color:#f87171;margin-top:14px;opacity:.85">BizMaster device guard · HARD LOCK v3.3</p>';
         document.body.appendChild(lock);
     }
     lock.style.display = 'flex';
@@ -6000,6 +6027,7 @@ function showDeviceLocked(deviceName) {
 
 // v3.2 · the owner unlocked (remote) → lift the wall, the POS continues.
 function hideDeviceLocked() {
+    window.POS_DEVICE_LOCKED = false;
     var lock = document.getElementById('deviceLockScreen');
     if (lock) lock.style.display = 'none';
 }
@@ -6345,7 +6373,7 @@ window.openWaiterStatus = async function() {
 
 </script>
 
-	<script>
+        <script>
 // ===== CLEAN WAITER FUNCTIONS (replaces Final Weapon) =====
 
 async function sendWaiterOrderToKitchen() {
@@ -6434,7 +6462,7 @@ if (cartTitle) cartTitle.innerText = t('cartTitle');        updateCart();
 }
 </script>
 
-	<script>
+        <script>
 function showOwnerActivation() {
     var owner = document.getElementById('ownerSection');
     if (owner) {
@@ -6487,9 +6515,9 @@ async function activateDevice() {
         if (btn) { btn.disabled = false; btn.textContent = '🔓 Activate Device'; }
     }
 }
-		
+                
 </script>
-	<script>
+        <script>
 // ===== RECIPE INGREDIENT AVAILABILITY CHECKER =====
 var recipeCache = {};
 
@@ -6515,7 +6543,7 @@ function formatIngredientIssues(issues) {
     return msg;
 }
 </script>
-	<script>
+        <script>
 // ===== RECIPE INGREDIENT AVAILABILITY CHECKER =====
 var recipeCache = {};
 
@@ -6529,7 +6557,7 @@ async function loadRecipeCache() {
         }
     } catch(e) { console.warn('Recipe cache load failed:', e.message); }
 }
-		
+                
 function checkVirtualIngredients(productId, qty) {
     var recipe = recipeCache[productId];
     if (!recipe || !recipe.items || !recipe.items.length) return { ok: true, criticalIssues: [], optionalIssues: [] };
