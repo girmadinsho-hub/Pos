@@ -653,6 +653,7 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <button class="login-btn" onclick="login()">🔓 Sign In</button>
         
         <button class="btn btn-outline" onclick="showChangePassword()" style="margin-top:8px;">🔑 Change Password</button>
+        <p onclick="location.href='staff.html'" style="font-size:12px; color:#2563eb; margin-top:14px; cursor:pointer; text-decoration:underline; font-weight:600;">🚪 Staff Door — pick your name & workplace</p>
         <div id="changePwdBox" style="display:none; margin-top:12px;">
             <input type="password" id="oldPwd" placeholder="Old Password">
             <input type="password" id="newPwd" placeholder="New Password">
@@ -2315,6 +2316,12 @@ function checkPinLockStatus() {
 function logout(){
     currentCashier=null;
     currentShiftId=null;
+    try {
+        localStorage.removeItem('posCashierId');
+        localStorage.removeItem('posCashierName');
+        localStorage.removeItem('posCashierRole');
+        window.__ssStaffDoorDone = false;
+    } catch(e) {}
     
     // ⚠️ DO NOT sign out — the owner session is this device's ID card (same as Kitchen).
     // Only "Unlink Device" (Settings) removes it.
@@ -4333,6 +4340,61 @@ if (urlShop) {
     window.history.replaceState({}, document.title, window.location.pathname);
 }
 
+  // ===== STAFF DOOR SINGLE SIGN-ON (staff.html → POS — no second door) =====
+  var __ssStaffDoorDone = false, __ssStaffDoorTries = 0;
+  function ssStaffDoorEnter() {
+      if (__ssStaffDoorDone) return true;
+      try {
+          var nm = '', rid = '', rle = '';
+          try {
+              var sp = new URLSearchParams(window.location.search);
+              nm = sp.get('name') || ''; rid = sp.get('id') || ''; rle = sp.get('role') || '';
+          } catch (e) {}
+          if (nm && rid) {
+              // Just arrived from the staff door → remember this cashier for reloads
+              localStorage.setItem('posCashierId', rid);
+              localStorage.setItem('posCashierName', nm);
+              localStorage.setItem('posCashierRole', rle || 'Cashier');
+              try { window.history.replaceState({}, document.title, window.location.pathname); } catch (e) {}
+          } else {
+              nm = localStorage.getItem('posCashierName') || '';
+              rid = localStorage.getItem('posCashierId') || '';
+              rle = localStorage.getItem('posCashierRole') || 'Cashier';
+          }
+          if (!nm || !rid) return false; // no staff-door sign-in → normal POS door
+
+          // Wait (race-safe, like ssWaitForFn) for the POS functions to be defined
+          var ready = typeof window.loadProducts === 'function' && typeof window.checkActiveShift === 'function' &&
+                      typeof window.initPOS === 'function' && typeof window.listenForWaiterCalls === 'function' &&
+                      typeof window.requestWakeLock === 'function';
+          if (!ready) {
+              if (++__ssStaffDoorTries < 40) { setTimeout(function () { try { ssStaffDoorEnter(); } catch (e) {} }, 250); return true; }
+              try { if (typeof loadCashierList === 'function') loadCashierList(); } catch (e) {}
+              return false;
+          }
+
+          currentCashier = { id: rid, name: nm, position: rle || 'Cashier', role: rle || 'Cashier', status: 'active', shopId: localStorage.getItem('shopId') || '' };
+          document.getElementById('loginScreen').style.display = 'none';
+          document.getElementById('mainApp').style.display = 'block';
+          document.getElementById('cashierDisplay').textContent = '👤 ' + nm;
+          loadProducts();
+          loadPosSettings();
+          checkActiveShift();
+          syncNow();
+          try { changeLanguage(appLang); } catch (e) { try { changeLanguage(); } catch (e2) {} }
+          initPOS();
+          listenForWaiterCalls();
+          requestWakeLock();
+          if (window.ssLicenseTimer) clearInterval(window.ssLicenseTimer);
+          window.ssLicenseTimer = setInterval(async function () {
+              var r = await ssCheckLicense();
+              if (!r.allowed) { alert(r.message); logout(); }
+          }, 30 * 60 * 1000);
+          __ssStaffDoorDone = true;
+          return true;
+      } catch (e) { console.warn('Staff door SSO failed:', e.message); return false; }
+  }
+
   // ===== DEVICE AUTH — OWNER ACTIVATION (v2: race-safe, fresh-device proof) =====
 function ssPosAuthRoute(event, session) {
     var isRealUser = session && session.user && session.user.email && !session.user.is_anonymous;
@@ -4347,6 +4409,7 @@ function ssPosAuthRoute(event, session) {
         if (typeof loadCashierList === 'function') loadCashierList();
         else ssWaitForFn('loadCashierList');
         if (typeof ensureDeviceMonitor === 'function') ensureDeviceMonitor();
+        if (ssStaffDoorEnter()) return; // 🚪 arrived from the staff door → straight in (no second door)
     } else {
         // Fresh device / logged out → activation form comes FIRST (like Kitchen)
         if (typeof showOwnerActivation === 'function') showOwnerActivation();
