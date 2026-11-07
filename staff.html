@@ -1,27 +1,31 @@
 <!DOCTYPE html>
 <!-- ═══════════════════════════════════════════════════════════════════
-     BizMaster · STAFF DOOR v2 (staff.html) — 2026-11-07
+     BizMaster · STAFF DOOR v3 (staff.html) — 2026-11-07
      ─────────────────────────────────────────────────────────────────
-     THE TWO-STEP STAFF DOOR (as requested by the owner):
-       STEP 1 · DEVICE UNLOCK
-         The device first asks for the ADMIN (owner) gmail + password.
-         Only that account's shops are loaded — nothing else is visible.
-         The admin session is NEVER saved on this device (it is used
-         only in memory to load the list, then thrown away).
-       STEP 2 · STAFF SIGN IN
-         Instead of typing a name, the staff member PICKS their name
-         from a dropdown — only staff registered under that admin
-         account (and that shop / café / hotel) appear in the list.
-         They enter the password/PIN the owner gave them and land in
-         their OWN workplace only:
-           Cashier            → POS (never the kitchen)
-           Waiter             → POS order mode
-           Chef / Barista     → Kitchen Display
-           Reception / Guard  → Hotel Desk (on hotels)
-           Owner / Manager    → Admin console
-         The shop / café / hotel name is shown at the top of the card.
-     Language: ONE 🌐 button in the header opens a dropdown with
-     English · አማርኛ · Afaan Oromoo (LANG.dropdown from lang.js).
+     THE ONE AND ONLY STAFF DOOR (owner's rules, session 3):
+       RULE 1 · DEVICE REGISTRATION — ONCE
+         The very first time, the device asks for the ADMIN (owner)
+         gmail + password. That registers THIS device to that account
+         (exactly like the POS/Kitchen "Device Activation" — the session
+         is kept on the device). Only the shops that belong to that
+         account can be opened, and the admin email + password are
+         NEVER asked again on this device (only "🔒 Lock this device"
+         or an owner sign-out removes the registration).
+       RULE 2 · STAFF SIGN IN — STRAIGHT TO THEIR WORKPLACE
+         The staff member PICKS their name from a dropdown (only staff
+         of that account's shops) and enters the password/PIN the owner
+         gave them. Then they land in their OWN workplace directly —
+         NO second door, NO third door, no application entrance PIN:
+           Cashier / Waiter     → POS (auto sign-in)
+           Chef / Barista       → Kitchen Display (auto sign-in)
+           Reception / Cleaner  → Hotel Desk (auto sign-in)
+           Owner / Manager      → Admin console (auto sign-in)
+         A cashier never reaches the Kitchen, a chef never reaches the
+         POS — every staff member is routed to their own place only.
+       The shop / café / hotel name is shown at the top of the card.
+       🔄 refresh: newly registered staff appear without re-unlocking.
+     Language: ONE 🌐 dropdown in the header (LANG.dropdown from
+     lang.js): English · አማርኛ · Afaan Oromoo.
      The owner shares this link (or a QR of it) with the team:
          staff.html            — pick shop after unlock
          staff.html?shop=ID    — preselects one shop
@@ -71,6 +75,9 @@ body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,b
 .lockbtn{display:block;margin:14px auto 0;background:none;border:none;color:var(--sub);font-size:11.5px;font-weight:600;text-decoration:underline;cursor:pointer;font-family:inherit}
 .door-note{margin-top:18px;text-align:center;font-size:11px;color:var(--sub);line-height:1.6}
 .foot{padding:14px 18px;text-align:center;color:var(--sub);font-size:11px}
+.row2{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:14px}
+.row2 button{background:none;border:none;color:var(--sub);font-size:11.5px;font-weight:600;text-decoration:underline;cursor:pointer;font-family:inherit;padding:4px}
+.unlocked-tag{display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;border-radius:10px;padding:7px 10px;font-size:11px;font-weight:700;margin-bottom:12px;letter-spacing:.02em}
 </style>
 </head>
 <body>
@@ -86,7 +93,7 @@ body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,b
 <div class="wrap">
   <div class="box">
 
-    <!-- ═══ STEP 1 · DEVICE UNLOCK (admin gmail + password) ═══ -->
+    <!-- ═══ STEP 1 · DEVICE REGISTRATION (admin gmail + password — ONCE) ═══ -->
     <div id="lockCard">
       <div class="ic">🔐</div>
       <h1 data-i18n="si.h2">Staff Sign In</h1>
@@ -104,8 +111,9 @@ body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,b
       <p class="door-note" data-i18n-html="sf.note">This is the staff entrance. Owners and admins sign in at their own separate door.</p>
     </div>
 
-    <!-- ═══ STEP 2 · STAFF PICK NAME + PASSWORD ═══ -->
+    <!-- ═══ STEP 2 · STAFF PICK NAME + PASSWORD → STRAIGHT TO THEIR WORKPLACE ═══ -->
     <div id="staffCard" class="hidden">
+      <div class="unlocked-tag" id="unlockedTag">✅ Device registered — staff sign in</div>
       <div class="shopchip" id="shopChip"></div>
       <select class="fld shopsel hidden" id="sfShopSel" onchange="onShopChange()"></select>
 
@@ -122,7 +130,10 @@ body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,b
 
       <button type="button" class="btn" id="signinBtn" onclick="doSignIn()"><span id="btnLabel" data-i18n="si.btn">Sign in</span></button>
 
-      <button type="button" class="lockbtn" onclick="lockDoor()" data-i18n="sd.lock">🔒 Lock this device</button>
+      <div class="row2">
+        <button type="button" onclick="refreshLists()" title="Refresh staff list">🔄</button>
+        <button type="button" onclick="lockDoor()" data-i18n="sd.lock">🔒 Lock this device</button>
+      </div>
     </div>
 
   </div>
@@ -134,10 +145,11 @@ body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,b
 <script src="lang.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════════
-//  BizMaster · STAFF DOOR v2 — admin unlock → staff dropdown →
-//  password check (server-side + offline fallback) → position routing.
-//  The password verification and routing are the SAME trusted logic
-//  the old door used (edge function staff-login, lockout, SSO keys).
+//  BizMaster · STAFF DOOR v3 — device registered ONCE (persistent
+//  owner session, same key the POS/Kitchen/Hotel/Admin activation
+//  uses) → staff dropdown → password check (server-side + offline
+//  fallback) → straight into the staff member's OWN workplace
+//  (single sign-on keys — no application entrance doors).
 // ═══════════════════════════════════════════════════════════════════
 var APP_NAME = 'BizMaster';
 function t(key, vars) { return window.LANG ? LANG.t(key, vars) : key; }
@@ -145,6 +157,7 @@ function $(id) { return document.getElementById(id); }
 function val(id) { var e = $(id); return e ? String(e.value || '').trim() : ''; }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
 function withTimeout(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('TIMEOUT')); }, ms); })]); }
 
 // ── Supabase ──
@@ -153,19 +166,24 @@ try { if (typeof SS_CONFIG !== 'undefined') { CFG_URL = SS_CONFIG.SUPABASE_URL |
 if (!CFG_URL) CFG_URL = 'https://mtwcdvmdoxzcejzgypdw.supabase.co';
 if (!CFG_KEY) CFG_KEY = 'sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8';
 
-// Main client — stays ANONYMOUS, exactly like the old door (password
-// checks go through the edge function with the public key).
+// ONE client, ONE persistent session — the SAME storage key the POS /
+// Kitchen / Hotel / Admin pages use. Signing in here registers the
+// device for the whole app; the owner email + password are asked ONCE.
+// (Password checks still go through the edge function — server-side.)
 var sb = null;
 if (window.supabase) { try { sb = window.supabase.createClient(CFG_URL, CFG_KEY, { auth: { flowType: 'implicit' } }); } catch (e) { sb = null; } }
 if (sb) window.SPP_SB = sb;
 
-// Unlock client — used ONLY for the admin email+password gate.
-// persistSession:false → the owner session is NEVER written to this
-// device. It lives in memory just long enough to load the staff list.
-var sbx = null;
-if (window.supabase) { try { sbx = window.supabase.createClient(CFG_URL, CFG_KEY, { auth: { flowType: 'implicit', persistSession: false, autoRefreshToken: false, storageKey: 'sb-staffdoor-unlock' } }); } catch (e) { sbx = null; } }
-
 var G = { busy: false, ubusy: false, shops: [], staff: [], shopId: '', byVal: {}, presetShop: '' };
+
+// All single-sign-on keys of the WHOLE app (set on sign-in, cleared on lock)
+var SSO_KEYS = ['kitchenShopId','kitchenChefId','kitchenChefName',
+                'hotelShopId','hotelStaffId','hotelStaffName','hotelPosition',
+                'posCashierId','posCashierName','posCashierRole'];
+
+// ── Device registration record (a hint — the session is the real proof) ──
+function unlockRecord() { try { return JSON.parse(localStorage.getItem('staffDoorUnlock') || 'null'); } catch (e) { return null; } }
+function saveUnlockRecord(email) { lsSet('staffDoorUnlock', JSON.stringify({ email: email || '', at: Date.now() })); }
 
 // ── Business-type classification (same as before) ──
 var TYPE_HOTEL = ['hotel','guest house','guesthouse','lodge','resort','pension','bnb','hostel'];
@@ -192,14 +210,14 @@ function routeFor(position, shopType) {
   if (p === 'chef' || p === 'barista' || p === 'kitchen') return { app: 'kitchen.html', icon: '🍳', dest: t('dest.kitchen'), sso: 'kitchen' };
   if (p === 'reception' || p === 'cleaner' || p === 'guard' || p === 'housekeeping' || p === 'security') {
     if (g === 'hotel') return { app: 'hotel.html', icon: '🏨', dest: t('dest.hotel'), sso: 'hotel' };
-    return { app: 'pos.html', icon: '🧾', dest: t('dest.pos'), sso: null };
+    return { app: 'pos.html', icon: '🧾', dest: t('dest.pos'), sso: 'pos' };
   }
-  if (p === 'waiter') return { app: 'pos.html', icon: '📝', dest: t('dest.waiter'), sso: null };
+  if (p === 'waiter') return { app: 'pos.html', icon: '📝', dest: t('dest.waiter'), sso: 'pos' };
   if (p === 'cashier') {
-    if (g === 'retail') return { app: 'pos.html', icon: '🧾', dest: t('dest.posretail'), sso: null };
-    return { app: 'pos.html', icon: '💳', dest: t('dest.posbill'), sso: null };
+    if (g === 'retail') return { app: 'pos.html', icon: '🧾', dest: t('dest.posretail'), sso: 'pos' };
+    return { app: 'pos.html', icon: '💳', dest: t('dest.posbill'), sso: 'pos' };
   }
-  return { app: 'pos.html', icon: '🧾', dest: t('dest.pos'), sso: null };
+  return { app: 'pos.html', icon: '🧾', dest: t('dest.pos'), sso: 'pos' };
 }
 
 // ── Messages / busy state ──
@@ -217,42 +235,92 @@ function setUBusy(on, label) {
 }
 function netMsg(e) { if (e && e.message === 'TIMEOUT') return t('msg.timeout'); return t('msg.net', { err: (e && e.message) || 'network' }); }
 
-// ═══ STEP 1 · admin gmail + password → load THIS account's staff ═══
+// ═══ STEP 1 · admin gmail + password → REGISTER THIS DEVICE (once) ═══
 async function doUnlock() {
   if (G.ubusy) return;
   var email = val('adEmail');
   var pass = $('adPass').value || '';
   if (!email || !pass) { setUMsg('err', t('act.fill')); (email ? $('adPass') : $('adEmail')).focus(); return; }
-  if (!sbx) { setUMsg('err', t('e.nosb')); return; }
+  if (!sb) { setUMsg('err', t('e.nosb')); return; }
 
   setUBusy(true, t('sd.checking'));
   setUMsg('info', t('sd.checking'));
   try {
-    // 1) Verify the ADMIN account (in memory only — never saved on the device)
-    var r = await withTimeout(sbx.auth.signInWithPassword({ email: email, password: pass }), 12000);
+    // 1) Verify the ADMIN account — the session STAYS on this device
+    //    (same key as POS/Kitchen activation) → asked ONCE, never again.
+    var r = await withTimeout(sb.auth.signInWithPassword({ email: email, password: pass }), 12000);
     if (r && r.error) throw { authFail: true };
     if (!r || !r.data || !r.data.user) throw { authFail: true };
     var mail = r.data.user.email || email;
 
-    // 2) Only the shops that belong to THIS admin account
-    var sh = await withTimeout(sbx.from('shops').select('shop_id,name,business_type,active').eq('owner_email', mail).eq('active', true).order('name'), 12000);
-    if (sh.error) throw sh.error;
-    var shops = sh.data || [];
-    if (!shops.length) { setUBusy(false); setUMsg('err', t('sd.noshops')); return; }
-
-    // 3) Only the staff of those shops (active accounts only)
-    var ids = shops.map(function (s) { return s.shop_id; });
-    var em = await withTimeout(sbx.from('employees').select('firebase_id,id,name,position,status,shop_id').in('shop_id', ids).order('name'), 12000);
-    if (em.error) throw em.error;
-    var staff = (em.data || []).filter(function (x) { return (x.status || 'active') !== 'inactive'; });
-
-    G.shops = shops; G.staff = staff; G.shopId = '';
+    // 2) Only the shops + staff that belong to THIS admin account
+    var ok = await loadAccount(mail);
+    if (!ok) { setUBusy(false); return; }
+    saveUnlockRecord(mail);
     enterStaffStep();
   } catch (e) {
     setUBusy(false);
     if (e && e.authFail) { setUMsg('err', t('sd.wrong')); $('adPass').value = ''; $('adPass').focus(); return; }
     setUMsg('err', netMsg(e));
   }
+}
+
+// ── Load one admin account's shops + staff (needs the device session) ──
+async function loadAccount(ownerEmail) {
+  try {
+    var sh = await withTimeout(sb.from('shops').select('shop_id,name,business_type,active').eq('owner_email', ownerEmail).eq('active', true).order('name'), 12000);
+    if (sh.error) throw sh.error;
+    var shops = sh.data || [];
+    if (!shops.length) { setUMsg('err', t('sd.noshops')); return false; }
+
+    var ids = shops.map(function (s) { return s.shop_id; });
+    var em = await withTimeout(sb.from('employees').select('firebase_id,id,name,position,status,shop_id').in('shop_id', ids).order('name'), 12000);
+    if (em.error) throw em.error;
+    var staff = (em.data || []).filter(function (x) { return (x.status || 'active') !== 'inactive'; });
+
+    G.shops = shops; G.staff = staff; G.shopId = '';
+    return true;
+  } catch (e) {
+    setUMsg('err', netMsg(e));
+    return false;
+  }
+}
+
+// ── AUTO-UNLOCK: device already registered → skip the admin door ──
+async function tryAutoUnlock() {
+  if (!sb) return;
+  var sess = null;
+  try {
+    var s = await withTimeout(sb.auth.getSession(), 8000);
+    sess = s && s.data && s.data.session;
+  } catch (e) {}
+  var isReal = sess && sess.user && sess.user.email && !sess.user.is_anonymous;
+
+  if (!isReal) {
+    // Session gone (expired or owner signed out elsewhere) → admin door
+    // once more. Prefill the saved email so only the password is needed.
+    var rec = unlockRecord();
+    if (rec && rec.email) { $('adEmail').value = rec.email; setUMsg('info', t('sd.lock.p')); }
+    return;
+  }
+
+  var ok = await loadAccount(sess.user.email);
+  if (!ok) { $('adEmail').value = sess.user.email; return; }
+  enterStaffStep();
+}
+
+// ── 🔄 Refresh: new staff the owner just registered appear instantly ──
+async function refreshLists() {
+  if (!sb || G.ubusy || G.busy) return;
+  var sess = null;
+  try {
+    var s = await withTimeout(sb.auth.getSession(), 8000);
+    sess = s && s.data && s.data.session;
+  } catch (e) {}
+  if (!(sess && sess.user && sess.user.email && !sess.user.is_anonymous)) { lockDoor(true); return; }
+  setMsg('info', t('sd.checking'));
+  var ok = await loadAccount(sess.user.email);
+  if (ok) { buildShopUI(); buildStaffUI(true); setMsg(null); }
 }
 
 // ═══ STEP 2 · build the staff screen ═══
@@ -322,13 +390,26 @@ async function doSignIn() {
   await verifyAndGo(emp, pass);
 }
 
-// ── Back to step 1 (clears everything) ──
-function lockDoor() {
+// ── Lock the device (two taps — it removes the owner registration) ──
+var lockArm = 0;
+function lockDoor(silent) {
+  if (!silent) {
+    if (Date.now() - lockArm > 4000) {
+      lockArm = Date.now();
+      setMsg('warn', '🔒 ' + t('sd.lock') + ' — tap again to confirm.');
+      setTimeout(function () { if (Date.now() - lockArm >= 3900) setMsg(null); }, 4100);
+      return;
+    }
+  }
+  lockArm = 0;
   G.shops = []; G.staff = []; G.shopId = ''; G.byVal = {};
   $('adEmail').value = ''; $('adPass').value = ''; $('staffPass').value = '';
   setMsg(null); setUMsg(null);
   $('staffCard').classList.add('hidden');
   $('lockCard').classList.remove('hidden');
+  lsDel('staffDoorUnlock');                       // remove the registration record
+  SSO_KEYS.forEach(lsDel);                        // nobody stays signed in anywhere
+  try { if (sb) sb.auth.signOut(); } catch (e) {} // remove the owner session
   try { $('adEmail').focus(); } catch (e) {}
 }
 
@@ -431,6 +512,9 @@ async function goStaff(emp) {
   var r = routeFor(pos, shop.business_type);
   var empId = emp.firebase_id || emp.id;
 
+  // The SSO keys always describe ONLY the staff member who just signed
+  // in — stale keys from a previous sign-in are removed first.
+  SSO_KEYS.forEach(lsDel);
   lsSet('shopId', emp.shop_id);
   if (r.sso === 'kitchen') {
     lsSet('kitchenShopId', emp.shop_id);
@@ -441,6 +525,12 @@ async function goStaff(emp) {
     lsSet('hotelStaffId', empId);
     lsSet('hotelStaffName', emp.name || 'Staff');
     lsSet('hotelPosition', pos);
+  } else {
+    // POS (cashier, waiter, manager on retail…) — and admin-clean for
+    // Owner/Manager arrives already signed in through the device session.
+    lsSet('posCashierId', empId);
+    lsSet('posCashierName', emp.name || 'Cashier');
+    lsSet('posCashierRole', pos || 'Cashier');
   }
 
   var url = r.app +
@@ -465,7 +555,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var shop = new URLSearchParams(location.search).get('shop');
     if (shop) G.presetShop = String(shop);
   } catch (e) {}
-  $('adEmail').focus();
+  tryAutoUnlock();   // device already registered? → staff list directly
 });
 document.addEventListener('langchange', function () {
   applyBrand();
