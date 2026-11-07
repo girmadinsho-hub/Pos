@@ -640,6 +640,22 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
   <div id="v4scanVideo" style="width:95%;max-width:480px"></div>
 </div>
   
+<!-- ═══ DEVICES TEMPLATE (tab 20 — the owner's remote device lock) ═══ -->
+<template id="tab20HTML">
+<div id="tab20" class="tab-content">
+  <div class="card" style="padding:12px">
+    <div class="card-title">📱 Devices <small style="font-size:10px;color:#94a3b8">— the owner's remote key</small></div>
+    <p style="font-size:12px;color:#64748b;line-height:1.6;margin:4px 0 10px">Every phone or tablet that unlocked the <b>Staff Door</b> or activated the <b>POS / Kitchen</b> for your shops appears here. Lock a device the moment it is <b>lost, stolen</b>, or kept by a <b>fired</b> staff member — it closes instantly on that device. Tap <b>🔓 Unlock</b> any time — the device goes back to work <b>by itself</b> within seconds; the owner email + password are <b>never asked again</b> on it.</p>
+    <button class="period-btn active" style="font-size:12px;padding:8px 14px" onclick="v4devLoad()">🔄 Refresh</button>
+    <div id="v4devList" style="margin-top:10px">Loading devices…</div>
+  </div>
+  <div class="card" style="padding:12px">
+    <div class="card-title" style="font-size:13px">👤 Fired one person?</div>
+    <p style="font-size:12px;color:#64748b;line-height:1.6;margin-top:4px">Locking a device blocks the <b>device</b>. To block one <b>person</b>: <b>Staff tab → Deactivate</b> — their name disappears from the Staff Door list and their PIN stops working on every device.</p>
+  </div>
+</div>
+</template>
+
 <!-- MAIN -->
 <div id="mainApp" style="display:none">
   <div class="header">
@@ -688,6 +704,327 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
   <script src="v4-settings.js"></script>
 <script src="v4-license-guard.js"></script>
 <script src="v4-shops.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   BIZ-DEV-1 · DEVICES TAB (tab 20) — the owner's remote device lock
+   ─────────────────────────────────────────────────────────────────
+   The staff door (staff.html v3.2) and the POS/Kitchen device monitors
+   register every device in the `devices` table. This screen gives the
+   owner the controls the old admin Device menu had:
+     · see every device of every shop of THIS account — name, type and
+       last-seen (each device refreshes its own row every 30 seconds)
+     · 🔒 LOCK → status 'revoked': the staff door dies INSTANTLY on that
+       device (red lock screen) and the POS on the same phone dies at
+       the same moment (shared device key). The Kitchen walls too.
+     · 🔓 UNLOCK → status 'active' (v3.2 SOFT SWITCH): the Staff Door,
+       the POS and the Kitchen on that device REOPEN BY THEMSELVES
+       (realtime push + 30 s poll + a 🔄 button on their red screens).
+       The owner email + password are NEVER asked again after an
+       unlock — the device keeps its registration, so the owner never
+       has to be physically at the device to reopen it.
+     · 🗑 REMOVE → forget an old / test device row.
+   The device you are reading this on is marked 👤 (this device).
+   Device lock is SECURITY, so tab 20 is never plan-locked.
+   ═══════════════════════════════════════════════════════════════════ */
+var v4dev = { rows: [], shops: {}, busy: false, email: '', note: '' };
+
+/* BIZ-DEV-FIX-1 · find this page's Supabase client.
+   shared.js keeps it in a top-level `let supabaseClient` — every script
+   can read the bare name, but it is NOT a window property, so
+   `window.supabaseClient` stayed undefined forever and the Devices tab
+   showed "Database not connected" (the list never loaded, the lock
+   buttons never came). This resolver bridges that gap AND promotes the
+   client to window.supabaseClient, so the device-gate checks below and
+   the licence wall's own `W.supabaseClient` re-check work too. */
+function v4devEnsureSB() {
+  try {
+    if (window.supabaseClient) return window.supabaseClient;
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) { window.supabaseClient = supabaseClient; return supabaseClient; }
+    if (window.SPP_SB) { window.supabaseClient = window.SPP_SB; return window.SPP_SB; }
+    if (window.sb) { window.supabaseClient = window.sb; return window.sb; }
+    if (window.supabase && window.supabase.createClient && typeof SS_CONFIG !== 'undefined' && SS_CONFIG.SUPABASE_URL) {
+      window.supabaseClient = window.supabase.createClient(SS_CONFIG.SUPABASE_URL, SS_CONFIG.SUPABASE_KEY, { auth: { flowType: 'implicit' } });
+      return window.supabaseClient;
+    }
+  } catch (e) {}
+  return null;
+}
+v4devEnsureSB();   // promote right now — shared.js already ran above
+
+function v4devEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+
+// 🔐 Devices = security (like Settings/License) → never plan-locked
+try {
+  var __ssTabAllowedOrig = window.ssTabAllowed;
+  window.ssTabAllowed = function (n) {
+    if (n === 20) return true;
+    return __ssTabAllowedOrig ? __ssTabAllowedOrig(n) : true;
+  };
+} catch (e) {}
+
+function v4devType(t) {
+  t = String(t || '').toLowerCase();
+  if (t.indexOf('staff') > -1) return { icon: '🚪', label: 'Staff Door' };
+  if (t === 'pos') return { icon: '🧾', label: 'POS' };
+  if (t.indexOf('kitchen') > -1) return { icon: '🍳', label: 'Kitchen' };
+  if (t.indexOf('hotel') > -1) return { icon: '🏨', label: 'Hotel Desk' };
+  if (t.indexOf('menu') > -1) return { icon: '📋', label: 'QR Menu' };
+  return { icon: '📱', label: t || 'Device' };
+}
+
+function v4devWhen(iso) {
+  try {
+    var ms = Date.now() - new Date(iso).getTime();
+    if (isNaN(ms)) return '—';
+    if (ms < 0) return '🟢 just now';
+    if (ms < 60e3) return '🟢 just now';
+    if (ms < 3600e3) return '🟢 ' + Math.floor(ms / 60e3) + ' min ago';
+    if (ms < 86400e3) return Math.floor(ms / 3600e3) + ' h ago';
+    return Math.floor(ms / 86400e3) + ' d ago';
+  } catch (e) { return '—'; }
+}
+
+V4_TAB_LOADERS[20] = function () { v4devLoad(); };
+
+async function v4devLoad() {
+  if (v4dev.busy) return;
+  if (!v4devEnsureSB()) {
+    var el0 = document.getElementById('v4devList');
+    if (el0) el0.innerHTML = '<p style="font-size:12px;color:#ef4444">⚠️ Database not connected yet — tap 🔄 Refresh.</p>';
+    return;
+  }
+  v4dev.busy = true;
+  var el = document.getElementById('v4devList');
+  if (el) el.innerHTML = '<p style="font-size:12px;color:#94a3b8">Loading devices…</p>';
+  try {
+    var sbC = window.supabaseClient;
+    var email = '';
+    try { const { data: { user } } = await sbC.auth.getUser(); if (user) email = user.email; } catch (e) {}
+    v4dev.email = email;
+    v4dev.note = '';
+    var ids = [getShopId()];
+    if (email) {
+      // BIZ-DEV-FIX-3 · ALL shops of this account — WITHOUT the active
+      // filter: a deactivated / expired shop's phones must stay visible
+      // (and lockable) here — a lost phone of a closed shop is still a
+      // lost phone. Also surface a shops-read error instead of silently
+      // dropping the owner's other shops from the list.
+      const { data: myShops, error: shErr } = await sbC.from('shops')
+        .select('shop_id,name').eq('owner_email', email);
+      if (shErr) v4dev.note = '⚠️ Could not read your shop list (' + v4devEsc(shErr.message || 'error') + ') — showing devices of the current shop only.';
+      (myShops || []).forEach(function (s) {
+        v4dev.shops[s.shop_id] = s.name;
+        if (ids.indexOf(s.shop_id) === -1) ids.push(s.shop_id);
+      });
+    }
+    const { data, error } = await sbC.from('devices')
+      .select('*').in('shop_id', ids).order('last_seen', { ascending: false }).limit(200);
+    if (error) throw error;
+    v4dev.rows = data || [];
+    v4devRender();
+  } catch (e) {
+    if (el) el.innerHTML = '<p style="font-size:12px;color:#ef4444">❌ ' + v4devEsc(e.message || 'Could not load devices.') + '</p>';
+  }
+  v4dev.busy = false;
+}
+
+function v4devRender() {
+  var el = document.getElementById('v4devList');
+  if (!el) return;
+  var here = '';
+  try { here = localStorage.getItem('deviceKey_biz') || localStorage.getItem('deviceKey_pos') || ''; } catch (e) {}
+  var pre = v4dev.note ? '<p style="font-size:11px;color:#b45309;margin:0 0 8px;line-height:1.5">' + v4dev.note + '</p>' : '';
+  if (!v4dev.rows.length) {
+    el.innerHTML = pre + '<p style="font-size:12px;color:#64748b;line-height:1.6">No devices yet' + (v4dev.email ? ' for <b>' + v4devEsc(v4dev.email) + '</b>' : '') + '.<br>On the phone you want to see here: open the <b>Staff Door</b> (staff.html) and <b>finish the owner sign-in</b> — enter the owner email + password ONCE on that phone. Just opening the page is not enough. Or activate the <b>POS</b> on it — it registers the same way. The phone appears here the moment its sign-in completes (look for the green <b>✅ Device registered</b> tag on the Staff Door).</p>';
+    return;
+  }
+  var html = pre;
+  v4dev.rows.forEach(function (d) {
+    var ty = v4devType(d.device_type);
+    var locked = String(d.status || '').toLowerCase() === 'revoked';
+    var mine = here && d.device_key === here;
+    var shop = v4dev.shops[d.shop_id] || d.shop_id || '';
+    html += '<div style="border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;margin-bottom:8px;' + (locked ? 'background:#fef2f2;border-color:#fecaca;' : '') + '">' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+      '<span style="font-size:20px">' + ty.icon + '</span>' +
+      '<div style="flex:1;min-width:140px">' +
+      '<b style="font-size:13px">' + (mine ? '👤 ' : '') + v4devEsc(d.device_name || 'Device') + (mine ? ' <small style="color:#2563eb">(this device)</small>' : '') + '</b>' +
+      '<div style="font-size:11px;color:#64748b">' + v4devEsc(ty.label) + (shop ? ' · ' + v4devEsc(shop) : '') + ' · ' + v4devWhen(d.last_seen) + '</div>' +
+      '</div>' +
+      (locked
+        ? '<span style="font-size:10px;font-weight:800;background:#ef4444;color:#fff;border-radius:999px;padding:3px 10px">🔒 LOCKED</span>'
+        : '<span style="font-size:10px;font-weight:800;background:#10b981;color:#fff;border-radius:999px;padding:3px 10px">● ACTIVE</span>') +
+      '</div>' +
+      '<div style="display:flex;gap:6px;margin-top:8px">' +
+      (locked
+        ? '<button onclick="v4devSet(\'' + v4devEsc(d.device_key) + '\',\'active\')" style="flex:1;background:#10b981;color:#fff;border:none;border-radius:8px;padding:8px;font-size:11px;font-weight:800">🔓 Unlock</button>'
+        : (mine
+          ? '<button disabled title="You are using this device right now — lock it from another device if you ever need to" style="flex:1;background:#fecaca;color:#991b1b;border:none;border-radius:8px;padding:8px;font-size:11px;font-weight:800;cursor:not-allowed">🔒 In use here</button>'
+          : '<button onclick="v4devSet(\'' + v4devEsc(d.device_key) + '\',\'revoked\')" style="flex:1;background:#ef4444;color:#fff;border:none;border-radius:8px;padding:8px;font-size:11px;font-weight:800">🔒 Lock device</button>')) +
+      '<button onclick="v4devRemove(\'' + v4devEsc(d.device_key) + '\',\'' + v4devEsc(d.device_name || 'Device') + '\')" style="background:#f1f5f9;color:#475569;border:none;border-radius:8px;padding:8px 10px;font-size:11px;font-weight:800">🗑</button>' +
+      '</div></div>';
+  });
+  el.innerHTML = html;
+}
+
+async function v4devSet(key, status) {
+  var verb = status === 'revoked' ? 'LOCK' : 'UNLOCK';
+  var hint = status === 'revoked'
+    ? 'The Staff Door, the POS and the Kitchen on that device close instantly. Use this when a device is lost, stolen, or kept by a fired staff member.'
+    : 'The device goes back to work BY ITSELF within seconds (its Staff Door, POS and Kitchen reopen on their own). The owner email + password are NOT asked again — the device keeps its registration.';
+  if (!confirm('🔒 ' + verb + ' this device?\n\n' + hint)) return;
+  var sbC = v4devEnsureSB();
+  if (!sbC) { alert('⚠️ Database not connected — tap 🔄 Refresh, then try again.'); return; }
+  try {
+    const { error } = await sbC.from('devices').update({ status: status }).eq('device_key', key);
+    if (error) throw error;
+    v4devLoad();
+  } catch (e) { alert('❌ ' + (e.message || 'Update failed.')); }
+}
+
+async function v4devRemove(key, name) {
+  if (!confirm('🗑 Forget "' + name + '"?\n\nThe row is deleted from this list. If that phone is still out there, it registers itself again the next time it unlocks the Staff Door.')) return;
+  var sbC = v4devEnsureSB();
+  if (!sbC) { alert('⚠️ Database not connected — tap 🔄 Refresh, then try again.'); return; }
+  try {
+    const { error } = await sbC.from('devices').delete().eq('device_key', key);
+    if (error) throw error;
+    v4devLoad();
+  } catch (e) { alert('❌ ' + (e.message || 'Delete failed.')); }
+}
+</script>
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   BIZ-DEV-WALL-2 · ADMIN CONSOLE DEVICE GATE (v3.2)
+   ─────────────────────────────────────────────────────────────────
+   Lock/Unlock is now a SOFT remote switch (the device keeps its
+   registration, so the owner never re-enters email + password after
+   an unlock). Because the owner session now SURVIVES a lock, the
+   admin console itself must check the `devices` row of THIS device
+   and wall itself while that device is locked — otherwise a locked
+   (stolen) phone could still open this console with the kept session.
+     · while status = 'revoked' → red wall above everything
+       (z-index 2147483000 — above the licence wall);
+     · the owner can unlock remotely from ANOTHER device (Admin →
+       📱 Devices → 🔓 Unlock) — this wall lifts by itself (realtime
+       push + 45 s poll + the 🔄 Check again button);
+     · or self-unlock RIGHT HERE: the owner re-enters their password
+       (email pre-filled from the session) — a thief cannot, because
+       they do not know it. Nothing else is ever asked.
+   A laptop that never unlocked the Staff Door / activated the POS has
+   no devices row → no wall (there is nothing to lock).
+   ═══════════════════════════════════════════════════════════════════ */
+(function () {
+  var WALL_ID = 'adminDeviceWall', WALL_TIMER = null, WALL_BUSY = false;
+
+  function wallKey() {
+    try { return localStorage.getItem('deviceKey_biz') || localStorage.getItem('deviceKey_pos') || ''; } catch (e) { return ''; }
+  }
+  function wallEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  async function wallCheck() {
+    if (WALL_BUSY) return;
+    var key = wallKey();
+    if (!key || !v4devEnsureSB() || !navigator.onLine) return;
+    WALL_BUSY = true;
+    try {
+      var r = await Promise.race([
+        window.supabaseClient.from('devices').select('status,device_name').eq('device_key', key).maybeSingle(),
+        new Promise(function (_, rej) { setTimeout(function () { rej(new Error('TIMEOUT')); }, 9000); })
+      ]);
+      if (r && r.data && String(r.data.status || '').toLowerCase() === 'revoked') wallShow(r.data.device_name || '');
+      else wallHide();
+    } catch (e) {}
+    WALL_BUSY = false;
+  }
+
+  function wallShow(name) {
+    var w = document.getElementById(WALL_ID);
+    if (!w) {
+      w = document.createElement('div');
+      w.id = WALL_ID;
+      w.style.cssText = 'position:fixed;inset:0;background:rgba(127,29,29,.985);color:#fff;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;overflow:auto';
+      w.innerHTML =
+        '<div style="font-size:54px;margin-bottom:12px">⛔</div>' +
+        '<h1 style="font-size:23px;margin-bottom:8px">Device Locked</h1>' +
+        '<p style="font-size:13px;max-width:340px;color:#fecaca;line-height:1.6">' +
+        (name ? wallEsc(name) + ' has been ' : 'This device has been ') +
+        'locked from Admin → 📱 Devices. The Staff Door, the POS and this console are closed on this device.</p>' +
+        '<div style="margin-top:18px;width:100%;max-width:290px;text-align:left">' +
+        '<label style="display:block;font-size:10px;font-weight:800;color:#fca5a5;letter-spacing:.06em;margin-bottom:4px">OWNER EMAIL</label>' +
+        '<input id="devWallEmail" type="email" autocomplete="off" style="width:100%;padding:11px 12px;border:1px solid #b91c1c;border-radius:10px;background:rgba(0,0,0,.25);color:#fff;font-size:13px;outline:none">' +
+        '<label style="display:block;font-size:10px;font-weight:800;color:#fca5a5;letter-spacing:.06em;margin:10px 0 4px">PASSWORD</label>' +
+        '<input id="devWallPass" type="password" autocomplete="current-password" style="width:100%;padding:11px 12px;border:1px solid #b91c1c;border-radius:10px;background:rgba(0,0,0,.25);color:#fff;font-size:13px;outline:none">' +
+        '<button type="button" onclick="v4devWallUnlock()" style="width:100%;margin-top:12px;padding:12px;border:0;border-radius:10px;background:#fff;color:#7f1d1d;font-weight:800;font-size:13px;cursor:pointer">🔓 Unlock this device</button>' +
+        '<p id="devWallMsg" style="font-size:11px;color:#fca5a5;margin-top:10px;min-height:14px"></p>' +
+        '</div>' +
+        '<p style="font-size:11px;color:#fecaca;margin-top:12px;max-width:320px;line-height:1.6">Or the owner unlocks it remotely from another device (Admin → 📱 Devices → 🔓 Unlock) — this screen lifts by itself within a minute.</p>' +
+        '<button type="button" onclick="v4devWallRetry()" style="margin-top:8px;background:none;border:1px solid #b91c1c;color:#fecaca;border-radius:999px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer">🔄 Check again</button>';
+      document.body.appendChild(w);
+      try {
+        window.supabaseClient.auth.getUser().then(function (r) {
+          if (r && r.data && r.data.user) { var e = document.getElementById('devWallEmail'); if (e) e.value = r.data.user.email || ''; }
+        }).catch(function () {});
+      } catch (e) {}
+    }
+    w.style.display = 'flex';
+  }
+
+  function wallHide() { var w = document.getElementById(WALL_ID); if (w) w.remove(); }
+
+  window.v4devWallRetry = async function () {
+    var m = document.getElementById('devWallMsg'); if (m) m.textContent = '⏳ Checking…';
+    await wallCheck();
+    var still = document.getElementById(WALL_ID);
+    if (still && m) m.textContent = '🔒 Still locked.';
+  };
+
+  window.v4devWallUnlock = async function () {
+    var em = document.getElementById('devWallEmail'), pw = document.getElementById('devWallPass'), m = document.getElementById('devWallMsg');
+    var email = em ? String(em.value || '').trim() : '', pass = pw ? String(pw.value || '') : '';
+    if (!email || !pass) { if (m) m.textContent = '⚠️ Fill the owner email and password.'; return; }
+    if (m) m.textContent = '⏳ Verifying…';
+    try {
+      var r = await window.supabaseClient.auth.signInWithPassword({ email: email, password: pass });
+      if (r && r.error) throw r.error;
+      if (!r || !r.data || !r.data.user) throw new Error('Wrong email or password.');
+      var key = wallKey();
+      if (key) {
+        var u = await window.supabaseClient.from('devices').update({ status: 'active' }).eq('device_key', key);
+        if (u && u.error) throw u.error;
+      }
+      wallHide();
+      try { alert('✅ Device unlocked — it is active again. The Staff Door and the POS on it reopen by themselves.'); } catch (e) {}
+      wallCheck();
+    } catch (e) {
+      if (pw) pw.value = '';
+      if (m) m.textContent = '❌ ' + ((e && e.message) || 'Wrong email or password.');
+    }
+  };
+
+  function boot() {
+    wallCheck();
+    if (WALL_TIMER) clearInterval(WALL_TIMER);
+    WALL_TIMER = setInterval(wallCheck, 45000);
+    try {
+      var key = wallKey();
+      if (key && window.supabaseClient) {
+        window.supabaseClient.channel('admin-devwall-' + key)
+          .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'devices', filter: 'device_key=eq.' + key }, function (payload) {
+            if (payload.new && payload.new.status === 'active') wallHide();
+            else if (payload.new && payload.new.status === 'revoked') wallShow(payload.new.device_name || '');
+          }).subscribe();
+      }
+    } catch (e) {}
+  }
+
+  var tries = 0;
+  (function waitSb() {
+    if (v4devEnsureSB() || ++tries > 60) boot();
+    else setTimeout(waitSb, 750);
+  })();
+})();
+</script>
 <script src="smartcom.js"></script>
 <!-- SLP-LANG-2 · language engine: English / አማርኛ / Afaan Oromoo on every menu (data-spp-auto) -->
 <script src="lang.js" data-spp-auto="1"></script>
@@ -1839,4 +2176,5 @@ function init() {
 }</script>
 </body>
 </html>
+
 
