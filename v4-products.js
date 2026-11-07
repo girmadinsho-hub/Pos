@@ -24,7 +24,7 @@ function v4PickType(t) {
   // sell: everything. raw: cost+stock, NO sell price needed visible but keep for future; virtual: price+station ONLY. dual: everything.
   stockW.style.display = (t === 'virtual') ? 'none' : 'grid';
   extraW.style.display = (t === 'virtual') ? 'none' : 'grid';
-stationW.style.display = (t === 'raw') ? 'none' : 'block';  if (t === 'virtual') { costW.style.display = 'none'; stock.value = 0; }
+stationW.style.display = (t === 'virtual' || t === 'dual') ? 'block' : 'none';  if (t === 'virtual') { costW.style.display = 'none'; stock.value = 0; }
   else { costW.style.display = 'block'; }
   if (t === 'raw') { price.parentElement.style.display = 'none'; }
   else { price.parentElement.style.display = 'block'; }
@@ -56,6 +56,7 @@ async function v4AddProduct() {
   if ((t === 'sell' || t === 'raw') && stock <= 0) { alert('Stock quantity is required for this type.'); return; }
   if (t === 'dual' && cost <= 0) { alert('Dual-use needs cost price (it is also an ingredient).'); return; }
   if (t === 'virtual') { stock = 0; }
+  if (price > 0 && cost > price && !await confirm('⚠️ Cost price is higher than selling price — this product sells at a loss. Save anyway?')) return;
 
   // 🗺️ Map UI type → DB flags (same columns as v3 — bridge law respected)
   var isVirtual = (t === 'virtual');
@@ -133,8 +134,8 @@ function v4MapProduct(p) {
 }
 
 function v4TypeBadge(t) {
-  var m = { sell:['🛒 Sell','#eff6ff','#1d4ed8'], raw:['🧪 Raw','#fef3c7','#92400e'],
-            virtual:['🍔 Prepared','#ede9fe','#5b21b6'], dual:['🥚 Dual','#d1fae5','#065f46'] };
+  var m = { sell:['🛒 Sell Direct','#eff6ff','#1d4ed8'], raw:['🧪 Raw Material','#fef3c7','#92400e'],
+            virtual:['🍔 Prepared','#ede9fe','#5b21b6'], dual:['🥚 Dual Use','#d1fae5','#065f46'] };
   var x = m[t] || m.sell;
   return '<span style="background:' + x[1] + ';color:' + x[2] + ';font-size:10px;font-weight:800;padding:3px 8px;border-radius:8px;white-space:nowrap">' + x[0] + '</span>';
 }
@@ -167,6 +168,8 @@ function v4FillCatFilter() {
   v4products.forEach(function(p){ if (p.category && cats.indexOf(p.category) === -1) cats.push(p.category); });
   cats.sort();
   sel.innerHTML = '<option value="">All Categories</option>' + cats.map(function(c){ return '<option>' + c + '</option>'; }).join('');
+  var dl = document.getElementById('v4catOpts');
+  if (dl) dl.innerHTML = cats.map(function(c){ return '<option value="' + c.replace(/"/g,'&quot;') + '"></option>'; }).join('');
     var usel = document.getElementById('v4prodUnitFilter');
   if (usel) { var us = []; v4products.forEach(function(p){ if (p.unit && us.indexOf(p.unit) === -1) us.push(p.unit); }); us.sort();
     usel.innerHTML = '<option value="">All Units</option>' + us.map(function(u){ return '<option>' + u + '</option>'; }).join(''); }
@@ -463,13 +466,13 @@ function v4BuildEditModal(p) {
     '<label>🏷️ Type</label>' +
     '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px" id="v4emTypes">' +
       ['sell','raw','virtual','dual'].map(function(t){
-        var lbl = {sell:'🛒 Sell',raw:'🧪 Raw',virtual:'🍔 Prepared',dual:'🥚 Dual'}[t];
+        var lbl = {sell:'🛒 Sell Direct',raw:'🧪 Raw Material',virtual:'🍔 Prepared',dual:'🥚 Dual Use'}[t];
         return '<div class="v4-type' + (v4emType === t ? ' active' : '') + '" data-t="' + t + '" onclick="v4emPickType(\'' + t + '\')"><b>' + lbl + '</b></div>';
       }).join('') +
     '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
-      '<div id="v4emPriceW"><label>💵 Selling Price</label><input type="number" class="v4-in" id="v4emPrice" value="' + p.price + '"></div>' +
       '<div id="v4emCostW"><label>💰 Cost Price</label><input type="number" class="v4-in" id="v4emCost" value="' + p.costPrice + '"></div>' +
+      '<div id="v4emPriceW"><label>💵 Selling Price</label><input type="number" class="v4-in" id="v4emPrice" value="' + p.price + '"></div>' +
     '</div>' +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px" id="v4emStockW">' +
       '<div><label>📊 Stock</label><input type="number" class="v4-in" id="v4emStock" value="' + p.stock + '"></div>' +
@@ -480,7 +483,7 @@ function v4BuildEditModal(p) {
       '<div><label>📅 Expiry</label><input type="date" class="v4-in" id="v4emExpiry" value="' + (p.expiryDate || '') + '"></div>' +
     '</div>' +
     '<div id="v4emStationW"><label>🍳 Prep Station</label><select class="v4-in" id="v4emStation">' +
-      ['Kitchen','Bar','Coffee'].map(function(s){ return '<option ' + (p.station === s ? 'selected' : '') + '>' + s + '</option>'; }).join('') +
+      [['Kitchen','🍳 Kitchen'],['Bar','🍹 Bar / Cold'],['Coffee','☕ Coffee / Hot']].map(function(o){ return '<option value="' + o[0] + '" ' + (p.station === o[0] ? 'selected' : '') + '>' + o[1] + '</option>'; }).join('') +
     '</select></div>' +
     '<label>🏷️ Barcode</label><input class="v4-in" id="v4emBarcode" value="' + sanitize(p.barcode) + '">' +
     '<label>🖼️ Image URL</label><input class="v4-in" id="v4emImage" value="' + sanitize(p.imageUrl) + '">' +
@@ -528,7 +531,7 @@ function v4emApplyType() {
   var show = function(id, v){ var el = document.getElementById(id); if (el) el.style.display = v; };
   show('v4emStockW', t === 'virtual' ? 'none' : 'grid');
   show('v4emExtraW', t === 'virtual' ? 'none' : 'grid');
-show('v4emStationW', t === 'raw' ? 'none' : 'block');  show('v4emPriceW', t === 'raw' ? 'none' : 'block');
+show('v4emStationW', (t === 'virtual' || t === 'dual') ? 'block' : 'none');  show('v4emPriceW', t === 'raw' ? 'none' : 'block');
   show('v4emCostW', t === 'virtual' ? 'none' : 'block');
   show('v4emAddStockW', t === 'virtual' ? 'none' : 'block');
   if (t === 'virtual') { var s = document.getElementById('v4emStock'); if (s) s.value = 0; }
@@ -580,6 +583,7 @@ async function v4SaveEditProduct() {
   var price = n('v4emPrice'), cost = n('v4emCost');
   if ((t === 'sell' || t === 'dual' || t === 'virtual') && price <= 0) { alert('Selling price required for this type.'); return; }
   if ((t === 'raw' || t === 'dual') && cost <= 0) { alert('Cost price required for this type (it is an ingredient).'); return; }
+  if (price > 0 && cost > price && !await confirm('⚠️ Cost price is higher than selling price — this product sells at a loss. Save anyway?')) return;
 
   var isVirtual = (t === 'virtual'), sellDirectly = (t !== 'raw');
   var useBulk = document.getElementById('v4emBulk').checked && n('v4emBQ1') > 0;
