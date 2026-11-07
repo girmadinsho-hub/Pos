@@ -8814,3 +8814,138 @@ window.SLP_T = function (s) {
 })();
   
 
+/* BIZ-LANG-6 · Staff Door v2 — admin unlock + staff dropdown +
+   position names + single-point language dropdown (LANG.dropdown). */
+(function () {
+  var KEYS = {
+    en: {
+      'sd.lock.p': 'The owner unlocks this device <b>once</b> with their email and password. Then each staff member picks their name from the list.',
+      'sd.email': 'Admin email',
+      'sd.email.ph': 'owner@gmail.com',
+      'sd.apass': 'Admin password',
+      'sd.apass.ph': 'Owner password',
+      'sd.unlock': '🔓 Unlock Staff List',
+      'sd.checking': '⏳ Checking the owner account…',
+      'sd.noshops': 'No shops found for this account. The owner must register a business first (Admin → My businesses).',
+      'sd.nostaff': 'No staff in this shop yet. The owner registers them — with a login password — in Admin → Staff.',
+      'sd.shop': 'Workplace',
+      'sd.staff': 'Your name',
+      'sd.staff.ph': '— Choose your name —',
+      'sd.pick': '👤 Please choose your name from the list.',
+      'sd.lock': '🔒 Lock this device',
+      'sd.sub': 'Pick your name, enter your password — you open your own workplace.',
+      'sd.wrong': 'Wrong admin email or password.',
+      'pos.owner': 'Owner', 'pos.manager': 'Manager', 'pos.cashier': 'Cashier',
+      'pos.waiter': 'Waiter', 'pos.chef': 'Chef', 'pos.barista': 'Barista',
+      'pos.reception': 'Reception', 'pos.cleaner': 'Cleaner', 'pos.guard': 'Guard',
+      'pos.laborer': 'Laborer', 'pos.other': 'Other', 'pos.kitchen': 'Kitchen',
+      'pos.housekeeping': 'Housekeeping', 'pos.security': 'Security'
+    },
+    am: {
+      'sd.lock.p': 'ባለቤቱ በኢሜይሉ እና በየመግቢያ ቃሉ ይህን መሣሪያ <b>አንዴ</b> ይከፍታል። ከዚያ እያንዳንዱ ሠራተኛ ስሙን ከዝርዝሩ ይምረጣል።',
+      'sd.email': 'የአስተዳደር ኢሜይል',
+      'sd.email.ph': 'owner@gmail.com',
+      'sd.apass': 'የአስተዳደር የመግቢያ ቃል',
+      'sd.apass.ph': 'የባለቤት የመግቢያ ቃል',
+      'sd.unlock': '🔓 የሠራተኛ ዝርዝር ይከፈቱ',
+      'sd.checking': '⏳ የባለቤት መለያ በመፈተሽ ላይ…',
+      'sd.noshops': 'ለዚህ መለያ መደብር አልተገኘም። ባለቤቱ መጀመሪያ ንግድ ይመዝግብ (አስተዳደር → የእኔ መደብሮች)።',
+      'sd.nostaff': 'እስካሁን በዚህ መደብር ሠራተኛ የለም። ባለቤቱ በአስተዳደር → ሠራተኛ ውስጥ ከመግቢያ ቃል ጋር ያስገባቸዋል።',
+      'sd.shop': 'የሥራ ቦታ',
+      'sd.staff': 'ስምዎ',
+      'sd.staff.ph': '— ስምዎን ይምረጡ —',
+      'sd.pick': '👤 እባክዎ ስምዎን ከዝርዝሩ ይምረጡ።',
+      'sd.lock': '🔒 ይህን መሣሪያ ይቆልሉ',
+      'sd.sub': 'ስምዎን ይምረጡ እና የመግቢያ ቃልዎን ይጻፉ — የራስዎ የሥራ ቦታ ይከፈታል።',
+      'sd.wrong': 'የተሳሳተ የአስተዳደር ኢሜይል ወይም የመግቢያ ቃል።',
+      'pos.owner': 'ባለቤት', 'pos.manager': 'ሥራ አስኪያጅ', 'pos.cashier': 'የገንዘብ ተቀባይ',
+      'pos.waiter': 'አገልጋይ', 'pos.chef': 'ሼፍ', 'pos.barista': 'ባሪስታ',
+      'pos.reception': 'መቀበያ', 'pos.cleaner': 'ጽዳት ሠራተኛ', 'pos.guard': 'ጠባቂ',
+      'pos.laborer': 'ሠራተኛ', 'pos.other': 'ሌላ', 'pos.kitchen': 'ምግብ ቤት',
+      'pos.housekeeping': 'የክፍል ጽዳት', 'pos.security': 'ጥበቃ'
+    },
+    om: {
+      'sd.lock.p': 'Abjuun imeelii fi jecha icciitii isaatii meeshaa kana <b>yeroo tokko</b> bana. Sana booda hojjetaan kamiyyuu maqaa isaa tarree keessaa filata.',
+      'sd.email': 'Imeelii bulchaa',
+      'sd.email.ph': 'owner@gmail.com',
+      'sd.apass': 'Jecha icciitii bulchaa',
+      'sd.apass.ph': 'Jecha icciitii abbaa alangaa',
+      'sd.unlock': '🔓 Tarree hojjetaa banaa',
+      'sd.checking': '⏳ Akkaawuntii abbaa alangaa qorachaa jira…',
+      'sd.noshops': 'Akkaawuntii kanaaf dukaan hin argamne. Abjuun dura daldala galmeessi (Bulchinsa → Dukaalee koo).',
+      'sd.nostaff': 'Dukaata kana keessatti hojjetaan amma hin jiru. Abjuun isaan — jecha icciitii waliin — Bulchinsa → Hojjetaa keessatti galmeessa.',
+      'sd.shop': 'Iddoo hojii',
+      'sd.staff': 'Maqaa kee',
+      'sd.staff.ph': '— Maqaa kee fili —',
+      'sd.pick': '👤 Maqaa kee tarree keessaa fili.',
+      'sd.lock': '🔒 Meeshaa kana cufi',
+      'sd.sub': 'Maqaa kee fili, jecha icciitii kee barreessi — iddoo hojii kee ofii bana.',
+      'sd.wrong': 'Imeelii bulchaa ykn jecha icciitii dogoggora.',
+      'pos.owner': 'Abbaa alangaa', 'pos.manager': 'Bulchaa', 'pos.cashier': 'Keeshiyara',
+      'pos.waiter': 'Tajaajiltaa', 'pos.chef': 'Sheefii', 'pos.barista': 'Baariistaa',
+      'pos.reception': 'Fudhanna', 'pos.cleaner': 'Qopheessaa', 'pos.guard': 'Eegataa',
+      'pos.laborer': 'Hojjetaa', 'pos.other': 'Kan biraa', 'pos.kitchen': 'Kichenna',
+      'pos.housekeeping': 'Qopheeffannaa', 'pos.security': 'Tasgabboo'
+    }
+  };
+  ['en','am','om'].forEach(function (L) {
+    var d = window.I18N[L] = window.I18N[L] || {};
+    for (var k in KEYS[L]) if (d[k] == null) d[k] = KEYS[L][k];
+  });
+
+  /* ── single-point language dropdown ──
+     One 🌐 button on the page; tapping it opens a menu with every
+     language in SLP_LANGS. Use on any page:
+         <span id="langbar"></span>
+         LANG.dropdown(document.getElementById('langbar'));
+     Replaces the old three-button LANG.pills() bar. */
+  window.LANG.dropdown = function (el) {
+    if (!el) return;
+    if (!document.getElementById('slp-langdrop-css')) {
+      var st = document.createElement('style');
+      st.id = 'slp-langdrop-css';
+      st.textContent =
+        '.slp-langdrop{position:relative;display:inline-block}' +
+        '.slp-langbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(148,163,184,.45);background:rgba(148,163,184,.12);color:inherit;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:\'Inter\',\'Noto Sans Ethiopic\',system-ui,sans-serif;line-height:1}' +
+        '.slp-langbtn:hover{border-color:currentColor}' +
+        '.slp-langmenu{position:absolute;top:calc(100% + 8px);right:0;min-width:150px;background:#0f172a;color:#f8fafc;border:1px solid #334155;border-radius:12px;padding:6px;box-shadow:0 18px 40px -12px rgba(0,0,0,.55);z-index:9999;display:none}' +
+        '.slp-langmenu.open{display:block}' +
+        '.slp-langmenu button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;background:none;border:0;color:#f8fafc;font-size:13px;font-weight:600;padding:9px 10px;border-radius:8px;cursor:pointer;text-align:left;font-family:\'Inter\',\'Noto Sans Ethiopic\',system-ui,sans-serif}' +
+        '.slp-langmenu button:hover{background:rgba(148,163,184,.18)}' +
+        '.slp-langmenu button.on{color:#d4af37}' +
+        '.slp-langmenu .chk{font-size:12px}';
+      try { (document.head || document.documentElement).appendChild(st); } catch (e) {}
+    }
+    el.classList.add('slp-langdrop');
+    function render() {
+      var LS = window.SLP_LANGS || [{ k: 'en', short: 'EN', label: 'English' }];
+      var cur = 'en';
+      try { cur = window.LANG.currentLang(); } catch (e) {}
+      var short = '', i, L;
+      for (i = 0; i < LS.length; i++) if (LS[i].k === cur) short = LS[i].short;
+      el.innerHTML =
+        '<button type="button" class="slp-langbtn" aria-label="Language">🌐 <span class="slp-cur">' + short + '</span> ▾</button>' +
+        '<div class="slp-langmenu" role="menu"></div>';
+      var btn = el.querySelector('.slp-langbtn');
+      var menu = el.querySelector('.slp-langmenu');
+      menu.innerHTML = '';
+      for (i = 0; i < LS.length; i++) {
+        (function (L) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.setAttribute('role', 'menuitem');
+          b.innerHTML = '<span>' + L.label + '</span><span class="chk">' + (L.k === cur ? '✔' : '') + '</span>';
+          if (L.k === cur) b.className = 'on';
+          b.onclick = function (e) { e.stopPropagation(); try { window.LANG.setLang(L.k); } catch (e2) {} close(); };
+          menu.appendChild(b);
+        })(LS[i]);
+      }
+      btn.onclick = function (e) { e.stopPropagation(); menu.classList.toggle('open'); };
+      function close() { menu.classList.remove('open'); }
+      el._slpClose = close;
+    }
+    render();
+    document.addEventListener('click', function () { if (el._slpClose) el._slpClose(); });
+    document.addEventListener('langchange', render);
+  };
+})();
