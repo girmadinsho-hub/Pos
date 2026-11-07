@@ -279,7 +279,7 @@ body.dark .maximized-card{background:#0f172a!important}
         <div><label>📅 Expiry (optional)</label><input type="date" class="v4-in" id="v4prodExpiry"></div>
       </div>
 
-      <div id="v4stationWrap">
+      <div id="v4stationWrap" style="display:none">
         <label>🍳 Prep Station (kitchen routing)</label>
         <select class="v4-in" id="v4prodStation">
           <option value="Kitchen">🍳 Kitchen</option>
@@ -360,8 +360,12 @@ body.dark .maximized-card{background:#0f172a!important}
       <input class="v4-in" id="v4prodSearch" placeholder="🔍 Search…" style="flex:2;min-width:100px;max-width:160px;padding:7px 10px;margin:0;font-size:12px;height:34px;box-sizing:border-box">
       <select class="v4-in" id="v4prodCatFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:120px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()"><option value="">All Categories</option></select>
       <select class="v4-in" id="v4prodUnitFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:100px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()"><option value="">All Units</option></select>
-      <select class="v4-in" id="v4prodTypeFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:110px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()">
-        <select class="v4-in" id="v4prodTypeFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:150px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()">
+      <select class="v4-in" id="v4prodTypeFilter" style="flex:0 0 auto;min-width:0;width:auto;max-width:150px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()">
+        <option value="">All Types</option>
+        <option value="sell">🛒 Sell Direct</option>
+        <option value="raw">🧪 Raw Material</option>
+        <option value="virtual">🍔 Prepared</option>
+        <option value="dual">🥚 Dual Use</option>
       </select>
       <select class="v4-in" id="v4prodSort" style="flex:0 0 auto;min-width:0;width:auto;max-width:100px;padding:7px 6px;margin:0;font-size:12px;height:34px;box-sizing:border-box" onchange="v4RenderProductTable()">
         <option value="name-asc">A-Z</option><option value="name-desc">Z-A</option>
