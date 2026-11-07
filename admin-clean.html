@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -729,6 +728,29 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
    ═══════════════════════════════════════════════════════════════════ */
 var v4dev = { rows: [], shops: {}, busy: false };
 
+/* BIZ-DEV-FIX-1 · find this page's Supabase client.
+   shared.js keeps it in a top-level `let supabaseClient` — every script
+   can read the bare name, but it is NOT a window property, so
+   `window.supabaseClient` stayed undefined forever and the Devices tab
+   showed "Database not connected" (the list never loaded, the lock
+   buttons never came). This resolver bridges that gap AND promotes the
+   client to window.supabaseClient, so the device-gate checks below and
+   the licence wall's own `W.supabaseClient` re-check work too. */
+function v4devEnsureSB() {
+  try {
+    if (window.supabaseClient) return window.supabaseClient;
+    if (typeof supabaseClient !== 'undefined' && supabaseClient) { window.supabaseClient = supabaseClient; return supabaseClient; }
+    if (window.SPP_SB) { window.supabaseClient = window.SPP_SB; return window.SPP_SB; }
+    if (window.sb) { window.supabaseClient = window.sb; return window.sb; }
+    if (window.supabase && window.supabase.createClient && typeof SS_CONFIG !== 'undefined' && SS_CONFIG.SUPABASE_URL) {
+      window.supabaseClient = window.supabase.createClient(SS_CONFIG.SUPABASE_URL, SS_CONFIG.SUPABASE_KEY, { auth: { flowType: 'implicit' } });
+      return window.supabaseClient;
+    }
+  } catch (e) {}
+  return null;
+}
+v4devEnsureSB();   // promote right now — shared.js already ran above
+
 function v4devEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
 // 🔐 Devices = security (like Settings/License) → never plan-locked
@@ -766,7 +788,7 @@ V4_TAB_LOADERS[20] = function () { v4devLoad(); };
 
 async function v4devLoad() {
   if (v4dev.busy) return;
-  if (!window.supabaseClient) {
+  if (!v4devEnsureSB()) {
     var el0 = document.getElementById('v4devList');
     if (el0) el0.innerHTML = '<p style="font-size:12px;color:#ef4444">⚠️ Database not connected yet — tap 🔄 Refresh.</p>';
     return;
@@ -775,18 +797,19 @@ async function v4devLoad() {
   var el = document.getElementById('v4devList');
   if (el) el.innerHTML = '<p style="font-size:12px;color:#94a3b8">Loading devices…</p>';
   try {
+    var sbC = window.supabaseClient;
     var email = '';
-    try { const { data: { user } } = await supabaseClient.auth.getUser(); if (user) email = user.email; } catch (e) {}
+    try { const { data: { user } } = await sbC.auth.getUser(); if (user) email = user.email; } catch (e) {}
     var ids = [getShopId()];
     if (email) {
-      const { data: myShops } = await supabaseClient.from('shops')
+      const { data: myShops } = await sbC.from('shops')
         .select('shop_id,name').eq('owner_email', email).eq('active', true);
       (myShops || []).forEach(function (s) {
         v4dev.shops[s.shop_id] = s.name;
         if (ids.indexOf(s.shop_id) === -1) ids.push(s.shop_id);
       });
     }
-    const { data, error } = await supabaseClient.from('devices')
+    const { data, error } = await sbC.from('devices')
       .select('*').in('shop_id', ids).order('last_seen', { ascending: false }).limit(200);
     if (error) throw error;
     v4dev.rows = data || [];
@@ -841,8 +864,10 @@ async function v4devSet(key, status) {
     ? 'The Staff Door, the POS and the Kitchen on that device close instantly. Use this when a device is lost, stolen, or kept by a fired staff member.'
     : 'The device goes back to work BY ITSELF within seconds (its Staff Door, POS and Kitchen reopen on their own). The owner email + password are NOT asked again — the device keeps its registration.';
   if (!confirm('🔒 ' + verb + ' this device?\n\n' + hint)) return;
+  var sbC = v4devEnsureSB();
+  if (!sbC) { alert('⚠️ Database not connected — tap 🔄 Refresh, then try again.'); return; }
   try {
-    const { error } = await supabaseClient.from('devices').update({ status: status }).eq('device_key', key);
+    const { error } = await sbC.from('devices').update({ status: status }).eq('device_key', key);
     if (error) throw error;
     v4devLoad();
   } catch (e) { alert('❌ ' + (e.message || 'Update failed.')); }
@@ -850,8 +875,10 @@ async function v4devSet(key, status) {
 
 async function v4devRemove(key, name) {
   if (!confirm('🗑 Forget "' + name + '"?\n\nThe row is deleted from this list. If that phone is still out there, it registers itself again the next time it unlocks the Staff Door.')) return;
+  var sbC = v4devEnsureSB();
+  if (!sbC) { alert('⚠️ Database not connected — tap 🔄 Refresh, then try again.'); return; }
   try {
-    const { error } = await supabaseClient.from('devices').delete().eq('device_key', key);
+    const { error } = await sbC.from('devices').delete().eq('device_key', key);
     if (error) throw error;
     v4devLoad();
   } catch (e) { alert('❌ ' + (e.message || 'Delete failed.')); }
@@ -889,7 +916,7 @@ async function v4devRemove(key, name) {
   async function wallCheck() {
     if (WALL_BUSY) return;
     var key = wallKey();
-    if (!key || !window.supabaseClient || !navigator.onLine) return;
+    if (!key || !v4devEnsureSB() || !navigator.onLine) return;
     WALL_BUSY = true;
     try {
       var r = await Promise.race([
@@ -984,7 +1011,7 @@ async function v4devRemove(key, name) {
 
   var tries = 0;
   (function waitSb() {
-    if (window.supabaseClient || ++tries > 60) boot();
+    if (v4devEnsureSB() || ++tries > 60) boot();
     else setTimeout(waitSb, 750);
   })();
 })();
@@ -2140,3 +2167,4 @@ function init() {
 }</script>
 </body>
 </html>
+
