@@ -70,23 +70,25 @@ async function v4RenderSummary() {
 function v4MoreSumGrid(){ v4S.gpage++; v4PagGrid('v4sumGrid', v4SumRows().map(function(r){ return { label:v4SumLabel(r), detail:v4SumDetail(r), right:fmtMoney(r.total) }; }), 'gpage', 12, 'v4MoreSumGrid'); }
 
 // 🔧 LOAD MORE LAW: pages APPEND (cumulative) — v3 behavior restored
-function v4PagList(cid, items, pageVar, per, moreFn) {
+function v4PagList(cid, items, pageVar, per, moreFn, oneLine) {
   var c = document.getElementById(cid); if (!c) return;
   var totalPages = Math.ceil(items.length / per) || 1;
   var page = v4S[pageVar] || 1; if (page > totalPages) page = totalPages;
   var slice = items.slice(0, page * per);   // ✅ cumulative: rows 1..page
   var html = slice.map(function(it) {
+    if (oneLine) return '<div class="product-row" style="padding:7px 8px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:8px;flex-wrap:nowrap"><b style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0">' + it.label + '</b><small style="color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0">' + it.detail + '</small><b style="color:#2563eb;white-space:nowrap;flex:0 0 auto;text-align:right">' + it.right + '</b></div>';
     return '<div class="product-row" style="padding:8px;border-bottom:1px solid #f1f5f9"><div style="flex:1"><b style="font-size:14px">' + it.label + '</b><br><small style="color:#64748b">' + it.detail + '</small></div><b style="color:#2563eb;min-width:80px;text-align:right">' + it.right + '</b></div>';
   }).join('');
   if (page < totalPages) html += '<div style="text-align:center;padding:10px"><button class="v4-chip" onclick="' + moreFn + '()">⬇ Load More (' + (totalPages - page) + ' left)</button></div>';
   c.innerHTML = html || '<div class="placeholder">No sales in this period.</div>';
 }
-function v4PagGrid(cid, items, pageVar, per, moreFn) {
+function v4PagGrid(cid, items, pageVar, per, moreFn, oneLine) {
   var c = document.getElementById(cid); if (!c) return;
   var totalPages = Math.ceil(items.length / per) || 1;
   var page = v4S[pageVar] || 1; if (page > totalPages) page = totalPages;
   var slice = items.slice(0, page * per);   // ✅ cumulative: rows 1..page
   var html = slice.map(function(it) {
+    if (oneLine) return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:6px 9px;display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow:hidden"><b style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0">' + it.label + '</b><small style="color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1 1 auto;min-width:0">' + it.detail + '</small><b style="color:#2563eb;font-size:13px;white-space:nowrap;flex:0 0 auto">' + it.right + '</b></div>';
     return '<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px"><b style="font-size:13px">' + it.label + '</b><div style="color:#2563eb;font-weight:800;font-size:17px;margin:3px 0">' + it.right + '</div><small style="color:#64748b">' + it.detail + '</small></div>';
   }).join('');
   if (page < totalPages) html += '<div style="grid-column:1/-1;text-align:center;padding:10px"><button class="v4-chip" onclick="' + moreFn + '()">⬇ Load More</button></div>';
@@ -729,13 +731,13 @@ async function v4RenderSold(reset) {
         detail: (isItem ? 'Sold ' + r.qty + ' · avg ' + fmtMoney(r.avg) + ' · ' + r.orderCount + ' order(s) · last ' + formatDate(r.last)
                         : r.glabel + ' · Qty ' + r.qty + ' · avg ' + fmtMoney(r.avg) + ' · ' + r.orderCount + ' order(s)'),
         right: fmtMoney(r.rev) };
-    }), 'spage', 20, 'v4MoreSold');
+    }), 'spage', 20, 'v4MoreSold', true);
   } else {
     v4PagGrid('v4soldGrid', slice.map(function(r) {
       return { label: sanitize(r.name),
         detail: (isItem ? 'Qty ' + r.qty + ' · ' + r.orderCount + ' orders' : r.glabel + ' · Qty ' + r.qty),
         right: fmtMoney(r.rev) };
-    }), 'spage', 12, 'v4MoreSold');
+    }), 'spage', 12, 'v4MoreSold', true);
   }
   var bar = document.getElementById('v4soldPager');
   if (bar) bar.innerHTML = rows.length ?
@@ -772,7 +774,7 @@ function v4SoldSearch(q) {
 function v4SoldPage(dir) { v4S.spage += dir; v4RenderSold(); }
 function v4MoreSold() { v4S.spage++; v4RenderSold(); }
 
-// ── WhatsApp share + CSV export ──
+// ── WhatsApp share ──
 function v4SoldWA() {
   var rows = v4SoldRows();
   if (!rows.length) { alert('No items sold in this period.'); return; }
@@ -789,27 +791,5 @@ function v4SoldWA() {
   msg += '\nTotal: ' + full.qty + ' item(s) sold · ' + fmtMoney(full.rev) + '\n\n— SmartShop Pro';
   if (typeof ssShareTo === 'function') ssShareTo(msg, { title: '🛒 Items Sold — ' + shop });
   else window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
-}
-function v4SoldCSV() {
-  var rows = v4SoldRows();
-  if (!rows.length) { alert('Nothing to export.'); return; }
-  var isItem = v4S.sgroup === 'item';
-  var head = isItem ? 'Item,Qty Sold,Avg Price,Revenue,Orders,First Sold,Last Sold'
-                    : ({ day: 'Date', week: 'Week Starting', month: 'Month', year: 'Year' }[v4S.sgroup] || 'Date') + ',Item,Qty Sold,Avg Price,Revenue,Orders';
-  function esc(s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; }
-  var lines = rows.map(function(r) {
-    var base = esc(r.name) + ',' + r.qty + ',' + r.avg.toFixed(2) + ',' + r.rev.toFixed(2) + ',' + r.orderCount;
-    return isItem ? base + ',' + esc(formatDate(r.first)) + ',' + esc(formatDate(r.last))
-                  : esc(r.glabel) + ',' + base;
-  });
-  var fq = v4S._soldFull;
-  lines.push((isItem ? 'TOTAL,' : '"TOTAL",') + fq.qty + ',,' + fq.rev.toFixed(2) + ',');
-  var csv = '\uFEFF' + head + '\n' + lines.join('\n');
-  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'items_sold_' + new Date().toISOString().slice(0, 10) + '.csv';
-  a.click();
-  URL.revokeObjectURL(a.href);
 }
 
