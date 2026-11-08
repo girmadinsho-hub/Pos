@@ -9039,3 +9039,55 @@ window.SLP_T = function (s) {
   );
 })();
 
+/* BIZ-LANG-9 · Variance Pack v2 (2026-11-08) — discrepancy analytics
+   (by person / by reason / month by month / top items), Share Report,
+   expiry auto-suggest hint. English keys → am/om. */
+(function () {
+  var ADD = {
+    am: {
+      "Analytics": "ትንተና",
+      "Records": "መዝገቦች",
+      "By responsible person": "በኃላፊነት ያለበት ሰው",
+      "By reason": "በምክንያት",
+      "Month by month": "ወር በወር",
+      "Most affected items": "ከሁሉም የተጎዱ እቃዎች",
+      "Share Report": "ሪፖርት ያጋሩ",
+      "📊 Nothing to analyze in this period.": "📊 በዚህ ጊዜ ውስጥ ለመተንተን ምንም የለም።",
+      "📊 Nothing to analyze.": "📊 ለመተንተን ምንም የለም።",
+      "No responsible person recorded yet.": "ኃላፊነት ያለበት ሰው አልተመዘገበም።",
+      "No reasons recorded yet.": "ምክንያቶች አልተመዘገቡም።",
+      "No records yet.": "እስካሁን መዝገብ የለም።",
+      "No items recorded yet.": "እቃዎች አልተመዘገቡም።",
+      "❓ Unknown": "❓ የማይታወቅ"
+    },
+    om: {
+      "Analytics": "Qorannoo",
+      "Records": "Galmee",
+      "By responsible person": "Nama itti gaafatamaatiin",
+      "By reason": "Sababaatiin",
+      "Month by month": "Ji'a ji'aan",
+      "Most affected items": "Wantoota guddaa dhiibbaa qaban",
+      "Share Report": "Ripootii qoodi",
+      "📊 Nothing to analyze in this period.": "📊 Yeroo kana keessatti qorannuuf waan hin jiru.",
+      "📊 Nothing to analyze.": "📊 Qorannuuf waan hin jiru.",
+      "No responsible person recorded yet.": "Nami itti gaafatamumaa qabu hin galmeeffamne.",
+      "No reasons recorded yet.": "Sababni hin galmeeffamne.",
+      "No records yet.": "Amma galmee hin jiru.",
+      "No items recorded yet.": "Wantoonni hin galmeeffamne.",
+      "❓ Unknown": "❓ Hin beekamne"
+    }
+  };
+  ['am','om'].forEach(function(L){
+    window.SLP_PHR = window.SLP_PHR || {};
+    var d = window.SLP_PHR[L] = window.SLP_PHR[L] || {};
+    for (var k in ADD[L]) if (d[k] == null) d[k] = ADD[L][k];
+  });
+  /* dynamic single-line texts from the analytics + expiry flow */
+  window.SLP_PAT = window.SLP_PAT || [];
+  window.SLP_PAT.push(
+    { re: /^(\d+) records$/, am: "$1 መዝገቦች", om: "$1 galmeewwan" },
+    { re: /^💡 Expired on (.+) — reason pre-selected$/, am: "💡 የአልቂት ቀን $1 — ምክንያቱ በራስ-ሰር ተመርጧል", om: "💡 Guyyaa yeroo dhumaa $1 — sababni ofiin filameera" },
+    { re: /^No discrepancies in (.+)\.$/, am: "በ$1 ውስጥ ልዩነት የለም።", om: "$1 keessatti garaagarummaan hin jiru." }
+  );
+})();
+
