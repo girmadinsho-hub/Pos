@@ -1052,7 +1052,7 @@ async function v4ReviewStockCount() {
     var diff = v4scRound(counted - (p.stock || 0));
     if (diff === 0) return;
     v4scRows.push({ id: p.id, name: p.name, unit: p.unit || 'piece', sys: v4scRound(p.stock || 0),
-      counted: v4scRound(counted), diff: diff, cost: Number(p.costPrice || 0) });
+      counted: v4scRound(counted), diff: diff, cost: Number(p.costPrice || 0), exp: p.expiryDate || '' });
   });
   if (!v4scRows.length) { alert('No changes detected — counts match the system.'); v4CloseTool(); return; }
 
@@ -1075,7 +1075,15 @@ async function v4ReviewStockCount() {
     var short = r.diff < 0;
     var impact = Math.round(r.diff * r.cost * 100) / 100;
     var reasons = short ? V4SC_SHORT : V4SC_GAIN;
-    var def = short ? 'lost' : 'found';
+    // Variance Pack v2: a shortage on a product whose expiry date has
+    // already passed is almost always expiry — pre-select it, say why.
+    var expiredHit = false;
+    if (short && r.exp) {
+      var ed = new Date(r.exp);
+      expiredHit = !isNaN(ed.getTime()) && ed.getTime() < Date.now();
+    }
+    var def = (short && expiredHit) ? 'expired' : (short ? 'lost' : 'found');
+    var hint = expiredHit ? '<div style="font-size:11px;color:#b45309;margin:4px 0 0">💡 Expired on ' + sanitize(r.exp) + ' — reason pre-selected</div>' : '';
     var rsel = '<select id="v4dres_' + r.id + '" style="width:100%;padding:6px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;background:#fff">';
     reasons.forEach(function(x){ rsel += '<option value="' + x.k + '"' + (x.k === def ? ' selected' : '') + '>' + x.label + '</option>'; });
     rsel += '</select>';
@@ -1088,7 +1096,7 @@ async function v4ReviewStockCount() {
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">' +
         '<b style="font-size:13.5px">' + sanitize(r.name) + '</b>' +
         '<span style="font-size:12.5px;font-weight:800;color:' + (short ? '#dc2626' : '#059669') + '">' + (r.diff > 0 ? '+' + r.diff : String(r.diff)) + ' ' + sanitize(r.unit) + '</span></div>' +
-      '<div style="font-size:11.5px;color:#64748b;margin:3px 0 8px">' + r.sys + ' → ' + r.counted + ' · 💸 Impact: <b style="color:' + (short ? '#dc2626' : '#059669') + '">' + (impact < 0 ? '-' : '+') + fmtMoney(Math.abs(impact)) + '</b></div>' +
+      '<div style="font-size:11.5px;color:#64748b;margin:3px 0 8px">' + r.sys + ' → ' + r.counted + ' · 💸 Impact: <b style="color:' + (short ? '#dc2626' : '#059669') + '">' + (impact < 0 ? '-' : '+') + fmtMoney(Math.abs(impact)) + '</b></div>' + hint +
       '<div style="display:grid;gap:6px">' +
         '<div><small style="display:block;font-weight:800;color:#64748b;margin-bottom:2px">Reason</small>' + rsel + '</div>' +
         '<div><small style="display:block;font-weight:800;color:#64748b;margin-bottom:2px">Responsible</small>' + wsel + wother + '</div>' +
