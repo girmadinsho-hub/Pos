@@ -8949,3 +8949,93 @@ window.SLP_T = function (s) {
     document.addEventListener('langchange', render);
   };
 })();
+
+/* BIZ-LANG-8 · Variance Pack v1 (2026-11-08) — physical stock count
+   discrepancy review (reason / responsible person / money effect)
+   + 📋 Discrepancy Report. English keys → am/om. */
+(function () {
+  var ADD = {
+    am: {
+      "🧮 Physical Stock Count": "🧮 የክምችት ቆጠራ",
+      "Physical Stock Count": "የክምችት ቆጠራ",
+      "Enter what you ACTUALLY counted. Differences open a review step — reason, responsible person and the money effect are recorded for the report.": "በእውነት የቆጠሩትን ይጻፉ። ልዩነቶች የግምገማ ደረጃ ይከፍታሉ — ምክንያት፣ ኃላፊነት ያለበት ሰው እና የገንዘብ ተጽዕኖው ለሪፖርቱ ይመዘገባሉ።",
+      "Diff": "ልዩነት",
+      "Review Differences": "ልዩነቶችን ይገምግሙ",
+      "Give each difference a reason and the responsible person — this becomes your Discrepancy Report.": "ለእያንዳንዱ ልዩነት ምክንያትና ኃላፊነት ያለበት ሰው ይስጡ — ይህ የልዩነት ሪፖርትዎ ይሆናል።",
+      "Shortage": "እጥረት",
+      "Surplus": "ትርፍ",
+      "NET": "ተረፋሽ",
+      "Responsible": "ኃላፊነት ያለበት",
+      "— who is responsible? —": "— ኃላፊነት ያለበት ማን ነው? —",
+      "Other (type name)": "ሌላ (ስም ይጻፉ)",
+      "Type the name…": "ስሙን ይጻፉ…",
+      "Count error (system was wrong)": "የመቁጠር ስህተት (ሥርዓቱ ትክክል አልነበረም)",
+      "Found surplus": "የተገኘ ትርፍ",
+      "Unbilled delivery / gift": "ያልተከፈለ እናቅርቦት / ስጦታ",
+      "Note (optional)…": "ማስታወሻ (አማራጭ)…",
+      "Save & Record": "አስቀምጠው ይመዝጉ",
+      "Re-count": "እንደገና ይቁጠሩ",
+      "Impact": "ተጽዕኖ",
+      "Discrepancy Report": "የልዩነት ሪፖርት",
+      "Count differences — who, why & the money effect": "የቆጠራ ልዩነቶች — ማን፣ ለምን እና የገንዘብ ውጤቱ",
+      "✅ No discrepancies recorded in this period.": "✅ በዚህ ጊዜ ውስጥ ልዩነት አልተመዘገበም።",
+      "✅ No discrepancies recorded.": "✅ ልዩነት አልተመዘገበም።",
+      "They appear here after a Physical Stock Count with differences.": "ከልዩነት ጋር ባለው የክምችት ቆጠራ በኋላ እዚህ ይታያሉ።",
+      "Search product, person, reason…": "ምርት፣ ሰው፣ ምክንያት ይፈልጉ…",
+      "Print Report": "ሪፖርት ያትሙ",
+      "Report NOT saved — run stock-discrepancy.sql in Supabase SQL Editor first.": "ሪፖርቱ አልተቀመጠም — መጀመሪያ stock-discrepancy.sql ን በSupabase SQL አርታዩ ውስጥ ያሂዱ።",
+      "Loss rows could not be saved — check the Losses page.": "የኪሳራ ረድፎች አልተቀመጡም — የኪሳራ ገጹን ይመልከቱ።",
+      "No changes detected — counts match the system.": "ምንም ለውጥ አልተገኘም — ቆጠራው ከሥርዓቱ ጋር ይስማማል።",
+      "No countable products (virtual products are skipped).": "የሚቆጠሩ ምርቶች የሉም (ምናባዊ ምርቶች ይዘለላሉ)።",
+      "Nothing to print.": "ለህትማት ምንም የለም።",
+      "Allow popups to print.": "ለህትማት ፖፕ-አፕ ይፍቀዱ።"
+    },
+    om: {
+      "🧮 Physical Stock Count": "🧮 Herrega kuusaa",
+      "Physical Stock Count": "Herrega kuusaa",
+      "Enter what you ACTUALLY counted. Differences open a review step — reason, responsible person and the money effect are recorded for the report.": "Ati dhugaa herreegsite barreessi. Garaagarummaan qorannoo banaa — sababa, nama itti gaafatamaa fi dhiibbaan maallaqaa ripootiitiif galmeeffamu.",
+      "Diff": "Garaagarummaa",
+      "Review Differences": "Garaagarummaa ilaali",
+      "Give each difference a reason and the responsible person — this becomes your Discrepancy Report.": "Garaagarummaa tokko tokkoof sababa fi nama itti gaafatamaa fili — kunis Ripootii Garaagarummaa kee ta'a.",
+      "Shortage": "Hir'ina",
+      "Surplus": "Dabalata",
+      "NET": "Hafe",
+      "Responsible": "Itti gaafatamumaa qabu",
+      "— who is responsible? —": "— eenyummaa itti gaafatamaa? —",
+      "Other (type name)": "Kan biraa (maqaa barreessi)",
+      "Type the name…": "Maqaa barreessi…",
+      "Count error (system was wrong)": "Dogoggora herregaa (sirni sirrii hin turre)",
+      "Found surplus": "Dabalata argame",
+      "Unbilled delivery / gift": "Geejjiba hin kaffalamne / kennaa",
+      "Note (optional)…": "Yaadannoo (filataa)…",
+      "Save & Record": "Galmeessi",
+      "Re-count": "Irra deebi'ii herreegsii",
+      "Impact": "Dhiibbaa",
+      "Discrepancy Report": "Ripootii Garaagarummaa",
+      "Count differences — who, why & the money effect": "Garaagarummaa herregaa — eenyummaa, maaloo fi bu'aa maallaqaa",
+      "✅ No discrepancies recorded in this period.": "✅ Yeroo kana keessatti garaagarummaan hin galmeeffamne.",
+      "✅ No discrepancies recorded.": "✅ Garaagarummaan hin galmeeffamne.",
+      "They appear here after a Physical Stock Count with differences.": "Herrega kuusaa garaagarummaa qabu booda asitti mul'atu.",
+      "Search product, person, reason…": "Oomisha, nama, sababa barbaadi…",
+      "Print Report": "Ripootii maxxaansi",
+      "Report NOT saved — run stock-discrepancy.sql in Supabase SQL Editor first.": "Riportiin hin ol kaa'amne — dura stock-discrepancy.sql Supabase SQL Editor keessatti raawwadhu.",
+      "Loss rows could not be saved — check the Losses page.": "Sararoonni kasaaraa hin ol kaa'amne — fuulla Kasaaraa ilaali.",
+      "No changes detected — counts match the system.": "Jijjiirama hin argamne — herregaan sirna waliin wal sima.",
+      "No countable products (virtual products are skipped).": "Oomishni herregamsuu hin jiru (omishni virtual darbama).",
+      "Nothing to print.": "Maxxaansuuf waan hin jiru.",
+      "Allow popups to print.": "Maxxaansuuf popup hayyami."
+    }
+  };
+  ['am','om'].forEach(function(L){
+    window.SLP_PHR = window.SLP_PHR || {};
+    var d = window.SLP_PHR[L] = window.SLP_PHR[L] || {};
+    for (var k in ADD[L]) if (d[k] == null) d[k] = ADD[L][k];
+  });
+  /* dynamic single-line dialogs from the variance flow */
+  window.SLP_PAT = window.SLP_PAT || [];
+  window.SLP_PAT.push(
+    { re: /^✅ Stock adjusted: (\d+) item\(s\) · 📉 Shortage (.+) · 📈 Surplus (.+) · ⚖️ NET (.+)$/, am: "✅ ዕቃዎች ተስተካክለዋል፡ $1 ንጥል(ዎች) · 📉 እጥረት $2 · 📈 ትርፍ $3 · ⚖️ ተረፋሽ $4", om: "✅ Kuusni sirreeffameera: wantoota $1 · 📉 Hir'ina $2 · 📈 Dabalata $3 · ⚖️ Hafe $4" },
+    { re: /^👤 Pick the responsible person for: (.+)$/, am: "👤 ኃላፊነት ያለበትን ሰው ይምረጡ ለ፡ $1", om: "👤 Nama itti gaafatamaa fili: $1" }
+  );
+})();
+
