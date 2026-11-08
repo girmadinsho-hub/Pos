@@ -4,7 +4,8 @@
 //  Item Detail · Cashier Performance · Top Products — server-powered
 // ═════════════════════════════════════════════════════════
 var v4S = { period:'daily', view:'excel', lpage:1, gpage:1, dpage:1, cpage:1, tpage:1,            sumTable:null, detTable:null, dview:'excel',iview:'excel',
-            ipage:1, cview:'excel', cperiod:'month', tview:'excel', tperiod:'month' };
+            ipage:1, cview:'excel', cperiod:'month', tview:'excel', tperiod:'month',
+            speriod:'today', sgroup:'day', ssort:'time', sview:'excel', spage:1, sq:'', soldCache:null };
 
 var SS_SUM_COLS = [
   { title:'💵 Cash', field:'cash', align:'right', render:function(i,h){ return h?fmtMoney(i.cash):i.cash; }, total:true, totalValue:function(i){ return i.cash; }, totalFormat:function(s){ return fmtMoney(s); } },
@@ -541,6 +542,7 @@ function v4Fold(bodyId, arrowId) {
     else if (bodyId === 'v4itemBody') Promise.resolve(v4RenderItemDetail(true)).then(markOk);
     else if (bodyId === 'v4cashBody') Promise.resolve(v4RenderCashier()).then(markOk);
     else if (bodyId === 'v4topBody') Promise.resolve(v4RenderTop()).then(markOk);
+    else if (bodyId === 'v4soldBody') Promise.resolve(v4RenderSold()).then(markOk);
   }
 }
 function v4ItemFilterChange() { v4S.itemPool = null; v4S.ipage = 1; v4RenderItemDetail(); }
@@ -549,3 +551,265 @@ V4_TAB_LOADERS[2] = function() {
   v4RenderSummary();   // Summaries card is open by default
   // Detailed / Item / Cashier / Top render on first expand (v4Fold) — speed law
 };
+
+// ═════════════════════════════════════════════════════════════
+//  🛒 ITEMS SOLD · Items Sold Pack v1 (2026-11-08)
+//  Every item sold, grouped by day / week / month / year — or as
+//  per-item totals for the whole period ("burger: 412 this year").
+//  One pooled fetch per period (speed law 200×10), then grouping,
+//  search, sort and the 3 views run on the phone — no refetch.
+// ═════════════════════════════════════════════════════════════
+var V4SOLD_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+async function v4SoldData() {
+  var p = v4S.speriod, shop = getShopId();
+  if (v4S.soldCache && v4S.soldCache.period === p && v4S.soldCache.shop === shop) return v4S.soldCache;
+  var start = v4PeriodStart(p);
+  var flat = [], loaded = 0, capped = false, seq = 0;
+  var PAGE = 200, guard = 0;
+  while (guard < 10) {
+    guard++;
+    var res = await supabaseClient.from('sales')
+      .select('items, time')
+      .eq('shop_id', shop).eq('voided', false)
+      .gte('time', start.toISOString())
+      .order('time', { ascending: false })
+      .range(guard * PAGE - PAGE, guard * PAGE - 1);
+    if (res.error) break;
+    var rows = res.data || [];
+    for (var r = 0; r < rows.length; r++) {
+      var s = rows[r]; seq++;
+      var its = s.items || [];
+      for (var k = 0; k < its.length; k++) {
+        var it = its[k] || {};
+        var q = Number(it.qty) || 0, pr = Number(it.price) || 0;
+        if (!it.name && !q) continue;
+        flat.push({ t: s.time, name: String(it.name || 'Unknown'), qty: q,
+          price: pr, rev: Math.round(q * pr * 100) / 100, sid: seq });
+      }
+    }
+    loaded += rows.length;
+    if (rows.length < PAGE) break;
+    if (guard === 10) capped = true;      // 10 full pages → 2000-sales ceiling
+  }
+  v4S.soldCache = { period: p, shop: shop, rows: flat, loaded: loaded, capped: capped };
+  return v4S.soldCache;
+}
+
+function v4SoldGroupKey(t, g) {
+  var d = new Date(t);
+  if (isNaN(d.getTime())) return { key: '—', glabel: '—', gsort: 0 };
+  var y = d.getFullYear();
+  var m = ('0' + (d.getMonth() + 1)).slice(-2);
+  var day = ('0' + d.getDate()).slice(-2);
+  if (g === 'item') return { key: 'ALL', glabel: '', gsort: 0 };
+  if (g === 'year') return { key: String(y), glabel: String(y), gsort: y };
+  if (g === 'month') return { key: y + '-' + m, glabel: V4SOLD_MONTHS[d.getMonth()] + ' ' + y, gsort: y * 12 + d.getMonth() };
+  if (g === 'week') {
+    var dd = new Date(y, d.getMonth(), d.getDate());
+    var dw = dd.getDay();                                        // 0=Sun
+    var diff = dd.getDate() - dw + (dw === 0 ? -6 : 1);          // Monday start
+    var mon = new Date(dd.getFullYear(), dd.getMonth(), diff);
+    var lbl = 'Week of ' + mon.toLocaleDateString();
+    return { key: mon.getFullYear() + '-' + ('0' + (mon.getMonth() + 1)).slice(-2) + '-' + ('0' + mon.getDate()).slice(-2),
+      glabel: lbl, gsort: mon.getTime() };
+  }
+  return { key: y + '-' + m + '-' + day, glabel: new Date(y, d.getMonth(), Number(day)).toLocaleDateString(), gsort: d.getTime() };
+}
+
+function v4SoldRows() {
+  var cache = v4S.soldCache || { rows: [] };
+  var g = v4S.sgroup;
+  var map = {}, order = [];
+  cache.rows.forEach(function(f) {
+    var G = v4SoldGroupKey(f.t, g);
+    var k = G.key + '|' + f.name;
+    if (!map[k]) { map[k] = { key: G.key, glabel: G.glabel, gsort: G.gsort, name: f.name,
+      qty: 0, rev: 0, orders: {}, first: f.t, last: f.t }; order.push(k); }
+    var e = map[k];
+    e.qty = Math.round((e.qty + f.qty) * 1000) / 1000;
+    e.rev = Math.round((e.rev + f.rev) * 100) / 100;
+    e.orders[f.sid] = 1;
+    if (f.t < e.first) e.first = f.t;
+    if (f.t > e.last) e.last = f.t;
+  });
+  var rows = order.map(function(k) { return map[k]; });
+  rows.forEach(function(r) {
+    r.orderCount = Object.keys(r.orders).length;
+    r.avg = r.qty > 0 ? Math.round(r.rev / r.qty * 100) / 100 : 0;
+    r.lastTs = new Date(r.last).getTime() || 0;
+  });
+  // full-period totals BEFORE the search filter — the share % base
+  var fQty = 0, fRev = 0;
+  rows.forEach(function(r) { fQty += r.qty; fRev += r.rev; });
+  v4S._soldFull = { items: rows.length, qty: Math.round(fQty * 1000) / 1000, rev: Math.round(fRev * 100) / 100 };
+  var q = (v4S.sq || '').toLowerCase();
+  if (q) rows = rows.filter(function(r) { return r.name.toLowerCase().indexOf(q) !== -1; });
+  // sorts
+  var s = v4S.ssort;
+  if (g === 'item') {
+    if (s === 'revenue') rows.sort(function(a, b) { return b.rev - a.rev || a.name.localeCompare(b.name); });
+    else if (s === 'name') rows.sort(function(a, b) { return a.name.localeCompare(b.name); });
+    else if (s === 'time') rows.sort(function(a, b) { return b.lastTs - a.lastTs; });   // recently active first
+    else rows.sort(function(a, b) { return b.qty - a.qty || b.rev - a.rev; });
+  } else {
+    if (s === 'qty') rows.sort(function(a, b) { return b.qty - a.qty || b.gsort - a.gsort; });
+    else if (s === 'revenue') rows.sort(function(a, b) { return b.rev - a.rev || b.gsort - a.gsort; });
+    else if (s === 'name') rows.sort(function(a, b) { return a.name.localeCompare(b.name) || b.gsort - a.gsort; });
+    else rows.sort(function(a, b) { return b.gsort - a.gsort || b.qty - a.qty || a.name.localeCompare(b.name); });  // newest first
+  }
+  return rows;
+}
+
+async function v4RenderSold(reset) {
+  if (reset) v4S.spage = 1;
+  var cache = await v4SoldData();
+  var rows = v4SoldRows();
+  var full = v4S._soldFull;
+  var plabel = { all: 'All Time', today: 'Today', week: 'This Week', month: 'This Month', year: 'This Year' }[v4S.speriod] || '';
+  var cb = document.getElementById('v4soldCount'); if (cb) cb.textContent = rows.length;
+  var nb = document.getElementById('v4soldNote');
+  if (nb) nb.innerHTML = '<small style="font-size:11px;color:#64748b">📦 ' + full.items + ' item line(s) · ' + plabel +
+    ' · ' + cache.loaded + ' sales analyzed' + (cache.capped ? ' · showing newest 2000' : '') + '</small>';
+
+  var per = 30;
+  var totalPages = Math.ceil(rows.length / per) || 1;
+  if (v4S.spage > totalPages) v4S.spage = totalPages;
+  var slice = rows.slice((v4S.spage - 1) * per, v4S.spage * per);
+
+  var ex = document.getElementById('v4soldExcel'), li = document.getElementById('v4soldList'), gr = document.getElementById('v4soldGrid');
+  if (!ex) return;
+  ex.style.display = v4S.sview === 'excel' ? 'block' : 'none';
+  li.style.display = v4S.sview === 'list' ? 'block' : 'none';
+  gr.style.display = v4S.sview === 'grid' ? 'grid' : 'none';
+
+  var isItem = v4S.sgroup === 'item';
+  if (v4S.sview === 'excel') {
+    var alive = ex.querySelector('.modern-sheet-table');
+    if (!window.v4soldTable || !alive || window.v4soldTable._mode !== v4S.sgroup) {
+      ex.innerHTML = '';
+      var cols;
+      if (isItem) {
+        cols = [
+          { title: '#', width: '36px', render: function(i, h, x) { return ((v4S.spage - 1) * per) + x + 1; } },
+          { title: 'Item', field: 'name', width: '150px', render: function(i, h) { return h ? '<b>' + sanitize(i.name) + '</b>' : i.name; } },
+          { title: 'Qty Sold', width: '70px', align: 'center', render: function(i, h) { return h ? '<b>' + i.qty + '</b>' : i.qty; }, total: true, totalValue: function(i) { return i.qty; }, totalFormat: function(s) { return s + ' sold'; } },
+          { title: 'Avg Price', width: '82px', align: 'right', render: function(i, h) { return h ? fmtMoney(i.avg) : i.avg; } },
+          { title: '💰 Revenue', width: '100px', align: 'right', render: function(i, h) { return h ? '<b>' + fmtMoney(i.rev) + '</b>' : i.rev; }, total: true, totalValue: function(i) { return i.rev; }, totalFormat: function(s) { return fmtMoney(s); } },
+          { title: 'Orders', width: '56px', align: 'center', render: function(i, h) { return h ? i.orderCount : i.orderCount; }, total: true, totalValue: function(i) { return i.orderCount; }, totalFormat: function(s) { return s + ' orders'; } },
+          { title: 'First Sold', width: '92px', render: function(i, h) { return h ? formatDate(i.first) : i.first; }, filterable: false },
+          { title: 'Last Sold', width: '92px', render: function(i, h) { return h ? formatDate(i.last) : i.last; }, filterable: false },
+          { title: 'Share', width: '64px', align: 'center', render: function(i, h) {
+              var p = full.rev > 0 ? (i.rev / full.rev * 100) : 0;
+              return h ? '<b style="color:' + (p >= 10 ? '#059669' : (p >= 3 ? '#f59e0b' : '#94a3b8')) + '">' + p.toFixed(1) + '%</b>' : p;
+            }, filterable: false }
+        ];
+      } else {
+        var glab = { day: 'Date', week: 'Week', month: 'Month', year: 'Year' }[v4S.sgroup] || 'Date';
+        cols = [
+          { title: '#', width: '36px', render: function(i, h, x) { return ((v4S.spage - 1) * per) + x + 1; } },
+          { title: glab, width: '104px', render: function(i, h) { return h ? i.glabel : i.glabel; } },
+          { title: 'Item', field: 'name', width: '140px', render: function(i, h) { return h ? '<b>' + sanitize(i.name) + '</b>' : i.name; } },
+          { title: 'Qty Sold', width: '70px', align: 'center', render: function(i, h) { return h ? '<b>' + i.qty + '</b>' : i.qty; }, total: true, totalValue: function(i) { return i.qty; }, totalFormat: function(s) { return s + ' sold'; } },
+          { title: 'Avg Price', width: '82px', align: 'right', render: function(i, h) { return h ? fmtMoney(i.avg) : i.avg; } },
+          { title: '💰 Revenue', width: '100px', align: 'right', render: function(i, h) { return h ? '<b>' + fmtMoney(i.rev) + '</b>' : i.rev; }, total: true, totalValue: function(i) { return i.rev; }, totalFormat: function(s) { return fmtMoney(s); } },
+          { title: 'Orders', width: '56px', align: 'center', field: 'orderCount', total: true, totalValue: function(i) { return i.orderCount; }, totalFormat: function(s) { return s + ' orders'; } },
+          { title: 'Share', width: '64px', align: 'center', render: function(i, h) {
+              var p = full.rev > 0 ? (i.rev / full.rev * 100) : 0;
+              return h ? '<b style="color:' + (p >= 10 ? '#059669' : (p >= 3 ? '#f59e0b' : '#94a3b8')) + '">' + p.toFixed(1) + '%</b>' : p;
+            }, filterable: false }
+        ];
+      }
+      window.v4soldTable = new ModernSheet('v4soldExcel', { data: slice, columns: cols, emptyMessage: 'No items sold in this period.', showSearch: false, showFontSlider: true });
+      window.v4soldTable._mode = v4S.sgroup;
+    } else window.v4soldTable.setData(slice);
+  } else if (v4S.sview === 'list') {
+    v4PagList('v4soldList', slice.map(function(r) {
+      return { label: sanitize(r.name),
+        detail: (isItem ? 'Sold ' + r.qty + ' · avg ' + fmtMoney(r.avg) + ' · ' + r.orderCount + ' order(s) · last ' + formatDate(r.last)
+                        : r.glabel + ' · Qty ' + r.qty + ' · avg ' + fmtMoney(r.avg) + ' · ' + r.orderCount + ' order(s)'),
+        right: fmtMoney(r.rev) };
+    }), 'spage', 20, 'v4MoreSold');
+  } else {
+    v4PagGrid('v4soldGrid', slice.map(function(r) {
+      return { label: sanitize(r.name),
+        detail: (isItem ? 'Qty ' + r.qty + ' · ' + r.orderCount + ' orders' : r.glabel + ' · Qty ' + r.qty),
+        right: fmtMoney(r.rev) };
+    }), 'spage', 12, 'v4MoreSold');
+  }
+  var bar = document.getElementById('v4soldPager');
+  if (bar) bar.innerHTML = rows.length ?
+    '<div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:8px">' +
+      '<button class="v4-chip" onclick="v4SoldPage(-1)" ' + (v4S.spage <= 1 ? 'disabled style="opacity:.4"' : '') + '>◀ Prev</button>' +
+      '<small style="color:#64748b">Page ' + v4S.spage + ' / ' + totalPages + ' · ' + rows.length + ' line(s)</small>' +
+      '<button class="v4-chip" onclick="v4SoldPage(1)" ' + (v4S.spage >= totalPages ? 'disabled style="opacity:.4"' : '') + '>Next ▶</button>' +
+    '</div>' : '';
+}
+
+// ── chip / input handlers ──
+function v4SoldPeriod(p, btn) {
+  v4S.speriod = p; v4S.soldCache = null; v4S.spage = 1;
+  document.querySelectorAll('#v4soldPeriods .period-btn').forEach(function(b) { b.classList.toggle('active', b === btn); });
+  v4RenderSold();
+}
+function v4SoldGroup(g, btn) {
+  v4S.sgroup = g; v4S.spage = 1;
+  document.querySelectorAll('#v4soldGroups .v4-chip').forEach(function(b) { b.classList.toggle('active', b === btn); });
+  v4RenderSold();
+}
+function v4SoldView(v, btn) {
+  v4S.sview = v; v4S.spage = 1;
+  document.querySelectorAll('#v4soldViews .v4-chip').forEach(function(b) { b.classList.toggle('active', b === btn); });
+  v4RenderSold();
+}
+function v4SoldSort(sel) { v4S.ssort = sel.value; v4S.spage = 1; v4RenderSold(); }
+function v4SoldSearch(q) {
+  v4S.sq = q; v4S.spage = 1;
+  v4RenderSold();
+  var inp = document.getElementById('v4soldQ');
+  if (inp) { inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (e) {} }
+}
+function v4SoldPage(dir) { v4S.spage += dir; v4RenderSold(); }
+function v4MoreSold() { v4S.spage++; v4RenderSold(); }
+
+// ── WhatsApp share + CSV export ──
+function v4SoldWA() {
+  var rows = v4SoldRows();
+  if (!rows.length) { alert('No items sold in this period.'); return; }
+  var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
+  var plabel = { all: 'All Time', today: 'Today', week: 'This Week', month: 'This Month', year: 'This Year' }[v4S.speriod] || '';
+  var gl = { day: 'by day', week: 'by week', month: 'by month', year: 'by year', item: 'item totals' }[v4S.sgroup] || 'by day';
+  var full = v4S._soldFull;
+  var msg = '🛒 ITEMS SOLD — ' + shop + '\n' + plabel + ' · ' + gl + '\n\n';
+  rows.slice(0, 10).forEach(function(r, i) {
+    msg += (i + 1) + '. ' + r.name + ' — ' + r.qty + ' × ' + fmtMoney(r.avg) + ' = ' + fmtMoney(r.rev) +
+      (v4S.sgroup === 'item' ? '' : ' (' + r.glabel + ')') + '\n';
+  });
+  if (rows.length > 10) msg += '… and ' + (rows.length - 10) + ' more line(s)\n';
+  msg += '\nTotal: ' + full.qty + ' item(s) sold · ' + fmtMoney(full.rev) + '\n\n— SmartShop Pro';
+  if (typeof ssShareTo === 'function') ssShareTo(msg, { title: '🛒 Items Sold — ' + shop });
+  else window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+function v4SoldCSV() {
+  var rows = v4SoldRows();
+  if (!rows.length) { alert('Nothing to export.'); return; }
+  var isItem = v4S.sgroup === 'item';
+  var head = isItem ? 'Item,Qty Sold,Avg Price,Revenue,Orders,First Sold,Last Sold'
+                    : ({ day: 'Date', week: 'Week Starting', month: 'Month', year: 'Year' }[v4S.sgroup] || 'Date') + ',Item,Qty Sold,Avg Price,Revenue,Orders';
+  function esc(s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; }
+  var lines = rows.map(function(r) {
+    var base = esc(r.name) + ',' + r.qty + ',' + r.avg.toFixed(2) + ',' + r.rev.toFixed(2) + ',' + r.orderCount;
+    return isItem ? base + ',' + esc(formatDate(r.first)) + ',' + esc(formatDate(r.last))
+                  : esc(r.glabel) + ',' + base;
+  });
+  var fq = v4S._soldFull;
+  lines.push((isItem ? 'TOTAL,' : '"TOTAL",') + fq.qty + ',,' + fq.rev.toFixed(2) + ',');
+  var csv = '\uFEFF' + head + '\n' + lines.join('\n');
+  var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'items_sold_' + new Date().toISOString().slice(0, 10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
