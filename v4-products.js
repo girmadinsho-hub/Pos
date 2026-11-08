@@ -959,53 +959,231 @@ const { error: srcErr } = await v4ById(supabaseClient.from('products').update({ 
   } catch(e) { alert('❌ ' + e.message); }
 }
 
-// ── 🧮 PHYSICAL STOCK COUNT ──
+// ── 🧮 PHYSICAL STOCK COUNT · Variance Pack v1 (2026-11-08) ──
+// Every count difference becomes a RECORD: reason (lost / expired /
+// damaged / theft / count error), the responsible person, and the
+// money effect (shortage = loss, surplus = gain) → 📋 Discrepancy
+// Report (Stock → Shop Tools). Table: stock_discrepancies.
+function v4scRound(n) { return Math.round((Number(n) || 0) * 1000) / 1000; }
+
 function v4OpenStockCount() {
   var phys = v4products.filter(function(p){ return !p.isVirtual; });
   if (!phys.length) { alert('No countable products (virtual products are skipped).'); return; }
-  var m = v4ToolModal('v4stockCountModal', '🧮 Physical Stock Count', 'max-width:600px');
-  var html = '<p style="font-size:12px;color:#64748b">Enter what you ACTUALLY counted. Differences update stock; shortages are logged as Losses automatically.</p>' +
-    '<div style="max-height:50vh;overflow-y:auto;border:1px solid #e2e8f0;border-radius:10px;padding:8px">' +
+  v4ToolModal('v4stockCountModal', '🧮 Physical Stock Count', 'max-width:620px');
+  var html = '<p style="font-size:12px;color:#64748b">Enter what you ACTUALLY counted. Differences open a review step — reason, responsible person and the money effect are recorded for the report.</p>' +
+    '<div style="max-height:52vh;overflow-y:auto;border:1px solid #e2e8f0;border-radius:10px;padding:8px">' +
     '<table style="width:100%;font-size:13px;border-collapse:collapse">' +
-    '<thead><tr style="background:#f8fafc"><th style="text-align:left;padding:6px">Product</th><th style="padding:6px">System</th><th style="padding:6px">Counted</th></tr></thead><tbody>';
+    '<thead><tr style="background:#f8fafc"><th style="text-align:left;padding:6px">Product</th><th style="padding:6px">System</th><th style="padding:6px">Counted</th><th style="padding:6px">Diff</th></tr></thead><tbody>';
   phys.forEach(function(p) {
+    var sys = v4scRound(p.stock || 0);
     html += '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:6px">' + sanitize(p.name) + ' <small style="color:#94a3b8">' + p.unit + '</small></td>' +
-      '<td style="text-align:center;padding:6px"><b>' + p.stock + '</b></td>' +
-      '<td style="text-align:center;padding:6px"><input type="number" id="v4cnt_' + p.id + '" value="' + p.stock + '" style="width:74px;padding:5px;border:1px solid #cbd5e1;border-radius:6px;text-align:center"></td></tr>';
+      '<td style="text-align:center;padding:6px"><b>' + sys + '</b></td>' +
+      '<td style="text-align:center;padding:6px"><input type="number" step="any" data-sys="' + sys + '" id="v4cnt_' + p.id + '" value="' + sys + '" style="width:72px;padding:5px;border:1px solid #cbd5e1;border-radius:6px;text-align:center" oninput="v4cntDiff(\'' + p.id + '\')"></td>' +
+      '<td style="text-align:center;padding:6px;font-weight:700;color:#94a3b8" id="v4dif_' + p.id + '">—</td></tr>';
   });
-  html += '</tbody></table></div><button class="v4-btn g" onclick="v4DoStockCount()">💾 Save & Adjust Stock</button>';
+  html += '</tbody></table></div><button class="v4-btn g" onclick="v4ReviewStockCount()">➡️ Review Differences</button>';
   document.getElementById('v4toolBody').innerHTML = html;
 }
 
-async function v4DoStockCount() {
-  if (!await confirm('Adjust stock to counted values? Shortages will be logged as Losses.')) return;
-  var updates = [], lossRows = [];
+// live +/- indicator while counting
+function v4cntDiff(pid) {
+  var el = document.getElementById('v4cnt_' + pid), cell = document.getElementById('v4dif_' + pid);
+  if (!el || !cell) return;
+  var counted = parseFloat(el.value), sys = parseFloat(el.getAttribute('data-sys')) || 0;
+  if (isNaN(counted)) { cell.textContent = '—'; cell.style.color = '#94a3b8'; return; }
+  var diff = v4scRound(counted - sys);
+  cell.textContent = diff === 0 ? '—' : (diff > 0 ? '+' + diff : String(diff));
+  cell.style.color = diff === 0 ? '#94a3b8' : (diff < 0 ? '#dc2626' : '#059669');
+}
+
+// active staff names for the Responsible dropdown (60s cache)
+var v4scStaffNames = null, v4scStaffAt = 0;
+async function v4scStaffList() {
+  if (v4scStaffNames && (Date.now() - v4scStaffAt) < 60000) return v4scStaffNames;
+  try {
+    const { data, error } = await supabaseClient.from('employees').select('name,status').eq('shop_id', getShopId());
+    if (error) throw error;
+    v4scStaffNames = (data || []).filter(function(e){ return (e.status || 'active') === 'active'; })
+      .map(function(e){ return String(e.name || '').trim(); }).filter(Boolean).sort();
+  } catch(e) { console.warn('Staff list for count:', e.message); v4scStaffNames = []; }
+  v4scStaffAt = Date.now();
+  return v4scStaffNames;
+}
+
+var v4scRows = [];
+var V4SC_SHORT = [
+  { k:'lost',         label:'❓ Lost' },
+  { k:'expired',      label:'📅 Expired' },
+  { k:'damaged',      label:'💥 Damaged' },
+  { k:'theft',        label:'🕵️ Possible theft' },
+  { k:'count_error',  label:'🔢 Count error (system was wrong)' },
+  { k:'other',        label:'➖ Other' }
+];
+var V4SC_GAIN = [
+  { k:'found',         label:'🎁 Found surplus' },
+  { k:'count_error',   label:'🔢 Count error (system was wrong)' },
+  { k:'over_delivery', label:'📦 Unbilled delivery / gift' },
+  { k:'other',         label:'➖ Other' }
+];
+function v4scReasonLabel(k) {
+  var i;
+  for (i = 0; i < V4SC_SHORT.length; i++) if (V4SC_SHORT[i].k === k) return V4SC_SHORT[i].label;
+  for (i = 0; i < V4SC_GAIN.length; i++) if (V4SC_GAIN[i].k === k) return V4SC_GAIN[i].label;
+  return '➖ Other';
+}
+// → losses-module reason keys ('' = do not write a loss row)
+function v4scLossReason(k) {
+  if (k === 'count_error' || k === 'found' || k === 'over_delivery') return '';
+  return (k === 'lost' || k === 'expired' || k === 'damaged' || k === 'theft') ? k : 'other';
+}
+function v4scWhoOther(pid) {
+  var sel = document.getElementById('v4dwho_' + pid), inp = document.getElementById('v4dwhoO_' + pid);
+  if (sel && inp) inp.style.display = (sel.value === '__other') ? 'block' : 'none';
+}
+
+async function v4ReviewStockCount() {
+  v4scRows = [];
   v4products.forEach(function(p) {
     if (p.isVirtual) return;
     var el = document.getElementById('v4cnt_' + p.id);
     if (!el) return;
     var counted = parseFloat(el.value);
     if (isNaN(counted)) return;
-    var diff = counted - (p.stock || 0);
+    var diff = v4scRound(counted - (p.stock || 0));
     if (diff === 0) return;
-    updates.push({ id: p.id, counted: counted, diff: diff });
-    if (diff < 0) {
-      lossRows.push({ firebase_id: 'loss_' + Date.now() + '_' + p.id, shop_id: getShopId(),
-        product_id: p.id, product_name: p.name, quantity: Math.abs(diff),
-        reason: 'Stock Take Adjustment', total_loss: Math.abs(diff) * (p.costPrice || 0), time: new Date().toISOString() });
-    }
+    v4scRows.push({ id: p.id, name: p.name, unit: p.unit || 'piece', sys: v4scRound(p.stock || 0),
+      counted: v4scRound(counted), diff: diff, cost: Number(p.costPrice || 0) });
   });
-  if (!updates.length) { alert('No changes detected — counts match the system.'); v4CloseTool(); return; }
-  try {
-    for (var i = 0; i < updates.length; i++) {
-const { error } = await v4ById(supabaseClient.from('products').update({ stock: updates[i].counted }), updates[i].id);      if (error) throw error;
-      var p = v4products.find(function(x){ return x.id === updates[i].id; });
-      if (p) p.stock = updates[i].counted;
+  if (!v4scRows.length) { alert('No changes detected — counts match the system.'); v4CloseTool(); return; }
+
+  var staff = await v4scStaffList();
+  var who = '';
+  try { const { data: { user } } = await supabaseClient.auth.getUser(); if (user && user.email) who = user.email; } catch(e) {}
+  window._v4scBy = who;
+
+  var loss = 0, gain = 0;
+  v4scRows.forEach(function(r){ var v = r.diff * r.cost; if (v < 0) loss += -v; else gain += v; });
+  loss = Math.round(loss * 100) / 100; gain = Math.round(gain * 100) / 100;
+
+  var html = '<p style="font-size:12px;color:#64748b">Give each difference a reason and the responsible person — this becomes your Discrepancy Report.</p>' +
+    '<div style="display:flex;gap:6px;margin-bottom:10px;text-align:center;font-size:11px;font-weight:800">' +
+      '<div style="flex:1;background:rgba(220,38,38,.1);color:#dc2626;border-radius:10px;padding:8px 4px">📉 Shortage<br>' + fmtMoney(loss) + '</div>' +
+      '<div style="flex:1;background:rgba(5,150,105,.1);color:#059669;border-radius:10px;padding:8px 4px">📈 Surplus<br>' + fmtMoney(gain) + '</div>' +
+      '<div style="flex:1;background:rgba(37,99,235,.1);color:#2563eb;border-radius:10px;padding:8px 4px">⚖️ NET<br>' + fmtMoney(Math.round((gain - loss) * 100) / 100) + '</div>' +
+    '</div><div style="max-height:46vh;overflow-y:auto;display:grid;gap:8px">';
+  v4scRows.forEach(function(r) {
+    var short = r.diff < 0;
+    var impact = Math.round(r.diff * r.cost * 100) / 100;
+    var reasons = short ? V4SC_SHORT : V4SC_GAIN;
+    var def = short ? 'lost' : 'found';
+    var rsel = '<select id="v4dres_' + r.id + '" style="width:100%;padding:6px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;background:#fff">';
+    reasons.forEach(function(x){ rsel += '<option value="' + x.k + '"' + (x.k === def ? ' selected' : '') + '>' + x.label + '</option>'; });
+    rsel += '</select>';
+    var wsel = '<select id="v4dwho_' + r.id + '" style="width:100%;padding:6px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;background:#fff" onchange="v4scWhoOther(\'' + r.id + '\')">' +
+      '<option value="">— who is responsible? —</option>';
+    staff.forEach(function(n){ wsel += '<option value="' + sanitize(n) + '">' + sanitize(n) + '</option>'; });
+    wsel += '<option value="__other">✍️ Other (type name)</option><option value="__none">❓ Unknown</option></select>';
+    var wother = '<input id="v4dwhoO_' + r.id + '" type="text" placeholder="Type the name…" style="display:none;width:100%;margin-top:6px;padding:6px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px">';
+    html += '<div style="border:1px solid ' + (short ? '#fca5a5' : '#86efac') + ';border-left:5px solid ' + (short ? '#dc2626' : '#059669') + ';border-radius:12px;padding:10px;background:' + (short ? 'rgba(220,38,38,.04)' : 'rgba(5,150,105,.04)') + '">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">' +
+        '<b style="font-size:13.5px">' + sanitize(r.name) + '</b>' +
+        '<span style="font-size:12.5px;font-weight:800;color:' + (short ? '#dc2626' : '#059669') + '">' + (r.diff > 0 ? '+' + r.diff : String(r.diff)) + ' ' + sanitize(r.unit) + '</span></div>' +
+      '<div style="font-size:11.5px;color:#64748b;margin:3px 0 8px">' + r.sys + ' → ' + r.counted + ' · 💸 Impact: <b style="color:' + (short ? '#dc2626' : '#059669') + '">' + (impact < 0 ? '-' : '+') + fmtMoney(Math.abs(impact)) + '</b></div>' +
+      '<div style="display:grid;gap:6px">' +
+        '<div><small style="display:block;font-weight:800;color:#64748b;margin-bottom:2px">Reason</small>' + rsel + '</div>' +
+        '<div><small style="display:block;font-weight:800;color:#64748b;margin-bottom:2px">Responsible</small>' + wsel + wother + '</div>' +
+        '<input id="v4dnote_' + r.id + '" type="text" placeholder="Note (optional)…" style="width:100%;padding:6px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px">' +
+      '</div></div>';
+  });
+  html += '</div><div style="display:flex;gap:8px;margin-top:12px">' +
+    '<button class="v4-btn" style="margin:0;flex:1;background:#e2e8f0;color:#0f172a" onclick="v4OpenStockCount()">↩️ Re-count</button>' +
+    '<button class="v4-btn g" style="margin:0;flex:1.4" onclick="v4DoStockCount()">💾 Save & Record</button></div>';
+  document.getElementById('v4toolBody').innerHTML = html;
+  var hd = document.querySelector('#v4stockCountModal > div > div > b');
+  if (hd) hd.textContent = '📋 Review Differences';
+}
+
+async function v4DoStockCount() {
+  if (!v4scRows.length) return;
+  var records = [], missing = [];
+  v4scRows.forEach(function(r) {
+    var resEl = document.getElementById('v4dres_' + r.id);
+    var whoEl = document.getElementById('v4dwho_' + r.id);
+    var noteEl = document.getElementById('v4dnote_' + r.id);
+    var reason = resEl ? resEl.value : 'other';
+    var sel = whoEl ? String(whoEl.value || '') : '';
+    var who = '';
+    if (sel === '__other') {
+      var oEl = document.getElementById('v4dwhoO_' + r.id);
+      who = oEl ? oEl.value.trim() : '';
+    } else if (sel === '__none') {
+      who = 'Unknown';                     // explicit answer — allowed
+    } else if (sel) {
+      who = sel;
     }
-    if (lossRows.length) await supabaseClient.from('losses').insert(lossRows);
-    v4CloseTool(); v4RenderProductTable();
-    alert('✅ Stock adjusted: ' + updates.length + ' item(s).' + (lossRows.length ? '\n🗑️ ' + lossRows.length + ' shortage(s) logged as losses.' : ''));
-  } catch(e) { alert('❌ ' + e.message); }
+    // gate: a shortage needs a conscious choice (staff / typed / Unknown)
+    if (r.diff < 0 && (sel === '' || (sel === '__other' && !who))) missing.push(r.name);
+    records.push({ r: r, reason: reason, who: who, note: noteEl ? noteEl.value.trim() : '' });
+  });
+  if (missing.length) { alert('👤 Pick the responsible person for: ' + missing.join(', ')); return; }
+
+  var loss = 0, gain = 0, lossCnt = 0, gainCnt = 0;
+  records.forEach(function(x) {
+    var v = Math.round(x.r.diff * x.r.cost * 100) / 100;
+    if (v < 0) { loss += -v; lossCnt++; } else { gain += v; gainCnt++; }
+  });
+  if (!await confirm('Adjust stock to the counted values?\n\n📉 Shortage: ' + lossCnt + ' item(s) — ' + fmtMoney(loss) +
+    '\n📈 Surplus: ' + gainCnt + ' item(s) — ' + fmtMoney(gain) +
+    '\n⚖️ NET effect on business: ' + (gain - loss >= 0 ? '+' : '-') + fmtMoney(Math.abs(gain - loss)) +
+    '\n\nReason, responsible person and impact are saved to the Discrepancy Report.')) return;
+
+  var d = new Date(), pad = function(n){ return ('0' + n).slice(-2); };
+  var sess = 'SC-' + d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + Math.random().toString(36).slice(2, 6);
+  var nowISO = new Date().toISOString();
+
+  // 1) audit records FIRST (a missing table can stop the save cleanly)
+  var discRows = records.map(function(x) {
+    return { firebase_id: 'disc_' + Date.now() + '_' + x.r.id, shop_id: getShopId(), session_no: sess,
+      product_id: x.r.id, product_name: x.r.name, unit: x.r.unit,
+      system_qty: x.r.sys, counted_qty: x.r.counted, diff_qty: x.r.diff, cost_price: x.r.cost,
+      impact: Math.round(x.r.diff * x.r.cost * 100) / 100,
+      reason: x.reason, responsible: x.who, note: x.note, counted_by: window._v4scBy || '', time: nowISO };
+  });
+  var discOk = true, discMsg = '';
+  try {
+    const { error } = await supabaseClient.from('stock_discrepancies').insert(discRows);
+    if (error) throw error;
+  } catch(e) { discOk = false; discMsg = e.message || String(e); }
+  if (!discOk) {
+    if (!await confirm('⚠️ The Discrepancy Report table is not ready (' + discMsg + ').\n\nRun stock-discrepancy.sql in Supabase → SQL Editor (one time).\n\nAdjust the stock anyway — without saving the report records?')) return;
+  }
+
+  // 2) adjust stock to the counted values
+  try {
+    for (var i = 0; i < records.length; i++) {
+      const { error } = await v4ById(supabaseClient.from('products').update({ stock: records[i].r.counted }), records[i].r.id);
+      if (error) throw error;
+      var p = v4products.find(function(x){ return x.id === records[i].r.id; });
+      if (p) p.stock = records[i].r.counted;
+    }
+  } catch(e) { alert('❌ Stock update failed: ' + e.message); return; }
+
+  // 3) real shortages → Losses page (count errors & gains never hit P&L)
+  var lossRows = [];
+  records.forEach(function(x) {
+    var lr = v4scLossReason(x.reason);
+    if (x.r.diff < 0 && lr) lossRows.push({ firebase_id: 'loss_' + Date.now() + '_' + x.r.id, shop_id: getShopId(),
+      product_id: x.r.id, product_name: x.r.name, quantity: Math.abs(x.r.diff), reason: lr,
+      total_loss: Math.round(Math.abs(x.r.diff * x.r.cost) * 100) / 100, time: nowISO });
+  });
+  if (lossRows.length) {
+    try { const { error } = await supabaseClient.from('losses').insert(lossRows); if (error) throw error; }
+    catch(e) { alert('⚠️ Loss rows could not be saved — check the Losses page.'); }
+  }
+
+  v4CloseTool(); v4RenderProductTable();
+  alert('✅ Stock adjusted: ' + records.length + ' item(s) · 📉 Shortage ' + fmtMoney(loss) + ' · 📈 Surplus ' + fmtMoney(gain) + ' · ⚖️ NET ' + (gain - loss >= 0 ? '+' : '-') + fmtMoney(Math.abs(gain - loss)));
+  if (!discOk) alert('⚠️ Report NOT saved — run stock-discrepancy.sql in Supabase SQL Editor first.');
 }
 
 // ── 🚨 RESTOCK LIST ──
@@ -1237,3 +1415,4 @@ V4_TAB_LOADERS[1] = function() {
     else if (v4prodView === 'list') v4RenderProductList(true);
     else v4RenderProductGrid(true);
 };
+
