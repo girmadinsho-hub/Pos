@@ -176,6 +176,7 @@ function v4stEnsureUI() {
       '<div class="v4stGrid">' +
         btn('🧮','Stock Count','Count real stock — system fixes the rest','linear-gradient(135deg,#7c3aed,#a78bfa)','v4OpenStockCount()') +
         btn('🚚','Transfer','Move stock to another branch','linear-gradient(135deg,#0d64f0,#60a5fa)','v4OpenTransfer()') +
+        btn('📋','Discrepancy Report','Count differences — who, why & the money effect','linear-gradient(135deg,#be185d,#f472b6)','v4drOpen()') +
       '</div>' +
       group('📊 Insights — know your money') +
       '<div class="v4stGrid">' +
@@ -699,3 +700,326 @@ V4_TAB_LOADERS[3] = function() {
   }
   v4stRender();
 };
+
+// ═════════════════════════════════════════════════════════════
+//  📋 DISCREPANCY REPORT · Variance Pack v1 (2026-11-08)
+//  History of every physical-count difference: reason, the
+//  responsible person, and the money effect (loss / gain).
+//  Data: stock_discrepancies table (stock-discrepancy.sql).
+// ═════════════════════════════════════════════════════════════
+var v4dr = { data: [], err: '', period: 'month', q: '', view: 'records' };
+
+function v4drPeriodStart(p) {
+  var now = new Date();
+  if (p === 'today') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (p === 'week') {
+    var d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var day = d.getDay();                                   // 0=Sun
+    var diff = d.getDate() - day + (day === 0 ? -6 : 1);    // Monday start
+    return new Date(d.getFullYear(), d.getMonth(), diff);
+  }
+  if (p === 'month') return new Date(now.getFullYear(), now.getMonth(), 1);
+  return new Date(0);
+}
+function v4drLabel(k) { return (typeof v4scReasonLabel === 'function') ? v4scReasonLabel(k) : k; }
+function v4drEsc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function v4drDT(iso) {
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  var pad = function(n){ return ('0' + n).slice(-2); };
+  return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+}
+
+async function v4drLoad() {
+  v4dr.err = '';
+  try {
+    const { data, error } = await supabaseClient.from('stock_discrepancies')
+      .select('*').eq('shop_id', getShopId())
+      .order('time', { ascending: false }).limit(1000);
+    if (error) throw error;
+    v4dr.data = (data || []).map(function(r) {
+      return { id: (r.id != null ? r.id : r.firebase_id), sess: r.session_no || '', name: r.product_name || 'Unknown',
+        unit: r.unit || 'piece', sys: Number(r.system_qty || 0), cnt: Number(r.counted_qty || 0),
+        diff: Number(r.diff_qty || 0), impact: Number(r.impact || 0), reason: r.reason || 'other',
+        who: r.responsible || '', note: r.note || '', by: r.counted_by || '', time: r.time || '' };
+    });
+  } catch(e) {
+    v4dr.data = [];
+    v4dr.err = e.message || String(e);
+  }
+  return v4dr.data;
+}
+
+function v4drFiltered() {
+  var start = v4drPeriodStart(v4dr.period);
+  var q = v4dr.q.toLowerCase();
+  return v4dr.data.filter(function(r) {
+    if (v4dr.period !== 'all' && new Date(r.time) < start) return false;
+    if (!q) return true;
+    var hay = (r.name + ' ' + r.who + ' ' + v4drLabel(r.reason) + ' ' + r.sess + ' ' + (r.note || '')).toLowerCase();
+    return hay.indexOf(q) !== -1;
+  });
+}
+
+
+// ── 📊 ANALYTICS + 📤 SHARE · Variance Pack v2 (2026-11-08) ──
+// Who causes the loss, which reason dominates, the month-by-month
+// net effect and the most affected items — computed from the SAME
+// stock_discrepancies rows (no new table, no SQL to run).
+function v4drMonth(iso) {
+  var d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2);
+}
+
+function v4drAgg(rows) {
+  var map = { who: {}, reason: {}, month: {}, item: {} };
+  rows.forEach(function(r) {
+    var pairs = [
+      ['who',    r.who || 'Unknown'],
+      ['reason', r.reason || 'other'],
+      ['month',  v4drMonth(r.time)],
+      ['item',   r.name || 'Unknown']
+    ];
+    pairs.forEach(function(pair) {
+      var box = map[pair[0]], k = pair[1];
+      if (!box[k]) box[k] = { k: k, n: 0, loss: 0, gain: 0 };
+      box[k].n++;
+      if (r.impact < 0) box[k].loss += -r.impact; else box[k].gain += r.impact;
+    });
+  });
+  var out = {};
+  Object.keys(map).forEach(function(sec) {
+    out[sec] = Object.keys(map[sec]).map(function(k) {
+      var e = map[sec][k];
+      e.loss = Math.round(e.loss * 100) / 100;
+      e.gain = Math.round(e.gain * 100) / 100;
+      e.net = Math.round((e.gain - e.loss) * 100) / 100;
+      return e;
+    });
+  });
+  var worstFirst = function(a, b) { return (b.loss - b.gain) - (a.loss - a.gain); };
+  out.who.sort(worstFirst);
+  out.reason.sort(worstFirst);
+  out.item.sort(worstFirst);
+  out.month.sort(function(a, b) { return a.k < b.k ? -1 : (a.k > b.k ? 1 : 0); });
+  return out;
+}
+
+function v4drBarRow(e, maxAbs, label) {
+  var w = maxAbs > 0 ? Math.max(4, Math.round(Math.abs(e.net) / maxAbs * 100)) : 4;
+  var red = e.net < 0;
+  return '<div style="margin-bottom:9px">' +
+    '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;align-items:center">' +
+      '<b style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:62%">' + v4drEsc(label) + '</b>' +
+      '<span style="font-weight:800;color:' + (red ? '#dc2626' : '#059669') + ';white-space:nowrap">' + (red ? '-' : '+') + fmtMoney(Math.abs(e.net)) + '</span></div>' +
+    '<div style="display:flex;align-items:center;gap:6px;margin-top:3px">' +
+      '<div style="flex:1;height:7px;background:rgba(148,163,184,.22);border-radius:4px;overflow:hidden">' +
+        '<div style="height:100%;width:' + w + '%;background:' + (red ? '#dc2626' : '#059669') + ';border-radius:4px"></div></div>' +
+      '<small style="font-size:10px;color:#94a3b8;white-space:nowrap">' + e.n + ' records</small></div></div>';
+}
+
+function v4drSection(icon, title, inner) {
+  return '<div style="border:1px solid #e2e8f0;border-radius:14px;padding:12px;margin-bottom:10px">' +
+    '<div style="font-size:12.5px;font-weight:800;color:#334155;margin-bottom:8px">' + icon + ' ' + title + '</div>' +
+    inner + '</div>';
+}
+
+function v4drAnalyticsHTML(rows) {
+  if (!rows.length) {
+    return '<div style="text-align:center;padding:26px 10px;color:#64748b;font-weight:700">📊 Nothing to analyze' + (v4dr.period === 'all' ? '.' : ' in this period.') + '</div>';
+  }
+  var a = v4drAgg(rows);
+  function bars(sec, labeller, limit) {
+    var arr = a[sec].slice(0, limit || 8);
+    if (!arr.length) return '';
+    var maxAbs = 0;
+    arr.forEach(function(e) { maxAbs = Math.max(maxAbs, Math.abs(e.net)); });
+    return arr.map(function(e) { return v4drBarRow(e, maxAbs, labeller(e)); }).join('');
+  }
+  var whoS = v4drSection('👤', 'By responsible person',
+    bars('who', function(e) { return e.k === 'Unknown' ? '❓ Unknown' : e.k; }, 8) ||
+      '<p style="font-size:11.5px;color:#94a3b8;margin:0">No responsible person recorded yet.</p>');
+  var reasonS = v4drSection('🏷️', 'By reason',
+    bars('reason', function(e) { return v4drLabel(e.k); }, 8) ||
+      '<p style="font-size:11.5px;color:#94a3b8;margin:0">No reasons recorded yet.</p>');
+  var monthS = v4drSection('📆', 'Month by month',
+    bars('month', function(e) { return e.k; }, 12) ||
+      '<p style="font-size:11.5px;color:#94a3b8;margin:0">No records yet.</p>');
+  var itemS = v4drSection('📦', 'Most affected items',
+    bars('item', function(e) { return e.k; }, 8) ||
+      '<p style="font-size:11.5px;color:#94a3b8;margin:0">No items recorded yet.</p>');
+  return whoS + reasonS + monthS + itemS;
+}
+
+function v4drSetView(v) { v4dr.view = v; v4drRender(); }
+
+function v4drWhatsApp() {
+  var rows = v4drFiltered();
+  if (!rows.length) { alert('No discrepancies in ' + v4drPeriodLabel() + '.'); return; }
+  var loss = 0, gain = 0;
+  rows.forEach(function(r) { if (r.impact < 0) loss += -r.impact; else gain += r.impact; });
+  loss = Math.round(loss * 100) / 100; gain = Math.round(gain * 100) / 100;
+  var net = Math.round((gain - loss) * 100) / 100;
+  var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
+  var a = v4drAgg(rows);
+  var reasons = a.reason.slice(0, 4).map(function(e) {
+    return '· ' + v4drLabel(e.k) + ': ' + (e.net < 0 ? '-' : '+') + fmtMoney(Math.abs(e.net)) + ' (' + e.n + ')';
+  }).join('\n');
+  var people = a.who.slice(0, 4).map(function(e) {
+    return '· ' + e.k + ': ' + (e.net < 0 ? '-' : '+') + fmtMoney(Math.abs(e.net)) + ' (' + e.n + ')';
+  }).join('\n');
+  var msg = '📊 DISCREPANCY REPORT — ' + shop + '\n' + v4drPeriodLabel() + '\n\n' +
+    '📉 Shortage: ' + fmtMoney(loss) + '\n📈 Surplus: ' + fmtMoney(gain) + '\n' +
+    '⚖️ NET effect: ' + (net < 0 ? '-' : '+') + fmtMoney(Math.abs(net)) + ' (' + rows.length + ' records)\n' +
+    (reasons ? '\nBy reason:\n' + reasons : '') +
+    (people ? '\n\nBy responsible person:\n' + people : '') +
+    '\n\n— SmartShop Pro';
+  if (typeof ssShareTo === 'function') ssShareTo(msg, { title: '📊 Discrepancy Report — ' + shop });
+  else window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+
+function v4drRender() {
+  var box = document.getElementById('v4drBody');
+  if (!box) return;
+  if (v4dr.err) {
+    box.innerHTML = '<div style="background:rgba(245,158,11,.12);border:1px solid #fbbf24;border-radius:12px;padding:14px;font-size:13px">' +
+      '⚠️ <b>Discrepancy Report is not ready.</b><br>' + v4drEsc(v4dr.err) +
+      '<br><br>Run <b>stock-discrepancy.sql</b> in Supabase → SQL Editor (one time), then tap 🔄.</div>';
+    return;
+  }
+  var rows = v4drFiltered();
+  var loss = 0, gain = 0;
+  rows.forEach(function(r) { if (r.impact < 0) loss += -r.impact; else gain += r.impact; });
+  loss = Math.round(loss * 100) / 100; gain = Math.round(gain * 100) / 100;
+  var net = Math.round((gain - loss) * 100) / 100;
+
+  var periods = [['today','Today'],['week','This Week'],['month','This Month'],['all','All Time']];
+  var chips = '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">';
+  periods.forEach(function(p) {
+    chips += '<button class="v4-chip' + (v4dr.period === p[0] ? ' active' : '') + '" style="flex:1;min-width:70px" onclick="v4drSetPeriod(\'' + p[0] + '\')">' + p[1] + '</button>';
+  });
+  chips += '</div>';
+
+  var totals = '<div style="display:flex;gap:6px;margin-bottom:10px;text-align:center;font-size:11px;font-weight:800">' +
+    '<div style="flex:1;background:rgba(220,38,38,.1);color:#dc2626;border-radius:10px;padding:8px 4px">📉 Shortage<br>' + fmtMoney(loss) + '</div>' +
+    '<div style="flex:1;background:rgba(5,150,105,.1);color:#059669;border-radius:10px;padding:8px 4px">📈 Surplus<br>' + fmtMoney(gain) + '</div>' +
+    '<div style="flex:1;background:rgba(37,99,235,.1);color:#2563eb;border-radius:10px;padding:8px 4px">⚖️ NET<br>' + (net >= 0 ? '+' : '-') + fmtMoney(Math.abs(net)) + '</div></div>';
+
+  var search = '<input type="search" placeholder="🔍 Search product, person, reason…" value="' + v4drEsc(v4dr.q) + '" oninput="v4drSetQ(this.value)" style="width:100%;padding:8px 10px;border:1px solid #cbd5e1;border-radius:10px;font-size:13px;margin-bottom:10px">';
+
+  var list = '';
+  if (!rows.length) {
+    list = '<div style="text-align:center;padding:26px 10px;color:#10b981;font-weight:700">✅ No discrepancies recorded' + (v4dr.period === 'all' ? '.' : ' in this period.') + '</div>' +
+      '<div style="text-align:center;font-size:11.5px;color:#94a3b8;padding:0 10px 8px">They appear here after a Physical Stock Count with differences.</div>';
+  } else {
+    list = '<div style="max-height:44vh;overflow-y:auto;display:grid;gap:6px">';
+    var lastSess = null;
+    rows.forEach(function(r) {
+      var key = r.sess || ('t-' + String(r.time).slice(0, 10));
+      if (key !== lastSess) {
+        lastSess = key;
+        list += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:rgba(148,163,184,.15);border-radius:10px;padding:6px 10px;font-size:11px;font-weight:800;color:#475569;flex-wrap:wrap">' +
+          '<span>🧮 ' + v4drDT(r.time) + (r.sess ? ' · ' + v4drEsc(r.sess) : '') + '</span>' +
+          (r.by ? '<span style="font-weight:600;color:#94a3b8">' + v4drEsc(r.by) + '</span>' : '') + '</div>';
+      }
+      list += '<div style="border:1px solid #e2e8f0;border-left:5px solid ' + (r.diff < 0 ? '#dc2626' : '#059669') + ';border-radius:12px;padding:9px 10px">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap">' +
+          '<b style="font-size:13px">' + v4drEsc(r.name) + '</b>' +
+          '<span style="font-size:12px;font-weight:800;color:' + (r.diff < 0 ? '#dc2626' : '#059669') + '">' + (r.diff > 0 ? '+' + r.diff : String(r.diff)) + ' ' + v4drEsc(r.unit) + '</span></div>' +
+        '<div style="font-size:11.5px;color:#475569;margin-top:3px">' + r.sys + ' → ' + r.cnt + ' · ' + v4drLabel(r.reason) + (r.who ? ' · 👤 ' + v4drEsc(r.who) : '') + '</div>' +
+        (r.note ? '<div style="font-size:11px;color:#94a3b8;margin-top:2px">📝 ' + v4drEsc(r.note) + '</div>' : '') +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">' +
+          '<span style="font-size:12.5px;font-weight:800;color:' + (r.impact < 0 ? '#dc2626' : '#059669') + '">' + (r.impact < 0 ? '-' : '+') + fmtMoney(Math.abs(r.impact)) + '</span>' +
+          '<button onclick="v4drDel(\'' + v4drEsc(String(r.id)) + '\')" title="Remove record" style="background:none;border:none;color:#94a3b8;font-size:15px;cursor:pointer;padding:2px 6px">🗑️</button></div>' +
+      '</div>';
+    });
+    list += '</div>';
+  }
+
+  var actions = '<div style="display:flex;gap:8px;margin-top:12px">' +
+    '<button class="v4-btn p" style="margin:0;flex:1" onclick="v4drPrint()">🖨️ Print Report</button>' +
+    '<button class="v4-btn g" style="margin:0;flex:1" onclick="v4drWhatsApp()">📤 Share Report</button>' +
+    '<button class="v4-btn" style="margin:0;flex:0 0 auto;width:auto;padding:12px 16px" onclick="v4drOpen()">🔄</button></div>';
+
+  var toggle = '<div style="display:flex;gap:5px;margin-bottom:10px">' +
+    '<button class="v4-chip' + (v4dr.view !== 'analytics' ? ' active' : '') + '" style="flex:1" onclick="v4drSetView(\'records\')">📋 Records</button>' +
+    '<button class="v4-chip' + (v4dr.view === 'analytics' ? ' active' : '') + '" style="flex:1" onclick="v4drSetView(\'analytics\')">📊 Analytics</button></div>';
+  var body = (v4dr.view === 'analytics') ? v4drAnalyticsHTML(rows) : (search + list);
+  box.innerHTML = chips + totals + toggle + body + actions;
+}
+
+function v4drSetPeriod(p) { v4dr.period = p; v4drRender(); }
+function v4drSetQ(q) {
+  v4dr.q = q;
+  v4drRender();
+  var inp = document.querySelector('#v4drBody input[type="search"]');
+  if (inp) { inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch(e) {} }
+}
+
+async function v4drOpen() {
+  var old = document.getElementById('v4drModal'); if (old) old.remove();
+  var m = document.createElement('div');
+  m.id = 'v4drModal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8200;overflow-y:auto;padding:14px';
+  m.innerHTML = '<div style="background:#fff;border-radius:18px;max-width:640px;margin:10px auto;padding:18px;color:#0f172a;box-shadow:0 24px 60px -20px rgba(0,0,0,.4)">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+    '<b style="font-size:17px">📋 Discrepancy Report</b>' +
+    '<button onclick="v4drClose()" style="background:none;border:none;font-size:22px;cursor:pointer">✖</button></div>' +
+    '<div id="v4drBody"><p style="text-align:center;padding:24px;color:#64748b">⏳ Loading…</p></div></div>';
+  document.body.appendChild(m);
+  m.addEventListener('click', function(e){ if (e.target === m) v4drClose(); });
+  await v4drLoad();
+  v4drRender();
+}
+function v4drClose() { var el = document.getElementById('v4drModal'); if (el) el.remove(); }
+
+async function v4drDel(id) {
+  if (!await confirm('Remove this record from the Discrepancy Report?\n\nStock and the Losses page are NOT changed — this only deletes the audit line.')) return;
+  try {
+    var sid = String(id || '');
+    var isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sid);
+    var q = supabaseClient.from('stock_discrepancies').delete();
+    var qq = isUuid ? q.eq('id', sid) : q.eq('firebase_id', sid);
+    const { error } = await qq;
+    if (error) throw error;
+    v4dr.data = v4dr.data.filter(function(r){ return String(r.id) !== sid; });
+    v4drRender();
+  } catch(e) { alert('❌ ' + e.message); }
+}
+
+function v4drPrint() {
+  var rows = v4drFiltered();
+  if (!rows.length) { alert('Nothing to print.'); return; }
+  var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
+  var loss = 0, gain = 0;
+  rows.forEach(function(r){ if (r.impact < 0) loss += -r.impact; else gain += r.impact; });
+  loss = Math.round(loss * 100) / 100; gain = Math.round(gain * 100) / 100;
+  var net = Math.round((gain - loss) * 100) / 100;
+  var w = window.open('', '_blank', 'width=800,height=650');
+  if (!w) { alert('Allow popups to print.'); return; }
+  var trs = rows.map(function(r) {
+    return '<tr><td>' + v4drDT(r.time) + '</td><td><b>' + v4drEsc(r.name) + '</b></td>' +
+      '<td class="c">' + r.sys + '</td><td class="c">' + r.cnt + '</td>' +
+      '<td class="c" style="color:' + (r.diff < 0 ? '#b91c1c' : '#047857') + '">' + (r.diff > 0 ? '+' + r.diff : r.diff) + '</td>' +
+      '<td>' + v4drLabel(r.reason) + '</td><td>' + v4drEsc(r.who || '—') + '</td>' +
+      '<td class="r" style="color:' + (r.impact < 0 ? '#b91c1c' : '#047857') + '">' + (r.impact < 0 ? '-' : '+') + fmtMoney(Math.abs(r.impact)) + '</td></tr>';
+  }).join('');
+  w.document.write('<html><head><title>Discrepancy Report</title><style>' +
+    'body{font-family:monospace;padding:14px;font-size:12px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #999;padding:5px}th{background:#eee}' +
+    '.c{text-align:center}.r{text-align:right}tfoot td{font-weight:700;background:#f3f4f6}</style></head><body>' +
+    '<h3 style="text-align:center;margin:0 0 2px">📋 Discrepancy Report — ' + v4drEsc(shop) + '</h3>' +
+    '<p style="text-align:center;margin:0 0 10px;font-size:11px">' + rows.length + ' record(s) · ' + (v4dr.period === 'all' ? 'All time' : 'Period: ' + v4drPeriodLabel()) + '</p>' +
+    '<table><thead><tr><th>Date</th><th>Product</th><th>System</th><th>Counted</th><th>Diff</th><th>Reason</th><th>Responsible</th><th>Impact</th></tr></thead>' +
+    '<tbody>' + trs + '</tbody>' +
+    '<tfoot><tr><td colspan="7">📉 Total shortage (loss)</td><td class="r" style="color:#b91c1c">-' + fmtMoney(loss) + '</td></tr>' +
+    '<tr><td colspan="7">📈 Total surplus (gain)</td><td class="r" style="color:#047857">+' + fmtMoney(gain) + '</td></tr>' +
+    '<tr><td colspan="7">⚖️ NET effect on business</td><td class="r">' + (net >= 0 ? '+' : '-') + fmtMoney(Math.abs(net)) + '</td></tr></tfoot></table>' +
+    '<p style="text-align:center;font-size:10px;color:#666;margin-top:10px">Generated ' + v4drDT(new Date().toISOString()) + ' · SmartShop Pro</p></body></html>');
+  w.document.close(); w.focus();
+  setTimeout(function(){ w.print(); }, 400);
+}
+function v4drPeriodLabel() {
+  return { today:'Today', week:'This Week', month:'This Month', all:'All Time' }[v4dr.period] || 'This Month';
+}
+
