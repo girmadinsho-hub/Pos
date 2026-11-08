@@ -645,7 +645,7 @@ body.dark .period-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
 <div id="tab20" class="tab-content">
   <div class="card" style="padding:12px">
     <div class="card-title">📱 Devices <small style="font-size:10px;color:#94a3b8">— the owner's remote key</small></div>
-    <p style="font-size:12px;color:#64748b;line-height:1.6;margin:4px 0 10px">Every phone or tablet that unlocked the <b>Staff Door</b> or activated the <b>POS / Kitchen</b> for your shops appears here. Lock a device the moment it is <b>lost, stolen</b>, or kept by a <b>fired</b> staff member — it closes instantly on that device. Tap <b>🔓 Unlock</b> any time — the device goes back to work <b>by itself</b> within seconds; the owner email + password are <b>never asked again</b> on it.</p>
+    <p style="font-size:12px;color:#64748b;line-height:1.6;margin:4px 0 10px">Every phone or tablet of your shop appears here as <b>its own row</b> (the Staff Door row = the phone itself), and every screen in use on it — <b>POS, Kitchen, Hotel Desk</b> — gets <b>its own row</b> with its own 🔒 button. Lock a <b>screen's row</b> to close just that screen (stop the cashier, stop the kitchen). Lock the <b>phone's row</b> (Staff Door) to close <b>everything</b> on that phone — door, POS, Kitchen, Hotel and this admin console. Tap <b>🔓 Unlock</b> any time — it all goes back to work <b>by itself</b> within seconds; the owner email + password are <b>never asked again</b>.</p>
     <button class="period-btn active" style="font-size:12px;padding:8px 14px" onclick="v4devLoad()">🔄 Refresh</button>
     <div id="v4devList" style="margin-top:10px">Loading devices…</div>
   </div>
@@ -835,7 +835,7 @@ function v4devRender() {
   try { here = localStorage.getItem('deviceKey_biz') || localStorage.getItem('deviceKey_pos') || ''; } catch (e) {}
   var pre = v4dev.note ? '<p style="font-size:11px;color:#b45309;margin:0 0 8px;line-height:1.5">' + v4dev.note + '</p>' : '';
   if (!v4dev.rows.length) {
-    el.innerHTML = pre + '<p style="font-size:12px;color:#64748b;line-height:1.6">No devices yet' + (v4dev.email ? ' for <b>' + v4devEsc(v4dev.email) + '</b>' : '') + '.<br>On the phone you want to see here: open the <b>Staff Door</b> (staff.html) and <b>finish the owner sign-in</b> — enter the owner email + password ONCE on that phone. Just opening the page is not enough. Or activate the <b>POS</b> on it — it registers the same way. The phone appears here the moment its sign-in completes (look for the green <b>✅ Device registered</b> tag on the Staff Door).</p>';
+    el.innerHTML = pre + '<p style="font-size:12px;color:#64748b;line-height:1.6">No devices yet' + (v4dev.email ? ' for <b>' + v4devEsc(v4dev.email) + '</b>' : '') + '.<br>On the phone you want to see here: open the <b>Staff Door</b> (staff.html) and <b>finish the owner sign-in</b> — enter the owner email + password ONCE on that phone (look for the green <b>✅ Device registered</b> tag). Opening a screen also registers its own row: the <b>POS</b> (pos.html), the <b>Kitchen</b> (kitchen.html) and the <b>Hotel Desk</b> (hotel.html) each appear here the moment they are opened and signed in on a phone.</p>';
     return;
   }
   var html = pre;
@@ -869,10 +869,15 @@ function v4devRender() {
 
 async function v4devSet(key, status) {
   var verb = status === 'revoked' ? 'LOCK' : 'UNLOCK';
+  var row = null;
+  try { v4dev.rows.forEach(function (d) { if (d.device_key === key) row = d; }); } catch (e) {}
+  var what = row && String(row.device_type || '').toLowerCase() === 'staff' ? 'THE WHOLE PHONE' : 'THIS SCREEN ONLY';
   var hint = status === 'revoked'
-    ? 'The Staff Door, the POS and the Kitchen on that device close instantly. Use this when a device is lost, stolen, or kept by a fired staff member.'
-    : 'The device goes back to work BY ITSELF within seconds (its Staff Door, POS and Kitchen reopen on their own). The owner email + password are NOT asked again — the device keeps its registration.';
-  if (!confirm('🔒 ' + verb + ' this device?\n\n' + hint)) return;
+    ? (what === 'THE WHOLE PHONE'
+      ? 'This is the phone\'s own row — the Staff Door, the POS, the Kitchen, the Hotel Desk AND the admin console on that phone all close instantly. Use this when a device is lost, stolen, or kept by a fired staff member.'
+      : 'This is a single screen\'s row — ONLY that screen (' + (row ? v4devEsc(row.device_name || '') : 'this screen') + ') closes on that phone; everything else on it keeps working. Perfect for stopping one cashier or one kitchen while the phone stays usable.')
+    : 'It goes back to work BY ITSELF within seconds — the screen or phone reopens on its own. The owner email + password are NOT asked again — the device keeps its registration.';
+  if (!confirm('🔒 ' + verb + ' ' + what + '?\n\n' + hint)) return;
   var sbC = v4devEnsureSB();
   if (!sbC) { alert('⚠️ Database not connected — tap 🔄 Refresh, then try again.'); return; }
   try {
@@ -2176,5 +2181,6 @@ function init() {
 }</script>
 </body>
 </html>
+
 
 
