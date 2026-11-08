@@ -5900,91 +5900,115 @@ document.addEventListener('keydown', function (e) {
     if (b && !b.disabled) { e.preventDefault(); completePayment(); }
 });
 
-// ===== PHASE 1C: DEVICE MONITOR (POS) — v3.3 HARD LOCK =====
-// v3.3 rewrite: the old monitor started only for a signed-in owner
-// and DIED FOREVER if its very first database call failed (the lock
-// check, the realtime watch and the poll were all chained behind that
-// one call — a single hiccup and the POS never noticed a lock). Now:
-// the watch starts on EVERY page load for EVERY session, the realtime
-// watch is subscribed immediately, and the status is re-checked every
-// 15 s forever — one 🔒 in Admin → 📱 Devices walls this POS within
-// seconds no matter what, and 🔓 reopens it by itself.
+// ===== PHASE 1C: DEVICE MONITOR (POS) — v3.4 DUAL KEY =====
+// v3.4 · TWO rows now protect this POS, each with its own 🔒 button
+// in Admin → 📱 Devices:
+//   1. ITS OWN row "POS — <shop>" — lock it to close JUST the POS
+//      (stop the cashier) — even while the rest of the phone works.
+//   2. The PHONE's identity row (the Staff Door row of this phone) —
+//      lock that to close the WHOLE phone (door + POS + Kitchen +
+//      Hotel + the admin console on it).
+// The POS walls if EITHER row is revoked, and reopens only when both
+// are active again. The watch runs on EVERY page load for EVERY
+// session, re-checks every 15 s forever, and a locked device cannot
+// even start a sale (hard guards in addToCart / completePayment).
 var _deviceMonitorStarted = false;
 window.POS_DEVICE_LOCKED = false;
+window.POS_WATCH_KEYS = [];
 function ensureDeviceMonitor() {
     if (_deviceMonitorStarted) return;
     _deviceMonitorStarted = true;
 
-    // BIZ-DEV-1 · shared device identity: if the Staff Door (staff.html)
-    // already registered this phone, the POS uses THE SAME devices row — so
-    // ONE 🔒 lock in Admin → 📱 Devices closes the Staff Door AND the POS
-    // on this device at the same moment (and ONE 🔓 unlock reopens both
-    // by themselves — soft lock, no re-activation is ever asked).
-    var deviceKey = localStorage.getItem('deviceKey_biz') || localStorage.getItem('deviceKey_pos');
-    if (!deviceKey) {
-        deviceKey = 'dev_biz_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-        localStorage.setItem('deviceKey_biz', deviceKey);
+    // Own POS row key — separate from the phone identity
+    var posKey = localStorage.getItem('deviceKey_pos');
+    if (!posKey) {
+        posKey = 'dev_pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+        localStorage.setItem('deviceKey_pos', posKey);
     }
+    // The phone's identity (Staff Door) — may be missing on a
+    // POS-only phone; then the POS row alone is the lock.
+    var bizKey = localStorage.getItem('deviceKey_biz') || '';
+    window.POS_WATCH_KEYS = (bizKey && bizKey !== posKey) ? [posKey, bizKey] : [posKey];
+    // NOTE: posKey may be re-assigned by the v3.4 migration inside the
+    // round (a POS-only phone adopts its old row). The realtime watch
+    // covers both keys from the start, so nothing is missed.
 
     var deviceName = 'POS — ' + (getShopId() || 'Device');
 
-    // Realtime lock (< 0.1 s) — subscribed IMMEDIATELY, not chained
-    // behind the first database call.
+    // Realtime lock (< 0.1 s) — BOTH rows watched, subscribed
+    // immediately, not chained behind any database call.
     try {
-        supabaseClient.channel('device-monitor-' + deviceKey)
-            .on('postgres_changes', {
+        var ch = supabaseClient.channel('device-monitor-pos-' + posKey);
+        window.POS_WATCH_KEYS.forEach(function (k) {
+            ch.on('postgres_changes', {
                 event: 'UPDATE', schema: 'public', table: 'devices',
-                filter: 'device_key=eq.' + deviceKey
-            }, function(payload) {
+                filter: 'device_key=eq.' + k
+            }, function (payload) {
                 if (payload.new && payload.new.status === 'revoked') {
                     showDeviceLocked(payload.new.device_name);
                 } else if (payload.new && payload.new.status === 'active') {
-                    hideDeviceLocked();   // owner unlocked: reopen by itself
+                    posDeviceRound();   // re-check ALL keys before lifting the wall
                 }
-            }).subscribe();
+            });
+        });
+        ch.subscribe();
     } catch (e) {}
 
     // Status check + registration + heartbeat — runs IMMEDIATELY and
     // then every 15 s, forever. Every round is independent: a failed
     // round (offline, database hiccup) never stops the next one.
-    var deviceRound = async function () {
+    var posDeviceRound = async function () {
         if (!navigator.onLine) return;
         try {
             const { data } = await supabaseClient.from('devices')
-                .select('id, status, device_name')
-                .eq('device_key', deviceKey)
-                .maybeSingle();
-            if (data && data.status === 'revoked') {
-                showDeviceLocked(data.device_name || deviceName);   // locked → wall
-                return;
-            }
-            if (!data || data.status === 'active') hideDeviceLocked();
-            if (!data) {
-                // New device — register (needs the device insert policy)
-                try {
-                    await supabaseClient.from('devices').insert([{
-                        device_key: deviceKey,
-                        shop_id: getShopId(),
-                        device_name: deviceName,
-                        device_type: 'pos',
-                        status: 'active',
-                        last_seen: new Date().toISOString()
-                    }]);
-                } catch (e) {}
+                .select('device_key, status, device_name')
+                .in('device_key', window.POS_WATCH_KEYS);
+            var rows = data || [];
+            var lockedRow = null;
+            rows.forEach(function (r) {
+                if (String(r.status || '').toLowerCase() === 'revoked') lockedRow = r;
+            });
+            if (lockedRow) { showDeviceLocked(lockedRow.device_name || deviceName); return; }
+            hideDeviceLocked();
+            // Register / heartbeat the OWN row only
+            var own = null, bizRow = null;
+            rows.forEach(function (r) {
+                if (r.device_key === posKey) own = r;
+                if (bizKey && r.device_key === bizKey) bizRow = r;
+            });
+            if (!own) {
+                // v3.4 migration · a POS-only phone from v3.3 registered its
+                // row under the phone identity key with type 'pos' — adopt
+                // that row instead of creating a duplicate.
+                if (bizRow && String(bizRow.device_type || '').toLowerCase() === 'pos') {
+                    try { localStorage.setItem('deviceKey_pos', bizKey); } catch (e) {}
+                    posKey = bizKey;
+                    window.POS_WATCH_KEYS = [posKey];
+                } else {
+                    try {
+                        await supabaseClient.from('devices').insert([{
+                            device_key: posKey,
+                            shop_id: getShopId(),
+                            device_name: deviceName,
+                            device_type: 'pos',
+                            status: 'active',
+                            last_seen: new Date().toISOString()
+                        }]);
+                    } catch (e) {}
+                }
             } else {
-                // Exists — update last_seen ONLY (never touch status)
                 try {
                     await supabaseClient.from('devices')
                         .update({ last_seen: new Date().toISOString() })
-                        .eq('device_key', deviceKey);
+                        .eq('device_key', posKey);
                 } catch (e) {}
             }
         } catch (e) { /* next round retries in 15 s */ }
     };
-    deviceRound();
-    setInterval(deviceRound, 15000);
+    posDeviceRound();
+    setInterval(posDeviceRound, 15000);
 }
-// v3.3 — the watch runs on EVERY page load, for every session (owner,
+// The watch runs on EVERY page load, for every session (owner,
 // cashier, staff-door arrival). It must not depend on the auth route
 // firing: a locked phone stays locked even for a reload straight into
 // the cashier screen.
@@ -6015,7 +6039,7 @@ function showDeviceLocked(deviceName) {
             '<p style="font-size:12px;color:#fca5a5;margin-top:10px;max-width:300px;line-height:1.6;">When the owner unlocks it (Admin → 📱 Devices), this screen reopens by itself — no activation is asked again.</p>' +
             '<button type="button" onclick="v4posDeviceRetry()" style="margin-top:18px;background:#fff;color:#7f1d1d;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:800;cursor:pointer;">🔄 Check again — unlocked?</button>' +
             '<p id="deviceLockMsg" style="font-size:11px;color:#fecaca;margin-top:10px;min-height:14px;"></p>' +
-            '<p style="font-size:10px;color:#f87171;margin-top:14px;opacity:.85">BizMaster device guard · HARD LOCK v3.3</p>';
+            '<p style="font-size:10px;color:#f87171;margin-top:14px;opacity:.85">BizMaster device guard · HARD LOCK v3.4</p>';
         document.body.appendChild(lock);
     }
     lock.style.display = 'flex';
@@ -6039,9 +6063,10 @@ async function v4posDeviceRetry() {
     if (m) m.textContent = '⏳ Checking…';
     if (!navigator.onLine) { if (m) m.textContent = '📴 Offline — connect to the internet first.'; return; }
     try {
-        var key = localStorage.getItem('deviceKey_biz') || localStorage.getItem('deviceKey_pos');
-        const { data } = await supabaseClient.from('devices').select('status').eq('device_key', key).maybeSingle();
-        if (!data || data.status === 'active') hideDeviceLocked();
+        const { data } = await supabaseClient.from('devices')
+            .select('device_key, status').in('device_key', window.POS_WATCH_KEYS || []);
+        var anyLocked = (data || []).some(function (r) { return String(r.status || '').toLowerCase() === 'revoked'; });
+        if (!anyLocked) hideDeviceLocked();
         else if (m) m.textContent = '🔒 Still locked — the owner unlocks it from Admin → 📱 Devices.';
     } catch (e) { if (m) m.textContent = '⚠️ Could not check — try again.'; }
 }
@@ -6611,4 +6636,5 @@ function formatIngredientIssues(issues) {
 </script>
 </body>
 </html>
+
 
