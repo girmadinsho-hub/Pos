@@ -457,6 +457,46 @@ body.dark .v4-type.active{border-color:#3b82f6;background:#1e3a8a}
   </div>
 
   <div class="card">
+    <div class="card-title" style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="v4Fold('v4soldBody','v4soldArrow')">🛒 Items Sold <span class="v4-badge" id="v4soldCount">0</span><span id="v4soldViews" style="margin-left:auto;display:flex;gap:5px" onclick="event.stopPropagation()">
+        <button class="v4-chip active" onclick="v4SoldView('excel',this)">📊</button>
+        <button class="v4-chip" onclick="v4SoldView('list',this)">📋</button>
+        <button class="v4-chip" onclick="v4SoldView('grid',this)">⊞</button>
+      </span><span id="v4soldArrow" style="margin-left:6px">▸</span></div>
+    <div id="v4soldBody" style="display:none">
+      <div id="v4soldPeriods" style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="period-btn" onclick="v4SoldPeriod('all',this)">All</button>
+        <button class="period-btn active" onclick="v4SoldPeriod('today',this)">Today</button>
+        <button class="period-btn" onclick="v4SoldPeriod('week',this)">Week</button>
+        <button class="period-btn" onclick="v4SoldPeriod('month',this)">Month</button>
+        <button class="period-btn" onclick="v4SoldPeriod('year',this)">Year</button>
+      </div>
+      <div id="v4soldGroups" style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="v4-chip active" onclick="v4SoldGroup('day',this)">📅 By Day</button>
+        <button class="v4-chip" onclick="v4SoldGroup('week',this)">📆 By Week</button>
+        <button class="v4-chip" onclick="v4SoldGroup('month',this)">🗓️ By Month</button>
+        <button class="v4-chip" onclick="v4SoldGroup('year',this)">🎆 By Year</button>
+        <button class="v4-chip" onclick="v4SoldGroup('item',this)">📦 Item Totals</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;align-items:center">
+        <input id="v4soldQ" type="search" placeholder="🔍 Search item…" style="flex:1;min-width:110px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:10px;font-size:12px" oninput="v4SoldSearch(this.value)">
+        <select class="v4-in" id="v4soldSort" style="height:34px;padding:6px;margin:0;font-size:12px;max-width:150px" onchange="v4SoldSort(this)">
+          <option value="time">⏱️ Newest first</option>
+          <option value="qty">📦 Most quantity</option>
+          <option value="revenue">💰 Most revenue</option>
+          <option value="name">🔤 A-Z</option>
+        </select>
+        <button class="v4-chip" onclick="v4SoldWA()" title="Share on WhatsApp">📤 Share</button>
+        <button class="v4-chip" onclick="v4SoldCSV()" title="Export CSV">📥 CSV</button>
+      </div>
+      <div id="v4soldNote" style="margin-bottom:6px"></div>
+      <div id="v4soldExcel"></div>
+      <div id="v4soldList" style="display:none"></div>
+      <div id="v4soldGrid" style="display:none"></div>
+      <div id="v4soldPager"></div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="card-title" style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="v4Fold('v4cashBody','v4cashArrow')">👥 Cashier Performance <span id="v4cashViews" style="margin-left:auto;display:flex;gap:5px" onclick="event.stopPropagation()">
         <button class="v4-chip active" onclick="v4CashView('excel',this)">📊</button>
         <button class="v4-chip" onclick="v4CashView('list',this)">📋</button>
@@ -2181,6 +2221,7 @@ function init() {
 }</script>
 </body>
 </html>
+
 
 
 
