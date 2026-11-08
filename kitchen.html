@@ -273,6 +273,7 @@ function showOwnerActivation() {
 var _deviceMonitorStarted = false;
 var _deviceMonitorChannel = null;   // K3: tracked so a shop change can re-register cleanly
 var _deviceMonitorInterval = null;  // K3: prevents duplicate 30s loops after re-registration
+window.KIT_WATCH_KEYS = [];
 function ensureDeviceMonitor() {
     if (_deviceMonitorStarted) return;
     _deviceMonitorStarted = true;
@@ -284,6 +285,11 @@ function ensureDeviceMonitor() {
         deviceKey = 'dev_kit_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
         localStorage.setItem('deviceKey_kitchen', deviceKey);
     }
+    // v3.4 · ALSO watch the phone's identity row (the Staff Door row of
+    // this phone): locking the PHONE closes the Kitchen too, while the
+    // Kitchen's own row still locks just this screen.
+    var bizKey = localStorage.getItem('deviceKey_biz') || '';
+    window.KIT_WATCH_KEYS = (bizKey && bizKey !== deviceKey) ? [deviceKey, bizKey] : [deviceKey];
 
     // v3.3 HARD LOCK · realtime watch subscribed IMMEDIATELY — not
     // chained behind the first database call (the old monitor died
@@ -291,20 +297,22 @@ function ensureDeviceMonitor() {
     // signed-in owner). One 🔒 in Admin → 📱 Devices walls this screen
     // within seconds; 🔓 reopens it by itself.
     try {
-        _deviceMonitorChannel = supabaseClient.channel('device-monitor-' + deviceKey)
-            .on('postgres_changes', {
+        _deviceMonitorChannel = supabaseClient.channel('device-monitor-' + deviceKey);
+        window.KIT_WATCH_KEYS.forEach(function (k) {
+            _deviceMonitorChannel.on('postgres_changes', {
                 event: 'UPDATE',
                 schema: 'public',
                 table: 'devices',
-                filter: 'device_key=eq.' + deviceKey
+                filter: 'device_key=eq.' + k
             }, function(payload) {
                 if (payload.new && payload.new.status === 'revoked') {
                     showDeviceLocked(payload.new.device_name);
                 } else if (payload.new && payload.new.status === 'active') {
-                    hideDeviceLocked();   // owner unlocked: reopen by itself
+                    kitDeviceRound();   // v3.4 — re-check ALL keys before lifting the wall
                 }
-            })
-            .subscribe();
+            });
+        });
+        _deviceMonitorChannel.subscribe();
     } catch (e) {}
 
     // v3.3 · status check + registration + heartbeat — runs IMMEDIATELY
@@ -315,15 +323,17 @@ function ensureDeviceMonitor() {
         try {
             var deviceName = 'Kitchen — ' + (shopId || (typeof getShopId === 'function' ? getShopId() : '') || 'Device');
             const { data } = await supabaseClient.from('devices')
-                .select('id, status, device_name, shop_id')
-                .eq('device_key', deviceKey)
-                .maybeSingle();
-            if (data && data.status === 'revoked') {
-                showDeviceLocked(data.device_name || deviceName);   // locked → wall
-                return;
-            }
-            if (!data || data.status === 'active') hideDeviceLocked();
-            if (!data) {
+                .select('device_key, status, device_name, shop_id')
+                .in('device_key', window.KIT_WATCH_KEYS);
+            var rows = data || [];
+            var own = null, lockedRow = null;
+            rows.forEach(function (r) {
+                if (r.device_key === deviceKey) own = r;
+                if (String(r.status || '').toLowerCase() === 'revoked') lockedRow = r;
+            });
+            if (lockedRow) { showDeviceLocked(lockedRow.device_name || deviceName); return; }   // locked → wall
+            hideDeviceLocked();
+            if (!own) {
                 // New device — register it for the first time
                 try {
                     await supabaseClient.from('devices').insert([{
@@ -344,7 +354,7 @@ function ensureDeviceMonitor() {
                 } catch (e) {}
                 // K3: if this device was re-activated for a DIFFERENT shop, move it there too
                 var monShop = shopId || (typeof getShopId === 'function' ? getShopId() : '') || '';
-                if (data.shop_id && data.shop_id !== monShop) {
+                if (own.shop_id && own.shop_id !== monShop) {
                     try {
                         await supabaseClient.from('devices')
                             .update({ shop_id: monShop, device_name: deviceName })
@@ -384,7 +394,7 @@ function showDeviceLocked(deviceName) {
             '<p style="font-size:12px;color:#fca5a5;margin-top:10px;max-width:300px;line-height:1.6;">When the owner unlocks it (Admin → 📱 Devices), this screen reopens by itself — no activation is asked again.</p>' +
             '<button type="button" onclick="v4kitDeviceRetry()" style="margin-top:18px;background:#fff;color:#7f1d1d;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:800;cursor:pointer;">🔄 Check again — unlocked?</button>' +
             '<p id="deviceLockMsg" style="font-size:11px;color:#fecaca;margin-top:10px;min-height:14px;"></p>' +
-            '<p style="font-size:10px;color:#f87171;margin-top:14px;opacity:.85">BizMaster device guard · HARD LOCK v3.3</p>';
+            '<p style="font-size:10px;color:#f87171;margin-top:14px;opacity:.85">BizMaster device guard · HARD LOCK v3.4</p>';
         document.body.appendChild(lock);
     }
     lock.style.display = 'flex';
@@ -408,9 +418,10 @@ async function v4kitDeviceRetry() {
     if (m) m.textContent = '⏳ Checking…';
     if (!navigator.onLine) { if (m) m.textContent = '📴 Offline — connect to the internet first.'; return; }
     try {
-        var key = localStorage.getItem('deviceKey_kitchen');
-        const { data } = await supabaseClient.from('devices').select('status').eq('device_key', key).maybeSingle();
-        if (!data || data.status === 'active') hideDeviceLocked();
+        const { data } = await supabaseClient.from('devices')
+            .select('device_key, status').in('device_key', window.KIT_WATCH_KEYS || []);
+        var anyLocked = (data || []).some(function (r) { return String(r.status || '').toLowerCase() === 'revoked'; });
+        if (!anyLocked) hideDeviceLocked();
         else if (m) m.textContent = '🔒 Still locked — the owner unlocks it from Admin → 📱 Devices.';
     } catch (e) { if (m) m.textContent = '⚠️ Could not check — try again.'; }
 }
@@ -1087,5 +1098,6 @@ async function sendChatMessage() {
 <script src="lang.js" data-spp-auto="1"></script>
 </body>
 </html>
+
 
 
