@@ -1515,6 +1515,7 @@ var TABS = [
   {n:10, icon:'🎁', label:'Loyalty'},
   {n:11, icon:'💸', label:'Loans'},
   {n:12, icon:'🏦', label:'Bank'},
+  {n:23, icon:'📱', label:'Mobile Pay'},
   {n:15, icon:'📓', label:'Notebook'},
   {n:19, icon:'💬', label:'Intercom'},
   {n:13, icon:'⚙️', label:'Settings'},
@@ -2218,6 +2219,460 @@ function init() {
 
     if (localStorage.getItem('darkMode') === '1') document.body.classList.add('dark');
 }</script>
+<script>
+/* ═════════════════════════════════════════════════════════════ MPV-ADMIN-START
+   MPV-A3 · 📱 MOBILE PAYMENTS (tab 23) — the owner's verification desk
+   ─────────────────────────────────────────────────────────────────
+   Every 📱 Mobile payment the cashiers receipted lands here — and
+   this tab is the ONLY place a payment can ever be verified (v2
+   rule, user directive: "verification must be done from admin, not
+   from POS"). The POS records payments; it has no verify button
+   and it never writes to the bank tables.
+   V3 (user design): a FLOATING BUTTON follows the owner on every
+   admin screen — it appears ONLY while mobile-paid bills are
+   waiting (blue 📱 with a red count). One tap opens exactly the
+   bills containing mobile-paid bills, each with a big ✓ check to
+   confirm; the moment one is confirmed it also disappears from
+   the cashier POS's pending list (badge drops there within ~1 min).
+   The owner (from his own phone, any time) compares each line
+   against his real account history on his single phone:
+     ✓ Confirm received → cashier POS shows FULLY PAID + a deposit
+                         is added to the SAME account in the 🏦 Bank
+                         tab (balance matches the real account).
+     ❌ Not received    → marked lost + a loss recorded in Losses
+                         (option: mark lost only).
+   Rows sent by a waiter but not yet receipted by the cashier show
+   as 🔵 WAITER (no money to check yet — no ✓ appears on those).
+   Options (⚙️, per shop): require waiter name, auto-deposit to the
+   bank account, and what ❌ does. Verification itself is NOT an
+   option — it is always the owner's, from here.
+   ═══════════════════════════════════════════════════════════════ */
+var v4mpv = { rows: [], busy: false, status: '', period: 'today', q: '', cfg: { waiter: true, loss: 'loss', deposit: true }, email: '' };
+var v4mpvFab = { rows: [], timer: null };
+
+window.V4_TAB_LOADERS = window.V4_TAB_LOADERS || {};
+window.V4_TAB_LOADERS[23] = function () { v4mpvOpen(); };
+
+function v4mpvEsc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function v4mpvMoney(n) { return fmtMoney(Number(n || 0)); }
+function v4mpvSB() {
+  try {
+    var c = null;
+    if (window.supabaseClient) c = window.supabaseClient;
+    else if (typeof supabaseClient !== 'undefined' && supabaseClient) c = supabaseClient;
+    /* only accept a usable client (from() must exist) — a half-built
+       client shows the friendly "not connected" line, not a red error */
+    if (c && typeof c.from === 'function') { window.supabaseClient = c; return c; }
+  } catch (e) {}
+  return null;
+}
+function v4mpvWhen(iso) {
+  try {
+    var ms = Date.now() - new Date(iso).getTime();
+    if (isNaN(ms)) return '—';
+    if (ms < 60e3) return 'just now';
+    if (ms < 3600e3) return Math.floor(ms / 60e3) + ' min ago';
+    if (ms < 86400e3) return Math.floor(ms / 3600e3) + ' h ago';
+    return Math.floor(ms / 86400e3) + ' d ago';
+  } catch (e) { return '—'; }
+}
+function v4mpvStart(p) {
+  var n = new Date();
+  if (p === 'today') return new Date(n.getFullYear(), n.getMonth(), n.getDate()).toISOString();
+  if (p === 'week') {
+    var d = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    var day = d.getDay();
+    var diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(d.getFullYear(), d.getMonth(), diff).toISOString();
+  }
+  if (p === 'month') return new Date(n.getFullYear(), n.getMonth(), 1).toISOString();
+  return new Date(0).toISOString();
+}
+function v4mpvQ(query, r) {
+  if (r.id) return query.eq('id', r.id);
+  return query.eq('firebase_id', r.firebase_id);
+}
+
+async function v4mpvOpen() {
+  var tab = document.getElementById('tab23');
+  if (!tab) return;
+  if (tab.dataset.mpvBuilt !== '1') {
+    tab.dataset.mpvBuilt = '1';
+    tab.innerHTML =
+      '<div class="card" style="padding:12px" id="v4mpvStats"></div>' +
+      '<div class="card" style="padding:12px">' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px">' +
+          '<select class="v4-in" id="v4mpvStatus" style="height:34px;padding:6px;margin:0;font-size:12px;max-width:150px" onchange="v4mpv.status=this.value;v4mpvLoad()">' +
+            '<option value="pending">🟡 Pending</option><option value="verified">✅ Verified</option><option value="lost">❌ Lost</option><option value="waiter">🔵 Waiter sent</option><option value="">All</option></select>' +
+          '<select class="v4-in" id="v4mpvPeriod" style="height:34px;padding:6px;margin:0;font-size:12px;max-width:120px" onchange="v4mpv.period=this.value;v4mpvRender()">' +
+            '<option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option><option value="all">All Time</option></select>' +
+          '<input type="search" id="v4mpvQ" placeholder="🔍 Search invoice / waiter / TXN…" style="flex:1;min-width:120px;padding:7px 10px;border:1px solid #cbd5e1;border-radius:10px;font-size:12px" oninput="v4mpv.q=this.value;v4mpvRender()">' +
+          '<button class="v4-chip" onclick="v4mpvLoad()">🔄</button>' +
+          '<button class="v4-chip" onclick="v4mpvShare()">📤 Share</button>' +
+        '</div>' +
+        '<div id="v4mpvList"></div>' +
+      '</div>' +
+      '<div class="card">' +
+        '<div class="card-title" style="display:flex;align-items:center;gap:6px;cursor:pointer" onclick="v4mpvToggleOpts()">⚙️ Options <span id="v4mpvOptArrow" style="margin-left:auto">▸</span></div>' +
+        '<div id="v4mpvOpts" style="display:none">' +
+          '<p style="font-size:11px;color:#94a3b8;margin:6px 0 8px">Verification is always done here by you, the owner — the cashier POS only records payments and can never verify one. The POS reads these options instantly.</p>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="font-size:13px">Require waiter name</span>' +
+            '<select class="v4-in" id="v4mpvWaiterOpt" style="height:32px;padding:4px;margin:0;font-size:12px;max-width:120px" onchange="v4mpvSaveCfg()"><option value="yes">Yes</option><option value="no">No</option></select></div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9"><span style="font-size:13px">When ❌ Not received</span>' +
+            '<select class="v4-in" id="v4mpvLossOpt" style="height:32px;padding:4px;margin:0;font-size:12px;max-width:170px" onchange="v4mpvSaveCfg()"><option value="loss">Record a loss</option><option value="mark">Mark lost only</option></select></div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0"><span style="font-size:13px">✅ Verified → bank deposit</span>' +
+            '<select class="v4-in" id="v4mpvDepOpt" style="height:32px;padding:4px;margin:0;font-size:12px;max-width:120px" onchange="v4mpvSaveCfg()"><option value="yes">Yes</option><option value="no">No</option></select></div>' +
+        '</div>' +
+      '</div>';
+  }
+  var sb = v4mpvSB();
+  if (sb) {
+    try { const { data: { user } } = await sb.auth.getUser(); v4mpv.email = user ? user.email : ''; } catch (e) {}
+  }
+  await v4mpvLoadCfg();
+  await v4mpvLoad();
+}
+function v4mpvToggleOpts() {
+  var o = document.getElementById('v4mpvOpts'), a = document.getElementById('v4mpvOptArrow');
+  if (!o) return;
+  o.style.display = o.style.display === 'none' ? 'block' : 'none';
+  if (a) a.textContent = o.style.display === 'none' ? '▸' : '▾';
+}
+
+async function v4mpvLoadCfg() {
+  var sb = v4mpvSB(); if (!sb) return;
+  /* start from defaults every read — an empty/cleared column must
+     reset the options, not keep stale values from an earlier load */
+  v4mpv.cfg = { waiter: true, loss: 'loss', deposit: true };
+  try {
+    const { data } = await sb.from('settings').select('mpv_config').eq('shop_id', getShopId()).maybeSingle();
+    var o = {};
+    try { o = JSON.parse((data && data.mpv_config) || '{}') || {}; } catch (e) {}
+    /* v1's quick value is intentionally dropped on the floor here —
+       verification is admin-only, it is not a configurable mode */
+    if (typeof o.waiter === 'boolean') v4mpv.cfg.waiter = o.waiter;
+    if (o.loss === 'loss' || o.loss === 'mark') v4mpv.cfg.loss = o.loss;
+    if (typeof o.deposit === 'boolean') v4mpv.cfg.deposit = o.deposit;
+  } catch (e) {}
+  var w = document.getElementById('v4mpvWaiterOpt'),
+      l = document.getElementById('v4mpvLossOpt'), d = document.getElementById('v4mpvDepOpt');
+  if (w) w.value = v4mpv.cfg.waiter === false ? 'no' : 'yes';
+  if (l) l.value = v4mpv.cfg.loss;
+  if (d) d.value = v4mpv.cfg.deposit === false ? 'no' : 'yes';
+}
+async function v4mpvSaveCfg() {
+  var sb = v4mpvSB(); if (!sb) { return; }
+  var w = document.getElementById('v4mpvWaiterOpt'),
+      l = document.getElementById('v4mpvLossOpt'), d = document.getElementById('v4mpvDepOpt');
+  /* NOTE: the saved JSON deliberately carries NO verify-mode key —
+     admin-only verification is a fixed rule, not an option. Saving
+     from here also scrubs a stale v1 value out of the column, which
+     pushes any till still on the v1 file onto owner-verifies. */
+  var cfg = {
+    waiter: !(w && w.value === 'no'),
+    loss: (l && l.value === 'mark') ? 'mark' : 'loss',
+    deposit: !(d && d.value === 'no')
+  };
+  try {
+    const { error } = await sb.from('settings').upsert({ shop_id: getShopId(), mpv_config: JSON.stringify(cfg) }, { onConflict: 'shop_id' });
+    if (error) throw error;
+    v4mpv.cfg = cfg;
+  } catch (e) { alert('❌ Could not save options: ' + (e.message || 'error')); }
+}
+
+async function v4mpvLoad() {
+  if (v4mpv.busy) return;
+  var sb = v4mpvSB();
+  var el = document.getElementById('v4mpvList');
+  if (!el) return;
+  if (!sb) { el.innerHTML = '<p style="font-size:12px;color:#ef4444">⚠️ Database not connected — tap 🔄.</p>'; return; }
+  v4mpv.busy = true;
+  el.innerHTML = '<p style="font-size:12px;color:#94a3b8">Loading…</p>';
+  /* verify decisions are stamped with the owner's e-mail — capture it
+     lazily here too (covers direct refreshes that skip v4mpvOpen) */
+  if (!v4mpv.email) {
+    try { const { data: { user } } = await sb.auth.getUser(); v4mpv.email = user ? user.email : ''; } catch (e) {}
+  }
+  try {
+    const { data, error } = await sb.from('payment_verifications')
+      .select('*').eq('shop_id', getShopId())
+      .order('created_at', { ascending: false }).limit(500);
+    if (error) {
+      var msg = String(error.message || '');
+      if (error.code === '42P01' || msg.indexOf('payment_verifications') > -1 || msg.indexOf('does not exist') > -1) {
+        el.innerHTML = '<p style="font-size:12px;color:#b45309;line-height:1.6">📌 One-time setup needed: open <b>Supabase → SQL Editor</b>, paste the <b>payment-verifications.sql</b> file from this pack and RUN it. It creates the table + one settings column. Nothing else changes.</p>';
+      } else throw error;
+      v4mpv.busy = false; return;
+    }
+    v4mpv.rows = data || [];
+    v4mpvStats();
+    v4mpvRender();
+    v4mpvFabSync();
+  } catch (e) {
+    el.innerHTML = '<p style="font-size:12px;color:#ef4444">❌ ' + v4mpvEsc(e.message || 'Could not load.') + '</p>';
+  }
+  v4mpv.busy = false;
+}
+
+function v4mpvFiltered() {
+  var from = new Date(v4mpvStart(v4mpv.period)).getTime();
+  var q = (v4mpv.q || '').toLowerCase();
+  return v4mpv.rows.filter(function (r) {
+    if (v4mpv.status && r.status !== v4mpv.status) return false;
+    var t = new Date(r.created_at || r.verified_at || 0).getTime();
+    if (t < from) return false;
+    if (q) {
+      var hay = ((r.invoice_no || '') + ' ' + (r.waiter_name || '') + ' ' + (r.cashier_name || '') + ' ' + (r.txn_ref || '') + ' ' + (r.account_name || '') + ' ' + (r.items || '') + ' ' + (r.table_name || '')).toLowerCase();
+      if (hay.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+}
+
+function v4mpvStats() {
+  var el = document.getElementById('v4mpvStats'); if (!el) return;
+  var from = new Date(v4mpvStart('today')).getTime();
+  var p = { n: 0, amt: 0 }, v = { n: 0, amt: 0 }, l = { n: 0, amt: 0 };
+  v4mpv.rows.forEach(function (r) {
+    if (new Date(r.created_at || 0).getTime() < from) return;
+    if (r.status === 'waiter') return; /* not the owner's turn yet — receipt not printed */
+    var amt = Number(r.amount || 0);
+    if (r.status === 'verified') { v.n++; v.amt += amt; }
+    else if (r.status === 'lost') { l.n++; l.amt += amt; }
+    else { p.n++; p.amt += amt; }
+  });
+  function blk(col, bg, label, n, amt) {
+    return '<div style="flex:1;text-align:center;background:' + bg + ';border-radius:10px;padding:9px 4px;min-width:0">' +
+      '<small style="font-size:10px;font-weight:800;color:#64748b">' + label + '</small>' +
+      '<b style="font-size:15px;display:block;color:' + col + '">' + n + '</b>' +
+      '<small style="font-size:10px;color:#64748b">' + v4mpvMoney(amt) + '</small></div>';
+  }
+  el.innerHTML = '<div style="display:flex;gap:8px">' +
+    blk('#b45309', 'rgba(245,158,11,.12)', '🟡 Pending (today)', p.n, p.amt) +
+    blk('#059669', 'rgba(16,185,129,.12)', '✅ Verified (today)', v.n, v.amt) +
+    blk('#dc2626', 'rgba(239,68,68,.12)', '❌ Lost (today)', l.n, l.amt) +
+    '</div>' + (p.n ? '<small style="font-size:11px;color:#b45309;display:block;margin-top:6px">⚠️ ' + p.n + ' payment' + (p.n > 1 ? 's' : '') + ' waiting for your check — compare with your account history, then ✓ or ❌.</small>' : '');
+}
+
+function v4mpvRender() {
+  var el = document.getElementById('v4mpvList'); if (!el) return;
+  var rows = v4mpvFiltered();
+  if (!rows.length) {
+    el.innerHTML = '<div class="placeholder">No mobile payments ' + (v4mpv.status ? 'in this filter.' : 'yet.') + '</div>';
+    return;
+  }
+  el.innerHTML = rows.map(function (r) { return v4mpvCard(r); }).join('');
+}
+
+function v4mpvCard(r) {
+  var key = r.firebase_id || r.id;
+  var pend = r.status === 'pending';
+  var chip = pend ? '<span style="font-size:10px;font-weight:800;background:#fef3c7;color:#b45309;padding:2px 8px;border-radius:10px">🟡 PENDING</span>'
+    : (r.status === 'verified' ? '<span style="font-size:10px;font-weight:800;background:#d1fae5;color:#059669;padding:2px 8px;border-radius:10px">✅ VERIFIED</span>'
+    : (r.status === 'waiter' ? '<span style="font-size:10px;font-weight:800;background:#dbeafe;color:#1d4ed8;padding:2px 8px;border-radius:10px">🔵 WAITER</span>'
+    : '<span style="font-size:10px;font-weight:800;background:#fee2e2;color:#dc2626;padding:2px 8px;border-radius:10px">❌ LOST</span>'));
+  var lines = [];
+  if (r.items) lines.push('🧾 ' + v4mpvEsc(r.items));
+  var acc = '🏦 ' + v4mpvEsc(r.account_name || 'Mobile');
+  if (r.txn_ref) acc += ' · TXN ' + v4mpvEsc(r.txn_ref);
+  if (r.table_name) acc += ' · ' + v4mpvEsc(r.table_name);
+  lines.push(acc);
+  var who = [];
+  if (r.waiter_name) who.push('🤵 ' + v4mpvEsc(r.waiter_name));
+  if (r.cashier_name) who.push('👩‍💻 ' + v4mpvEsc(r.cashier_name));
+  who.push(v4mpvWhen(r.created_at));
+  lines.push(who.join(' · '));
+  if (r.status === 'waiter') {
+    lines.push('🔵 waiting for the cashier to print the receipt');
+  } else if (!pend) {
+    if (r.status === 'verified') lines.push('✅ by ' + v4mpvEsc(r.verified_by || 'owner') + (r.bank_txn_id ? ' · 💳 deposited to Bank tab' : ''));
+    else lines.push('❌ not received · loss recorded');
+  }
+  var btns = pend ?
+    '<div style="display:flex;gap:6px;margin-top:8px">' +
+      '<button class="v4-btn g" style="margin:0;flex:1.7;padding:12px 6px;font-size:14px;font-weight:800" onclick="v4mpvVerify(\'' + key + '\')">✓ Confirm received</button>' +
+      '<button class="v4-btn" style="margin:0;flex:1;background:#ef4444" onclick="v4mpvLost(\'' + key + '\')">❌ Not received</button>' +
+    '</div>' : '';
+  return '<div style="border:1px solid ' + (pend ? '#f59e0b' : (r.status === 'waiter' ? '#93c5fd' : '#e2e8f0')) + ';border-radius:12px;padding:10px;margin-bottom:8px;background:#fff">' +
+    '<div style="display:flex;align-items:center;gap:8px">' + chip +
+    '<b style="font-size:13px">' + v4mpvEsc(r.invoice_no || key) + '</b>' +
+    '<b style="margin-left:auto;font-size:15px;color:#2563eb">' + v4mpvMoney(r.amount) + '</b></div>' +
+    '<small style="display:block;font-size:11px;color:#64748b;line-height:1.5;margin-top:4px">' + lines.join('<br>') + '</small>' +
+    btns + '</div>';
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MPV-3 · the floating button — only while bills wait for the owner
+   ════════════════════════════════════════════════════════════════ */
+function v4mpvFabSync(rows) {
+  var list = rows || v4mpv.rows.filter(function (r) { return r.status === 'pending'; });
+  v4mpvFab.rows = list;
+  var el = document.getElementById('v4mpvFab');
+  if (!list.length) { if (el) el.style.display = 'none'; return; }
+  if (!el) {
+    el = document.createElement('button');
+    el.type = 'button';
+    el.id = 'v4mpvFab';
+    el.title = '📱 Mobile bills waiting your check';
+    el.style.cssText = 'position:fixed;bottom:22px;right:18px;z-index:2600;width:54px;height:54px;border-radius:50%;border:none;background:linear-gradient(135deg,#2563eb,#0d64f0);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 6px 18px rgba(37,99,235,.45);display:flex;align-items:center;justify-content:center;';
+    el.textContent = '📱';
+    var b = document.createElement('span');
+    b.id = 'v4mpvFabCount';
+    b.style.cssText = 'position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;font-size:11px;font-weight:800;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff;';
+    el.appendChild(b);
+    el.onclick = function () { v4mpvFabOpen(); };
+    document.body.appendChild(el);
+  }
+  el.style.display = 'flex';
+  var c = document.getElementById('v4mpvFabCount');
+  if (c) c.textContent = String(list.length);
+}
+
+function v4mpvFabTries(ms) {
+  try {
+    if (v4mpvFab.timer) clearTimeout(v4mpvFab.timer);
+    v4mpvFab.timer = setTimeout(function () { v4mpvFabTick(); }, ms);
+  } catch (e) {}
+}
+
+async function v4mpvFabTick() {
+  try {
+    var sb = v4mpvSB();
+    if (!sb) { v4mpvFabTries(20000); return; }  /* not signed in yet — try again soon */
+    const { data, error } = await sb.from('payment_verifications')
+      .select('firebase_id,id,invoice_no,amount,table_name,waiter_name,cashier_name,account_name,txn_ref,items,created_at,status')
+      .eq('shop_id', getShopId()).eq('status', 'pending')
+      .order('created_at', { ascending: false }).limit(100);
+    if (!error && data) v4mpvFabSync(data);
+    else if (error && (error.code === '42P01' || String(error.message || '').indexOf('does not exist') > -1)) {
+      var e0 = document.getElementById('v4mpvFab');
+      if (e0) e0.style.display = 'none';               /* SQL not run yet */
+    }
+  } catch (e) {}
+  v4mpvFabTries(60000);
+}
+
+/* the floating button opens the bills that contain mobile-paid
+   bills — filtered to the ones awaiting the owner's ✓ check */
+function v4mpvFabOpen() {
+  v4mpv.status = 'pending';
+  var sel = document.getElementById('v4mpvStatus');
+  if (sel) sel.value = 'pending';
+  if (typeof selectTab === 'function') selectTab(23, document.getElementById('stab23'));
+}
+
+async function v4mpvDeposit(r) {
+  var sb = v4mpvSB(); if (!sb || !r.account_id) return '';
+  try {
+    const { data: accs } = await sb.from('bank_accounts').select('id,firebase_id,name,balance').eq('shop_id', getShopId());
+    var acc = null;
+    (accs || []).forEach(function (a) { if ((a.firebase_id || a.id) === r.account_id) acc = a; });
+    if (!acc) return '';
+    var newBal = Number(acc.balance || 0) + Math.abs(Number(r.amount || 0));
+    var fid = 'bt_' + Date.now();
+    const { error: tErr } = await sb.from('bank_transactions').insert([{
+      firebase_id: fid, shop_id: getShopId(),
+      account_id: r.account_id, account_name: acc.name || r.account_name || 'Account',
+      description: '📱 Mobile payment · ' + (r.invoice_no || '') + (r.table_name ? ' · ' + r.table_name : '') + (r.txn_ref ? ' · TXN ' + r.txn_ref : ''),
+      amount: Math.abs(Number(r.amount || 0)), balance: newBal,
+      date: new Date().toISOString().slice(0, 10)
+    }]);
+    if (tErr) return '';
+    var upd = sb.from('bank_accounts').update({ balance: newBal });
+    var isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(r.account_id));
+    const { error: aErr } = await (isUuid ? upd.eq('id', r.account_id) : upd.eq('firebase_id', r.account_id));
+    if (aErr) return '';
+    return fid;
+  } catch (e) { return ''; }
+}
+
+async function v4mpvVerify(key) {
+  var r = v4mpv.rows.find(function (x) { return String(x.firebase_id || x.id) === String(key); });
+  if (!r) return;
+  var sb = v4mpvSB(); if (!sb) { alert('Database not connected.'); return; }
+  /* the ✓ decision is stamped with the owner's e-mail — capture it
+     lazily here too (v4mpvOpen/v4mpvLoad normally do it, but a direct
+     card tap after a refresh-without-load must not fall back to the
+     generic 'owner' stamp) */
+  if (!v4mpv.email) {
+    try { const { data: { user } } = await sb.auth.getUser(); v4mpv.email = user ? user.email : ''; } catch (e) {}
+  }
+  if (!await confirm('✅ Verify this payment as received?\n\n' + (r.invoice_no || '') + ' — ' + v4mpvMoney(r.amount) +
+      (r.account_name ? '\nAccount: ' + r.account_name : '') +
+      (v4mpv.cfg.deposit && r.account_id ? '\n\n→ A deposit will be added to ' + r.account_name + ' in the Bank tab.' : ''))) return;
+  var bankFid = '';
+  if (v4mpv.cfg.deposit && r.account_id) bankFid = await v4mpvDeposit(r);
+  var upd = {
+    status: 'verified',
+    verified_by: v4mpv.email || 'owner',
+    verified_at: new Date().toISOString(),
+    bank_txn_id: bankFid || (r.bank_txn_id || '')
+  };
+  try {
+    const { error } = await v4mpvQ(sb.from('payment_verifications').update(upd), r);
+    if (error) throw error;
+    r.status = 'verified'; r.verified_by = upd.verified_by; r.verified_at = upd.verified_at; r.bank_txn_id = upd.bank_txn_id;
+    v4mpvStats(); v4mpvRender(); v4mpvFabSync();
+    alert('✅ Verified.' + (bankFid ? '\n\nDeposit added to ' + r.account_name + ' — see the 🏦 Bank tab (balance updated to match the real account).' : ''));
+  } catch (e) { alert('❌ ' + (e.message || 'Could not verify.')); }
+}
+
+async function v4mpvLost(key) {
+  var r = v4mpv.rows.find(function (x) { return String(x.firebase_id || x.id) === String(key); });
+  if (!r) return;
+  var sb = v4mpvSB(); if (!sb) { alert('Database not connected.'); return; }
+  var doLoss = v4mpv.cfg.loss !== 'mark';
+  if (!await confirm('❌ Mark as NOT received?\n\n' + (r.invoice_no || '') + ' — ' + v4mpvMoney(r.amount) +
+      (doLoss ? '\n\n→ A loss of ' + v4mpvMoney(r.amount) + ' will be recorded in the Losses tab.' : ''))) return;
+  try {
+    const { error } = await v4mpvQ(sb.from('payment_verifications').update({ status: 'lost' }), r);
+    if (error) throw error;
+    if (doLoss) {
+      const { error: lErr } = await sb.from('losses').insert([{
+        firebase_id: 'loss_' + Date.now(),
+        shop_id: getShopId(),
+        product_id: '',
+        product_name: 'Mobile payment not received · ' + (r.invoice_no || '') + (r.table_name ? ' · ' + r.table_name : ''),
+        quantity: 1,
+        reason: 'theft',
+        total_loss: Number(r.amount || 0),
+        time: new Date().toISOString()
+      }]);
+      if (lErr) console.warn('Loss insert failed:', lErr.message);
+    }
+    r.status = 'lost';
+    v4mpvStats(); v4mpvRender(); v4mpvFabSync();
+  } catch (e) { alert('❌ ' + (e.message || 'Could not update.')); }
+}
+
+function v4mpvShare() {
+  var from = new Date(v4mpvStart('today')).getTime();
+  var rows = v4mpv.rows.filter(function (r) { return new Date(r.created_at || 0).getTime() >= from; });
+  if (!rows.length) { alert('No mobile payments today.'); return; }
+  var shop = (window.__currentShopRow && window.__currentShopRow.name) || 'SmartShop Pro';
+  var pp = rows.filter(function (x) { return x.status === 'pending'; });
+  var vp = rows.filter(function (x) { return x.status === 'verified'; });
+  var lp = rows.filter(function (x) { return x.status === 'lost'; });
+  var sum = function (a) { return a.reduce(function (s, x) { return s + Number(x.amount || 0); }, 0); };
+  var msg = '📱 MOBILE PAYMENTS — ' + shop + '\nToday\n\n' +
+    '🟡 Pending: ' + pp.length + ' · ' + v4mpvMoney(sum(pp)) + '\n' +
+    '✅ Verified: ' + vp.length + ' · ' + v4mpvMoney(sum(vp)) + '\n' +
+    '❌ Lost: ' + lp.length + ' · ' + v4mpvMoney(sum(lp)) + '\n';
+  if (pp.length) {
+    msg += '\nAwaiting your check:\n';
+    pp.slice(0, 10).forEach(function (x, i) {
+      msg += (i + 1) + '. ' + (x.invoice_no || '') + ' · ' + v4mpvMoney(x.amount) + (x.table_name ? ' · ' + x.table_name : '') + (x.waiter_name ? ' · ' + x.waiter_name : '') + '\n';
+    });
+  }
+  msg += '\n— SmartShop Pro';
+  if (typeof ssShareTo === 'function') ssShareTo(msg, { title: '📱 Mobile Payments — ' + shop });
+  else window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+}
+/* ── boot the floating-button poll (harmless before login: it retries) ── */
+v4mpvFabTries(3000);
+/* ═══════════════════════════════════════════════════════════════ MPV-ADMIN-END */
+
+</script>
 </body>
 </html>
 
