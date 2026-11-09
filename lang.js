@@ -1,3 +1,4 @@
+
 /* ═══════════════════════════════════════════════════════════════════
    SLP-LANG-1 · BizMaster language engine — English · አማርኛ · Afaan Oromoo
    ─────────────────────────────────────────────────────────────────
@@ -9091,3 +9092,232 @@ window.SLP_T = function (s) {
   );
 })();
 
+/* BIZ-LANG-10 · Items Sold Pack v1 (2026-11-08) — items-sold table
+   on the Sales tab: group by day/week/month/year/item, search, sort,
+   Excel/List/Grid views, share & CSV. English keys → am/om. */
+(function () {
+  var ADD = {
+    am: {
+      "🛒 Items Sold": "🛒 የተሸጡ ዕቃዎች",
+      "Items Sold": "የተሸጡ ዕቃዎች",
+      "By Day": "በቀን",
+      "By Week": "በሳምንት",
+      "By Month": "በወር",
+      "By Year": "በዓመት",
+      "Item Totals": "የዕቃ ጠቅላላ",
+      "Search item…": "ዕቃ ይፈልጉ…",
+      "Newest first": "አዲስ መጀመሪያ",
+      "Most quantity": "ትልቁ መጠን",
+      "Most revenue": "ትልቁ ገቢ",
+      "A-Z": "ከA-Z",
+      "Qty Sold": "የተሸጠ መጠን",
+      "Avg Price": "አማካይ ዋጋ",
+      "Revenue": "ገቢ",
+      "Orders": "ትዕዛዞች",
+      "First Sold": "መጀመሪያ የተሸጠ",
+      "Last Sold": "መጨረሻ የተሸጠ",
+      "Week": "ሳምንት",
+      "Month": "ወር",
+      "Year": "ዓመት",
+      "Date": "ቀን",
+      "No items sold in this period.": "በዚህ ጊዜ ውስጥ ዕቃ አልተሸጠም።",
+      "Nothing to export.": "ለማውጣት ምንም የለም።"
+    },
+    om: {
+      "🛒 Items Sold": "🛒 Wantoota bitaman",
+      "Items Sold": "Wantoota bitaman",
+      "By Day": "Guyyaa guyyaan",
+      "By Week": "Torootiin",
+      "By Month": "Ji'aatiin",
+      "By Year": "Waggaatiin",
+      "Item Totals": "Walakaa wantoota",
+      "Search item…": "Wantoo barbaadi…",
+      "Newest first": "Haaraa dura",
+      "Most quantity": "Baay'ina guddaa",
+      "Most revenue": "Galii guddaa",
+      "A-Z": "A-Z",
+      "Qty Sold": "Gatii bitame",
+      "Avg Price": "Giddugaleessaa gatii",
+      "Revenue": "Galii",
+      "Orders": "Adeemsa",
+      "First Sold": "Dura bitame",
+      "Last Sold": "Dhumarratti bitame",
+      "Week": "Toruu",
+      "Month": "Ji'a",
+      "Year": "Wagga",
+      "Date": "Guyyaa",
+      "No items sold in this period.": "Yeroo kana keessatti wanti hin bitamne.",
+      "Nothing to export.": "Baafachuuf waan hin jiru."
+    }
+  };
+  ['am','om'].forEach(function(L){
+    window.SLP_PHR = window.SLP_PHR || {};
+    var d = window.SLP_PHR[L] = window.SLP_PHR[L] || {};
+    for (var k in ADD[L]) if (d[k] == null) d[k] = ADD[L][k];
+  });
+  /* dynamic single-line texts from the items-sold flow */
+  window.SLP_PAT = window.SLP_PAT || [];
+  window.SLP_PAT.push(
+    { re: /^📦 (\d+) item line\(s\) · (.+) · (\d+) sales analyzed( · showing newest 2000)?$/, am: "📦 $1 የዕቃ መስመር(ዎች) · $2 · $3 ሽያጭ ተተንትኗል$4", om: "📦 $1 sarara wantoo · $2 · gurgurtii $3 qoratame$4" },
+    { re: /^(\d+) sold$/, am: "$1 ተሽጧል", om: "$1 bitameera" },
+    { re: /^(\d+) orders$/, am: "$1 ትዕዛዞች", om: "$1 adeemsa" },
+    { re: /^Week of (.+)$/, am: "የ$1 ሳምንት", om: "Torri $1" },
+    { re: /^… and (\d+) more line\(s\)$/, am: "… እና ተጨማሪ $1 መስመር(ዎች)", om: "… fi dabalataan sararoota $1" },
+    { re: /^Page (\d+) \/ (\d+) · (\d+) line\(s\)$/, am: "ገጽ $1 / $2 · $3 መስመር(ዎች)", om: "Fuula $1 / $2 · sararoota $3" }
+  );
+})();
+/* BIZ-LANG-13 · Mobile Payment Verification Pack v3 (2026-11-09)
+   V3 (user design): the WAITER taps a 📱 Paid pill under the table
+   (no more walking to the till) → the confirmation reaches the
+   cashier's POS instantly (beep + blue badge + inbox with a
+   Load & Print button) → the cashier prints a completely NORMAL
+   receipt (v3 removed the v1/v2 pending watermark line — a
+   receipt goes home with the customer). In ADMIN a floating 📱
+   button appears only while mobile-paid bills are waiting; it
+   opens exactly those bills, each with a big ✓ check to confirm —
+   and the moment one is confirmed it leaves the cashier POS's
+   pending list. Rows sent by a waiter but not yet receipted show
+   as 🔵 WAITER (nothing to check yet). English keys → am/om. */
+(function () {
+  var ADD = {
+    am: {
+      "📱 Mobile Pay": "📱 የሞባይል ክፍያ",
+      "📱 Mobile Payments": "📱 የሞባይል ክፍያዎች",
+      "✅ Verified": "✅ ተረጋገጠ",
+      "❌ Lost": "❌ ጠፋ",
+      "🟡 Pending": "🟡 በመጠበቅ ላይ",
+      "🟡 PENDING": "🟡 በመጠበቅ ላይ",
+      "✅ VERIFIED": "✅ ተረጋገጠ",
+      "❌ LOST": "❌ ጠፋ",
+      "🔵 WAITER": "🔵 ኋላሽን",
+      "🟡 Pending (today)": "🟡 በመጠበቅ ላይ (ዛሬ)",
+      "✅ Verified (today)": "✅ ተረጋገጠ (ዛሬ)",
+      "❌ Lost (today)": "❌ ጠፋ (ዛሬ)",
+      "Paid to which account?": "ለየትኛው አካውንት ተከፍሏል?",
+      "TXN reference (optional — from customer's live app)": "የግብይት ቁጥር (አማራጭ — ከደንበኛው መተግበሪያ)",
+      "Waiter (who saw the payment)": "ኋላሽን (ክፍያውን ያየው)",
+      "⚙️ Options": "⚙️ ምርጫዎች",
+      "Require waiter name": "የኋላሽን ስም ያስፈልጋል",
+      "When ❌ Not received": "❌ አልደረሰም ሲል",
+      "Record a loss": "ኪሳራ መዝገብ",
+      "Mark lost only": "ጠፍቷል ብቻ ማለት",
+      "✅ Verified → bank deposit": "✅ ሲረጋገጥ → ወደ ባንክ ግብይት",
+      "✓ Confirm received": "✓ ገንዘቡ ደረሰ",
+      "Not received": "አልደረሰም",
+      "🔵 Waiter sent": "🔵 በኋላሽን ተልኳል",
+      "🔵 waiting for the cashier to print the receipt": "🔵 ካሽየሩ ደረሰኙን እንዲያትም በመጠበቅ ላይ",
+      "✓ Sent to cashier": "✓ ለካሽየሩ ተልኳል",
+      "📱 Paid — receipt pending": "📱 ተከፍሏል — ደረሰኝ በመጠበቅ ላይ",
+      "📱 Waiter confirmations": "📱 የኋላሽን ማረጋገጫዎች",
+      "Tap a bill to load it and print the customer's receipt.": "ሂሳቡን ጫን በማድረግ የደንበኛውን ደረሰኝ ያትሙ።",
+      "No waiter confirmations right now.": "በዚህ ጊዜ የኋላሽን ማረጋገጫ የለም።",
+      "🖨️ Load & Print Receipt": "🖨️ አንስተህ ደረሰኝ አትም",
+      "No mobile payments yet.": "እስካሁን የሞባይል ክፍያ የለም።",
+      "No mobile payments today.": "ዛሬ የሞባይል ክፍያ የለም።",
+      "No mobile payments in this filter.": "በዚህ ማጣሪያ የሞባይል ክፍያ የለም።",
+      "None pending.": "በመጠበቅ ላይ የለም።",
+      "❌ not received · loss recorded": "❌ አልደረሰም · ኪሳራ ተመዝግቧል",
+      "Loading accounts…": "አካውንቶችን በመጫን ላይ…",
+      "📱 Mobile (no account set)": "📱 ሞባይል (አካውንት አልተቀመጠም)",
+      "❌ Could not read the bill — try again.": "❌ ሂሳቡን ማንበብ አልተቻለም — እንደገና ይሞክሩ።",
+      "❌ Could not load the bill — try again.": "❌ ሂሳቡን መጫን አልተቻለም — እንደገና ይሞክሩ።",
+      "This Month": "በዚህ ወር",
+      "Verification is always done here by you, the owner — the cashier POS only records payments and can never verify one. The POS reads these options instantly.": "ማረጋገጥ ሁልጊዜ እዚህ በእርስዎ (ባለቤቱ) ብቻ ይደረጋል — የካሽየሩ POS ክፍያዎችን ብቻ ይመዘግባል፣ በጭራሽ ማረጋገጥ አይችልም። POS እነዚህን ምርጫዎች ወዲያውኑ ያነብታል።"
+    },
+    om: {
+      "📱 Mobile Pay": "📱 Kaffaltii moobiilaa",
+      "📱 Mobile Payments": "📱 Kaffaltii moobiilaa",
+      "✅ Verified": "✅ Mirkanaa'e",
+      "❌ Lost": "❌ Bade",
+      "🟡 Pending": "🟡 Eegamaa",
+      "🟡 PENDING": "🟡 Eegamaa",
+      "✅ VERIFIED": "✅ Mirkanaa'e",
+      "❌ LOST": "❌ Bade",
+      "🔵 WAITER": "🔵 Tajaajilaa",
+      "🟡 Pending (today)": "🟡 Eegamaa (har'a)",
+      "✅ Verified (today)": "✅ Mirkanaa'e (har'a)",
+      "❌ Lost (today)": "❌ Bade (har'a)",
+      "Paid to which account?": "Akkaawuntii kamiitti kaffalame?",
+      "TXN reference (optional — from customer's live app)": "Lakkaddasa dalagaa (filannoo — appii miseensaa irraa)",
+      "Waiter (who saw the payment)": "Tajaajilaa (kaffalaa argate)",
+      "⚙️ Options": "⚙️ Filannoo",
+      "Require waiter name": "Maqaa tajaajilaa barbaachisa",
+      "When ❌ Not received": "❌ Hin geenyamne yeroo",
+      "Record a loss": "Faallii galmeessi",
+      "Mark lost only": "Bade qofa jedhi",
+      "✅ Verified → bank deposit": "✅ Yeroo mirkanaa'e → galchii baankii",
+      "✓ Confirm received": "✓ Qarshii dhuufe",
+      "Not received": "Hin geenyamne",
+      "🔵 Waiter sent": "🔵 Tajaajilaan ergame",
+      "🔵 waiting for the cashier to print the receipt": "🔵 Kashiiniin rasiishii maxxansuu eegataa jira",
+      "✓ Sent to cashier": "✓ Kashiiniitti ergameera",
+      "📱 Paid — receipt pending": "📱 Kaffalame — rasiishii eegamaa",
+      "📱 Waiter confirmations": "📱 Mirkaneessa tajaajiltootaa",
+      "Tap a bill to load it and print the customer's receipt.": "Billii tuqaadhuuni rasiishii miseensaa maxxansi.",
+      "No waiter confirmations right now.": "Amma mirkaneessa tajaajilaa hin jiru.",
+      "🖨️ Load & Print Receipt": "🖨️ Fe'iitii rasiishii maxxansi",
+      "No mobile payments yet.": "Amma kaffaltii moobiilaa hin jiru.",
+      "No mobile payments today.": "Har'a kaffaltii moobiilaa hin jiru.",
+      "No mobile payments in this filter.": "Filannoo kana keessatti kaffaltii moobiilaa hin jiru.",
+      "None pending.": "Eegamaa hin jiru.",
+      "❌ not received · loss recorded": "❌ Hin geenyamne · faallii galmeeffameera",
+      "Loading accounts…": "Akkaawuntii fe'annaawaa…",
+      "📱 Mobile (no account set)": "📱 Moobiilaa (akkaawuntii hin qabamu)",
+      "❌ Could not read the bill — try again.": "❌ Hisaabaa dubbisuu hin dandeenye — irra deebii'ii yaali.",
+      "❌ Could not load the bill — try again.": "❌ Hisaabaa fe'uu hin dandeenye — irra deebii'ii yaali.",
+      "This Month": "Ji'a kana",
+      "Verification is always done here by you, the owner — the cashier POS only records payments and can never verify one. The POS reads these options instantly.": "Mirkaneessi yeroo hunduma asitti kan ati, abbaan qabaa, qofa raawwata — POSiin kashii kaffaltii qofa galmeeffa, ofiin of hin mirkaneessu. POS filannoo kana yeroo dhugaa dubbisa."
+    }
+  };
+  ['am','om'].forEach(function(L){
+    var d = window.SLP_PHR = window.SLP_PHR || {};
+    d = d[L] = d[L] || {};
+    for (var k in ADD[L]) if (d[k] == null) d[k] = ADD[L][k];
+  });
+  /* dynamic single-line texts from the mobile-payment flow.
+     NOTE: the language engine collapses ALL whitespace (incl. \n) to
+     single spaces BEFORE matching, so patterns must be written in the
+     NORMALIZED form; the REPLACEMENT may contain \n — it goes straight
+     to alert()/confirm() which render multi-line again. */
+  window.SLP_PAT = window.SLP_PAT || [];
+  window.SLP_PAT.push(
+    /* POS badges — cashier's to-print list + pending-verification count */
+    { re: /^📱 (\d+) table payments? to print$/, am: "📱 $1 የጠረጴዛ ክፍያዎች ሊታተሙ አሉ", om: "📱 $1 kaffaltii taabalaa maxxansuuf" },
+    { re: /^🟡 (\d+) mobile payments? awaiting owner ✓$/, am: "🟡 $1 የሞባይል ክፍያ የባለቤት ማረጋገጫ በመጠበቅ ላይ ✓", om: "🟡 Kaffaltii moobiilaa $1 mirkaneessa abbaa qabataa eegataa ✓" },
+    /* waiter pill under a busy table (amount follows) */
+    { re: /^📱 Paid · (.+)$/, am: "📱 ተከፍሏል · $1", om: "📱 Kaffalame · $1" },
+    /* waiter confirm dialog — one tap sends the confirmation */
+    { re: /^📱 TABLE (.+) — customer paid by mobile\? Bill: (.+) \((\d+) rounds?\) Items: (.+) A confirmation will be sent to the cashier to print the receipt\.$/, am: "📱 ሠንጠረዥ $1 — ደንበኛው በሞባይል ከፍሏል?\n\nሂሳብ፡ $2 ($3 ዙር)\nዕቃዎች፡ $4\n\nማረጋገጫ ወደ ካሽየሩ ተልኳል ደረሰኙን እንዲያትም ይደረጋል።", om: "📱 Taabala $1 — miseensi moobiilaan kaffalee?\n\nHisaaba: $2 ($3 raawundii)\nWantoota: $4\n\nMirkaneessi kashiiniitti ergamee rasiishii akka maxxansu taasifama." },
+    { re: /^✅ Sent to cashier — TABLE (.+) · (.+)$/, am: "✅ ለካሽየሩ ተልኳል — ሠንጠረዥ $1 · $2", om: "✅ Kashiiniitti ergameera — Taabala $1 · $2" },
+    /* cashier's instant toast when a waiter sends the confirmation */
+    { re: /^📱 TABLE (.+) paid by mobile — (.+) \(waiter (.+)\)$/, am: "📱 ሠንጠረዥ $1 በሞባይል ተከፍሏል — $2 (ኋላሽን $3)", om: "📱 Taabala $1 moobiilaan kaffalame — $2 (tajaajilaa $3)" },
+    { re: /^✅ Loaded TABLE (.+) — tap ✅ Complete to print the receipt\.$/, am: "✅ ሠንጠረዥ $1 ተጭኗል — ደረሰኙን ለማተም ✅ Completeን ይንኩ።", om: "✅ Taabala $1 fe'ameera — rasiishii maxxansuuf ✅ Complete tuqaadhu." },
+    { re: /^Load the bill of TABLE (.+) \((.+)\)\? The current cart will be replaced\.$/, am: "የሠንጠረዥ $1 ሂሳብ ($2) ይጫን?\nየአሁኑ ጋሪ ይተካል።", om: "Hisaaba Taabala $1 ($2) fe'uu barbaaddaa?\nKaartii ammaa bakka bu'a." },
+    { re: /^No unpaid orders left for TABLE (.+) — it may already be settled\.$/, am: "ለሠንጠረዥ $1 ያልተከፈለ ትዕዛዝ አልቀረም — ተከፍሎ ሊሆን ይችላል።", om: "Taabala $1 irratti kaffalamaa hin hafne — duran xumuramuu danda'a." },
+    { re: /^Remove the confirmation for TABLE (.+)\? Only do this if it was already handled or sent twice\.$/, am: "ለሠንጠረዥ $1 ያለውን ማረጋገጫ ያስወግዱ?\nቀድሞ መስተካከሉን ወይም ሁለት ጊዜ መላኩን ብቻ ከሆነ ያድርጉት።", om: "Mirkaneessa Taabala $1 haquu barbaaddaa?\nKun qofa yoo duran malaame yoo lamaan ergame ta'e godhi." },
+    { re: /^❌ Could not send the confirmation — check the network\.$/, am: "❌ ማረጋገጫውን መላክ አልተቻለም — ኔትወርኩን ይፈትሹ።", om: "❌ Mirkaneessa erguu hin dandeenye — neetwoorkii mirkaneessi." },
+    /* owner-decision toasts on the cashier POS */
+    { re: /^✅ (INV-[\w-]+|mpv_\d+) verified — (.+)$/, am: "✅ $1 ተረጋገጠ — $2", om: "✅ $1 mirkanaa'e — $2" },
+    { re: /^❌ (INV-[\w-]+|mpv_\d+) marked NOT received — (.+)$/, am: "❌ $1 አልደረሰም ተብሏል — $2", om: "❌ $1 hin geenyamne jedhame — $2" },
+    /* owner ✓ confirm dialog — full variant (account + deposit hint) */
+    { re: /^✅ Verify this payment as received\? (.+) — (.+) Account: (.+) → A deposit will be added to (.+) in the Bank tab\.$/, am: "✅ ገንዘቡ ደርሷልና ይህን ክፍያ ያረጋግጡ?\n\n$1 — $2\nአካውንት: $3\n\n→ ግብይት ወደ $4 በ🏦 ባንክ ሜኑ ይታከላል።", om: "✅ Maallaqiin kun ga'eeraa jedhii kaffaltii kana mirkaneessi?\n\n$1 — $2\nAkkaawuntii: $3\n\n→ Galchiin $4tti cuqaasa 🏦 Baankii keessatti dabalata." },
+    /* owner ✓ confirm dialog — account, no deposit hint */
+    { re: /^✅ Verify this payment as received\? (.+) — (.+) Account: (.+)$/, am: "✅ ገንዘቡ ደርሷልና ይህን ክፍያ ያረጋግጡ?\n\n$1 — $2\nአካውንት: $3", om: "✅ Maallaqiin kun ga'eeraa jedhii kaffaltii kana mirkaneessi?\n\n$1 — $2\nAkkaawuntii: $3" },
+    /* owner ✓ confirm dialog — plain */
+    { re: /^✅ Verify this payment as received\? (.+) — (.+)$/, am: "✅ ገንዘቡ ደርሷልና ይህን ክፍያ ያረጋግጡ?\n\n$1 — $2", om: "✅ Maallaqiin kun ga'eeraa jedhii kaffaltii kana mirkaneessi?\n\n$1 — $2" },
+    /* owner ❌ confirm — loss will be recorded */
+    { re: /^❌ Mark as NOT received\? (.+) — (.+) → A loss of (.+) will be recorded in the Losses tab\.$/, am: "❌ አልደረሰም ሆኖ ይምረጡ?\n\n$1 — $2\n\n→ የ$3 ኪሳራ በኪሳራ ሜኑ ይመዘገባል።", om: "❌ Hin geenyamne ta'uu filadhu?\n\n$1 — $2\n\n→ Faallii $3 galmeessa faallii keessatti galmeeffama." },
+    /* owner ❌ confirm — mark lost only */
+    { re: /^❌ Mark as NOT received\? (.+) — (.+)$/, am: "❌ አልደረሰም ሆኖ ይምረጡ?\n\n$1 — $2", om: "❌ Hin geenyamne ta'uu filadhu?\n\n$1 — $2" },
+    /* ✓ success alert — with auto-deposit */
+    { re: /^✅ Verified\. Deposit added to (.+) — see the 🏦 Bank tab \(balance updated to match the real account\)\.$/, am: "✅ ተረጋገጠ።\n\nግብይት ወደ $1 ታክሏል — 🏦 ባንክ ሜኑን ይመልከቱ (ሚዛኑ ከእውነተኛው አካውንት ጋር ተመሳሳይ ሆኗል)።", om: "✅ Mirkanaa'e.\n\nGalchiin $1tti dabalame — cuqaasa 🏦 Baankii ilaali (miilaan akkaawuntii dhugaa waliin wal qabateera)." },
+    /* ✓ success alert — no deposit */
+    { re: /^✅ Verified\.$/, am: "✅ ተረጋገጠ።", om: "✅ Mirkanaa'e." },
+    /* verified card footnote: who verified it (+ deposit) */
+    { re: /^✅ by (.+) · 💳 deposited to Bank tab$/, am: "✅ በ$1 · 💳 ወደ ባንክ ገብቷል", om: "✅ $1 tiin · 💳 Baankiiatti galchameera" },
+    { re: /^✅ by (.+)$/, am: "✅ በ$1", om: "✅ $1 tiin" },
+    /* POS badge tap — today's pending list */
+    { re: /^📱 Mobile payments today (.*)$/, am: "📱 የዛሬ የሞባይል ክፍያዎች\n\n$1", om: "📱 Kaffaltii moobiilaa har'aa\n\n$1" },
+    { re: /^⚠️ (\d+) payments? waiting for your check — compare with your account history, then ✓ or ❌\.$/, am: "⚠️ $1 ክፍያ የእርስዎ ፍተሻ በመጠበቅ ላይ — ከአካውንት ታሪክዎ ጋር ያወዳድሩ፣ ከዚያ ✓ ወይም ❌።", om: "⚠️ Kaffaltii $1 yaada kee eegaa — seenaa akkaawuntii keessaan wal biraansi, sana booda ✓ ykn ❌." }
+  );
+})();
