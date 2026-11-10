@@ -584,6 +584,310 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
 </head>
 
 <body>
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   SSAlert v1 · UNIFIED ALERT ENGINE — sound + vibration + voice
+   ─────────────────────────────────────────────────────────────
+   EVERY alert in the system goes through SSAlert.fire(type, opts):
+     · a synthesized sound (10 selectable sounds),
+     · a vibration (selectable intensity + amount),
+     · an optional SPOKEN voice (text-to-speech),
+     · a big banner for cross-device alerts.
+   Controlled per device in Settings → 🔔 Alerts: volume, repeat,
+   a different sound per alert, vibration intensity & length, and
+   the spoken-voice switch. Saved in localStorage 'ssAlertCfg'.
+   ═══════════════════════════════════════════════════════════════ */
+window.SSAlert = (function () {
+  var LS = 'ssAlertCfg';
+
+  var TYPES = {
+    generic:    { icon: '🔊', sound: 'beep',   vib: 1, prio: 1, name: 'General beep' },
+    waiterCall: { icon: '🔔', sound: 'alarm',  vib: 3, prio: 3, name: 'Waiter / table call' },
+    qrOrder:    { icon: '🛎', sound: 'bell',   vib: 2, prio: 2, name: 'New QR order' },
+    newOrder:   { icon: '🧑‍🍳', sound: 'alarm',  vib: 3, prio: 3, name: 'New kitchen order' },
+    chat:       { icon: '💬', sound: 'ping',   vib: 1, prio: 1, name: 'Chat message' },
+    lowStock:   { icon: '⚠️', sound: 'buzz',   vib: 1, prio: 2, name: 'Low stock' },
+    stockBlock: { icon: '⛔', sound: 'buzz',   vib: 2, prio: 2, name: 'Stock blocked / warning' },
+    sale:       { icon: '✅', sound: 'cash',   vib: 1, prio: 1, name: 'Sale completed' },
+    mpvConfirm: { icon: '📱', sound: 'bell',   vib: 3, prio: 3, name: 'Mobile payment confirmed by waiter' },
+    mpvSent:    { icon: '✅', sound: 'chime',  vib: 1, prio: 1, name: 'Confirmation sent to cashier' },
+    mpvOwnerOk: { icon: '✅', sound: 'chime',  vib: 1, prio: 1, name: 'Owner verified a payment' },
+    mpvOwnerNo: { icon: '❌', sound: 'buzz',   vib: 2, prio: 2, name: 'Owner marked payment not received' },
+    newPay:     { icon: '📱', sound: 'alarm',  vib: 3, prio: 3, name: 'New mobile payment to verify (owner)' },
+    verified:   { icon: '✅', sound: 'chime',  vib: 1, prio: 1, name: 'Payment verified (owner)' },
+    lost:       { icon: '❌', sound: 'buzz',   vib: 2, prio: 2, name: 'Payment lost (owner)' }
+  };
+  var SOUNDS = [
+    ['beep', 'Beep (classic)'], ['chime', 'Success chime'], ['cash', 'Cash register'],
+    ['bell', 'Service bell'], ['ping', 'Soft ping'], ['double', 'Double beep'],
+    ['triple', 'Triple beep'], ['alarm', 'Urgent alarm'], ['buzz', 'Harsh buzz'],
+    ['siren', 'Rising siren']
+  ];
+  function soundIdOk(id) {
+    for (var i = 0; i < SOUNDS.length; i++) if (SOUNDS[i][0] === id) return true;
+    return false;
+  }
+
+  function defaults() {
+    return { on: true, vol: 85, reps: 2, vibOn: true, vibLevel: 2, vibLen: 2, tts: false, banner: true, sounds: {} };
+  }
+  function save(c) { try { localStorage.setItem(LS, JSON.stringify(c || cfg)); } catch (e) {} }
+  function load() {
+    var d = defaults(), first = false;
+    try {
+      var raw = localStorage.getItem(LS);
+      if (!raw) first = true;
+      var o = raw ? JSON.parse(raw) : {};
+      if (o && typeof o === 'object') {
+        if (typeof o.on === 'boolean') d.on = o.on;
+        if (typeof o.vol === 'number') d.vol = Math.max(0, Math.min(100, Math.round(o.vol)));
+        if (o.reps === 1 || o.reps === 2 || o.reps === 3) d.reps = o.reps;
+        if (typeof o.vibOn === 'boolean') d.vibOn = o.vibOn;
+        if (o.vibLevel >= 1 && o.vibLevel <= 3) d.vibLevel = o.vibLevel;
+        if (o.vibLen >= 1 && o.vibLen <= 3) d.vibLen = o.vibLen;
+        if (typeof o.tts === 'boolean') d.tts = o.tts;
+        if (typeof o.banner === 'boolean') d.banner = o.banner;
+        if (o.sounds && typeof o.sounds === 'object') {
+          for (var k in o.sounds) if (soundIdOk(o.sounds[k])) d.sounds[k] = o.sounds[k];
+        }
+      }
+    } catch (e) {}
+    if (first) {   /* one-time migration of the old v3.2 toggles */
+      try {
+        if (localStorage.getItem('posSound') === '0') d.on = false;
+        if (localStorage.getItem('posVibrate') === '0') d.vibOn = false;
+      } catch (e) {}
+      save(d);
+    }
+    return d;
+  }
+  var cfg = load();
+
+  /* ── audio ── */
+  function ctx() {
+    try {
+      var C = window.ssAudio || (window.ssAudio = new (window.AudioContext || window.webkitAudioContext)());
+      if (C && C.state === 'suspended') { try { C.resume(); } catch (e) {} }
+      return C;
+    } catch (e) { return null; }
+  }
+  try {   /* unlock audio on the first touch (browser autoplay policy) */
+    var unlock = function () { ctx(); };
+    document.addEventListener('pointerdown', unlock, { once: true, capture: true });
+    document.addEventListener('touchstart', unlock, { once: true, capture: true });
+  } catch (e) {}
+
+  function tone(C, freq, t0, dur, type, vol) {
+    var o = C.createOscillator(), g = C.createGain();
+    o.type = type || 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(Math.max(0.002, vol), t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(C.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  var LIB = {
+    beep:   function (C, t, v) { tone(C, 800, t, 0.16, 'sine', v); },
+    double: function (C, t, v) { tone(C, 880, t, 0.12, 'sine', v); tone(C, 880, t + 0.2, 0.12, 'sine', v); },
+    triple: function (C, t, v) { tone(C, 760, t, 0.11, 'sine', v); tone(C, 760, t + 0.18, 0.11, 'sine', v); tone(C, 760, t + 0.36, 0.11, 'sine', v); },
+    chime:  function (C, t, v) { [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) { tone(C, f, t + i * 0.09, 0.32, 'sine', v); }); },
+    cash:   function (C, t, v) { [1046.5, 1318.5, 1568, 2093].forEach(function (f, i) { tone(C, f, t + i * 0.06, 0.16, 'triangle', v); }); },
+    bell:   function (C, t, v) { tone(C, 1244, t, 0.65, 'sine', v); tone(C, 1865, t, 0.45, 'sine', v * 0.35); },
+    ping:   function (C, t, v) { tone(C, 1500, t, 0.1, 'sine', v * 0.7); },
+    alarm:  function (C, t, v) { for (var i = 0; i < 3; i++) { tone(C, 659, t + i * 0.32, 0.14, 'square', v * 0.45); tone(C, 988, t + i * 0.32 + 0.16, 0.14, 'square', v * 0.45); } },
+    buzz:   function (C, t, v) { tone(C, 220, t, 0.22, 'square', v * 0.55); tone(C, 165, t + 0.26, 0.24, 'square', v * 0.55); },
+    siren:  function (C, t, v) {
+      var o = C.createOscillator(), g = C.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(420, t);
+      o.frequency.linearRampToValueAtTime(1250, t + 0.45);
+      o.frequency.linearRampToValueAtTime(420, t + 0.9);
+      g.gain.setValueAtTime(Math.max(0.002, v * 0.8), t);
+      g.gain.setValueAtTime(Math.max(0.002, v * 0.8), t + 0.85);
+      g.gain.linearRampToValueAtTime(0.0001, t + 1.1);
+      o.connect(g); g.connect(C.destination);
+      o.start(t); o.stop(t + 1.15);
+    }
+  };
+
+  function playSound(id, volOverride) {
+    try {
+      if (!cfg.on) return;
+      var C = ctx(); if (!C) return;
+      var v = Math.max(0, Math.min(1, (typeof volOverride === 'number' ? volOverride : cfg.vol) / 100));
+      if (v <= 0.002) return;
+      var fn = LIB[id] || LIB.beep;
+      var reps = Math.max(1, Math.min(3, cfg.reps || 1));
+      var t = C.currentTime + 0.02;
+      for (var i = 0; i < reps; i++) fn(C, t + i * 1.05, v);
+    } catch (e) {}
+  }
+
+  /* ── vibration (intensity + amount) ── */
+  function vibPattern(level, len) {
+    var base = ({ 1: [90], 2: [230], 3: [420, 150, 420] })[level] || [230];
+    var mult = [0.6, 1, 1.5][(len || 2) - 1] || 1;
+    var p = [];
+    for (var r = 0; r < (len || 2); r++) {
+      if (r) p.push(200);
+      for (var i = 0; i < base.length; i++) p.push(Math.round(base[i] * mult));
+    }
+    return p;
+  }
+  function vibrate(levelOverride) {
+    try {
+      if (!cfg.vibOn || !navigator.vibrate) return;
+      navigator.vibrate(vibPattern(levelOverride || cfg.vibLevel, cfg.vibLen));
+    } catch (e) {}
+  }
+  function haptic() {   /* tiny local feedback (button taps) */
+    try { if (cfg.vibOn && navigator.vibrate) navigator.vibrate(Math.round(35 * cfg.vibLevel / 2)); } catch (e) {}
+  }
+
+  /* ── spoken voice ── */
+  function speak(text) {
+    try {
+      if (!cfg.tts || !text || !window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(String(text).slice(0, 140));
+      u.volume = Math.max(0.1, Math.min(1, cfg.vol / 100));
+      u.rate = 0.95;
+      u.lang = (navigator.language || 'en');
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  /* ── the big banner for cross-device alerts ── */
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function banner(type, title, text) {
+    try {
+      if (!cfg.banner) return;
+      var T = TYPES[type] || TYPES.generic;
+      var prio = T.prio || 1;
+      var old = document.getElementById('ssAlertBanner'); if (old) old.remove();
+      var bg = prio === 3 ? '#7f1d1d' : (prio === 2 ? '#78350f' : '#1e293b');
+      var bd = prio === 3 ? '#ef4444' : (prio === 2 ? '#f59e0b' : '#38bdf8');
+      var d = document.createElement('div');
+      d.id = 'ssAlertBanner';
+      d.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:99999;max-width:460px;width:calc(100% - 24px);background:' + bg + ';color:#fff;border:2px solid ' + bd + ';border-radius:14px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.45);font-family:system-ui,-apple-system,sans-serif;cursor:pointer;';
+      if (prio === 3) d.style.animation = 'ssaPulse 1s infinite';
+      d.innerHTML = '<div style="display:flex;gap:10px;align-items:flex-start;">' +
+        '<span style="font-size:26px;line-height:1.1;">' + T.icon + '</span>' +
+        '<div style="min-width:0;flex:1;">' +
+        '<b style="font-size:15px;display:block;line-height:1.3;">' + esc(title || T.name) + '</b>' +
+        (text ? '<span style="font-size:13px;color:#e2e8f0;display:block;margin-top:3px;line-height:1.5;">' + esc(text) + '</span>' : '') +
+        '</div><span style="color:#94a3b8;font-size:18px;line-height:1;">✖</span></div>';
+      d.onclick = function () { try { d.remove(); } catch (e) {} };
+      document.body.appendChild(d);
+      var ms = prio === 3 ? 9000 : (prio === 2 ? 7000 : 5000);
+      setTimeout(function () { try { d.remove(); } catch (e) {} }, ms);
+    } catch (e) {}
+  }
+
+  function fire(type, opts) {
+    try {
+      var o = opts || {};
+      var T = TYPES[type] || TYPES.generic;
+      if (!cfg.on) return;
+      playSound(cfg.sounds[type] || T.sound);
+      vibrate(T.vib);
+      speak(o.speak || o.title || T.name);
+      if (o.banner !== false) banner(type, o.title, o.text);
+    } catch (e) {}
+  }
+
+  /* ── shared settings panel (POS · Admin · Kitchen all mount it) ── */
+  function settingsHtml(types) {
+    function row(label, ctrl) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;flex-wrap:wrap;">' +
+        '<span style="font-size:12px;color:#64748b;">' + label + '</span>' + ctrl + '</div>';
+    }
+    function sel(id, opts, cur) {
+      var h = '<select id="sa' + id + '" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;max-width:175px;background:#fff;color:#0f172a;">';
+      opts.forEach(function (o) { h += '<option value="' + o[0] + '"' + (cur === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; });
+      return h + '</select>';
+    }
+    function chk(id, on) { return '<input type="checkbox" id="sa' + id + '"' + (on ? ' checked' : '') + ' onchange="SSAlert.onPanelChange()">'; }
+    var h = '';
+    h += row('🔔 Alerts enabled', chk('On', cfg.on));
+    h += row('🔊 Volume — <b id="saVolV">' + cfg.vol + '%</b>', '<input type="range" id="saVol" min="0" max="100" step="5" value="' + cfg.vol + '" style="width:130px;" oninput="SSAlert.onVolSlide()" onchange="SSAlert.onPanelChange()">');
+    h += row('🔁 Repeat sound', sel('Reps', [['1', '1 time'], ['2', '2 times'], ['3', '3 times']], cfg.reps));
+    h += row('📳 Vibration on', chk('Vib', cfg.vibOn));
+    h += row('&nbsp;&nbsp;· Intensity', sel('VibLevel', [['1', 'Light'], ['2', 'Medium'], ['3', 'Strong']], cfg.vibLevel));
+    h += row('&nbsp;&nbsp;· Amount (length)', sel('VibLen', [['1', 'Short'], ['2', 'Normal'], ['3', 'Long']], cfg.vibLen));
+    h += row('🗣️ Speak alerts aloud (voice)', chk('Tts', cfg.tts));
+    h += row('🪧 Big pop-up banners', chk('Banner', cfg.banner));
+    var tl = (types || []).filter(function (t) { return TYPES[t]; });
+    if (tl.length) {
+      h += '<details style="margin-top:4px;"><summary style="font-size:12px;color:#2563eb;cursor:pointer;padding:4px 0;">🎵 Choose a different sound per alert</summary>';
+      tl.forEach(function (t) {
+        h += row(TYPES[t].icon + ' ' + TYPES[t].name, sel('S_' + t, SOUNDS, cfg.sounds[t] || TYPES[t].sound));
+      });
+      h += '</details>';
+    }
+    h += '<button type="button" onclick="SSAlert.test()" style="width:100%;margin-top:6px;padding:9px;border:none;border-radius:9px;background:#0d64f0;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">▶ Test my alert settings</button>';
+    return h;
+  }
+  function mountPanel(types) {
+    var box = document.getElementById('saSettingsBox');
+    if (!box) return;
+    box.setAttribute('data-types', (types || []).join(','));
+    box.innerHTML = settingsHtml(types);
+  }
+  function g(id) { return document.getElementById('sa' + id); }
+  function onVolSlide() { var e = g('Vol'), v = g('VolV'); if (v && e) v.textContent = e.value + '%'; }
+  function onPanelChange() { readPanel(); }
+  function readPanel() {
+    try {
+      var e;
+      if ((e = g('On'))) cfg.on = e.checked;
+      if ((e = g('Vol'))) cfg.vol = Math.max(0, Math.min(100, parseInt(e.value, 10) || 0));
+      if ((e = g('Reps'))) cfg.reps = parseInt(e.value, 10) || 1;
+      if ((e = g('Vib'))) cfg.vibOn = e.checked;
+      if ((e = g('VibLevel'))) cfg.vibLevel = parseInt(e.value, 10) || 2;
+      if ((e = g('VibLen'))) cfg.vibLen = parseInt(e.value, 10) || 2;
+      if ((e = g('Tts'))) cfg.tts = e.checked;
+      if ((e = g('Banner'))) cfg.banner = e.checked;
+      var box = document.getElementById('saSettingsBox');
+      if (box) {
+        var types = (box.getAttribute('data-types') || '').split(',').filter(function (x) { return x; });
+        types.forEach(function (t) {
+          var s = g('S_' + t);
+          if (s && soundIdOk(s.value)) {
+            if (s.value === (TYPES[t] || {}).sound) delete cfg.sounds[t];
+            else cfg.sounds[t] = s.value;
+          }
+        });
+      }
+      save();
+    } catch (e) {}
+  }
+  function test() {
+    readPanel();
+    fire('generic', { title: '🔔 Alert test', text: 'Sound · vibration · voice · banner at your current settings.' });
+  }
+
+  try {
+    if (document.head && !document.getElementById('ssaStyle')) {
+      var st = document.createElement('style');
+      st.id = 'ssaStyle';
+      st.textContent = '@keyframes ssaPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}50%{box-shadow:0 0 0 16px rgba(239,68,68,0)}}';
+      document.head.appendChild(st);
+    }
+  } catch (e) {}
+
+  return {
+    fire: fire, playSound: playSound, vibrate: vibrate, haptic: haptic, speak: speak,
+    test: test, settingsHtml: settingsHtml, mountPanel: mountPanel, readPanel: readPanel,
+    onPanelChange: onPanelChange, onVolSlide: onVolSlide,
+    cfg: function () { return cfg; },
+    save: function () { save(); }
+  };
+})();
+
+</script>
+
 
 
         
@@ -653,7 +957,6 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
         <button class="login-btn" onclick="login()">🔓 Sign In</button>
         
         <button class="btn btn-outline" onclick="showChangePassword()" style="margin-top:8px;">🔑 Change Password</button>
-        <p onclick="location.href='staff.html'" style="font-size:12px; color:#2563eb; margin-top:14px; cursor:pointer; text-decoration:underline; font-weight:600;">🚪 Staff Door — pick your name & workplace</p>
         <div id="changePwdBox" style="display:none; margin-top:12px;">
             <input type="password" id="oldPwd" placeholder="Old Password">
             <input type="password" id="newPwd" placeholder="New Password">
@@ -917,6 +1220,17 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
             </div>
         </div>
 
+        <!-- MPV-3 · mobile payment details (waiter saw it → cashier records it;
+             the OWNER verifies it later from Admin → 📱 Mobile Pay) -->
+        <div id="mobileFields" style="display:none;margin-bottom:8px;padding:10px;border:1px solid #cbd5e1;border-radius:10px;background:#f8fafc">
+          <label style="font-weight:bold;font-size:12px;display:block;margin-bottom:4px">📱 Paid to which account?</label>
+          <select id="mpvAccount" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:6px;background:#fff"><option value="">Loading accounts…</option></select>
+          <input type="text" id="mpvTxn" placeholder="🧾 TXN reference (optional — from customer's live app)" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;margin-bottom:6px">
+          <div id="mpvWaiterRow">
+            <select id="mpvWaiter" style="width:100%;padding:8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff"><option value=''>👤 Waiter (who saw the payment)</option></select>
+          </div>
+        </div>
+
         <!-- Sales Note -->
         <div style="margin-bottom:8px;">
             <input type="text" id="saleNote" class="form-input" placeholder="📝 Add a note (optional)">
@@ -1126,14 +1440,9 @@ body.dark .standard-dialog-btn-secondary { background:#334155; color:#e2e8f0; bo
     <div class="modal-content" style="max-width:400px;">
         <h3 data-lang-key="settings">⚙️ Settings</h3>
         
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;">
-            <span>🔊 Sound on sale</span>
-            <input type="checkbox" id="soundToggle" onchange="saveSettings()">
-        </div>
-        
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;">
-            <span>📳 Vibrate on sale</span>
-            <input type="checkbox" id="vibrateToggle" onchange="saveSettings()">
+        <div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px;">
+            <div style="font-weight:bold;margin-bottom:2px;">🔔 Alerts — sound · vibration · voice</div>
+            <div id="saSettingsBox"></div>
         </div>
 
         <button class="btn btn-outline" id="changePinBtn" onclick="openChangePinModal()" style="display:none; margin-top:10px;">🔐 Change My PIN</button>
@@ -2157,13 +2466,12 @@ async function lookupCustomer() {
   // ===== SETTINGS =====
 
   function saveSettings() {
-    var sound = document.getElementById('soundToggle').checked;
-    var vibrate = document.getElementById('vibrateToggle').checked;
     var guidesEl = document.getElementById('recipeGuideToggle');
     var guides = guidesEl ? guidesEl.checked : (localStorage.getItem('posRecipeGuides') !== '0');
-    localStorage.setItem('posSound', sound ? '1' : '0');
-    localStorage.setItem('posVibrate', vibrate ? '1' : '0');
     localStorage.setItem('posRecipeGuides', guides ? '1' : '0');
+    /* 🔔 the whole alert system (volume, repeat, sounds, vibration
+       intensity & amount, spoken voice) saves itself here too */
+    try { if (window.SSAlert) window.SSAlert.readPanel(); } catch (e) {}
     filterProducts();
 }
 
@@ -2316,12 +2624,6 @@ function checkPinLockStatus() {
 function logout(){
     currentCashier=null;
     currentShiftId=null;
-    try {
-        localStorage.removeItem('posCashierId');
-        localStorage.removeItem('posCashierName');
-        localStorage.removeItem('posCashierRole');
-        window.__ssStaffDoorDone = false;
-    } catch(e) {}
     
     // ⚠️ DO NOT sign out — the owner session is this device's ID card (same as Kitchen).
     // Only "Unlink Device" (Settings) removes it.
@@ -2340,6 +2642,7 @@ function logout(){
     const { data, error } = await supabaseClient.from('settings').select('*').eq('shop_id', getShopId()).maybeSingle();
     if (error) { console.error('loadPosSettings error:', error.message); return; }
     if (!data) return;
+    try { if (typeof mpvParseConfig === 'function') mpvParseConfig(data.mpv_config); } catch (e) {}
     
     posSettings = {
         shopType: data.shop_type || 'retail',
@@ -2872,8 +3175,6 @@ function confirmKeypad(){
 
 function addToCart(prodId, qty) {
     qty = qty || 1;
-    // v3.3 HARD LOCK — a locked device cannot even start a sale.
-    if (window.POS_DEVICE_LOCKED) { alert('⛔ This device is locked by the shop owner.'); return; }
     var p = products.find(function(x) { return x.id === prodId; });
     if (!p) return;
 
@@ -2894,7 +3195,7 @@ function addToCart(prodId, qty) {
 
     // 🛡️ ZERO STOCK = ABSOLUTE BLOCK (non-virtual only)
     if (!isVirtual && (p.stock === 0 || p.stock === null)) {
-        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        try { if (window.SSAlert) window.SSAlert.fire('stockBlock', { banner: false }); } catch (e) {}
         showFloatingToast('⛔ ' + p.name + ' is OUT OF STOCK! Sale blocked.', true);
         return;
     }
@@ -2903,7 +3204,7 @@ function addToCart(prodId, qty) {
     var totalQty = (existing ? existing.qty : 0) + qty;
 
     if (!isVirtual && totalQty > p.stock) {
-        if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        try { if (window.SSAlert) window.SSAlert.fire('stockBlock', { banner: false }); } catch (e) {}
         if (p.stock === 1) showFloatingToast('⚠️ Only 1 ' + (p.unit || 'piece') + ' of ' + p.name + ' left!', true);
         else showFloatingToast('⚠️ Not enough stock! Only ' + p.stock + ' ' + (p.unit || '') + ' of ' + p.name + ' available.', true);
         return;
@@ -2919,8 +3220,8 @@ function addToCart(prodId, qty) {
     } else {
         cart.push({
             id: p.id, name: p.name, price: price, qty: qty,
-             unit: p.unit || '', stock: p.stock, costPrice: p.costPrice || 0,
-            isVirtual: isVirtual, station: p.station || ''
+            unit: p.unit || '', stock: p.stock, costPrice: p.costPrice || 0,
+            isVirtual: isVirtual, station: p.station || 'Kitchen'
         });
     }
 
@@ -2929,7 +3230,7 @@ function addToCart(prodId, qty) {
         showFloatingToast('⚠️ LOW STOCK: ' + p.name + ' — only ' + p.stock + ' ' + (p.unit || '') + ' left (limit: ' + reorder + ')!', true);
     }
 
-    if (navigator.vibrate) navigator.vibrate(50);
+    try { if (window.SSAlert) window.SSAlert.haptic(); } catch (e) {}
     var remaining = (!isVirtual && typeof p.stock === 'number') ? ' • ' + (p.stock - totalQty) + ' ' + (p.unit || '') + ' left' : '';
     showFloatingToast('🛒 ' + p.name + ' ×' + totalQty + ' in cart' + remaining, false);
     updateCart();
@@ -3079,6 +3380,7 @@ function toggleSplitMode() {
     document.getElementById('normalPaymentMode').style.display = splitMode ? 'none' : 'block';
     document.getElementById('splitPaymentMode').style.display = splitMode ? 'block' : 'none';
     document.getElementById('btnSplitToggle').textContent = splitMode ? '🔙 Single' : '🧾 Split';
+    if (window.mpvSyncFields) mpvSyncFields();
     if (splitMode) {
         document.getElementById('splitCash').value = '';
         document.getElementById('splitCard').value = '';
@@ -3098,6 +3400,7 @@ function updateSplitRemaining() {
     document.getElementById('splitRemaining').style.color = remaining <= 0 ? '#10b981' : '#ef4444';
     var showCreditFields = (parseFloat(document.getElementById('splitCredit').value) || 0) > 0;
     document.getElementById('splitCreditFields').style.display = showCreditFields ? 'block' : 'none';
+    if (window.mpvSyncFields) mpvSyncFields();
 }
 function selectPayment(method, btn) {
     normalSelectedPayment = method;
@@ -3105,6 +3408,7 @@ function selectPayment(method, btn) {
     for (var i = 0; i < btns.length; i++) { btns[i].classList.remove('selected'); }
     if (btn) btn.classList.add('selected');
     document.getElementById('creditFields').style.display = (method === 'credit') ? 'block' : 'none';
+    if (window.mpvSyncFields) mpvSyncFields();
 }
                 function checkout() {
         // 1. SECURITY CHECK: Block Managers/Owners from checkout
@@ -3126,10 +3430,9 @@ function selectPayment(method, btn) {
     var btn = document.getElementById('completePaymentBtn');
     if (btn) { btn.disabled = false; btn.textContent = '✅ Complete'; }
     document.getElementById('saleNote').value = '';
+    if (window.mpvResetFields) mpvResetFields();
 }
 async function completePayment() {
-    // v3.3 HARD LOCK — a locked device cannot complete any payment.
-    if (window.POS_DEVICE_LOCKED) { alert('⛔ This device is locked by the shop owner — payment blocked.'); return; }
     var btn = document.getElementById('completePaymentBtn');
     if (btn.disabled) return;              // ← ADD THIS LINE
     btn.disabled = true;
@@ -3275,6 +3578,16 @@ async function completePayment() {
 
 
         
+    // 📱 MPV-3 · record the mobile payment for OWNER verification (Admin-only).
+    //     The receipt itself stays completely normal — it goes home with the
+    //     customer, so it carries NO pending line (v3 removed it).
+    try {
+        var __mpvAmt = 0;
+        if (!splitMode && payments.length && payments[0].method === 'mobile') __mpvAmt = total;
+        else if (splitMode) payments.forEach(function (p) { if (p.method === 'mobile') __mpvAmt += p.amount; });
+        if (__mpvAmt > 0 && typeof mpvRecordVerification === 'function') await mpvRecordVerification(sale, __mpvAmt);
+    } catch (e) { console.warn('MPV record failed:', e); }
+
     // 4. Build Receipt
     var brand = window.shopBranding || { name: '', phone: '', address: '' };
     var now = new Date();
@@ -3320,8 +3633,8 @@ async function completePayment() {
         cashier: (currentCashier ? currentCashier.name : ''), orderType: currentOrderType,
         dateStr: dateStr, timeStr: timeStr };
     document.getElementById('receiptModal').classList.add('active');
-            playAlert();
-       ssChime();                             // ← ADD THIS LINE
+            try { if (window.SSAlert) window.SSAlert.fire('sale'); } catch (e) {}
+       /* ssChime replaced by the engine's configurable sale sound */
 
     // 5. AUTOMATIC LOYALTY POINTS
     if (customerPhone) {
@@ -3667,11 +3980,17 @@ async function loadRecentSalesForVoid() {
                         
 // ===== SOUND / VIBRATION ALERTS =====
 function playAlert() {
-    var sound = localStorage.getItem('posSound') !== '0';
-    var vibrate = localStorage.getItem('posVibrate') !== '0';
-    if (vibrate && navigator.vibrate) { navigator.vibrate(200); }
-    if (sound) {
-        try {
+    /* v4 · every alert now flows through SSAlert (sound + vibration +
+       optional spoken voice + banner). playAlert stays only as a
+       fallback for call sites the engine has not replaced yet. */
+    try {
+        if (window.SSAlert) { window.SSAlert.fire('generic', { banner: false }); return; }
+    } catch (e) {}
+    try {
+        var vibrate = localStorage.getItem('posVibrate') !== '0';
+        if (vibrate && navigator.vibrate) { navigator.vibrate(200); }
+        var sound = localStorage.getItem('posSound') !== '0';
+        if (sound) {
             var ctx = new (window.AudioContext || window.webkitAudioContext)();
             var osc = ctx.createOscillator();
             var gain = ctx.createGain();
@@ -3682,8 +4001,8 @@ function playAlert() {
             gain.connect(ctx.destination);
             osc.start();
             osc.stop(ctx.currentTime + 0.15);
-        } catch(e) {}
-    }
+        }
+    } catch(e) {}
 }
 
                 
@@ -4203,8 +4522,10 @@ function listenForWaiterCalls() {
 }
         
 function handleWaiterCall(call) {
-    playAlert(); // Play beep sound
-    if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]); // Vibrate pattern
+    /* 🔔 cross-device alert → sound + vibration + banner + voice */
+    try {
+        if (window.SSAlert) window.SSAlert.fire('waiterCall', { title: '🔔 TABLE ' + (call.table_id || 'Unknown') + ' is calling for assistance' });
+    } catch (e) {}
     
     // Use the shared.js confirm dialog
     confirm('🔔 TABLE ' + (call.table_id || 'Unknown') + ' IS CALLING FOR ASSISTANCE!').then(function(ok) {
@@ -4219,12 +4540,10 @@ function handleWaiterCall(call) {
                 async function initPOS() { {
     changeLanguage();
 
-    var sound = localStorage.getItem('posSound') !== '0';
-    var vibrate = localStorage.getItem('posVibrate') !== '0';
-    var soundToggle = document.getElementById('soundToggle');
-    var vibrateToggle = document.getElementById('vibrateToggle');
-    if (soundToggle) soundToggle.checked = sound;
-    if (vibrateToggle) vibrateToggle.checked = vibrate;
+    /* 🔔 mount the alert settings panel (POS set of alerts) */
+    try {
+      if (window.SSAlert) window.SSAlert.mountPanel(['generic','waiterCall','qrOrder','newOrder','chat','lowStock','stockBlock','sale','mpvConfirm','mpvSent','mpvOwnerOk','mpvOwnerNo']);
+    } catch (e) {}
     // --- ROLE-BASED MENUS (Manager/Owner sidebar only. Buttons handled by loadPosSettings) ---
     var managerMenu = document.getElementById('managerMenu');
     var ownerMenu = document.getElementById('ownerMenu');
@@ -4344,61 +4663,6 @@ if (urlShop) {
     window.history.replaceState({}, document.title, window.location.pathname);
 }
 
-  // ===== STAFF DOOR SINGLE SIGN-ON (staff.html → POS — no second door) =====
-  var __ssStaffDoorDone = false, __ssStaffDoorTries = 0;
-  function ssStaffDoorEnter() {
-      if (__ssStaffDoorDone) return true;
-      try {
-          var nm = '', rid = '', rle = '';
-          try {
-              var sp = new URLSearchParams(window.location.search);
-              nm = sp.get('name') || ''; rid = sp.get('id') || ''; rle = sp.get('role') || '';
-          } catch (e) {}
-          if (nm && rid) {
-              // Just arrived from the staff door → remember this cashier for reloads
-              localStorage.setItem('posCashierId', rid);
-              localStorage.setItem('posCashierName', nm);
-              localStorage.setItem('posCashierRole', rle || 'Cashier');
-              try { window.history.replaceState({}, document.title, window.location.pathname); } catch (e) {}
-          } else {
-              nm = localStorage.getItem('posCashierName') || '';
-              rid = localStorage.getItem('posCashierId') || '';
-              rle = localStorage.getItem('posCashierRole') || 'Cashier';
-          }
-          if (!nm || !rid) return false; // no staff-door sign-in → normal POS door
-
-          // Wait (race-safe, like ssWaitForFn) for the POS functions to be defined
-          var ready = typeof window.loadProducts === 'function' && typeof window.checkActiveShift === 'function' &&
-                      typeof window.initPOS === 'function' && typeof window.listenForWaiterCalls === 'function' &&
-                      typeof window.requestWakeLock === 'function';
-          if (!ready) {
-              if (++__ssStaffDoorTries < 40) { setTimeout(function () { try { ssStaffDoorEnter(); } catch (e) {} }, 250); return true; }
-              try { if (typeof loadCashierList === 'function') loadCashierList(); } catch (e) {}
-              return false;
-          }
-
-          currentCashier = { id: rid, name: nm, position: rle || 'Cashier', role: rle || 'Cashier', status: 'active', shopId: localStorage.getItem('shopId') || '' };
-          document.getElementById('loginScreen').style.display = 'none';
-          document.getElementById('mainApp').style.display = 'block';
-          document.getElementById('cashierDisplay').textContent = '👤 ' + nm;
-          loadProducts();
-          loadPosSettings();
-          checkActiveShift();
-          syncNow();
-          try { changeLanguage(appLang); } catch (e) { try { changeLanguage(); } catch (e2) {} }
-          initPOS();
-          listenForWaiterCalls();
-          requestWakeLock();
-          if (window.ssLicenseTimer) clearInterval(window.ssLicenseTimer);
-          window.ssLicenseTimer = setInterval(async function () {
-              var r = await ssCheckLicense();
-              if (!r.allowed) { alert(r.message); logout(); }
-          }, 30 * 60 * 1000);
-          __ssStaffDoorDone = true;
-          return true;
-      } catch (e) { console.warn('Staff door SSO failed:', e.message); return false; }
-  }
-
   // ===== DEVICE AUTH — OWNER ACTIVATION (v2: race-safe, fresh-device proof) =====
 function ssPosAuthRoute(event, session) {
     var isRealUser = session && session.user && session.user.email && !session.user.is_anonymous;
@@ -4413,7 +4677,6 @@ function ssPosAuthRoute(event, session) {
         if (typeof loadCashierList === 'function') loadCashierList();
         else ssWaitForFn('loadCashierList');
         if (typeof ensureDeviceMonitor === 'function') ensureDeviceMonitor();
-        if (ssStaffDoorEnter()) return; // 🚪 arrived from the staff door → straight in (no second door)
     } else {
         // Fresh device / logged out → activation form comes FIRST (like Kitchen)
         if (typeof showOwnerActivation === 'function') showOwnerActivation();
@@ -4906,7 +5169,7 @@ window._loadRoundsIntoCart = function(orders) {
                 costPrice: prod ? (prod.costPrice || 0) : 0,
                 isVirtual: prod ? !!prod.isVirtual : false,
                 modifiers: item.modifiers || [], note: item.note || '',
-                station: (prod && prod.station) || ''
+                station: (prod && prod.station) || 'Kitchen'
             });
         });
     });
@@ -4927,8 +5190,7 @@ function printKOT(orderData) {
     // 1. Group items by their station
     var stations = {};
     (orderData.items || []).forEach(function(item) {
-        if (!item.station) return;
-        var st = item.station;
+        var st = item.station || 'Kitchen';
         if (!stations[st]) stations[st] = [];
         stations[st].push(item);
     });
@@ -4996,7 +5258,10 @@ function printStationTicket(orderData, stationName, items) {
 
 // ===== QR ORDER TOAST NOTIFICATION =====
 function showQRToast(tableId, total) {
-    playAlert(); // Play the beep sound
+    /* 🔔 cross-device alert → sound + vibration + voice (the toast below stays) */
+    try {
+        if (window.SSAlert) window.SSAlert.fire('qrOrder', { banner: false, title: '🛎 NEW QR ORDER — TABLE ' + tableId, text: 'Total ' + fmtMoney(total) + ' — check Table Bills to process.' });
+    } catch (e) {}
     
     var toast = document.createElement('div');
     toast.style.cssText = 'position:fixed; top:60px; left:10px; right:10px; background:#1e293b; color:white; padding:15px; border-radius:10px; z-index:9999; box-shadow:0 4px 15px rgba(0,0,0,0.3); border-left:5px solid #10b981; font-weight:bold; animation: slideDown 0.3s ease;';
@@ -5470,7 +5735,7 @@ async function initChat() {
             (payload) => {
                 renderChatBubble(payload.new);
                 document.getElementById('chatMessages').scrollTop = container.scrollHeight;
-                playAlert();
+                try { if (window.SSAlert) window.SSAlert.fire('chat', { banner: false }); } catch (e) {}
             }
         ).subscribe();
 }
@@ -5693,7 +5958,7 @@ function ssLowStock(list) {
     if (list.length > 5) h += '<div>+' + (list.length - 5) + ' more…</div>';
     t.innerHTML = h;
     c.appendChild(t);
-    try { playAlert(); } catch (e) {}
+    try { if (window.SSAlert) window.SSAlert.fire('lowStock', { banner: false }); } catch (e) {}
     setTimeout(function () { t.classList.add('ss-hide'); setTimeout(function () { t.remove(); }, 400); }, 6000);
 }
 
@@ -5900,131 +6165,78 @@ document.addEventListener('keydown', function (e) {
     if (b && !b.disabled) { e.preventDefault(); completePayment(); }
 });
 
-// ===== PHASE 1C: DEVICE MONITOR (POS) — v3.4 DUAL KEY =====
-// v3.4 · TWO rows now protect this POS, each with its own 🔒 button
-// in Admin → 📱 Devices:
-//   1. ITS OWN row "POS — <shop>" — lock it to close JUST the POS
-//      (stop the cashier) — even while the rest of the phone works.
-//   2. The PHONE's identity row (the Staff Door row of this phone) —
-//      lock that to close the WHOLE phone (door + POS + Kitchen +
-//      Hotel + the admin console on it).
-// The POS walls if EITHER row is revoked, and reopens only when both
-// are active again. The watch runs on EVERY page load for EVERY
-// session, re-checks every 15 s forever, and a locked device cannot
-// even start a sale (hard guards in addToCart / completePayment).
+// ===== PHASE 1C: DEVICE MONITOR (POS) =====
 var _deviceMonitorStarted = false;
-window.POS_DEVICE_LOCKED = false;
-window.POS_WATCH_KEYS = [];
 function ensureDeviceMonitor() {
     if (_deviceMonitorStarted) return;
     _deviceMonitorStarted = true;
 
-    // Own POS row key — separate from the phone identity
-    var posKey = localStorage.getItem('deviceKey_pos');
-    if (!posKey) {
-        posKey = 'dev_pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
-        localStorage.setItem('deviceKey_pos', posKey);
+    var deviceKey = localStorage.getItem('deviceKey_pos');
+    if (!deviceKey) {
+        deviceKey = 'dev_pos_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12);
+        localStorage.setItem('deviceKey_pos', deviceKey);
     }
-    // The phone's identity (Staff Door) — may be missing on a
-    // POS-only phone; then the POS row alone is the lock.
-    var bizKey = localStorage.getItem('deviceKey_biz') || '';
-    window.POS_WATCH_KEYS = (bizKey && bizKey !== posKey) ? [posKey, bizKey] : [posKey];
-    // NOTE: posKey may be re-assigned by the v3.4 migration inside the
-    // round (a POS-only phone adopts its old row). The realtime watch
-    // covers both keys from the start, so nothing is missed.
 
     var deviceName = 'POS — ' + (getShopId() || 'Device');
 
-    // Realtime lock (< 0.1 s) — BOTH rows watched, subscribed
-    // immediately, not chained behind any database call.
-    try {
-        var ch = supabaseClient.channel('device-monitor-pos-' + posKey);
-        window.POS_WATCH_KEYS.forEach(function (k) {
-            ch.on('postgres_changes', {
-                event: 'UPDATE', schema: 'public', table: 'devices',
-                filter: 'device_key=eq.' + k
-            }, function (payload) {
-                if (payload.new && payload.new.status === 'revoked') {
-                    showDeviceLocked(payload.new.device_name);
-                } else if (payload.new && payload.new.status === 'active') {
-                    posDeviceRound();   // re-check ALL keys before lifting the wall
-                }
-            });
-        });
-        ch.subscribe();
-    } catch (e) {}
+    supabaseClient.from('devices')
+        .select('id, status, device_name')
+        .eq('device_key', deviceKey)
+        .maybeSingle()
+        .then(function(result) {
+            var existing = result.data;
 
-    // Status check + registration + heartbeat — runs IMMEDIATELY and
-    // then every 15 s, forever. Every round is independent: a failed
-    // round (offline, database hiccup) never stops the next one.
-    var posDeviceRound = async function () {
-        if (!navigator.onLine) return;
-        try {
-            const { data } = await supabaseClient.from('devices')
-                .select('device_key, status, device_name')
-                .in('device_key', window.POS_WATCH_KEYS);
-            var rows = data || [];
-            var lockedRow = null;
-            rows.forEach(function (r) {
-                if (String(r.status || '').toLowerCase() === 'revoked') lockedRow = r;
-            });
-            if (lockedRow) { showDeviceLocked(lockedRow.device_name || deviceName); return; }
-            hideDeviceLocked();
-            // Register / heartbeat the OWN row only
-            var own = null, bizRow = null;
-            rows.forEach(function (r) {
-                if (r.device_key === posKey) own = r;
-                if (bizKey && r.device_key === bizKey) bizRow = r;
-            });
-            if (!own) {
-                // v3.4 migration · a POS-only phone from v3.3 registered its
-                // row under the phone identity key with type 'pos' — adopt
-                // that row instead of creating a duplicate.
-                if (bizRow && String(bizRow.device_type || '').toLowerCase() === 'pos') {
-                    try { localStorage.setItem('deviceKey_pos', bizKey); } catch (e) {}
-                    posKey = bizKey;
-                    window.POS_WATCH_KEYS = [posKey];
-                } else {
-                    try {
-                        await supabaseClient.from('devices').insert([{
-                            device_key: posKey,
-                            shop_id: getShopId(),
-                            device_name: deviceName,
-                            device_type: 'pos',
-                            status: 'active',
-                            last_seen: new Date().toISOString()
-                        }]);
-                    } catch (e) {}
-                }
+            // If REVOKED — lock immediately
+            if (existing && existing.status === 'revoked') {
+                showDeviceLocked(existing.device_name || deviceName);
+                return;
+            }
+
+            if (existing) {
+                // Exists — update last_seen ONLY (never touch status)
+                supabaseClient.from('devices')
+                    .update({ last_seen: new Date().toISOString() })
+                    .eq('device_key', deviceKey)
+                    .then(function(){}).catch(function(e){});
             } else {
+                // New device — register
+                supabaseClient.from('devices').insert([{
+                    device_key: deviceKey,
+                    shop_id: getShopId(),
+                    device_name: deviceName,
+                    device_type: 'pos',
+                    status: 'active',
+                    last_seen: new Date().toISOString()
+                }]).then(function(){}).catch(function(e){});
+            }
+
+            // Real-time lock (< 0.1 seconds)
+            supabaseClient.channel('device-monitor-' + deviceKey)
+                .on('postgres_changes', {
+                    event: 'UPDATE', schema: 'public', table: 'devices',
+                    filter: 'device_key=eq.' + deviceKey
+                }, function(payload) {
+                    if (payload.new && payload.new.status === 'revoked') {
+                        showDeviceLocked(payload.new.device_name);
+                    }
+                }).subscribe();
+
+            // Safety net every 30 seconds
+            setInterval(async function() {
                 try {
+                    const { data } = await supabaseClient.from('devices')
+                        .select('status, device_name').eq('device_key', deviceKey).maybeSingle();
+                    if (data && data.status === 'revoked') showDeviceLocked(data.device_name);
                     await supabaseClient.from('devices')
                         .update({ last_seen: new Date().toISOString() })
-                        .eq('device_key', posKey);
-                } catch (e) {}
-            }
-        } catch (e) { /* next round retries in 15 s */ }
-    };
-    posDeviceRound();
-    setInterval(posDeviceRound, 15000);
+                        .eq('device_key', deviceKey);
+                } catch(e) {}
+            }, 30000);
+        })
+        .catch(function(e) { console.warn('Device check failed:', e.message); });
 }
-// The watch runs on EVERY page load, for every session (owner,
-// cashier, staff-door arrival). It must not depend on the auth route
-// firing: a locked phone stays locked even for a reload straight into
-// the cashier screen.
-try { if (typeof supabaseClient !== 'undefined') ensureDeviceMonitor(); } catch (e) {}
 
 function showDeviceLocked(deviceName) {
-    window.POS_DEVICE_LOCKED = true;
-    // A locked device sells NOTHING. The cashier sign-in keys are
-    // cleared so a page reload cannot slip past the wall, and the
-    // sale functions (addToCart / completePayment) are hard-guarded:
-    // even if the wall itself failed to render, no sale can complete.
-    try {
-        localStorage.removeItem('posCashierId');
-        localStorage.removeItem('posCashierName');
-        localStorage.removeItem('posCashierRole');
-    } catch (e) {}
     var lock = document.getElementById('deviceLockScreen');
     if (!lock) {
         lock = document.createElement('div');
@@ -6032,43 +6244,14 @@ function showDeviceLocked(deviceName) {
         lock.style.cssText = 'position:fixed;inset:0;background:rgba(220,38,38,0.97);color:white;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;';
         lock.innerHTML =
             '<div style="font-size:60px;margin-bottom:15px;">⛔</div>' +
-            '<h1 style="font-size:28px;margin-bottom:10px;">Device Locked</h1>' +
+            '<h1 style="font-size:28px;margin-bottom:10px;">Device Disabled</h1>' +
             '<p style="font-size:16px;max-width:300px;color:#fecaca;line-height:1.6;">' +
             (deviceName ? '"' + deviceName + '" has been ' : 'This device has been ') +
-            'locked by the shop owner.</p>' +
-            '<p style="font-size:12px;color:#fca5a5;margin-top:10px;max-width:300px;line-height:1.6;">When the owner unlocks it (Admin → 📱 Devices), this screen reopens by itself — no activation is asked again.</p>' +
-            '<button type="button" onclick="v4posDeviceRetry()" style="margin-top:18px;background:#fff;color:#7f1d1d;border:none;border-radius:12px;padding:11px 20px;font-size:13px;font-weight:800;cursor:pointer;">🔄 Check again — unlocked?</button>' +
-            '<p id="deviceLockMsg" style="font-size:11px;color:#fecaca;margin-top:10px;min-height:14px;"></p>' +
-            '<p style="font-size:10px;color:#f87171;margin-top:14px;opacity:.85">BizMaster device guard · HARD LOCK v3.4</p>';
+            'disabled by the shop owner.<br>Contact your administrator.</p>';
         document.body.appendChild(lock);
     }
     lock.style.display = 'flex';
-    // v3.2 SOFT LOCK: the owner session is KEPT. Signing out here would
-    // force the Staff Door on this phone to ask for the owner email +
-    // password again after the owner unlocks — exactly what must never
-    // happen. The wall itself is the lock; it lifts on unlock.
-}
-
-// v3.2 · the owner unlocked (remote) → lift the wall, the POS continues.
-function hideDeviceLocked() {
-    window.POS_DEVICE_LOCKED = false;
-    var lock = document.getElementById('deviceLockScreen');
-    if (lock) lock.style.display = 'none';
-}
-
-// v3.2 · the 🔄 button on the red wall — instant check after the owner
-// says "I unlocked it" (realtime push + the 30 s poll also self-heal).
-async function v4posDeviceRetry() {
-    var m = document.getElementById('deviceLockMsg');
-    if (m) m.textContent = '⏳ Checking…';
-    if (!navigator.onLine) { if (m) m.textContent = '📴 Offline — connect to the internet first.'; return; }
-    try {
-        const { data } = await supabaseClient.from('devices')
-            .select('device_key, status').in('device_key', window.POS_WATCH_KEYS || []);
-        var anyLocked = (data || []).some(function (r) { return String(r.status || '').toLowerCase() === 'revoked'; });
-        if (!anyLocked) hideDeviceLocked();
-        else if (m) m.textContent = '🔒 Still locked — the owner unlocks it from Admin → 📱 Devices.';
-    } catch (e) { if (m) m.textContent = '⚠️ Could not check — try again.'; }
+    try { supabaseClient.auth.signOut(); } catch(e) {}
 }
 // ===== EXIT QR VERIFICATION (GUARD — Scan & Go) =====
 function openExitVerifyModal() {
@@ -6195,8 +6378,7 @@ async function kotPrintPaper(orderData) {
     // Group items by station (Kitchen / Bar / Coffee) — one ticket per station
     var stations = {};
     orderData.items.forEach(function(item) {
-        if (!item.station) return;
-        var st = item.station;
+        var st = item.station || 'Kitchen';
         if (!stations[st]) stations[st] = [];
         stations[st].push(item);
     });
@@ -6314,15 +6496,25 @@ window.openTablesModal = async function() {
         }
 
         var activeOrders = {};
+        var ordersByTable = {};
         try {
             var res = await supabaseClient.from('orders')
                 .select('*').eq('shop_id', getShopId()).neq('status', 'Paid');
             (res.data || []).forEach(function(o) {
-                if (o.table_id && (!activeOrders[o.table_id] || new Date(o.time) > new Date(activeOrders[o.table_id].time))) {
-                    activeOrders[o.table_id] = o;
+                if (o.table_id) {
+                    ordersByTable[o.table_id] = ordersByTable[o.table_id] || [];
+                    ordersByTable[o.table_id].push(o);
+                    if (!activeOrders[o.table_id] || new Date(o.time) > new Date(activeOrders[o.table_id].time)) {
+                        activeOrders[o.table_id] = o;
+                    }
                 }
             });
         } catch(e) { console.error('Orders fetch failed:', e.message); }
+
+        /* MPV-3 · tables the waiter already marked 📱 mobile-paid (receipt
+           still not printed) — shown on the button, pill refuses a re-send */
+        var paidTables = {};
+        try { paidTables = await mpvPaidTables(); } catch (e) {}
 
         var html = '<div class="floor-map-container">';
         posTables.forEach(function(name) {
@@ -6337,9 +6529,19 @@ window.openTablesModal = async function() {
                     cls = 'table-preparing'; txt = 'Busy';
                 }
             }
-            html += '<button onclick="window.selectTable(\'' + name + '\',' + (o ? 1 : 0) + ')" class="floor-table-btn ' + cls + '">' +
+            var rounds = (ordersByTable[name] || []);
+            var tTotal = 0;
+            rounds.forEach(function(r) { tTotal += Number(r.total || 0); });
+            var paid = !!paidTables[name];
+            if (paid && o) txt = '📱 Paid — receipt pending';
+            html += '<div style="display:flex;flex-direction:column;gap:4px;min-width:0;">' +
+                    '<button onclick="window.selectTable(\'' + name + '\',' + (o ? 1 : 0) + ')" class="floor-table-btn ' + cls + '">' +
                     '<span style="font-size:24px;">🪑</span><span>' + name + '</span>' +
-                    '<span class="table-status-txt">' + txt + (o ? ' (' + mins + 'm)' : '') + '</span></button>';
+                    '<span class="table-status-txt">' + txt + (o && !paid ? ' (' + mins + 'm)' : '') + '</span></button>' +
+                    (o ? '<button onclick="mpvWaiterPaid(\'' + name + '\')"' + (paid ? ' disabled' : '') +
+                        ' class="mpv-paid-pill' + (paid ? ' mpv-paid-sent' : '') + '">' +
+                        (paid ? '✓ Sent to cashier' : '📱 Paid · ' + fmtMoney(tTotal)) + '</button>' : '') +
+                    '</div>';
         });
         grid.innerHTML = html + '</div>';
     } catch(e) { showFloatingToast('❌ Tables failed — try again', true); }
@@ -6360,6 +6562,11 @@ window.selectTable = async function(tableName, isBusy) {
 };
 
 // ---------- Order Status (waiter live view) ----------
+/* v4 · ORDER STATUS — the waiter's unpaid bills, now LIVE (auto-
+   refresh) and each unpaid bill carries a 📱 Paid-by-Mobile
+   confirmation button: the customer paid in front of the waiter →
+   one tap sends the confirmation (with the waiter's name and the
+   full bill info) straight to the cashier's floating button. */
 window.openWaiterStatus = async function() {
     try {
         var modal = document.getElementById('waiterStatusModal');
@@ -6374,6 +6581,37 @@ window.openWaiterStatus = async function() {
         if (res.error) throw res.error;
 
         var orders = (res.data || []).sort(function(a, b) { return new Date(a.time) - new Date(b.time); });
+
+        /* confirmations already sent to the cashier (receipt pending) */
+        var paidTables = {};
+        var sentOrderIds = {};
+        try {
+            const { data: sent } = await supabaseClient.from('payment_verifications')
+                .select('firebase_id,id,table_name,order_ids').eq('shop_id', getShopId()).eq('status', 'waiter');
+            (sent || []).forEach(function (r) {
+                if (r.table_name) paidTables[r.table_name] = r;
+                try {
+                    var ids = JSON.parse(r.order_ids || '[]');
+                    (ids || []).forEach(function (oid) { sentOrderIds[String(oid)] = r; });
+                } catch (e) {}
+            });
+        } catch (e) {}
+
+        /* for table bills the 📱 button lives on the newest round card
+           only (it always confirms the WHOLE table bill, like the pill
+           in the Tables view); takeaway/delivery bills get their own
+           single-order button on every card. */
+        var latestByTable = {};
+        orders.forEach(function (o) {
+            var k = o.table_id || o.order_type || '?';
+            if (!latestByTable[k] || new Date(o.time) > new Date(latestByTable[k].time)) latestByTable[k] = o;
+        });
+        function isSingleOrder(o) {
+            var ot = String(o.order_type || '');
+            var tid = String(o.table_id || '');
+            return ot === 'Takeaway' || ot === 'Delivery' || tid === 'Takeaway' || tid === 'Delivery';
+        }
+
         var html = '';
         if (!orders.length) {
             html = '<p style="text-align:center; color:#94a3b8;">No active orders right now.</p>';
@@ -6381,18 +6619,47 @@ window.openWaiterStatus = async function() {
             orders.forEach(function(o) {
                 var color = o.status === 'Ready' ? '#10b981' : (o.status === 'Preparing' ? '#3b82f6' : '#f59e0b');
                 var txt = o.status === 'Ready' ? '✅ Ready to Serve' : (o.status === 'Preparing' ? '🔵 Preparing' : '🟡 Pending');
+                var single = isSingleOrder(o);
+                var btnHtml = '';
+                if (single) {
+                    var sent1 = !!sentOrderIds[String(o.id)];
+                    btnHtml = '<button class="mpv-paid-pill' + (sent1 ? ' mpv-paid-sent' : '') + '"' + (sent1 ? ' disabled' : '') +
+                        ' onclick="mpvWaiterPaidOrder(\'' + o.id + '\')">' +
+                        (sent1 ? '✓ Sent to cashier — receipt pending' : '📱 Paid by Mobile → Send to Cashier') + '</button>';
+                } else if (latestByTable[o.table_id] === o) {
+                    var sentT = !!paidTables[o.table_id];
+                    btnHtml = '<button class="mpv-paid-pill' + (sentT ? ' mpv-paid-sent' : '') + '"' + (sentT ? ' disabled' : '') +
+                        ' onclick="mpvWaiterPaid(\'' + o.table_id + '\')">' +
+                        (sentT ? '✓ Sent to cashier — receipt pending' : '📱 Paid by Mobile → Send to Cashier (whole bill)') + '</button>';
+                }
                 html += '<div style="background:#f8fafc; border-left:5px solid ' + color + '; padding:12px; margin-bottom:10px; border-radius:8px;">' +
                     '<div style="display:flex; justify-content:space-between; margin-bottom:5px;">' +
-                    '<b style="font-size:16px;">🪑 ' + (o.table_id || 'Takeaway') + '</b>' +
+                    '<b style="font-size:16px;">' + (single ? (o.order_type === 'Delivery' ? '🛵 ' : '🛍️ ') : '🪑 ') + (o.table_id || 'Takeaway') + '</b>' +
                     '<span style="color:' + color + '; font-weight:bold;">' + txt + '</span></div>' +
                     '<div style="font-size:13px; color:#64748b; margin-bottom:8px;">';
                 (o.items || []).forEach(function(it) { html += it.qty + 'x ' + it.name + '<br>'; });
                 html += '</div><div style="display:flex; justify-content:space-between; border-top:1px solid #e2e8f0; padding-top:8px; font-weight:bold;">' +
                     '<span>Payment: <span style="color:#ef4444;">UNPAID</span></span>' +
-                    '<span>Total: ' + fmtMoney(o.total || 0) + '</span></div></div>';
+                    '<span>Total: ' + fmtMoney(o.total || 0) + '</span></div>' +
+                    (btnHtml ? '<div style="margin-top:8px;">' + btnHtml + '</div>' : '') +
+                    '</div>';
             });
         }
         listDiv.innerHTML = html;
+
+        /* keep the LIVE view actually live — refresh on any order
+           change while the modal is open (debounced) */
+        if (waiterOrderListener) { try { supabaseClient.removeChannel(waiterOrderListener); } catch (e) {} }
+        try {
+            waiterOrderListener = supabaseClient.channel('pos-waiter-status-' + getShopId())
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: 'shop_id=eq.' + getShopId() }, function () {
+                    var m = document.getElementById('waiterStatusModal');
+                    if (m && m.classList && m.classList.contains('active')) {
+                        clearTimeout(window.__wsRefresh);
+                        window.__wsRefresh = setTimeout(function () { window.openWaiterStatus(); }, 600);
+                    }
+                }).subscribe();
+        } catch (e) {}
     } catch(e) { showFloatingToast('❌ Status failed', true); }
 };
 
@@ -6436,10 +6703,10 @@ async function sendWaiterOrderToKitchen() {
                 if (!sendAnyway) { if (btn) { btn.disabled = false; btn.textContent = '🔔 Send to Kitchen'; } return; }            }
         }
     }
-   var stationStatus = {};
+    var stationStatus = {};
     cart.forEach(function(item) {
-        if (!item.station) return;
-        stationStatus[item.station] = false;
+        var st = item.station || 'Kitchen';
+        stationStatus[st] = false;
     });
 
     var orderData = {
@@ -6448,7 +6715,7 @@ async function sendWaiterOrderToKitchen() {
         items: cart.map(i => ({
             productId: i.id, name: i.name, qty: i.qty, price: i.price,
             modifiers: i.modifiers || [], note: i.note || '',
-             station: i.station || ''
+            station: i.station || 'Kitchen'
         })),
         stationStatus: stationStatus,
         total: cart.reduce((s,i) => s+(i.price*i.qty), 0),
@@ -6634,7 +6901,760 @@ function formatIngredientIssues(issues) {
     return msg;
 }
 </script>
+<script>
+/* ═══════════════════════════════════════════════════════════════ MPV-POS-START
+   MPV-3 · MOBILE PAYMENT VERIFICATION · POS side (2026-11-09)
+   ─────────────────────────────────────────────────────────────────
+   The cafe flow (user design, v3): when a customer pays from his
+   table with TeleBirr / CBE Birr / a bank app, the WAITER looks at
+   the customer's LIVE app (never a screenshot) — and instead of
+   walking to the till and telling the cashier orally, he taps the
+   📱 Paid pill under that table in the Tables view. That one tap:
+     · records the confirmation (table · bill · items · waiter),
+     · sends it INSTANTLY to the cashier's POS (Supabase realtime),
+     · marks the table "📱 Paid — receipt pending" so no one sends
+       it twice.
+   The CASHIER then sees the confirmation (beep + toast + blue
+   badge "N table payments to print"), opens it, and prints the
+   receipt — the bill is loaded, 📱 Mobile pre-selected, the
+   waiter's name pre-filled. Because a receipt goes home with the
+   customer, the receipt is a completely NORMAL one again — the
+   v1/v2 pending watermark line is gone (v3 removed it).
+   The payment still lands in the owner's verification list as
+   🟡 pending — but it can ONLY ever be verified from ADMIN (v2
+   rule, user directive: "verification must done from admin, not
+   from pos!"). On the owner's ✅ the row leaves the cashier's
+   pending list (badge count drops, green toast). This module
+   never writes to the bank tables.
+   Statuses of a row: waiter (confirmation sent, receipt not yet
+   printed) → pending (receipt printed, awaiting the OWNER) →
+   verified / lost (decided by the owner in Admin only).
+   ═══════════════════════════════════════════════════════════════ */
+window.mpvConfig = { waiter: true, loss: 'loss', deposit: true };
+
+function mpvParseConfig(raw) {
+  var d = { waiter: true, loss: 'loss', deposit: true };
+  try {
+    var o = JSON.parse(raw || '{}');
+    if (o && typeof o === 'object') {
+      /* v1's quick value is deliberately NOT read — verification is
+         admin-only, it is not a POS option (stale "quick" ignored) */
+      if (typeof o.waiter === 'boolean') d.waiter = o.waiter;
+      if (o.loss === 'loss' || o.loss === 'mark') d.loss = o.loss;
+      if (typeof o.deposit === 'boolean') d.deposit = o.deposit;
+    }
+  } catch (e) {}
+  window.mpvConfig = d;
+  return d;
+}
+
+function mpvItemsSummary(items) {
+  try {
+    var parts = (items || []).map(function (i) { return i.name + ' ×' + i.qty; });
+    var s = parts.join(', ');
+    return s.length > 90 ? s.slice(0, 89) + '…' : s;
+  } catch (e) { return ''; }
+}
+
+function mpvEsc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+/* ── account picker (reads the Bank tab's accounts once) ── */
+var mpvAccounts = null;
+async function mpvLoadAccounts(force) {
+  if (mpvAccounts && !force) return mpvAccounts;
+  mpvAccounts = [];
+  try {
+    if (supabaseClient && navigator.onLine) {
+      const { data } = await supabaseClient.from('bank_accounts').select('id,firebase_id,name').eq('shop_id', getShopId());
+      (data || []).forEach(function (a) { mpvAccounts.push({ id: a.firebase_id || a.id, name: a.name || 'Account' }); });
+    }
+  } catch (e) {}
+  var sel = document.getElementById('mpvAccount');
+  if (sel) {
+    sel.innerHTML = mpvAccounts.length
+      ? mpvAccounts.map(function (a, i) { return '<option value="' + i + '">' + mpvEsc(a.name) + '</option>'; }).join('')
+      : '<option value="">📱 Mobile (no account set)</option>';
+  }
+  return mpvAccounts;
+}
+
+/* ── field visibility: normal mode → mobile picked; split mode → mobile amount > 0 ── */
+function mpvSyncFields() {
+  var box = document.getElementById('mobileFields'); if (!box) return;
+  var show = false;
+  try {
+    if (typeof splitMode !== 'undefined' && splitMode) {
+      var mEl = document.getElementById('splitMobile');
+      show = !!(mEl && (parseFloat(mEl.value) || 0) > 0);
+    } else {
+      show = normalSelectedPayment === 'mobile';
+    }
+  } catch (e) {}
+  box.style.display = show ? 'block' : 'none';
+  if (show) { mpvLoadAccounts(); mpvFillWaiters(); }
+  var wr = document.getElementById('mpvWaiterRow');
+  if (wr) wr.style.display = (window.mpvConfig && window.mpvConfig.waiter !== false) ? 'block' : 'none';
+}
+
+function mpvFillWaiters() {
+  var sel = document.getElementById('mpvWaiter'); if (!sel) return;
+  var list = [];
+  try { list = window.cashierList || []; } catch (e) {}
+  if (sel.dataset.filled === '1' && list.length) return;
+  var html = '<option value=\'\'>👤 Waiter (who saw the payment)</option>';
+  list.forEach(function (s) {
+    var nm = String(s.name || '').replace(/"/g, '');
+    html += '<option value=\'' + mpvEsc(nm) + '\'>' + (s.position === 'Waiter' ? '🤵 ' : '') + mpvEsc(nm) + '</option>';
+  });
+  sel.innerHTML = html;
+  sel.dataset.filled = '1';
+}
+
+function mpvResetFields() {
+  var box = document.getElementById('mobileFields');
+  if (box) box.style.display = 'none';
+  var t = document.getElementById('mpvTxn'); if (t) t.value = '';
+  var w = document.getElementById('mpvWaiter'); if (w) w.dataset.filled = '';
+}
+
+function mpvCollect() {
+  var d = { accountId: '', accountName: '', txnRef: '', waiter: '' };
+  try {
+    var sel = document.getElementById('mpvAccount');
+    if (sel) {
+      var i = parseInt(sel.value);
+      if (!isNaN(i) && mpvAccounts && mpvAccounts[i]) { d.accountId = mpvAccounts[i].id; d.accountName = mpvAccounts[i].name; }
+      else if (!mpvAccounts || !mpvAccounts.length) d.accountName = 'Mobile';
+    }
+    var t = document.getElementById('mpvTxn'); if (t) d.txnRef = t.value.trim();
+    var w = document.getElementById('mpvWaiter'); if (w) d.waiter = w.value;
+  } catch (e) {}
+  return d;
+}
+
+/* ── offline queue (receipt-time rows only) ── */
+function mpvQueueRow(row) {
+  try {
+    var q = JSON.parse(localStorage.getItem('mpvQueue') || '[]');
+    q.push(row);
+    localStorage.setItem('mpvQueue', JSON.stringify(q));
+  } catch (e) {}
+}
+async function mpvFlushQueue() {
+  try {
+    if (!supabaseClient || !navigator.onLine) return;
+    var q = JSON.parse(localStorage.getItem('mpvQueue') || '[]');
+    if (!q.length) return;
+    var left = [];
+    for (var i = 0; i < q.length; i++) {
+      const { error } = await supabaseClient.from('payment_verifications').insert([q[i]]);
+      if (error) left.push(q[i]);
+    }
+    localStorage.setItem('mpvQueue', JSON.stringify(left));
+  } catch (e) {}
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MPV-3 · WAITER SIDE — the table pill
+   ════════════════════════════════════════════════════════════════ */
+
+/* tables that already have a waiter confirmation (receipt pending) */
+async function mpvPaidTables() {
+  var map = {};
+  try {
+    if (!supabaseClient || !navigator.onLine) return map;
+    const { data, error } = await supabaseClient.from('payment_verifications')
+      .select('id,firebase_id,table_name').eq('shop_id', getShopId()).eq('status', 'waiter');
+    if (!error && data) data.forEach(function (r) { if (r.table_name) map[r.table_name] = r; });
+  } catch (e) {}
+  return map;
+}
+
+/* waiter tapped "📱 Paid" under a table → confirm → notify the cashier */
+/* the one insert helper every waiter confirmation goes through */
+async function mpvSendConfirmRow(row) {
+  try {
+    const { error } = await supabaseClient.from('payment_verifications').insert([row]);
+    if (error) throw new Error(error.message || 'insert failed');
+    try {
+      if (window.SSAlert) window.SSAlert.fire('mpvSent', { banner: false, title: '✅ Confirmation sent to the cashier', text: (row.table_name || '') + ' · ' + fmtMoney(row.amount) });
+    } catch (e) {}
+    showFloatingToast('✅ Sent to cashier — ' + (row.table_name || 'Order') + ' · ' + fmtMoney(row.amount));
+    var tm = document.getElementById('tablesModal');
+    if (typeof openTablesModal === 'function' && tm && tm.classList && tm.classList.contains('active')) openTablesModal();
+    var wsm = document.getElementById('waiterStatusModal');
+    if (typeof window.openWaiterStatus === 'function' && wsm && wsm.classList && wsm.classList.contains('active')) window.openWaiterStatus();
+    return true;
+  } catch (e) {
+    /* the v4 SQL adds the order_ids column — if it has not been run
+       yet, a single-order confirmation fails HERE with a clear hint
+       instead of a vague network error. Table pills keep working. */
+    var msg = String((e && (e.message || e)) || '');
+    if (row.order_ids && (msg.indexOf('order_ids') > -1 || msg.indexOf('column') > -1 || msg.indexOf('PGRST204') > -1)) {
+      alert('⚠️ One-time setup needed first.\n\nRun the payment-verifications.sql from the new pack in Supabase → SQL Editor (it only adds the order_ids column).\n\nTable-bill confirmations work meanwhile.');
+    } else {
+      alert('❌ Could not send the confirmation — check the network.');
+    }
+    return false;
+  }
+}
+
+async function mpvWaiterPaid(tableName) {
+  if (!supabaseClient || !navigator.onLine) {
+    alert('❌ Could not send the confirmation — check the network.');
+    return;
+  }
+  var orders = [];
+  try {
+    const { data, error } = await supabaseClient.from('orders')
+      .select('*').eq('shop_id', getShopId()).eq('table_id', tableName).neq('status', 'Paid');
+    if (error) throw new Error(error.message || 'read failed');
+    orders = data || [];
+  } catch (e) {
+    alert('❌ Could not read the bill — try again.');
+    return;
+  }
+  if (!orders.length) {
+    alert('No unpaid orders left for TABLE ' + tableName + ' — it may already be settled.');
+    if (typeof openTablesModal === 'function') openTablesModal();
+    return;
+  }
+  var total = 0;
+  var items = [];
+  orders.forEach(function (o) {
+    total += Number(o.total || 0);
+    (o.items || []).forEach(function (it) { items.push({ name: it.name, qty: it.qty }); });
+  });
+  var ok = await confirm('📱 TABLE ' + tableName + ' — customer paid by mobile?\n\nBill: ' + fmtMoney(total) +
+    ' (' + orders.length + ' round' + (orders.length > 1 ? 's' : '') + ')\nItems: ' + mpvItemsSummary(items) +
+    '\n\nA confirmation will be sent to the cashier to print the receipt.');
+  if (!ok) return;
+  var row = {
+    firebase_id: 'mpv_' + Date.now(),
+    shop_id: getShopId(),
+    invoice_no: '',
+    amount: Math.round(total * 100) / 100,
+    account_id: '',
+    account_name: '',
+    txn_ref: '',
+    table_name: tableName,
+    order_type: 'Dine-In',
+    waiter_name: (currentCashier ? currentCashier.name : ''),
+    cashier_name: '',
+    items: mpvItemsSummary(items),
+    status: 'waiter',
+    verified_by: '',
+    verified_at: null,
+    bank_txn_id: ''
+  };
+  await mpvSendConfirmRow(row);
+}
+
+/* v4 · single-order confirmation (Takeaway / Delivery bills in the
+   Order Status list) — points at ONE specific order id, so the
+   cashier loads exactly what the waiter confirmed. */
+async function mpvWaiterPaidOrder(orderId) {
+  if (!supabaseClient || !navigator.onLine) {
+    alert('❌ Could not send the confirmation — check the network.');
+    return;
+  }
+  var o = null;
+  try {
+    const { data, error } = await supabaseClient.from('orders')
+      .select('*').eq('shop_id', getShopId()).eq('id', orderId).maybeSingle();
+    if (error) throw new Error(error.message || 'read failed');
+    o = data;
+  } catch (e) {
+    alert('❌ Could not read the bill — try again.');
+    return;
+  }
+  if (!o || o.status === 'Paid') {
+    alert('This order is already settled.');
+    var wsm0 = document.getElementById('waiterStatusModal');
+    if (typeof window.openWaiterStatus === 'function' && wsm0 && wsm0.classList && wsm0.classList.contains('active')) window.openWaiterStatus();
+    return;
+  }
+  var label = (o.order_type === 'Delivery' ? '🛵 DELIVERY' : (o.order_type === 'Takeaway' ? '🛍️ TAKEAWAY' : '🪑 ' + (o.table_id || 'Order')));
+  var total = Number(o.total || 0);
+  var items = (o.items || []).map(function (it) { return { name: it.name, qty: it.qty }; });
+  var ok = await confirm('📱 ' + label + ' — customer paid by mobile?\n\nBill: ' + fmtMoney(total) +
+    '\nItems: ' + mpvItemsSummary(items) +
+    '\n\nA confirmation will be sent to the cashier to print the receipt.');
+  if (!ok) return;
+  var row = {
+    firebase_id: 'mpv_' + Date.now(),
+    shop_id: getShopId(),
+    invoice_no: '',
+    amount: Math.round(total * 100) / 100,
+    account_id: '',
+    account_name: '',
+    txn_ref: '',
+    table_name: (o.table_id || o.order_type || ''),
+    order_type: (o.order_type || ''),
+    order_ids: JSON.stringify([o.id]),
+    waiter_name: (currentCashier ? currentCashier.name : ''),
+    cashier_name: '',
+    items: mpvItemsSummary(items),
+    status: 'waiter',
+    verified_by: '',
+    verified_at: null,
+    bank_txn_id: ''
+  };
+  await mpvSendConfirmRow(row);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MPV-3 · CASHIER SIDE — the confirmation inbox
+   ════════════════════════════════════════════════════════════════ */
+var mpvConfRows = [];
+var mpvConfListener = null;
+
+/* realtime: the moment a waiter taps the pill, the cashier's POS beeps */
+function mpvConfListen() {
+  if (!supabaseClient || !supabaseClient.channel) return;
+  if (mpvConfListener) { try { supabaseClient.removeChannel(mpvConfListener); } catch (e) {} }
+  mpvConfFetch();
+  mpvConfListener = supabaseClient.channel('public:payment_verifications_pos')
+    .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'payment_verifications', filter: 'shop_id=eq.' + getShopId() },
+        function (payload) {
+          var r = payload.new || {};
+          if (r.status !== 'waiter') return;
+          if (currentCashier && currentCashier.position === 'Waiter') return; /* sender's own device — the pill already shows it */
+          try {
+            if (window.SSAlert) {
+              window.SSAlert.fire('mpvConfirm', {
+                title: '📱 ' + (r.table_name || 'Order') + ' paid by mobile',
+                text: 'Waiter ' + (r.waiter_name || '?') + ' confirmed ' + fmtMoney(r.amount) + ' — tap the blue 📱 button to load & print the receipt.'
+              });
+            } else {
+              if (typeof playAlert === 'function') playAlert();
+              try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch (e) {}
+              showFloatingToast('📱 TABLE ' + (r.table_name || '?') + ' paid by mobile — ' + fmtMoney(r.amount) + ' (waiter ' + (r.waiter_name || '?') + ')');
+            }
+          } catch (e) {}
+          mpvConfFetch();
+        }).subscribe();
+}
+
+/* fetch the open confirmations; settle the spent ones (their bill
+   is fully Paid → the receipt was printed). v4 also understands
+   single-order confirmations (order_ids) from Takeaway/Delivery. */
+async function mpvConfFetch() {
+  try {
+    if (!supabaseClient || !navigator.onLine) return;
+    if (!currentCashier || currentCashier.position === 'Waiter') return; /* the inbox is the cashier's tool */
+    const { data, error } = await supabaseClient.from('payment_verifications')
+      .select('*').eq('shop_id', getShopId()).eq('status', 'waiter')
+      .order('created_at', { ascending: false }).limit(50);
+    if (error || !data) return;
+    var rows = data;
+    if (rows.length && typeof rows[0].order_ids !== 'undefined') window.__mpvIdsCol = true;
+    else if (rows.length) window.__mpvIdsCol = false;
+    if (rows.length) {
+      const { data: unpaid, error: oErr } = await supabaseClient.from('orders')
+        .select('id,table_id,status').eq('shop_id', getShopId()).neq('status', 'Paid');
+      if (!oErr && unpaid) {
+        var openT = {}, openId = {};
+        unpaid.forEach(function (o) { if (o.table_id) openT[o.table_id] = 1; if (o.id != null) openId[String(o.id)] = 1; });
+        var keep = [];
+        rows.forEach(function (r) {
+          var ids = [];
+          try { ids = JSON.parse(r.order_ids || '[]') || []; } catch (e) {}
+          var spent = false;
+          if (ids.length) {
+            spent = ids.every(function (oid) { return !openId[String(oid)]; });   /* its orders are all Paid → receipt printed */
+          } else if (r.table_name) {
+            spent = !openT[r.table_name];
+          }
+          if (spent) {
+            /* spent confirmation — remove it from every POS list */
+            try {
+              var dq = supabaseClient.from('payment_verifications').delete();
+              dq = r.id ? dq.eq('id', r.id) : dq.eq('firebase_id', r.firebase_id);
+              dq.then(function () {}, function () {});
+            } catch (e) {}
+          } else keep.push(r);
+        });
+        rows = keep;
+      }
+    }
+    mpvConfRows = rows;
+    mpvConfBadge();
+  } catch (e) {}
+}
+
+/* short "5m ago" style label for the cashier list */
+function mpvWhen(iso) {
+  try {
+    var m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+    if (isNaN(m)) return '';
+    if (m < 1) return 'just now';
+    if (m < 60) return m + 'm ago';
+    var h = Math.floor(m / 60);
+    return h + 'h ' + (m % 60) + 'm ago';
+  } catch (e) { return ''; }
+}
+
+/* v4 · the SECOND floating button (blue, round, bottom-left) — the
+   waiter-confirmed mobile payments. Appears only while bills wait;
+   disappears by itself the moment the list is empty (exactly the
+   behaviour of the owner's floating 📱 button in Admin). */
+function mpvConfBadge() {
+  var n = mpvConfRows.length;
+  var el = document.getElementById('mpvConfFab');
+  if (!n) { if (el) el.style.display = 'none'; return; }
+  if (!el) {
+    el = document.createElement('button');
+    el.type = 'button';
+    el.id = 'mpvConfFab';
+    el.title = '📱 Mobile payments confirmed by waiters — tap to load & print';
+    el.style.cssText = 'position:fixed;bottom:76px;left:16px;z-index:1500;width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,#2563eb,#0d64f0);color:#fff;font-size:24px;cursor:pointer;box-shadow:0 6px 18px rgba(37,99,235,.45);display:flex;align-items:center;justify-content:center;';
+    el.textContent = '📱';
+    var b = document.createElement('span');
+    b.id = 'mpvConfFabCount';
+    b.style.cssText = 'position:absolute;top:-6px;right:-6px;background:#ef4444;color:#fff;font-size:11px;font-weight:800;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff;';
+    el.appendChild(b);
+    el.onclick = function () { mpvConfPanel(); };
+    document.body.appendChild(el);
+  }
+  el.style.display = 'flex';
+  var c = document.getElementById('mpvConfFabCount');
+  if (c) c.textContent = String(n);
+}
+
+/* the inbox itself — grouped BY WAITER ("list of payments confirmed
+   by specified waiter or staff"), every bill with a Load & Print
+   button. Loading → cart → payment → owner, exactly as before. */
+function mpvConfPanel() {
+  var old = document.getElementById('mpvConfModal');
+  if (old) old.remove();
+  var m = document.createElement('div');
+  m.id = 'mpvConfModal';
+  m.className = 'modal active';
+  var html = '<div class="modal-content" style="max-width:430px;max-height:80vh;overflow-y:auto;">' +
+    '<div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">📱 Waiter mobile-payment confirmations' +
+    '<button onclick="document.getElementById(\'mpvConfModal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748b;">✖</button></div>' +
+    '<p style="font-size:12px;color:#64748b;margin:6px 0 10px;">Bills waiters confirmed as <b>paid by mobile</b>. Tap 🖨️ to load a bill, then ✅ Complete — the payment then goes to the owner for verification, exactly as before.</p>';
+  if (!mpvConfRows.length) {
+    html += '<p style="text-align:center;color:#94a3b8;">No waiter confirmations right now.</p>';
+  } else {
+    var groups = {};
+    var order = [];
+    mpvConfRows.forEach(function (r) {
+      var w = r.waiter_name || 'Unknown waiter';
+      if (!groups[w]) { groups[w] = []; order.push(w); }
+      groups[w].push(r);
+    });
+    order.forEach(function (w) {
+      html += '<div style="background:#0d64f0;color:#fff;border-radius:10px;padding:8px 12px;margin:12px 0 8px;font-size:13px;font-weight:700;display:flex;justify-content:space-between;align-items:center;">' +
+        '<span>🤵 Confirmed by: ' + mpvEsc(w) + '</span>' +
+        '<span style="background:#fff;color:#0d64f0;border-radius:10px;padding:1px 8px;font-size:11px;">' + groups[w].length + ' bill' + (groups[w].length > 1 ? 's' : '') + '</span></div>';
+      groups[w].forEach(function (r) {
+        var key = String(r.firebase_id || r.id);
+        var isSingle = false;
+        try { isSingle = (JSON.parse(r.order_ids || '[]') || []).length > 0; } catch (e) {}
+        var label = isSingle
+          ? ((r.order_type === 'Delivery' ? '🛵 ' : (r.order_type === 'Takeaway' ? '🛍️ ' : '🪑 ')) + mpvEsc(r.table_name || '?') + ' <small style="color:#64748b;font-weight:400;">(single order)</small>')
+          : ('🪑 ' + mpvEsc(r.table_name || '?'));
+        html += '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid #0d64f0;border-radius:10px;padding:10px;margin-bottom:10px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+            '<b>' + label + '</b>' +
+            '<b style="color:#2563eb;white-space:nowrap;">' + fmtMoney(r.amount) + '</b></div>' +
+          (r.items ? '<div style="font-size:11px;color:#64748b;margin:4px 0;">🧾 ' + mpvEsc(r.items) + '</div>' : '') +
+          '<div style="font-size:10px;color:#94a3b8;">⏱ ' + mpvWhen(r.created_at) + '</div>' +
+          '<div style="display:flex;gap:6px;margin-top:6px;">' +
+            '<button class="btn btn-success btn-sm" style="flex:1;" onclick="mpvConfAccept(\'' + key + '\')">🖨️ Load to Cart &amp; Print</button>' +
+            '<button class="btn btn-outline btn-sm" style="flex:0 0 auto;" onclick="mpvConfDismiss(\'' + key + '\')">✖</button>' +
+          '</div></div>';
+      });
+    });
+  }
+  html += '</div>';
+  m.innerHTML = html;
+  document.body.appendChild(m);
+}
+
+/* cashier accepted one: load the bill (single order or whole table),
+   pre-open 📱 Mobile, pre-fill the waiter */
+async function mpvConfAccept(key) {
+  var r = null;
+  mpvConfRows.forEach(function (x) { if (String(x.firebase_id || x.id) === String(key)) r = x; });
+  if (!r) return;
+  var tableName = r.table_name || '';
+  var ids = [];
+  try { ids = JSON.parse(r.order_ids || '[]') || []; } catch (e) {}
+  var single = ids.length > 0;
+  var orders = [];
+  try {
+    if (single) {
+      const { data, error } = await supabaseClient.from('orders')
+        .select('*').eq('shop_id', getShopId()).in('id', ids).neq('status', 'Paid');
+      if (error) throw new Error(error.message || 'read failed');
+      orders = data || [];
+    } else {
+      const { data, error } = await supabaseClient.from('orders')
+        .select('*').eq('shop_id', getShopId()).eq('table_id', tableName).neq('status', 'Paid');
+      if (error) throw new Error(error.message || 'read failed');
+      orders = data || [];
+    }
+  } catch (e) {
+    alert('❌ Could not load the bill — try again.');
+    return;
+  }
+  if (!orders.length) {
+    alert('No unpaid orders left for ' + (single ? 'this order' : 'TABLE ' + tableName) + ' — it may already be settled.');
+    try {
+      var dq = supabaseClient.from('payment_verifications').delete();
+      dq = r.id ? dq.eq('id', r.id) : dq.eq('firebase_id', r.firebase_id);
+      await dq;
+    } catch (e) {}
+    mpvConfFetch();
+    return;
+  }
+  var label = single ? ((r.order_type || 'Order') + ' order') : ('TABLE ' + tableName);
+  var ok = await confirm('Load the bill of ' + label + ' (' + fmtMoney(r.amount) + ')?\nThe current cart will be replaced.');
+  if (!ok) return;
+  if (typeof window._loadRoundsIntoCart !== 'function') { alert('❌ Could not load the bill — try again.'); return; }
+  window._loadRoundsIntoCart(orders);
+  window.__mpvConfirm = { key: String(r.firebase_id || r.id), table: tableName, waiter: r.waiter_name || '' };
+  var mm = document.getElementById('mpvConfModal');
+  if (mm) mm.remove();
+  /* open the payment screen straight on 📱 Mobile */
+  if (typeof checkout === 'function') {
+    checkout();
+    var mobBtn = null;
+    try {
+      var btns = document.querySelectorAll('#normalPaymentMode .payment-btn') || [];
+      for (var i = 0; i < btns.length; i++) {
+        var oc = btns[i].getAttribute && btns[i].getAttribute('onclick');
+        if (oc && oc.indexOf("'mobile'") !== -1) { mobBtn = btns[i]; break; }
+      }
+    } catch (e) {}
+    if (mobBtn && typeof selectPayment === 'function') selectPayment('mobile', mobBtn);
+  }
+  /* the waiter select fills asynchronously — pre-fill it twice */
+  setTimeout(function () { mpvPrefillWaiter(window.__mpvConfirm ? window.__mpvConfirm.waiter : ''); }, 250);
+  setTimeout(function () { mpvPrefillWaiter(window.__mpvConfirm ? window.__mpvConfirm.waiter : ''); }, 900);
+  showFloatingToast('✅ Loaded ' + (single ? label : 'TABLE ' + tableName) + ' — tap ✅ Complete to print the receipt.');
+  mpvConfFetch();
+}
+
+function mpvPrefillWaiter(name) {
+  try {
+    var sel = document.getElementById('mpvWaiter');
+    if (!sel || !name) return;
+    mpvFillWaiters();
+    var opts = (sel.querySelectorAll ? sel.querySelectorAll('option') : []) || [];
+    for (var i = 0; i < opts.length; i++) {
+      if (opts[i].value === name || String(opts[i].textContent).replace('🤵 ', '') === name) { sel.value = opts[i].value; break; }
+    }
+  } catch (e) {}
+}
+
+/* remove a confirmation the cashier knows is spent or duplicated */
+async function mpvConfDismiss(key) {
+  var r = null;
+  mpvConfRows.forEach(function (x) { if (String(x.firebase_id || x.id) === String(key)) r = x; });
+  if (!r) return;
+  var ok = await confirm('Remove the confirmation for TABLE ' + (r.table_name || '?') +
+    '?\nOnly do this if it was already handled or sent twice.');
+  if (!ok) return;
+  try {
+    var dq = supabaseClient.from('payment_verifications').delete();
+    dq = r.id ? dq.eq('id', r.id) : dq.eq('firebase_id', r.firebase_id);
+    await dq;
+  } catch (e) {}
+  mpvConfFetch();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   MPV-3 · receipt time — record for the OWNER (Admin-only verify)
+   ════════════════════════════════════════════════════════════════ */
+async function mpvRecordVerification(sale, amt) {
+  var d = mpvCollect();
+  var fin = {
+    invoice_no: sale.invoiceNo || '',
+    amount: Math.round(Number(amt) * 100) / 100,
+    account_id: d.accountId,
+    account_name: d.accountName || 'Mobile',
+    txn_ref: d.txnRef,
+    order_type: sale.orderType || '',
+    waiter_name: d.waiter || '',
+    cashier_name: sale.cashierName || (currentCashier ? currentCashier.name : ''),
+    items: mpvItemsSummary(sale.items),
+    status: 'pending',
+    verified_by: '',
+    verified_at: null,
+    bank_txn_id: ''
+  };
+  /* this checkout came from a waiter confirmation → upgrade THAT row
+     (waiter → pending) instead of inserting a second one. A
+     confirmation for a DIFFERENT table stays in the inbox untouched. */
+  var c = window.__mpvConfirm;
+  var curT = (typeof currentTableName !== 'undefined' && currentTableName) || '';
+  var match = !!(c && (c.table === curT || !c.table || !curT));   /* !curT → single-order (Takeaway/Delivery) load */
+  if (match && supabaseClient && navigator.onLine) {
+    try {
+      var uq = supabaseClient.from('payment_verifications').update(fin);
+      uq = (String(c.key).indexOf('mpv_') === 0) ? uq.eq('firebase_id', c.key) : uq.eq('id', c.key);
+      const { error } = await uq;
+      if (!error) {
+        window.__mpvConfirm = null;
+        mpvConfFetch();
+        return 'pending';
+      }
+      throw new Error(error.message || 'update failed');
+    } catch (e) { /* fall through → plain insert below */ }
+  }
+  var row = {
+    firebase_id: 'mpv_' + Date.now(),
+    shop_id: getShopId(),
+    table_name: curT,
+    waiter_name: fin.waiter_name || (match && c ? c.waiter : '')
+  };
+  for (var k in fin) row[k] = fin[k];
+  if (match && c) {
+    /* the confirmation row is superseded by this pending one — clear it */
+    try {
+      var dq = supabaseClient.from('payment_verifications').delete();
+      dq = (String(c.key).indexOf('mpv_') === 0) ? dq.eq('firebase_id', c.key) : dq.eq('id', c.key);
+      dq.then(function () {}, function () {});
+    } catch (e) {}
+    window.__mpvConfirm = null;
+  }
+  if (supabaseClient && navigator.onLine) {
+    try {
+      const { error } = await supabaseClient.from('payment_verifications').insert([row]);
+      if (error) throw new Error(error.message || 'insert failed');
+    } catch (e) { mpvQueueRow(row); }
+  } else {
+    mpvQueueRow(row);
+  }
+  mpvFlushQueue();
+  return row.status;
+}
+
+/* ── owner-decision polling: the moment he ✅/❌ in Admin, the row
+   leaves this POS's pending list (green/red toast, badge drops) ── */
+function mpvTodayISO() {
+  var n = new Date();
+  return new Date(n.getFullYear(), n.getMonth(), n.getDate()).toISOString();
+}
+async function mpvPoll() {
+  try {
+    if (!currentCashier || !supabaseClient || !navigator.onLine) return;
+    if (!mpvConfListener && supabaseClient.channel) mpvConfListen();
+    const { data, error } = await supabaseClient.from('payment_verifications')
+      .select('firebase_id,invoice_no,amount,status,table_name,created_at')
+      .eq('shop_id', getShopId())
+      .gte('created_at', mpvTodayISO())
+      .order('created_at', { ascending: false }).limit(200);
+    if (error || !data) return;
+    var seen = {};
+    try { seen = JSON.parse(localStorage.getItem('mpvSeen') || '{}'); } catch (e) {}
+    var pend = [];
+    data.forEach(function (r) {
+      var inv = r.invoice_no || r.firebase_id;
+      var prev = seen[inv];
+      if (r.status === 'verified' && prev === 'pending') {
+        try { if (window.SSAlert) window.SSAlert.fire('mpvOwnerOk', { banner: false, title: '✅ ' + inv + ' verified — ' + fmtMoney(r.amount) }); } catch (e) {}
+        showFloatingToast('✅ ' + inv + ' verified — ' + fmtMoney(r.amount));
+      }
+      if (r.status === 'lost' && prev === 'pending') {
+        try { if (window.SSAlert) window.SSAlert.fire('mpvOwnerNo', { banner: false, title: '❌ ' + inv + ' marked NOT received — ' + fmtMoney(r.amount) }); } catch (e) {}
+        showFloatingToast('❌ ' + inv + ' marked NOT received — ' + fmtMoney(r.amount), true);
+      }
+      if (r.status === 'pending') pend.push(r);
+      seen[inv] = r.status;
+    });
+    try { localStorage.setItem('mpvSeen', JSON.stringify(seen)); } catch (e) {}
+    mpvBadge(pend);
+  } catch (e) {}
+  mpvConfFetch();
+}
+/* v4 · the FIRST floating button (amber, round, bottom-left) — the
+   mobile payments already receipted and now waiting for the OWNER's
+   ✓ in Admin. Read-only here (verification stays admin-only); it
+   disappears by itself when nothing is pending. */
+function mpvBadge(pend) {
+  var el = document.getElementById('mpvPendFab');
+  if (!pend.length) { if (el) el.style.display = 'none'; return; }
+  if (!el) {
+    el = document.createElement('button');
+    el.type = 'button';
+    el.id = 'mpvPendFab';
+    el.title = '🟡 Mobile payments awaiting the owner\'s verification (Admin)';
+    el.style.cssText = 'position:fixed;bottom:16px;left:16px;z-index:1500;width:56px;height:56px;border-radius:50%;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 6px 18px rgba(245,158,11,.45);display:flex;align-items:center;justify-content:center;';
+    el.textContent = '⏳';
+    var b = document.createElement('span');
+    b.id = 'mpvPendFabCount';
+    b.style.cssText = 'position:absolute;top:-6px;right:-6px;background:#1e293b;color:#fff;font-size:11px;font-weight:800;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px;border:2px solid #fff;';
+    el.appendChild(b);
+    el.onclick = function () { mpvPendPanel(); };
+    document.body.appendChild(el);
+  }
+  el.style.display = 'flex';
+  var c = document.getElementById('mpvPendFabCount');
+  if (c) c.textContent = String(pend.length);
+  window.__mpvPend = pend;
+}
+
+/* the amber list — read-only (the ✓ lives ONLY in Admin) */
+function mpvPendPanel() {
+  var old = document.getElementById('mpvPendModal');
+  if (old) old.remove();
+  var rows = window.__mpvPend || [];
+  var m = document.createElement('div');
+  m.id = 'mpvPendModal';
+  m.className = 'modal active';
+  var html = '<div class="modal-content" style="max-width:430px;max-height:80vh;overflow-y:auto;">' +
+    '<div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">🟡 Awaiting owner verification' +
+    '<button onclick="document.getElementById(\'mpvPendModal\').remove()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#64748b;">✖</button></div>' +
+    '<p style="font-size:12px;color:#64748b;margin:6px 0 10px;">Receipted mobile payments already sent to the owner. You can only watch them here — the ✓ check happens in <b>Admin → 📱 Mobile Pay</b>. They leave this list automatically once the owner verifies them.</p>';
+  if (!rows.length) {
+    html += '<p style="text-align:center;color:#94a3b8;">Nothing pending right now.</p>';
+  } else {
+    rows.forEach(function (r) {
+      var inv = r.invoice_no || r.firebase_id;
+      html += '<div style="background:#fffbeb;border:1px solid #fde68a;border-left:4px solid #f59e0b;border-radius:10px;padding:10px;margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">' +
+          '<b style="font-size:13px;">🧾 ' + mpvEsc(inv) + (r.table_name ? ' <small style="color:#64748b;font-weight:400;">· ' + mpvEsc(r.table_name) + '</small>' : '') + '</b>' +
+          '<b style="color:#b45309;white-space:nowrap;">' + fmtMoney(r.amount) + '</b></div>' +
+        '<div style="font-size:10px;color:#94a3b8;margin-top:4px;">⏱ ' + mpvWhen(r.created_at) + '</div>' +
+        '</div>';
+    });
+  }
+  html += '</div>';
+  m.innerHTML = html;
+  document.body.appendChild(m);
+}
+
+/* ── boot ── */
+try {
+  if (document.head) {
+    var st = document.getElementById('mpvPillStyle');
+    if (!st) {
+      st = document.createElement('style');
+      st.id = 'mpvPillStyle';
+      st.textContent = '.mpv-paid-pill{border:none;border-radius:10px;background:#0d64f0;color:#fff;font-size:11px;font-weight:700;padding:6px 4px;cursor:pointer;width:100%;font-family:inherit;line-height:1.2}' +
+        '.mpv-paid-pill:active{transform:scale(.97)}' +
+        '.mpv-paid-pill.mpv-paid-sent{background:#94a3b8;cursor:default}';
+      document.head.appendChild(st);
+    }
+  }
+} catch (e) {}
+try { mpvConfListen(); } catch (e) {}
+setInterval(mpvPoll, 45000);
+setTimeout(mpvPoll, 8000);
+window.addEventListener('online', function () { mpvFlushQueue(); mpvConfFetch(); });
+/* ═══════════════════════════════════════════════════════════════ MPV-POS-END */
+
+</script>
 </body>
 </html>
-
 
