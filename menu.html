@@ -626,8 +626,8 @@
             // finally reach the right station tab on the kitchen display.
             var stationStatus = {};
             cart.forEach(function(item) {
-                if (!item.station) return;
-                stationStatus[item.station] = false;
+                var st = item.station || defaultStation;
+                stationStatus[st] = false;
             });
 
             // Generate a unique ID for the order
@@ -635,7 +635,7 @@
             var orderItems = cart.map(i => ({
                 productId: i.id, name: i.name, qty: i.qty, price: i.price,
                 modifiers: i.modifiers || [], note: i.note || '',
-                station: i.station || ''
+                station: i.station || defaultStation
             }));
             var orderTotal = cart.reduce((s,i) => s+(i.price*i.qty), 0);
             var orderTable = tableId || ('QR-' + Date.now().toString().slice(-4));
@@ -841,5 +841,7 @@
     function playErrorBeep() { try { var ctx = new (window.AudioContext || window.webkitAudioContext)(); var osc = ctx.createOscillator(); var gain = ctx.createGain(); osc.type = 'square'; osc.frequency.value = 200; gain.gain.value = 0.3; osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.3); } catch(e) {} }
 </script>
  <script src="lang.js" data-spp-auto="1"></script>
+  <script src="hint.js"></script>
 </body>
 </html>
+
