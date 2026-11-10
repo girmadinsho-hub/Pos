@@ -1,4 +1,3 @@
-
 /* ═══════════════════════════════════════════════════════════════════
    SLP-LANG-1 · BizMaster language engine — English · አማርኛ · Afaan Oromoo
    ─────────────────────────────────────────────────────────────────
@@ -2592,6 +2591,7 @@
     "Stock Value": "የክምችት ዋጋ",
     "Stock goes to 0 and a loss is recorded.": "ክምችት ወደ 0 ይሄዳል እና ኪሳራ ተመዘግቧል።",
     "Stock increases + purchase is logged (bin card history).": "ክምችት ይጨምራል + ግዢ ተመዝግቧል (የቢን ካርድ ታሪክ)።",
+    "Stock increases + purchase is logged. A changed arrival cost updates Cost Price to the weighted average.": "ክምችት ይጨምራል + ግዢ ተመዝግባል። የተለየ የመጣው ወጪ ሲኖር የወጪ ዋጋ ወደ ክብደታዊ አማካይ ይዘምናል።",
     "Stock quantity is required for this type.": "ለዚህ አይነት የክምችት ብዛት ያስፈልጋል።",
     "Stock stays deducted (the items are truly gone)": "ክምችት የተቀነሰው ሆኖ ይቆያል (ዕቃዎቹ በእውነት ሄዱ)",
     "Stock that never sells — money frozen": "በጭራሽ የማይሸጥ ክምችት — የተቀዘቀዘ ገንዘብ",
@@ -4758,6 +4758,7 @@
     "Stock Value": "Gatii Kuusaa",
     "Stock goes to 0 and a loss is recorded.": "Kuusaan gara 0 deema, kasaaraan galmeesseera.",
     "Stock increases + purchase is logged (bin card history).": "Kuusaan dabalata + bitiin galmeesseera (seenaa kaardii bin).",
+    "Stock increases + purchase is logged. A changed arrival cost updates Cost Price to the weighted average.": "Kuusaan dabalata + bitiin galmeeffama. Yeroo gatiin dhufu adda taatu, gatiin (baasii) gara gidduu galeessa ulfaatinaatti haaromsama.",
     "Stock quantity is required for this type.": "Gosa kanaaf baay'ina kuusaa barbaachisa.",
     "Stock stays deducted (the items are truly gone)": "Kuusaan hir'ifamee hafu (meesaaleen dhugumatti balleesanii)",
     "Stock that never sells — money frozen": "Kuusaa hin gurguramne — qarshii cufame",
@@ -8711,6 +8712,8 @@ window.SLP_T = function (s) {
     { re: /^✅ Variant group deleted \((\d+) products\)\.$/, am: "✅ የልዩ ቅርጽ ቡድን ተሰርዟል ($1 ምርቶች)።", om: "✅ Gareen variantii balleeffameera (oomishoota $1)." },
     { re: /^✅ Product deleted\. \((\d+) sibling variant\(s\) remain\.\)$/, am: "✅ ምርቱ ተሰርዟል። ($1 የቅንብር ልዩ ቅርጾች ቀርተዋል።)", om: "✅ Oomishichi balleeffameera. (Variantoota obboleeyyii $1 hafaniiru.)" },
     { re: /^✅ Product deleted\.$/, am: "✅ ምርቱ ተሰርዟል።", om: "✅ Oomishichi balleeffameera." },
+    /* BIZ-LANG-14 · WAVG pack — weighted-average cost on new arrival */
+    { re: /^✅ "(.+)" updated! 📥 \+(.+) stock added & purchase logged\. 📊 Cost → weighted average: \((.+) × (.+) \+ (.+) × (.+)\) ÷ (.+) = (.+)$/, am: "✅ «$1» ተዘምኗል! 📥 +$2 ዕቃ ታክሎ ግዥ ተመዝግቧል። 📊 ወጪ → ክብደታዊ አማካይ: ($3 × $4 + $5 × $6) ÷ $7 = $8", om: "✅ \"$1\" haaromameera! 📥 +$2 stock dabalameera fi bituun galmeeffameera. 📊 Gatiin → gidduu galeessa ulfaatinaa: ($3 × $4 + $5 × $6) ÷ $7 = $8" },
     { re: /^✅ "(.+)" updated! 📥 \+(.+) stock added & purchase logged\.$/, am: "✅ «$1» ተዘምኗል! 📥 +$2 ዕቃ ታክሎ ግዥ ተመዝግቧል።", om: "✅ \"$1\" haaromameera! 📥 +$2 stock dabalameera fi bituun galmeeffameera." },
     { re: /^✅ "(.+)" updated!$/, am: "✅ «$1» ተዘምኗል!", om: "✅ \"$1\" haaromameera!" },
     { re: /^Import (\d+) product\(s\)\? \((\d+) duplicate row\(s\) will be skipped\.\)$/, am: "$1 ምርት(ዎች) ይጫኑ? ($2 መደጋገም ያለባቸው ረድፎች ይዘለላሉ።)", om: "Oomishoota $1 galchuu? (Safartuu dachaawaa $2 darbu.)" },
@@ -9321,3 +9324,4 @@ window.SLP_T = function (s) {
     { re: /^⚠️ (\d+) payments? waiting for your check — compare with your account history, then ✓ or ❌\.$/, am: "⚠️ $1 ክፍያ የእርስዎ ፍተሻ በመጠበቅ ላይ — ከአካውንት ታሪክዎ ጋር ያወዳድሩ፣ ከዚያ ✓ ወይም ❌።", om: "⚠️ Kaffaltii $1 yaada kee eegaa — seenaa akkaawuntii keessaan wal biraansi, sana booda ✓ ykn ❌." }
   );
 })();
+
