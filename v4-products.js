@@ -507,7 +507,7 @@ function v4BuildEditModal(p) {
         '<input type="number" class="v4-in" id="v4emAddQty" placeholder="New qty arrived" style="margin:0">' +
         '<input type="number" class="v4-in" id="v4emAddCost" placeholder="Cost per unit" style="margin:0">' +
       '</div>' +
-      '<small style="color:#64748b">Stock increases + purchase is logged (bin card history).</small>' +
+      '<small style="color:#64748b">Stock increases + purchase is logged. A changed arrival cost updates Cost Price to the weighted average.</small>' +
     '</div>' +
     '<button class="v4-btn g" onclick="v4SaveEditProduct()">💾 Save All Changes</button>' +
     '<button class="v4-btn o" onclick="v4CloseEditModal()">Cancel</button>' +
@@ -583,14 +583,30 @@ async function v4SaveEditProduct() {
   var price = n('v4emPrice'), cost = n('v4emCost');
   if ((t === 'sell' || t === 'dual' || t === 'virtual') && price <= 0) { alert('Selling price required for this type.'); return; }
   if ((t === 'raw' || t === 'dual') && cost <= 0) { alert('Cost price required for this type (it is an ingredient).'); return; }
-  if (price > 0 && cost > price && !await confirm('⚠️ Cost price is higher than selling price — this product sells at a loss. Save anyway?')) return;
+
+  // stock: edited value OR add-new-stock
+  var editedStock = n('v4emStock');
+  var addQty = n('v4emAddQty'), addCost = n('v4emAddCost');
+
+  // ▼ WAVG · a new arrival with a changed cost moves the product cost to the
+  //   WEIGHTED MEAN: (old stock × old cost + arrival qty × new cost) ÷ total qty.
+  //   Replaces the old behaviour where the arrival cost was ignored and the
+  //   product kept its old cost forever.
+  var effCost = cost, wavgNote = '';
+  if (t !== 'virtual' && addQty > 0 && addCost > 0) {
+    var oldQty = Math.max(parseFloat(p.stock) || 0, 0);          // stock on hand BEFORE this arrival
+    effCost = (oldQty > 0 && cost > 0) ? (oldQty * cost + addQty * addCost) / (oldQty + addQty) : addCost;
+    effCost = Math.round(effCost * 100) / 100;
+    wavgNote = '\n📊 Cost → weighted average: (' + oldQty + ' × ' + cost + ' + ' + addQty + ' × ' + addCost + ') ÷ ' + (oldQty + addQty) + ' = ' + effCost;
+  }
+  if (price > 0 && effCost > price && !await confirm('⚠️ Cost price is higher than selling price — this product sells at a loss. Save anyway?')) return;
 
   var isVirtual = (t === 'virtual'), sellDirectly = (t !== 'raw');
   var useBulk = document.getElementById('v4emBulk').checked && n('v4emBQ1') > 0;
   var menuCb = document.getElementById('v4emMenu');
 
   var upd = {
-    name: newName, unit: g('v4emUnit'), price: price, cost_price: cost,
+    name: newName, unit: g('v4emUnit'), price: price, cost_price: effCost,
     category: g('v4emCategory') || 'General', barcode: g('v4emBarcode'),
     image_url: g('v4emImage'), station: g('v4emStation') || 'Kitchen',
     reorder_level: n('v4emReorder') || 5, expiry_date: g('v4emExpiry') || null,
@@ -602,9 +618,7 @@ async function v4SaveEditProduct() {
     bulk_qty_3: useBulk && n('v4emBQ3') > 0 ? n('v4emBQ3') : null, bulk_price_3: useBulk && n('v4emBQ3') > 0 ? n('v4emBP3') : null
   };
 
-  // stock: edited value OR add-new-stock
-  var editedStock = n('v4emStock');
-  var addQty = n('v4emAddQty'), addCost = n('v4emAddCost');
+  // stock: edited value OR add-new-stock (arrival fields were read above for the weighted cost)
   if (!isVirtual && !(addQty > 0)) upd.stock = editedStock;
 
   try {
@@ -616,12 +630,12 @@ async function v4SaveEditProduct() {
       if (rpcErr) throw rpcErr;
       try {
         await supabaseClient.from('purchases').insert([{ shop_id: getShopId(), product_id: v4emId,
-          date: new Date().toISOString().slice(0,10), qty: addQty, cost_per_unit: addCost || cost, reason: 'Manual Restock (Edit)' }]);
+          date: new Date().toISOString().slice(0,10), qty: addQty, cost_per_unit: (addCost > 0 ? addCost : cost), reason: 'Manual Restock (Edit)' }]);
       } catch(e) { console.warn('Purchase log:', e.message); }
     }
 
     // local refresh
-    Object.assign(p, { name: newName, price: price, costPrice: cost, unit: upd.unit, barcode: upd.barcode,
+    Object.assign(p, { name: newName, price: price, costPrice: effCost, unit: upd.unit, barcode: upd.barcode,
       category: upd.category, isVirtual: isVirtual, sellDirectly: sellDirectly, station: upd.station,
       reorderLevel: upd.reorder_level, expiryDate: upd.expiry_date || '', imageUrl: upd.image_url,
       menuVisible: upd.is_available_on_menu, modifiers: upd.modifiers,
@@ -633,7 +647,7 @@ async function v4SaveEditProduct() {
     else if (!isVirtual) p.stock = editedStock;
 
     v4CloseEditModal(); v4RenderProductTable(); v4FillCatFilter();
-    alert('✅ "' + newName + '" updated!' + (addQty > 0 ? '\n📥 +' + addQty + ' stock added & purchase logged.' : ''));
+    alert('✅ "' + newName + '" updated!' + (addQty > 0 ? '\n📥 +' + addQty + ' stock added & purchase logged.' : '') + wavgNote);
   } catch(e) { alert('❌ ' + e.message); }
 }
 // ═════════════════════════════════════════════════════════
