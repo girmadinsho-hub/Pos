@@ -1,369 +1,797 @@
 <!DOCTYPE html>
+<!-- ═══════════════════════════════════════════════════════════════════
+     BizMaster · STAFF DOOR v3.3 (staff.html) — 2026-11-07
+     ─────────────────────────────────────────────────────────────────
+     THE ONE AND ONLY STAFF DOOR (owner's rules, session 3):
+       RULE 1 · DEVICE REGISTRATION — ONCE
+         The very first time, the device asks for the ADMIN (owner)
+         gmail + password. That registers THIS device to that account
+         (exactly like the POS/Kitchen "Device Activation" — the session
+         is kept on the device). Only the shops that belong to that
+         account can be opened, and the admin email + password are
+         NEVER asked again on this device (only "🔒 Lock this device"
+         or an owner sign-out removes the registration).
+       RULE 2 · STAFF SIGN IN — STRAIGHT TO THEIR WORKPLACE
+         The staff member PICKS their name from a dropdown (only staff
+         of that account's shops) and enters the password/PIN the owner
+         gave them. Then they land in their OWN workplace directly —
+         NO second door, NO third door, no application entrance PIN:
+           Cashier / Waiter     → POS (auto sign-in)
+           Chef / Barista       → Kitchen Display (auto sign-in)
+           Reception / Cleaner  → Hotel Desk (auto sign-in)
+           Owner / Manager      → Admin console (auto sign-in)
+         A cashier never reaches the Kitchen, a chef never reaches the
+         POS — every staff member is routed to their own place only.
+       RULE 3 · THE OWNER HOLDS THE KEY — REMOTE SOFT LOCK (v3.3)
+         Registering the device also writes it into the `devices`
+         table (the same one the POS/Kitchen monitor uses). From
+         Admin → 📱 Devices the owner can:
+           · 🔒 LOCK a device — stolen / lost / kept by a fired staff
+             member: the staff door closes INSTANTLY here (red lock
+             screen) and the POS on the same device dies at the same
+             moment (shared device key). The owner never has to be
+             physically at the device to lock it.
+           · 🔓 UNLOCK it — the door REOPENS BY ITSELF: this page
+             watches the lock (realtime push + 15 s poll + the 🔄
+             button on the red screen) and comes back the moment the
+             owner unlocks. The owner gmail + password are NEVER
+             asked again after an unlock — the device registration
+             lives on. (Only "🔒 Lock this device" tapped here, or
+             🗑 Remove in Admin → Devices, erases the registration.)
+           · 👤 Fired ONE person? Staff tab → Deactivate — their name
+             leaves this list and their PIN stops working everywhere.
+     The shop / café / hotel name is shown at the top of the card.
+       🔄 refresh: newly registered staff appear without re-unlocking.
+     Language: ONE 🌐 dropdown in the header (LANG.dropdown from
+     lang.js): English · አማርኛ · Afaan Oromoo.
+     The owner shares this link (or a QR of it) with the team:
+         staff.html            — pick shop after unlock
+         staff.html?shop=ID    — preselects one shop
+     ═══════════════════════════════════════════════════════════════════ -->
 <html lang="en">
 <head>
-<script src="zoom-fix.js"></script>
   <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
-  <title>🏷️ Table QR Maker</title>
+<meta name="theme-color" content="#0f172a">
+<title>BizMaster — Staff Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Ethiopic:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
-    background: #f1f5f9; color: #0f172a; padding: 18px 12px 60px;
-  }
-  .wrap { max-width: 980px; margin: 0 auto; }
-
-  .tool-head { text-align: center; margin-bottom: 18px; }
-  .tool-head h1 { font-size: 24px; margin-bottom: 4px; }
-  .tool-head p { color: #64748b; font-size: 13px; }
-
-  .card {
-    background: #fff; border-radius: 14px; padding: 18px;
-    margin-bottom: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.08);
-  }
-  .card h2 { font-size: 15px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
-  .card h2 .step {
-    background: #0f172a; color: #fff; width: 22px; height: 22px; border-radius: 50%;
-    display: inline-flex; align-items: center; justify-content: center; font-size: 12px; flex: none;
-  }
-  label { display: block; font-size: 12px; font-weight: 600; color: #334155; margin: 10px 0 4px; }
-  label small { font-weight: 400; color: #94a3b8; }
-  input[type=text], input[type=number], select, textarea {
-    width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 9px;
-    font-size: 14px; font-family: inherit; background: #fff; color: #0f172a;
-  }
-  input:focus, textarea:focus, select:focus { outline: 2px solid #0ea5e9; border-color: #0ea5e9; }
-  textarea { min-height: 140px; resize: vertical; line-height: 1.7; }
-  .row { display: flex; gap: 10px; flex-wrap: wrap; }
-  .row > div { flex: 1; min-width: 150px; }
-
-  .gen-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 6px; }
-  .gen-row > div { flex: 1; min-width: 90px; }
-  .gen-row button { flex: none; }
-
-  .btn {
-    border: none; border-radius: 10px; padding: 12px 20px; font-size: 14px; font-weight: 600;
-    cursor: pointer; font-family: inherit;
-  }
-  .btn-primary { background: #0f172a; color: #fff; }
-  .btn-primary:hover { background: #1e293b; }
-  .btn-outline { background: #fff; color: #0f172a; border: 1px solid #cbd5e1; }
-  .btn-outline:hover { background: #f8fafc; }
-  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 16px 0; }
-
-  .hint { font-size: 12px; color: #64748b; margin-top: 8px; line-height: 1.5; }
-  .count-pill {
-    display: inline-block; background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0;
-    border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 600; margin-top: 8px;
-  }
-  .warn-pill {
-    display: none; background: #fef3c7; color: #92400e; border: 1px solid #fde68a;
-    border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 600; margin-top: 8px;
-  }
-  .netwarn {
-    display: none; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
-    border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px;
-  }
-  .tips { font-size: 13px; color: #475569; line-height: 1.8; }
-  .tips h2 { margin-bottom: 6px; }
-  .tips ul { padding-left: 20px; }
-
-  /* ═══ STICKER SHEET ═══ */
-  .sticker-grid {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 14px;
-  }
-  .sticker {
-    background: #fff; border-radius: 12px; overflow: hidden;
-    box-shadow: 0 1px 4px rgba(15,23,42,.12); border: 1px solid #e2e8f0;
-    display: flex; flex-direction: column; position: relative;
-  }
-  .sticker-head {
-    background: var(--band); color: #fff; text-align: center; padding: 7px 10px;
-    font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .sticker-name {
-    text-align: center; font-size: 26px; font-weight: 800; padding: 10px 8px 4px;
-    color: #0f172a; word-break: break-word; line-height: 1.2;
-  }
-  .sticker-qr-wrap { padding: 6px 14px 2px; }
-  .sticker-qr { width: 100%; display: block; background: #fff; }
-  .qr-fallback {
-    display: none; border: 2px dashed #fca5a5; border-radius: 10px; padding: 14px 8px;
-    text-align: center; font-size: 11px; color: #991b1b; word-break: break-all; line-height: 1.6;
-  }
-  .sticker-hint {
-    text-align: center; font-size: 11px; color: #64748b; padding: 6px 8px 12px; letter-spacing: .5px;
-  }
-  .test-link {
-    display: block; text-align: center; font-size: 12px; color: #0ea5e9;
-    text-decoration: none; padding: 6px; border-top: 1px dashed #e2e8f0;
-  }
-  .test-link:hover { background: #f0f9ff; }
-
-  /* Themes — only the band changes; sticker body stays white so QRs scan well */
-  body[data-theme="classic"] { --band: #0f172a; }
-  body[data-theme="cafe"]    { --band: #7c2d12; }
-  body[data-theme="garden"]  { --band: #14532d; }
-  body[data-theme="royal"]   { --band: #1e3a8a; }
-
-  /* ═══ PRINT ═══ */
-  @page { size: A4; margin: 8mm; }
-  @media print {
-    body { background: #fff; padding: 0; }
-    .no-print { display: none !important; }
-    .wrap { max-width: none; }
-    .sticker-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 4mm; }
-    .sticker {
-      border-radius: 0; box-shadow: none; border: 1px dashed #94a3b8;
-      page-break-inside: avoid; break-inside: avoid;
-    }
-    .sticker-head, .test-link { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .test-link { display: none !important; }
-    .sticker-name { font-size: 30px; }
-  }
+:root{--ink:#0f172a;--ink2:#1e293b;--sub:#94a3b8;--line:#334155;--gold:#d4af37;--bg:#0f172a}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:radial-gradient(1200px 600px at 50% -10%,#1e3a8a 0%,var(--bg) 60%);color:#f8fafc;display:flex;flex-direction:column;min-height:100vh}
+body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,body[data-lang="am"] select,body[data-lang="am"] .door-note,body[data-lang="am"] .sub{font-family:'Noto Sans Ethiopic','Inter',sans-serif}
+.wordmark{display:inline-flex;align-items:baseline;gap:1px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:18px;letter-spacing:-.02em}
+.wordmark .biz{color:#f8fafc}.wordmark .master{color:var(--gold)}
+.topbar{width:100%;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.topbar .right{display:flex;align-items:center;gap:12px}
+.topbar a{color:var(--sub);text-decoration:none;font-size:12.5px;font-weight:600}
+.help-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(212,175,55,.12);color:var(--gold)!important;border-radius:999px;padding:6px 12px}
+.wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:22px 18px 40px}
+.box{width:100%;max-width:380px;background:var(--ink2);border:1px solid var(--line);border-radius:22px;padding:30px 26px;box-shadow:0 30px 70px -30px rgba(0,0,0,.7)}
+.box .ic{font-size:38px;text-align:center}
+.box h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;text-align:center;margin:8px 0 4px}
+.box .sub{color:var(--sub);font-size:12.5px;text-align:center;margin-bottom:20px;line-height:1.5}
+.lbl{display:block;font-size:11px;font-weight:700;color:var(--sub);margin:14px 0 5px;text-transform:uppercase;letter-spacing:.06em}
+.fld{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:12px;font-size:15px;font-family:inherit;background:#0b1220;color:#f8fafc;outline:none;transition:border-color .15s}
+.fld:focus{border-color:var(--gold)}
+.fld option{color:#0f172a}
+.btn{width:100%;padding:14px;margin-top:18px;border:0;border-radius:12px;background:var(--gold);color:#0f172a;font-weight:800;font-size:15px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif}
+.btn:active{transform:scale(.985)}
+.btn.loading{opacity:.6;pointer-events:none}
+.msgbox{border-radius:12px;padding:11px 13px;font-size:12.5px;line-height:1.5;margin-top:14px}
+.msgbox.err{background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+.msgbox.info{background:rgba(59,130,246,.12);color:#93c5fd;border:1px solid rgba(59,130,246,.3)}
+.msgbox.ok{background:rgba(16,185,129,.12);color:#6ee7b7;border:1px solid rgba(16,185,129,.3)}
+.msgbox.warn{background:rgba(245,158,11,.12);color:#fcd34d;border:1px solid rgba(245,158,11,.3)}
+.hidden{display:none!important}
+.shopchip{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.35);color:var(--gold);border-radius:12px;padding:11px 14px;font-size:14.5px;font-weight:800;margin-bottom:6px;flex-wrap:wrap;text-align:center}
+.shopchip small{display:block;width:100%;text-align:center;color:var(--sub);font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.shopsel{margin-bottom:2px}
+.lockbtn{display:block;margin:14px auto 0;background:none;border:none;color:var(--sub);font-size:11.5px;font-weight:600;text-decoration:underline;cursor:pointer;font-family:inherit}
+.door-note{margin-top:18px;text-align:center;font-size:11px;color:var(--sub);line-height:1.6}
+.foot{padding:14px 18px;text-align:center;color:var(--sub);font-size:11px}
+.row2{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:14px}
+.row2 button{background:none;border:none;color:var(--sub);font-size:11.5px;font-weight:600;text-decoration:underline;cursor:pointer;font-family:inherit;padding:4px}
+.unlocked-tag{display:flex;align-items:center;justify-content:center;gap:6px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;border-radius:10px;padding:7px 10px;font-size:11px;font-weight:700;margin-bottom:12px;letter-spacing:.02em}
 </style>
 </head>
-<body data-theme="classic">
-<div class="wrap">
+<body>
 
-  <div class="tool-head no-print">
-    <h1>🏷️ Table QR Maker</h1>
-    <p style="margin-top:8px;"><a href="help.html" style="color:inherit; font-weight:700;">❓ Help &amp; Guide</a></p>
-    <p>One printable QR sticker per table — with <b>your own table names</b>, in any language or style.</p>
+<div class="topbar">
+  <span class="wordmark"><span class="biz">Biz</span><span class="master">Master</span></span>
+  <div class="right">
+    <a class="help-chip" href="help.html">❓ <span data-i18n="nav.help">Help</span></a>
+    <span id="langbar"></span>
   </div>
-
-  <!-- STEP 1 -->
-  <section class="card no-print">
-    <h2><span class="step">1</span> Your menu's address</h2>
-    <label>Menu web address (URL) <small>— your domain, or the full menu.html link</small></label>
-    <input type="text" id="baseUrl" placeholder="https://your-domain.com/menu.html" autocomplete="off">
-    <div class="hint">Both of these work: <b>https://your-domain.com</b> (we add /menu.html) or the full link <b>https://your-domain.com/menu.html</b>. Use your <b>public</b> address — not localhost.</div>
-
-    <div class="row">
-      <div>
-        <label>Shop ID <small>— the one customers' menus use</small></label>
-        <input type="text" id="shopId" placeholder="e.g. SHOP123" autocomplete="off">
-      </div>
-      <div>
-        <label>Sticker header <small>(optional) — your cafe name</small></label>
-        <input type="text" id="headText" placeholder="e.g. Maatii2" autocomplete="off">
-      </div>
-      <div>
-        <label>Sticker style</label>
-        <select id="themeSel">
-          <option value="classic">Classic — dark</option>
-          <option value="cafe">Cafe — brown</option>
-          <option value="garden">Garden — green</option>
-          <option value="royal">Royal — blue</option>
-        </select>
-      </div>
-    </div>
-  </section>
-
-  <!-- STEP 2 -->
-  <section class="card no-print">
-    <h2><span class="step">2</span> Your table names <small style="font-weight:400;color:#94a3b8;margin-left:4px;">one per line — any language, any style</small></h2>
-    <textarea id="namesInput" placeholder="Garden 1
-Garden 2
-Balcony 1
-VIP Room
-ጠረጴዛ ፩
-ጠረጴዛ ፪"></textarea>
-    <span class="count-pill" id="countPill">0 tables</span>
-    <span class="warn-pill" id="dupePill"></span>
-    <span class="warn-pill" id="longPill"></span>
-
-    <div class="gen-row">
-      <div>
-        <label>Quick fill: prefix</label>
-        <input type="text" id="genPrefix" placeholder="T" value="">
-      </div>
-      <div>
-        <label>Start at</label>
-        <input type="number" id="genStart" value="1" min="0">
-      </div>
-      <div>
-        <label>How many</label>
-        <input type="number" id="genCount" value="10" min="1" max="200">
-      </div>
-      <button class="btn btn-outline" onclick="fillGenerated()">⚡ Fill list</button>
-    </div>
-    <div class="hint">Quick fill types the names for you (T1, T2, T3…) — then edit the list freely: rename, reorder, add zones like “Rooftop A”. Duplicates are removed automatically.</div>
-  </section>
-
-  <!-- ACTIONS -->
-  <div class="actions no-print">
-    <button class="btn btn-primary" onclick="generate()">✨ Generate stickers</button>
-    <button class="btn btn-outline" onclick="window.print()">🖨️ Print sheet</button>
-    <button class="btn btn-outline" onclick="resetAll()">🗑️ Reset</button>
-  </div>
-
-  <div id="netWarn" class="netwarn no-print">
-    ⚠️ Some QR images could not load. Check your internet connection and press <b>Generate stickers</b> again before printing.
-  </div>
-
-  <!-- STEP 3 -->
-  <section class="card tips no-print">
-    <h2>📝 Good to know</h2>
-    <ul>
-      <li><b>Keep names short</b> — they appear on kitchen tickets and Call-Waiter alerts, so staff can read them at a glance.</li>
-      <li><b>Match your POS tables</b> — if your waiters also pick tables in the POS (T1, T2…), use the <b>same names here</b> so both systems speak one language.</li>
-      <li><b>Any language works</b> — Amharic, English, or names with emojis (🌿 Garden 1) are all fine.</li>
-      <li><b>Test before printing</b> — tap “▶ test” under any sticker. It opens the menu exactly as your customer would see it at that table.</li>
-      <li><b>Printing</b> — from a desktop browser: A4 paper, 3 stickers per row. The dashed border is your cutting guide.</li>
-    </ul>
-  </section>
-
-  <!-- STICKER SHEET -->
-  <div id="sheet" class="sticker-grid"></div>
 </div>
 
+<div class="wrap">
+  <div class="box">
+
+    <!-- ═══ STEP 1 · DEVICE REGISTRATION (admin gmail + password — ONCE) ═══ -->
+    <div id="lockCard">
+      <div class="ic">🔐</div>
+      <h1 data-i18n="si.h2">Staff Sign In</h1>
+      <p class="sub" data-i18n-html="sd.lock.p">The owner unlocks this device <b>once</b> with their email and password. Then each staff member picks their name from the list.</p>
+
+      <label class="lbl" for="adEmail" data-i18n="sd.email">Admin email</label>
+      <input class="fld" id="adEmail" type="email" autocomplete="off" placeholder="owner@gmail.com" data-i18n-ph="sd.email.ph">
+      <label class="lbl" for="adPass" data-i18n="sd.apass">Admin password</label>
+      <input class="fld" id="adPass" type="password" autocomplete="current-password" placeholder="Owner password" data-i18n-ph="sd.apass.ph">
+
+      <div id="unlockMsg" class="msgbox err hidden"></div>
+
+      <button type="button" class="btn" id="unlockBtn" onclick="doUnlock()"><span id="unlockBtnLbl" data-i18n="sd.unlock">🔓 Unlock Staff List</span></button>
+
+      <p class="door-note" data-i18n-html="sf.note">This is the staff entrance. Owners and admins sign in at their own separate door.</p>
+    </div>
+
+    <!-- ═══ STEP 2 · STAFF PICK NAME + PASSWORD → STRAIGHT TO THEIR WORKPLACE ═══ -->
+    <div id="staffCard" class="hidden">
+      <div class="unlocked-tag" id="unlockedTag">✅ Device registered — staff sign in</div>
+      <div class="shopchip" id="shopChip"></div>
+      <select class="fld shopsel hidden" id="sfShopSel" onchange="onShopChange()"></select>
+
+      <div class="ic">🧑‍🍳</div>
+      <h1 data-i18n="si.h2">Staff Sign In</h1>
+      <p class="sub" data-i18n="sd.sub">Pick your name, enter your password — you open your own workplace.</p>
+
+      <label class="lbl" for="sfStaff" data-i18n="sd.staff">Your name</label>
+      <select class="fld" id="sfStaff" onchange="onStaffPick()"></select>
+      <label class="lbl" for="staffPass" data-i18n="si.pass">Password or PIN</label>
+      <input class="fld" id="staffPass" type="password" inputmode="numeric" autocomplete="current-password" data-i18n-ph="si.passph" placeholder="Your password">
+
+      <div id="signinMsg" class="msgbox err hidden"></div>
+
+      <button type="button" class="btn" id="signinBtn" onclick="doSignIn()"><span id="btnLabel" data-i18n="si.btn">Sign in</span></button>
+
+      <div class="row2">
+        <button type="button" onclick="refreshLists()" title="Refresh staff list">🔄</button>
+        <button type="button" onclick="lockDoor()" title="Removes this phone's registration. The owner email + password are asked again next time — you can sign in with a different account.">⎋ Unregister / switch owner</button>
+      </div>
+      <p style="font-size:10.5px;color:#64748b;text-align:center;margin:8px 0 0;line-height:1.5">⎋ = remove this phone from your account's device list — after it, the owner email + password are asked once again on this phone.</p>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="licence.js" data-spp-app="staff" data-spp-mode="staff"></script>
+<script src="lang.js"></script>
+  <script src="hint.js"></script>
 <script>
-/*URL-LOGIC-START*/
-  function escHtml(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+// ═══════════════════════════════════════════════════════════════════
+//  BizMaster · STAFF DOOR v3.3 — device registered ONCE (persistent
+//  owner session, same key the POS/Kitchen/Hotel/Admin activation
+//  uses) → staff dropdown → password check (server-side + offline
+//  fallback) → straight into the staff member's OWN workplace
+//  (single sign-on keys — no application entrance doors).
+// ═══════════════════════════════════════════════════════════════════
+var APP_NAME = 'BizMaster';
+function t(key, vars) { return window.LANG ? LANG.t(key, vars) : key; }
+function $(id) { return document.getElementById(id); }
+function val(id) { var e = $(id); return e ? String(e.value || '').trim() : ''; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+function withTimeout(p, ms) { return Promise.race([p, new Promise(function (_, rej) { setTimeout(function () { rej(new Error('TIMEOUT')); }, ms); })]); }
+
+// ── Supabase ──
+var CFG_URL = '', CFG_KEY = '';
+try { if (typeof SS_CONFIG !== 'undefined') { CFG_URL = SS_CONFIG.SUPABASE_URL || ''; CFG_KEY = SS_CONFIG.SUPABASE_KEY || ''; } } catch (e) {}
+if (!CFG_URL) CFG_URL = 'https://mtwcdvmdoxzcejzgypdw.supabase.co';
+if (!CFG_KEY) CFG_KEY = 'sb_publishable_FkTC2_MtgqDkDPuZmjDsag_2uOmsnq8';
+
+// ONE client, ONE persistent session — the SAME storage key the POS /
+// Kitchen / Hotel / Admin pages use. Signing in here registers the
+// device for the whole app; the owner email + password are asked ONCE.
+// (Password checks still go through the edge function — server-side.)
+var sb = null;
+if (window.supabase) { try { sb = window.supabase.createClient(CFG_URL, CFG_KEY, { auth: { flowType: 'implicit' } }); } catch (e) { sb = null; } }
+if (sb) window.SPP_SB = sb;
+
+var G = { busy: false, ubusy: false, shops: [], staff: [], shopId: '', byVal: {}, presetShop: '' };
+
+// All single-sign-on keys of the WHOLE app (set on sign-in, cleared on lock)
+var SSO_KEYS = ['kitchenShopId','kitchenChefId','kitchenChefName',
+                'hotelShopId','hotelStaffId','hotelStaffName','hotelPosition',
+                'posCashierId','posCashierName','posCashierRole'];
+
+// ── Device registration record (a hint — the session is the real proof) ──
+function unlockRecord() { try { return JSON.parse(localStorage.getItem('staffDoorUnlock') || 'null'); } catch (e) { return null; } }
+function saveUnlockRecord(email) { lsSet('staffDoorUnlock', JSON.stringify({ email: email || '', at: Date.now() })); }
+
+// ═══ RULE 3 · DEVICE REGISTRATION + OWNER'S REMOTE LOCK (v3.1) ═══
+// The physical device gets ONE identity (`deviceKey_biz`) shared with the
+// POS on the same phone — so "🔒 Lock device" in Admin → Devices closes
+// the staff door AND the POS together. Kitchen/Hotel keep their own rows
+// and can be locked separately from the same Devices screen.
+var DOOR_DEV_TIMER = null, DOOR_DEV_KEY = '', DOOR_DEV_WATCHED = false, DOOR_LOCK_POLL = null;
+function doorDeviceKey() {
+  var k = '';
+  try { k = localStorage.getItem('deviceKey_biz') || localStorage.getItem('deviceKey_pos') || ''; } catch (e) {}
+  if (!k) { k = 'dev_biz_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12); lsSet('deviceKey_biz', k); }
+  return k;
+}
+
+// Quick status check — run BEFORE the staff card is shown.
+async function doorCheck() {
+  if (!sb || !navigator.onLine) return true;           // offline → door stays usable
+  try {
+    var key = doorDeviceKey();
+    var r = await withTimeout(sb.from('devices').select('id,status,device_name').eq('device_key', key).maybeSingle(), 9000);
+    if (r && r.data && r.data.status === 'revoked') { showDoorLocked(r.data.device_name || ''); return false; }
+  } catch (e) {}
+  return true;
+}
+
+// Register / heartbeat this device in the devices table + watch for the
+// owner's remote lock (realtime push + a 30-second safety poll).
+// BIZ-DEV-FIX-2 · the old insert/update was fire-and-forget: when the
+// write failed (RLS policy, network, timeout) the error vanished and
+// the phone NEVER appeared in Admin → 📱 Devices — with no message
+// anywhere. Now every write is awaited, the insert is retried once,
+// and the tag on the staff card tells the truth:
+//     ✅ Device registered — staff sign in   (the row IS in the DB)
+//     ⚠️ Device not registered — tap 🔄 …   (it failed — visible!)
+// Safe to call repeatedly (sign-in, shop change, 🔄, 30 s heartbeat):
+// an existing row is updated, a missing row is inserted, and a
+// staff-door row always follows the shop picked on this phone.
+async function doorRegisterDevice() {
+  if (!sb) return;
+  var tag = $('unlockedTag');
+  function tagOk() { if (tag) { tag.textContent = '✅ Device registered — staff sign in'; tag.style.background = ''; tag.style.color = ''; } }
+  function tagBad() { if (tag) { tag.textContent = '⚠️ Device not registered — tap 🔄 and check the internet'; tag.style.background = '#fef3c7'; tag.style.color = '#92400e'; } }
+  if (!navigator.onLine) { tagBad(); return; }
+  var key = doorDeviceKey();
+  DOOR_DEV_KEY = key;
+  var now = new Date().toISOString();
+  var shopName = '';
+  for (var i = 0; i < (G.shops || []).length; i++) { if (String(G.shops[i].shop_id) === String(G.shopId)) shopName = G.shops[i].name || ''; }
+  var dName = (shopName ? shopName + ' — ' : '') + 'Staff Door';
+  try {
+    var res = await withTimeout(sb.from('devices').select('id,status,device_name,device_type,shop_id').eq('device_key', key).maybeSingle(), 10000);
+    var row = res && res.data;
+    if (row && row.status === 'revoked') { showDoorLocked(row.device_name || ''); return; }
+    if (row) {
+      var patch = { last_seen: now };
+      // a Staff-Door row follows the shop this phone is used for; a
+      // POS/Kitchen row keeps its own name (the phone is already
+      // lockable through it — one identity per phone).
+      if (String(row.device_type || '') === 'staff-door' || !row.shop_id) patch.shop_id = G.shopId || null;
+      if (String(row.device_type || '') === 'staff-door') patch.device_name = dName;
+      var u = await sb.from('devices').update(patch).eq('device_key', key);
+      if (u && u.error) throw u.error;
+    } else {
+      var ins = await sb.from('devices').insert([{
+        device_key: key, shop_id: G.shopId || null, device_name: dName,
+        device_type: 'staff-door', status: 'active', last_seen: now
+      }]);
+      if (ins && ins.error) {
+        console.warn('[staff-door] device insert failed — retrying once:', ins.error.message || ins.error);
+        await new Promise(function (r) { setTimeout(r, 900); });
+        ins = await sb.from('devices').insert([{
+          device_key: key, shop_id: G.shopId || null, device_name: dName,
+          device_type: 'staff-door', status: 'active', last_seen: new Date().toISOString()
+        }]);
+        if (ins && ins.error) throw ins.error;
+      }
+    }
+    tagOk();
+  } catch (e) {
+    console.warn('[staff-door] device registration failed:', (e && e.message) || e);
+    tagBad();
   }
+  doorDevWatch(key);
+}
 
-  // Accepts a bare domain or a full menu URL; returns a clean ".../menu.html" base.
-  function normalizeBase(raw) {
-    var u = String(raw || '').trim();
-    if (!u) return '';
-    if (!/^https?:\/\//i.test(u) && !/^localhost[:/]/i.test(u) && !/^file:/i.test(u)) u = 'https://' + u;
-    u = u.replace(/\s+/g, '%20');                 // handles local test files like "menu (2).html"
-    var h = u.indexOf('#'); if (h > -1) u = u.slice(0, h);   // drop old hash
-    var q = u.indexOf('?'); if (q > -1) u = u.slice(0, q);   // drop old query
-    u = u.replace(/\/+$/, '');                    // drop trailing slashes
-    if (!/\.html?$/i.test(u)) u = u + '/menu.html';
-    return u;
-  }
-
-  function buildMenuUrl(base, shop, table) {
-    return base + '?shop=' + encodeURIComponent(shop) + '&table=' + encodeURIComponent(table);
-  }
-
-  function parseNames(text) {
-    var seen = {}, names = [], dupes = [], long = [];
-    String(text || '').split(/\r?\n/).forEach(function(line) {
-      var n = line.trim();
-      if (!n) return;
-      if (seen[n]) { if (dupes.indexOf(n) === -1) dupes.push(n); return; }
-      seen[n] = true;
-      if (n.length > 24 && long.indexOf(n) === -1) long.push(n);
-      names.push(n);
-    });
-    return { names: names, dupes: dupes, long: long };
-  }
-/*URL-LOGIC-END*/
-
-  var LS_KEY = 'tableQrSetup_v1';
-
-  function el(id) { return document.getElementById(id); }
-
-  function fillGenerated() {
-    var prefix = el('genPrefix').value.trim();
-    var start = parseInt(el('genStart').value, 10);
-    var count = parseInt(el('genCount').value, 10);
-    if (isNaN(start)) start = 1;
-    if (isNaN(count) || count < 1) count = 1;
-    if (count > 200) count = 200;
-    var lines = [];
-    for (var i = 0; i < count; i++) lines.push(prefix + (start + i));
-    el('namesInput').value = lines.join('\n');
-    updateCount();
-  }
-
-  function updateCount() {
-    var r = parseNames(el('namesInput').value);
-    el('countPill').textContent = r.names.length + (r.names.length === 1 ? ' table' : ' tables');
-    el('dupePill').style.display = r.dupes.length ? 'inline-block' : 'none';
-    if (r.dupes.length) el('dupePill').textContent = ' duplicated removed: ' + r.dupes.slice(0, 3).join(', ') + (r.dupes.length > 3 ? '…' : '');
-    el('longPill').style.display = r.long.length ? 'inline-block' : 'none';
-    if (r.long.length) el('longPill').textContent = ' very long name: "' + r.long[0].slice(0, 18) + '…" — keep it short for the kitchen screen';
-  }
-
-  function saveSetup() {
+// Realtime watch + 30 s heartbeat — wired once per page load.
+function doorDevWatch(key) {
+  if (!DOOR_DEV_WATCHED) {
+    DOOR_DEV_WATCHED = true;
+    // Realtime: the owner taps 🔒 / 🔓 in Admin → Devices
     try {
-      localStorage.setItem(LS_KEY, JSON.stringify({
-        base: el('baseUrl').value, shop: el('shopId').value,
-        head: el('headText').value, theme: el('themeSel').value,
-        names: el('namesInput').value
-      }));
+      sb.channel('door-device-' + key)
+        .on('postgres_changes', {
+          event: 'UPDATE', schema: 'public', table: 'devices',
+          filter: 'device_key=eq.' + key
+        }, function (payload) {
+          if (!payload.new) return;
+          if (payload.new.status === 'revoked') showDoorLocked(payload.new.device_name || '');
+          else if (payload.new.status === 'active' && document.getElementById('doorLockScreen')) location.reload();
+        }).subscribe();
     } catch (e) {}
   }
 
-  function restoreSetup() {
-    // ?demo=1 fills a sample sheet so you can see how it looks before typing anything.
-    var demo = new URLSearchParams(window.location.search).get('demo');
-    var saved = null;
-    try { saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); } catch (e) {}
-    if (demo && !saved) {
-      el('baseUrl').value = 'https://your-domain.com/menu.html';
-      el('shopId').value = 'SHOP123';
-      el('headText').value = 'Maatii2';
-      el('namesInput').value = 'Garden 1\nGarden 2\nBalcony 1\nBalcony 2\nVIP Room\nጠረጴዛ ፩\nጠረጴዛ ፪\n🌿 Terrace';
-    } else if (saved) {
-      el('baseUrl').value = saved.base || '';
-      el('shopId').value = saved.shop || '';
-      el('headText').value = saved.head || '';
-      el('themeSel').value = saved.theme || 'classic';
-      el('namesInput').value = saved.names || '';
+  // Safety net every 30 s: heartbeat + re-check the lock + keep the row
+  // on the shop this phone actually uses (self-healing after failures).
+  if (DOOR_DEV_TIMER) return;
+  DOOR_DEV_TIMER = setInterval(function () {
+    try { if ($('staffCard').classList.contains('hidden')) return; } catch (e) { return; }
+    doorRegisterDevice();
+  }, 30000);
+
+  // v3.3 · always-on read-only lock poll (every 15 s): while the staff
+  // card is hidden (PIN screen / owner screen) the heartbeat above
+  // early-returns — this poll reads ONLY the status, never writes, so a
+  // 🔒 in Admin → 📱 Devices walls the door within seconds no matter
+  // which screen the phone is sitting on.
+  if (!DOOR_LOCK_POLL) {
+    DOOR_LOCK_POLL = setInterval(async function () {
+      if (!sb || !navigator.onLine) return;
+      try {
+        var r = await withTimeout(sb.from('devices').select('status, device_name').eq('device_key', doorDeviceKey()).maybeSingle(), 8000);
+        if (r && r.data && r.data.status === 'revoked') showDoorLocked(r.data.device_name || '');
+      } catch (e) {}
+    }, 15000);
+  }
+}
+
+// Red lock wall — the door is closed while the owner keeps this device
+// locked. v3.2 SOFT LOCK: the registration (owner session + unlock
+// record) is KEPT on the device, so when the owner taps 🔓 Unlock in
+// Admin → 📱 Devices this wall lifts BY ITSELF and the staff list comes
+// back — the owner email + password are NEVER asked again after an
+// unlock (the owner does not need to be physically at the device).
+var DOOR_LOCK_TIMER = null;
+function showDoorLocked(deviceName) {
+  if (document.getElementById('doorLockScreen')) return;   // already walled
+  var d = document.createElement('div');
+  d.id = 'doorLockScreen';
+  d.style.cssText = 'position:fixed;inset:0;background:rgba(153,27,27,.985);color:#fff;z-index:999999;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px';
+  d.innerHTML =
+    '<div style="font-size:58px;margin-bottom:14px">⛔</div>' +
+    '<h1 style="font-size:25px;margin-bottom:10px;font-family:\'Plus Jakarta Sans\',sans-serif">Device Locked</h1>' +
+    '<p style="font-size:14px;max-width:320px;color:#fecaca;line-height:1.6">' +
+    (deviceName ? esc(deviceName) + ' has been ' : 'This device has been ') +
+    'locked by the shop owner.</p>' +
+    '<p style="font-size:12px;color:#fca5a5;margin-top:16px;max-width:300px;line-height:1.6">When the owner unlocks it (Admin → 📱 Devices), this page reopens <b>by itself</b> — the owner email + password are not asked again.</p>' +
+    '<button type="button" onclick="doorRetry()" style="margin-top:22px;background:#fff;color:#7f1d1d;border:none;border-radius:12px;padding:12px 22px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">🔄 Check again — unlocked?</button>' +
+    '<p id="doorLockMsg" style="font-size:11px;color:#fecaca;margin-top:12px;min-height:14px"></p>';
+  document.body.appendChild(d);
+  // Only the staff sign-in keys are cleared (each workplace entrance
+  // re-asks the STAFF member's own password). The OWNER SESSION STAYS —
+  // that is exactly what makes the unlock seamless.
+  try { SSO_KEYS.forEach(lsDel); } catch (e) {}
+  // Watch the lock while the wall is up: realtime push + 15 s poll.
+  doorWatchLock();
+  try {
+    if (sb) {
+      sb.channel('door-lockwatch-' + doorDeviceKey())
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'devices', filter: 'device_key=eq.' + doorDeviceKey() }, function (payload) {
+          if (payload.new && payload.new.status === 'active') location.reload();
+        }).subscribe();
     }
-    updateCount();
+  } catch (e) {}
+}
+function hideDoorLocked() { var d = document.getElementById('doorLockScreen'); if (d) d.remove(); }
+
+// v3.2 · while the red wall is up, re-check the lock every 15 s — the
+// moment the owner unlocks (or removes the row), the page reloads and
+// the staff list comes back on its own.
+function doorWatchLock() {
+  if (DOOR_LOCK_TIMER) return;
+  DOOR_LOCK_TIMER = setInterval(async function () {
+    if (!sb || !navigator.onLine) return;
+    try {
+      var r = await withTimeout(sb.from('devices').select('status').eq('device_key', doorDeviceKey()).maybeSingle(), 8000);
+      if (!r || !r.data || r.data.status === 'active') location.reload();
+    } catch (e) {}
+  }, 15000);
+}
+
+// v3.2 · the 🔄 button on the red wall — staff can check immediately
+// after the owner says "I unlocked it" (no waiting for the 15 s poll).
+async function doorRetry() {
+  var m = $('doorLockMsg');
+  if (m) m.textContent = '⏳ ' + t('sd.checking') + '…';
+  if (!sb || !navigator.onLine) { if (m) m.textContent = '📴 Offline — connect to the internet first.'; return; }
+  try {
+    var r = await withTimeout(sb.from('devices').select('status').eq('device_key', doorDeviceKey()).maybeSingle(), 9000);
+    if (!r || !r.data || r.data.status === 'active') location.reload();
+    else if (m) m.textContent = '🔒 Still locked — the owner unlocks it from Admin → 📱 Devices.';
+  } catch (e) { if (m) m.textContent = '⚠️ Could not check — try again.'; }
+}
+
+// ── Business-type classification (same as before) ──
+var TYPE_HOTEL = ['hotel','guest house','guesthouse','lodge','resort','pension','bnb','hostel'];
+var TYPE_FOOD = ['cafe','café','restaurant','coffee','bar','bakery','cafeteria','fast food','fastfood','food','juice','burger','pizza'];
+function typeGroup(t) {
+  t = String(t || '').toLowerCase().trim();
+  if (TYPE_HOTEL.indexOf(t) > -1) return 'hotel';
+  if (TYPE_FOOD.indexOf(t) > -1) return 'cafe';
+  return 'retail';
+}
+var POS_ICON = { Owner:'👑', Manager:'🛠️', Cashier:'💳', Waiter:'📝', Chef:'👨‍🍳', Barista:'☕', Reception:'🛎️', Cleaner:'🧹', Guard:'💂' };
+function shopIcon(shop) { var g = typeGroup(shop && shop.business_type); return (g === 'hotel') ? '🏨' : (g === 'cafe') ? '☕' : '🏪'; }
+function posLabel(p) {
+  var k = 'pos.' + String(p || '').trim().toLowerCase();
+  var s = t(k);
+  return (s === k) ? (p || t('side.staff')) : s;
+}
+
+// ── THE ROUTING MATRIX: position × business type → destination ──
+function routeFor(position, shopType) {
+  var p = String(position || '').trim().toLowerCase();
+  var g = typeGroup(shopType);
+  if (p === 'owner' || p === 'manager') return { app: 'admin-clean.html', icon: '🛠️', dest: t('dest.admin'), sso: null };
+  if (p === 'chef' || p === 'barista' || p === 'kitchen') return { app: 'kitchen.html', icon: '🍳', dest: t('dest.kitchen'), sso: 'kitchen' };
+  if (p === 'reception' || p === 'cleaner' || p === 'guard' || p === 'housekeeping' || p === 'security') {
+    if (g === 'hotel') return { app: 'hotel.html', icon: '🏨', dest: t('dest.hotel'), sso: 'hotel' };
+    return { app: 'pos.html', icon: '🧾', dest: t('dest.pos'), sso: 'pos' };
+  }
+  if (p === 'waiter') return { app: 'pos.html', icon: '📝', dest: t('dest.waiter'), sso: 'pos' };
+  if (p === 'cashier') {
+    if (g === 'retail') return { app: 'pos.html', icon: '🧾', dest: t('dest.posretail'), sso: 'pos' };
+    return { app: 'pos.html', icon: '💳', dest: t('dest.posbill'), sso: 'pos' };
+  }
+  return { app: 'pos.html', icon: '🧾', dest: t('dest.pos'), sso: 'pos' };
+}
+
+// ── Messages / busy state ──
+function setMsg(kind, html) { var m = $('signinMsg'); if (m) { m.className = 'msgbox ' + kind + (html ? '' : ' hidden'); if (html) m.innerHTML = html; } }
+function setUMsg(kind, html) { var m = $('unlockMsg'); if (m) { m.className = 'msgbox ' + kind + (html ? '' : ' hidden'); if (html) m.innerHTML = html; } }
+function setBusy(on, label) {
+  G.busy = on;
+  var b = $('signinBtn'); if (b) b.classList[on ? 'add' : 'remove']('loading');
+  var l = $('btnLabel'); if (l) l.textContent = on ? (label || t('si.btn.checking')) : t('si.btn');
+}
+function setUBusy(on, label) {
+  G.ubusy = on;
+  var b = $('unlockBtn'); if (b) b.classList[on ? 'add' : 'remove']('loading');
+  var l = $('unlockBtnLbl'); if (l) l.textContent = on ? (label || t('sd.checking')) : t('sd.unlock');
+}
+function netMsg(e) { if (e && e.message === 'TIMEOUT') return t('msg.timeout'); return t('msg.net', { err: (e && e.message) || 'network' }); }
+
+// ═══ STEP 1 · admin gmail + password → REGISTER THIS DEVICE (once) ═══
+async function doUnlock() {
+  if (G.ubusy) return;
+  var email = val('adEmail');
+  var pass = $('adPass').value || '';
+  if (!email || !pass) { setUMsg('err', t('act.fill')); (email ? $('adPass') : $('adEmail')).focus(); return; }
+  if (!sb) { setUMsg('err', t('e.nosb')); return; }
+
+  setUBusy(true, t('sd.checking'));
+  setUMsg('info', t('sd.checking'));
+  try {
+    // 1) Verify the ADMIN account — the session STAYS on this device
+    //    (same key as POS/Kitchen activation) → asked ONCE, never again.
+    var r = await withTimeout(sb.auth.signInWithPassword({ email: email, password: pass }), 12000);
+    if (r && r.error) throw { authFail: true };
+    if (!r || !r.data || !r.data.user) throw { authFail: true };
+    var mail = r.data.user.email || email;
+
+    // 2) Only the shops + staff that belong to THIS admin account
+    var ok = await loadAccount(mail);
+    if (!ok) { setUBusy(false); return; }
+    saveUnlockRecord(mail);
+    var free = await doorCheck();            // RULE 3 — owner locked this device remotely?
+    if (!free) { setUBusy(false); return; }
+    enterStaffStep();
+    doorRegisterDevice();                    // RULE 3 — device becomes lockable from Admin → 📱 Devices
+  } catch (e) {
+    setUBusy(false);
+    if (e && e.authFail) { setUMsg('err', t('sd.wrong')); $('adPass').value = ''; $('adPass').focus(); return; }
+    setUMsg('err', netMsg(e));
+  }
+}
+
+// ── Load one admin account's shops + staff (needs the device session) ──
+async function loadAccount(ownerEmail) {
+  try {
+    var sh = await withTimeout(sb.from('shops').select('shop_id,name,business_type,active').eq('owner_email', ownerEmail).eq('active', true).order('name'), 12000);
+    if (sh.error) throw sh.error;
+    var shops = sh.data || [];
+    if (!shops.length) { setUMsg('err', t('sd.noshops')); return false; }
+
+    var ids = shops.map(function (s) { return s.shop_id; });
+    var em = await withTimeout(sb.from('employees').select('firebase_id,id,name,position,status,shop_id').in('shop_id', ids).order('name'), 12000);
+    if (em.error) throw em.error;
+    var staff = (em.data || []).filter(function (x) { return (x.status || 'active') !== 'inactive'; });
+
+    G.shops = shops; G.staff = staff; G.shopId = '';
+    return true;
+  } catch (e) {
+    setUMsg('err', netMsg(e));
+    return false;
+  }
+}
+
+// ── AUTO-UNLOCK: device already registered → skip the admin door ──
+async function tryAutoUnlock() {
+  if (!sb) return;
+  var sess = null;
+  try {
+    var s = await withTimeout(sb.auth.getSession(), 8000);
+    sess = s && s.data && s.data.session;
+  } catch (e) {}
+  var isReal = sess && sess.user && sess.user.email && !sess.user.is_anonymous;
+
+  if (!isReal) {
+    // Session gone (expired or owner signed out elsewhere) → admin door
+    // once more. Prefill the saved email so only the password is needed.
+    var rec = unlockRecord();
+    if (rec && rec.email) { $('adEmail').value = rec.email; setUMsg('info', t('sd.lock.p')); }
+    return;
   }
 
-  function generate() {
-    var base = normalizeBase(el('baseUrl').value);
-    var shop = el('shopId').value.trim();
-    var head = el('headText').value.trim();
-    var theme = el('themeSel').value;
+  var ok = await loadAccount(sess.user.email);
+  if (!ok) { $('adEmail').value = sess.user.email; return; }
+  var free = await doorCheck();              // RULE 3 — owner locked this device remotely?
+  if (!free) return;
+  enterStaffStep();
+  doorRegisterDevice();                      // RULE 3 — device becomes lockable from Admin → 📱 Devices
+}
 
-    if (!base) { alert('Please enter your menu web address (URL) first.'); el('baseUrl').focus(); return; }
-    if (!shop) { alert('Please enter your Shop ID.'); el('shopId').focus(); return; }
-    var r = parseNames(el('namesInput').value);
-    if (r.names.length === 0) { alert('Please add at least one table name — one per line.'); el('namesInput').focus(); return; }
-    if (r.names.length > 200) { alert('Maximum is 200 stickers at once (you have ' + r.names.length + '). Remove some lines.'); return; }
+// ── 🔄 Refresh: new staff the owner just registered appear instantly ──
+async function refreshLists() {
+  if (!sb || G.ubusy || G.busy) return;
+  var sess = null;
+  try {
+    var s = await withTimeout(sb.auth.getSession(), 8000);
+    sess = s && s.data && s.data.session;
+  } catch (e) {}
+  if (!(sess && sess.user && sess.user.email && !sess.user.is_anonymous)) { lockDoor(true); return; }
+  setMsg('info', t('sd.checking'));
+  var ok = await loadAccount(sess.user.email);
+  if (ok) { buildShopUI(); buildStaffUI(true); setMsg(null); doorRegisterDevice(); }
+}
 
-    el('baseUrl').value = base; // show the normalized URL back to the owner
-    document.body.setAttribute('data-theme', theme);
-    saveSetup();
-    updateCount();
+// ═══ STEP 2 · build the staff screen ═══
+function enterStaffStep() {
+  setUBusy(false); setUMsg(null);
+  $('lockCard').classList.add('hidden');
+  $('staffCard').classList.remove('hidden');
+  buildShopUI();
+  buildStaffUI(false);
+  try { if (G.staff.length) $('sfStaff').focus(); } catch (e) {}
+}
 
-    var html = '';
-    r.names.forEach(function(name) {
-      var url = buildMenuUrl(base, shop, name);
-      var qrSrc = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=14&ecc=M&data=' + encodeURIComponent(url);
-      html += '<div class="sticker">'
-        + '<div class="sticker-head">' + (head ? escHtml(head) : 'SCAN TO ORDER') + '</div>'
-        + '<div class="sticker-name">' + escHtml(name) + '</div>'
-        + '<div class="sticker-qr-wrap">'
-        + '<img class="sticker-qr" src="' + qrSrc + '" alt="QR for ' + escHtml(name) + '" loading="lazy"'
-        + ' onerror="this.style.display=\'none\';var f=this.parentNode.querySelector(\'.qr-fallback\');if(f)f.style.display=\'block\';document.getElementById(\'netWarn\').style.display=\'block\';">'
-        + '<div class="qr-fallback">⚠️ QR could not load.<br>Check internet, then press Generate again.<br><b>' + escHtml(url) + '</b></div>'
-        + '</div>'
-        + '<div class="sticker-hint">Point your camera · Order · Pay</div>'
-        + '<a class="test-link no-print" href="' + escHtml(url) + '" target="_blank" rel="noopener">▶ test this table</a>'
-        + '</div>';
+function buildShopUI() {
+  var sel = $('sfShopSel'), chip = $('shopChip');
+  var prev = G.shopId || '';
+  if (G.shops.length === 1) {
+    sel.classList.add('hidden'); chip.classList.remove('hidden');
+    var s = G.shops[0];
+    G.shopId = s.shop_id;
+    chip.innerHTML = '<span>' + shopIcon(s) + ' ' + esc(s.name || '') + '</span><small>' + t('sd.shop') + '</small>';
+  } else {
+    chip.classList.add('hidden'); sel.classList.remove('hidden');
+    var html = G.shops.map(function (s) {
+      return '<option value="' + esc(s.shop_id) + '">' + shopIcon(s) + ' ' + esc(s.name || '') + '</option>';
+    }).join('');
+    sel.innerHTML = html;
+    var want = '';
+    if (prev && G.shops.some(function (s) { return String(s.shop_id) === String(prev); })) want = prev;
+    else if (G.presetShop && G.shops.some(function (s) { return String(s.shop_id) === String(G.presetShop); })) want = G.presetShop;
+    else want = G.shops[0].shop_id;
+    sel.value = want;
+    G.shopId = want;
+  }
+}
+
+function onShopChange() { G.shopId = $('sfShopSel').value; buildStaffUI(false); doorRegisterDevice(); }
+
+function buildStaffUI(keepSel) {
+  var sel = $('sfStaff');
+  var prev = keepSel ? String(sel.value || '') : '';
+  var list = G.staff.filter(function (e) { return String(e.shop_id || '') === String(G.shopId || ''); });
+  G.byVal = {};
+  var html = '<option value="">' + t('sd.staff.ph') + '</option>';
+  list.forEach(function (e) {
+    var v = String(e.firebase_id || e.id);
+    G.byVal[v] = e;
+    html += '<option value="' + esc(v) + '">' + (POS_ICON[e.position] || '👤') + ' ' + esc(e.name || '') + ' — ' + esc(posLabel(e.position)) + '</option>';
+  });
+  sel.innerHTML = html;
+  if (prev && G.byVal[prev]) sel.value = prev;
+  if (!list.length) setMsg('info', t('sd.nostaff')); else setMsg(null);
+}
+
+function onStaffPick() { if (String($('sfStaff').value || '')) { setMsg(null); try { $('staffPass').focus(); } catch (e) {} } }
+
+// ── Staff sign-in: dropdown name + password ──
+async function doSignIn() {
+  if (G.busy) return;
+  var v = String($('sfStaff').value || '');
+  var pass = $('staffPass').value || '';
+  if (!v) { setMsg('err', t('sd.pick')); $('sfStaff').focus(); return; }
+  if (!pass) { setMsg('err', t('e.nopass')); $('staffPass').focus(); return; }
+  if (!sb) { setMsg('err', t('e.nosb')); return; }
+  var emp = G.byVal[v];
+  if (!emp) { setMsg('err', t('sd.pick')); return; }
+
+  await verifyAndGo(emp, pass);
+}
+
+// ── Lock the device (two taps — it removes the owner registration) ──
+var lockArm = 0;
+function lockDoor(silent) {
+  if (!silent) {
+    if (Date.now() - lockArm > 4000) {
+      lockArm = Date.now();
+      setMsg('warn', '⎋ Unregister this device — tap again to confirm.<br><small>(Removes THIS PHONE\'S registration: the owner email + password will be asked again next time — a different account can be used.)</small>');
+      setTimeout(function () { if (Date.now() - lockArm >= 3900) setMsg(null); }, 4100);
+      return;
+    }
+  }
+  lockArm = 0;
+  G.shops = []; G.staff = []; G.shopId = ''; G.byVal = {};
+  $('adEmail').value = ''; $('adPass').value = ''; $('staffPass').value = '';
+  setMsg(null); setUMsg(null);
+  $('staffCard').classList.add('hidden');
+  $('lockCard').classList.remove('hidden');
+  lsDel('staffDoorUnlock');                       // remove the registration record
+  SSO_KEYS.forEach(lsDel);                        // nobody stays signed in anywhere
+  try { if (sb) sb.auth.signOut(); } catch (e) {} // remove the owner session
+  try { $('adEmail').focus(); } catch (e) {}
+}
+
+// ── Password verification: server check first, offline fallback second ──
+async function verifyAndGo(emp, pass) {
+  setBusy(true, t('si.btn.verifying'));
+  setMsg('info', t('e.vpass'));
+  var empId = emp.firebase_id || emp.id;
+  var v = null;
+
+  // 1) Server-side check (same as POS / Kitchen / Hotel Desk). Two tries.
+  for (var attempt = 0; attempt < 2 && !v; attempt++) {
+    if (attempt > 0) { setMsg('info', t('e.slow')); await new Promise(function (r) { setTimeout(r, 500); }); }
+    try { v = await edgeVerify(emp.shop_id, empId, pass); }
+    catch (e) { v = null; }
+    if (v && v.reason === 'bad_response') v = null;
+  }
+
+  if (v) {
+    if (v.ok) return goStaff(emp);
+    setBusy(false);
+    $('staffPass').value = ''; $('staffPass').focus();
+    if (v.reason === 'locked') { setMsg('err', t('e.locked', { n: v.minutes || 5 })); return; }
+    if (v.reason === 'inactive') { setMsg('err', t('e.disabled')); return; }
+    if (v.reason === 'network') { setMsg('err', t('e.net')); return; }
+    setMsg('err', t('e.wrong') + (v.attempts_left > 0 ? ' <small>' + t('e.tries', { n: v.attempts_left }) + '</small>' : ''));
+    return;
+  }
+
+  // 2) Server unreachable → offline check for legacy (unsalted) accounts only.
+  setMsg('info', t('e.offchk'));
+  try {
+    var r = await offlineVerify(emp, pass);
+    if (r === 'ok') return goStaff(emp);
+    if (r === 'disabled') { setBusy(false); setMsg('err', t('e.disabled')); return; }
+    if (r === 'cant') { setBusy(false); setMsg('err', t('e.cant')); return; }
+    if (r === 'noset') { setBusy(false); setMsg('err', t('e.noset')); return; }
+    setBusy(false); $('staffPass').value = '';
+    setMsg('err', t('e.wrong'));
+  } catch (e) {
+    setBusy(false);
+    setMsg('err', netMsg(e));
+  }
+}
+
+async function edgeVerify(shopId, empId, pin) {
+  var token = CFG_KEY;
+  try { var s = await withTimeout(sb.auth.getSession(), 5000); if (s && s.data && s.data.session) token = s.data.session.access_token; } catch (e) {}
+  var ctrl = new AbortController();
+  var tOut = setTimeout(function () { ctrl.abort(); }, 9000);
+  try {
+    var res = await fetch(CFG_URL + '/functions/v1/staff-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': CFG_KEY, 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ shop_id: shopId, employee_id: empId, pin: String(pin) }),
+      signal: ctrl.signal
     });
-    el('sheet').innerHTML = html;
-    el('netWarn').style.display = 'none';
+    var v = {};
+    try { v = await res.json(); } catch (e) { v = { ok: false, reason: 'bad_response' }; }
+    return v;
+  } finally { clearTimeout(tOut); }
+}
+
+// Offline fallback: only accounts stored WITHOUT a salt can be checked here
+// (salted ones need the server — that is honest security, not a bug).
+async function offlineVerify(emp, pass) {
+  var res = await withTimeout(
+    sb.from('employees').select('hashed_password,pin_salt,status,name').eq('shop_id', emp.shop_id).ilike('name', emp.name).limit(5),
+    8000);
+  if (res.error) throw res.error;
+  var rows = res.data || [];
+  var low = String(emp.name || '').trim().toLowerCase();
+  var row = rows.filter(function (r) { return String(r.name || '').trim().toLowerCase() === low; })[0] || rows[0];
+  if (!row) throw new Error('account not found');
+  if ((row.status || 'active') === 'inactive') return 'disabled';
+  if (row.hashed_password && row.pin_salt) return 'cant';
+  if (!row.hashed_password) return 'noset';
+  var hex = await sha256Hex(pass);
+  return hex.toLowerCase() === String(row.hashed_password).toLowerCase() ? 'ok' : 'wrong';
+}
+
+async function sha256Hex(str) {
+  if (!window.crypto || !window.crypto.subtle || !window.TextEncoder) throw new Error('no-webcrypto');
+  var buf = await window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  var bytes = new Uint8Array(buf), out = '';
+  for (var i = 0; i < bytes.length; i++) out += ('0' + bytes[i].toString(16)).slice(-2);
+  return out;
+}
+
+// ── Success: write the single-sign-on keys each app already reads ──
+async function goStaff(emp) {
+  setBusy(true, t('si.btn.opening'));
+  var shop = { shop_id: emp.shop_id, name: '', business_type: '' };
+  try {
+    var res = await withTimeout(sb.from('shops').select('shop_id,name,business_type,active').eq('shop_id', emp.shop_id).maybeSingle(), 8000);
+    if (res.data) shop = res.data;
+  } catch (e) {}
+
+  var pos = String(emp.position || '').trim();
+  var r = routeFor(pos, shop.business_type);
+  var empId = emp.firebase_id || emp.id;
+
+  // The SSO keys always describe ONLY the staff member who just signed
+  // in — stale keys from a previous sign-in are removed first.
+  SSO_KEYS.forEach(lsDel);
+  lsSet('shopId', emp.shop_id);
+  if (r.sso === 'kitchen') {
+    lsSet('kitchenShopId', emp.shop_id);
+    lsSet('kitchenChefId', empId);
+    lsSet('kitchenChefName', emp.name || 'Chef');
+  } else if (r.sso === 'hotel') {
+    lsSet('hotelShopId', emp.shop_id);
+    lsSet('hotelStaffId', empId);
+    lsSet('hotelStaffName', emp.name || 'Staff');
+    lsSet('hotelPosition', pos);
+  } else {
+    // POS (cashier, waiter, manager on retail…) — and admin-clean for
+    // Owner/Manager arrives already signed in through the device session.
+    lsSet('posCashierId', empId);
+    lsSet('posCashierName', emp.name || 'Cashier');
+    lsSet('posCashierRole', pos || 'Cashier');
   }
 
-  function resetAll() {
-    if (!confirm('Clear everything (URL, Shop ID, names, stickers)?')) return;
-    try { localStorage.removeItem(LS_KEY); } catch (e) {}
-    ['baseUrl', 'shopId', 'headText', 'namesInput', 'genPrefix'].forEach(function(id) { el(id).value = ''; });
-    el('themeSel').value = 'classic';
-    el('sheet').innerHTML = '';
-    updateCount();
-  }
+  var url = r.app +
+    '?shop=' + encodeURIComponent(emp.shop_id || '') +
+    '&name=' + encodeURIComponent(emp.name || '') +
+    '&role=' + encodeURIComponent(pos || '') +
+    '&id=' + encodeURIComponent(empId || '');
+  setMsg('ok', (r.icon || '✅') + ' ' + t('ok.opening', { dest: r.dest }));
+  setTimeout(function () { window.location.href = url; }, 350);
+}
 
-  el('namesInput').addEventListener('input', updateCount);
-  restoreSetup();
+// ── language + boot ──
+function applyBrand() { document.title = APP_NAME + ' — ' + t('si.h2'); }
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.LANG) {
+    if ($('langbar') && typeof LANG.dropdown === 'function') LANG.dropdown($('langbar'));
+    try { LANG.setLang(LANG.detect(), true); } catch (e) {}
+    LANG.apply();
+  }
+  applyBrand();
+  try {
+    var shop = new URLSearchParams(location.search).get('shop');
+    if (shop) G.presetShop = String(shop);
+  } catch (e) {}
+  // RULE 3 — remote lock first: if the owner locked this device it stays
+  // behind the red wall. The wall WATCHES the lock and lifts by itself
+  // (reload) the moment the owner unlocks — no re-registration asked.
+  doorCheck().then(function (free) {
+    if (!free) return;   // red lock screen is showing — stop here
+    doorDevWatch(doorDeviceKey());   // v3.3 — watch the lock from the FIRST screen (realtime + polls), even before any sign-in
+    tryAutoUnlock();     // device already registered? → staff list directly
+  });
+});
+document.addEventListener('langchange', function () {
+  applyBrand();
+  if (!$('staffCard').classList.contains('hidden')) { buildShopUI(); buildStaffUI(true); }
+});
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && !G.busy && !G.ubusy) {
+    if ($('staffCard').classList.contains('hidden')) doUnlock(); else doSignIn();
+  }
+});
 </script>
-<!-- SLP-LANG-2 · language engine: English / አማርታ / Afaan Oromoo on the whole page -->
-<script src="lang.js" data-spp-auto="1"></script>
 </body>
 </html>
+
