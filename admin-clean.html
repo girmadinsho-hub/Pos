@@ -152,6 +152,310 @@ body.dark .maximized-card{background:#0f172a!important}
   
 </head>
 <body>
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   SSAlert v1 · UNIFIED ALERT ENGINE — sound + vibration + voice
+   ─────────────────────────────────────────────────────────────
+   EVERY alert in the system goes through SSAlert.fire(type, opts):
+     · a synthesized sound (10 selectable sounds),
+     · a vibration (selectable intensity + amount),
+     · an optional SPOKEN voice (text-to-speech),
+     · a big banner for cross-device alerts.
+   Controlled per device in Settings → 🔔 Alerts: volume, repeat,
+   a different sound per alert, vibration intensity & length, and
+   the spoken-voice switch. Saved in localStorage 'ssAlertCfg'.
+   ═══════════════════════════════════════════════════════════════ */
+window.SSAlert = (function () {
+  var LS = 'ssAlertCfg';
+
+  var TYPES = {
+    generic:    { icon: '🔊', sound: 'beep',   vib: 1, prio: 1, name: 'General beep' },
+    waiterCall: { icon: '🔔', sound: 'alarm',  vib: 3, prio: 3, name: 'Waiter / table call' },
+    qrOrder:    { icon: '🛎', sound: 'bell',   vib: 2, prio: 2, name: 'New QR order' },
+    newOrder:   { icon: '🧑‍🍳', sound: 'alarm',  vib: 3, prio: 3, name: 'New kitchen order' },
+    chat:       { icon: '💬', sound: 'ping',   vib: 1, prio: 1, name: 'Chat message' },
+    lowStock:   { icon: '⚠️', sound: 'buzz',   vib: 1, prio: 2, name: 'Low stock' },
+    stockBlock: { icon: '⛔', sound: 'buzz',   vib: 2, prio: 2, name: 'Stock blocked / warning' },
+    sale:       { icon: '✅', sound: 'cash',   vib: 1, prio: 1, name: 'Sale completed' },
+    mpvConfirm: { icon: '📱', sound: 'bell',   vib: 3, prio: 3, name: 'Mobile payment confirmed by waiter' },
+    mpvSent:    { icon: '✅', sound: 'chime',  vib: 1, prio: 1, name: 'Confirmation sent to cashier' },
+    mpvOwnerOk: { icon: '✅', sound: 'chime',  vib: 1, prio: 1, name: 'Owner verified a payment' },
+    mpvOwnerNo: { icon: '❌', sound: 'buzz',   vib: 2, prio: 2, name: 'Owner marked payment not received' },
+    newPay:     { icon: '📱', sound: 'alarm',  vib: 3, prio: 3, name: 'New mobile payment to verify (owner)' },
+    verified:   { icon: '✅', sound: 'chime',  vib: 1, prio: 1, name: 'Payment verified (owner)' },
+    lost:       { icon: '❌', sound: 'buzz',   vib: 2, prio: 2, name: 'Payment lost (owner)' }
+  };
+  var SOUNDS = [
+    ['beep', 'Beep (classic)'], ['chime', 'Success chime'], ['cash', 'Cash register'],
+    ['bell', 'Service bell'], ['ping', 'Soft ping'], ['double', 'Double beep'],
+    ['triple', 'Triple beep'], ['alarm', 'Urgent alarm'], ['buzz', 'Harsh buzz'],
+    ['siren', 'Rising siren']
+  ];
+  function soundIdOk(id) {
+    for (var i = 0; i < SOUNDS.length; i++) if (SOUNDS[i][0] === id) return true;
+    return false;
+  }
+
+  function defaults() {
+    return { on: true, vol: 85, reps: 2, vibOn: true, vibLevel: 2, vibLen: 2, tts: false, banner: true, sounds: {} };
+  }
+  function save(c) { try { localStorage.setItem(LS, JSON.stringify(c || cfg)); } catch (e) {} }
+  function load() {
+    var d = defaults(), first = false;
+    try {
+      var raw = localStorage.getItem(LS);
+      if (!raw) first = true;
+      var o = raw ? JSON.parse(raw) : {};
+      if (o && typeof o === 'object') {
+        if (typeof o.on === 'boolean') d.on = o.on;
+        if (typeof o.vol === 'number') d.vol = Math.max(0, Math.min(100, Math.round(o.vol)));
+        if (o.reps === 1 || o.reps === 2 || o.reps === 3) d.reps = o.reps;
+        if (typeof o.vibOn === 'boolean') d.vibOn = o.vibOn;
+        if (o.vibLevel >= 1 && o.vibLevel <= 3) d.vibLevel = o.vibLevel;
+        if (o.vibLen >= 1 && o.vibLen <= 3) d.vibLen = o.vibLen;
+        if (typeof o.tts === 'boolean') d.tts = o.tts;
+        if (typeof o.banner === 'boolean') d.banner = o.banner;
+        if (o.sounds && typeof o.sounds === 'object') {
+          for (var k in o.sounds) if (soundIdOk(o.sounds[k])) d.sounds[k] = o.sounds[k];
+        }
+      }
+    } catch (e) {}
+    if (first) {   /* one-time migration of the old v3.2 toggles */
+      try {
+        if (localStorage.getItem('posSound') === '0') d.on = false;
+        if (localStorage.getItem('posVibrate') === '0') d.vibOn = false;
+      } catch (e) {}
+      save(d);
+    }
+    return d;
+  }
+  var cfg = load();
+
+  /* ── audio ── */
+  function ctx() {
+    try {
+      var C = window.ssAudio || (window.ssAudio = new (window.AudioContext || window.webkitAudioContext)());
+      if (C && C.state === 'suspended') { try { C.resume(); } catch (e) {} }
+      return C;
+    } catch (e) { return null; }
+  }
+  try {   /* unlock audio on the first touch (browser autoplay policy) */
+    var unlock = function () { ctx(); };
+    document.addEventListener('pointerdown', unlock, { once: true, capture: true });
+    document.addEventListener('touchstart', unlock, { once: true, capture: true });
+  } catch (e) {}
+
+  function tone(C, freq, t0, dur, type, vol) {
+    var o = C.createOscillator(), g = C.createGain();
+    o.type = type || 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(Math.max(0.002, vol), t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(C.destination);
+    o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  var LIB = {
+    beep:   function (C, t, v) { tone(C, 800, t, 0.16, 'sine', v); },
+    double: function (C, t, v) { tone(C, 880, t, 0.12, 'sine', v); tone(C, 880, t + 0.2, 0.12, 'sine', v); },
+    triple: function (C, t, v) { tone(C, 760, t, 0.11, 'sine', v); tone(C, 760, t + 0.18, 0.11, 'sine', v); tone(C, 760, t + 0.36, 0.11, 'sine', v); },
+    chime:  function (C, t, v) { [523.25, 659.25, 783.99, 1046.5].forEach(function (f, i) { tone(C, f, t + i * 0.09, 0.32, 'sine', v); }); },
+    cash:   function (C, t, v) { [1046.5, 1318.5, 1568, 2093].forEach(function (f, i) { tone(C, f, t + i * 0.06, 0.16, 'triangle', v); }); },
+    bell:   function (C, t, v) { tone(C, 1244, t, 0.65, 'sine', v); tone(C, 1865, t, 0.45, 'sine', v * 0.35); },
+    ping:   function (C, t, v) { tone(C, 1500, t, 0.1, 'sine', v * 0.7); },
+    alarm:  function (C, t, v) { for (var i = 0; i < 3; i++) { tone(C, 659, t + i * 0.32, 0.14, 'square', v * 0.45); tone(C, 988, t + i * 0.32 + 0.16, 0.14, 'square', v * 0.45); } },
+    buzz:   function (C, t, v) { tone(C, 220, t, 0.22, 'square', v * 0.55); tone(C, 165, t + 0.26, 0.24, 'square', v * 0.55); },
+    siren:  function (C, t, v) {
+      var o = C.createOscillator(), g = C.createGain();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(420, t);
+      o.frequency.linearRampToValueAtTime(1250, t + 0.45);
+      o.frequency.linearRampToValueAtTime(420, t + 0.9);
+      g.gain.setValueAtTime(Math.max(0.002, v * 0.8), t);
+      g.gain.setValueAtTime(Math.max(0.002, v * 0.8), t + 0.85);
+      g.gain.linearRampToValueAtTime(0.0001, t + 1.1);
+      o.connect(g); g.connect(C.destination);
+      o.start(t); o.stop(t + 1.15);
+    }
+  };
+
+  function playSound(id, volOverride) {
+    try {
+      if (!cfg.on) return;
+      var C = ctx(); if (!C) return;
+      var v = Math.max(0, Math.min(1, (typeof volOverride === 'number' ? volOverride : cfg.vol) / 100));
+      if (v <= 0.002) return;
+      var fn = LIB[id] || LIB.beep;
+      var reps = Math.max(1, Math.min(3, cfg.reps || 1));
+      var t = C.currentTime + 0.02;
+      for (var i = 0; i < reps; i++) fn(C, t + i * 1.05, v);
+    } catch (e) {}
+  }
+
+  /* ── vibration (intensity + amount) ── */
+  function vibPattern(level, len) {
+    var base = ({ 1: [90], 2: [230], 3: [420, 150, 420] })[level] || [230];
+    var mult = [0.6, 1, 1.5][(len || 2) - 1] || 1;
+    var p = [];
+    for (var r = 0; r < (len || 2); r++) {
+      if (r) p.push(200);
+      for (var i = 0; i < base.length; i++) p.push(Math.round(base[i] * mult));
+    }
+    return p;
+  }
+  function vibrate(levelOverride) {
+    try {
+      if (!cfg.vibOn || !navigator.vibrate) return;
+      navigator.vibrate(vibPattern(levelOverride || cfg.vibLevel, cfg.vibLen));
+    } catch (e) {}
+  }
+  function haptic() {   /* tiny local feedback (button taps) */
+    try { if (cfg.vibOn && navigator.vibrate) navigator.vibrate(Math.round(35 * cfg.vibLevel / 2)); } catch (e) {}
+  }
+
+  /* ── spoken voice ── */
+  function speak(text) {
+    try {
+      if (!cfg.tts || !text || !window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(String(text).slice(0, 140));
+      u.volume = Math.max(0.1, Math.min(1, cfg.vol / 100));
+      u.rate = 0.95;
+      u.lang = (navigator.language || 'en');
+      window.speechSynthesis.speak(u);
+    } catch (e) {}
+  }
+
+  /* ── the big banner for cross-device alerts ── */
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function banner(type, title, text) {
+    try {
+      if (!cfg.banner) return;
+      var T = TYPES[type] || TYPES.generic;
+      var prio = T.prio || 1;
+      var old = document.getElementById('ssAlertBanner'); if (old) old.remove();
+      var bg = prio === 3 ? '#7f1d1d' : (prio === 2 ? '#78350f' : '#1e293b');
+      var bd = prio === 3 ? '#ef4444' : (prio === 2 ? '#f59e0b' : '#38bdf8');
+      var d = document.createElement('div');
+      d.id = 'ssAlertBanner';
+      d.style.cssText = 'position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:99999;max-width:460px;width:calc(100% - 24px);background:' + bg + ';color:#fff;border:2px solid ' + bd + ';border-radius:14px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.45);font-family:system-ui,-apple-system,sans-serif;cursor:pointer;';
+      if (prio === 3) d.style.animation = 'ssaPulse 1s infinite';
+      d.innerHTML = '<div style="display:flex;gap:10px;align-items:flex-start;">' +
+        '<span style="font-size:26px;line-height:1.1;">' + T.icon + '</span>' +
+        '<div style="min-width:0;flex:1;">' +
+        '<b style="font-size:15px;display:block;line-height:1.3;">' + esc(title || T.name) + '</b>' +
+        (text ? '<span style="font-size:13px;color:#e2e8f0;display:block;margin-top:3px;line-height:1.5;">' + esc(text) + '</span>' : '') +
+        '</div><span style="color:#94a3b8;font-size:18px;line-height:1;">✖</span></div>';
+      d.onclick = function () { try { d.remove(); } catch (e) {} };
+      document.body.appendChild(d);
+      var ms = prio === 3 ? 9000 : (prio === 2 ? 7000 : 5000);
+      setTimeout(function () { try { d.remove(); } catch (e) {} }, ms);
+    } catch (e) {}
+  }
+
+  function fire(type, opts) {
+    try {
+      var o = opts || {};
+      var T = TYPES[type] || TYPES.generic;
+      if (!cfg.on) return;
+      playSound(cfg.sounds[type] || T.sound);
+      vibrate(T.vib);
+      speak(o.speak || o.title || T.name);
+      if (o.banner !== false) banner(type, o.title, o.text);
+    } catch (e) {}
+  }
+
+  /* ── shared settings panel (POS · Admin · Kitchen all mount it) ── */
+  function settingsHtml(types) {
+    function row(label, ctrl) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;flex-wrap:wrap;">' +
+        '<span style="font-size:12px;color:#64748b;">' + label + '</span>' + ctrl + '</div>';
+    }
+    function sel(id, opts, cur) {
+      var h = '<select id="sa' + id + '" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:12px;max-width:175px;background:#fff;color:#0f172a;">';
+      opts.forEach(function (o) { h += '<option value="' + o[0] + '"' + (cur === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; });
+      return h + '</select>';
+    }
+    function chk(id, on) { return '<input type="checkbox" id="sa' + id + '"' + (on ? ' checked' : '') + ' onchange="SSAlert.onPanelChange()">'; }
+    var h = '';
+    h += row('🔔 Alerts enabled', chk('On', cfg.on));
+    h += row('🔊 Volume — <b id="saVolV">' + cfg.vol + '%</b>', '<input type="range" id="saVol" min="0" max="100" step="5" value="' + cfg.vol + '" style="width:130px;" oninput="SSAlert.onVolSlide()" onchange="SSAlert.onPanelChange()">');
+    h += row('🔁 Repeat sound', sel('Reps', [['1', '1 time'], ['2', '2 times'], ['3', '3 times']], cfg.reps));
+    h += row('📳 Vibration on', chk('Vib', cfg.vibOn));
+    h += row('&nbsp;&nbsp;· Intensity', sel('VibLevel', [['1', 'Light'], ['2', 'Medium'], ['3', 'Strong']], cfg.vibLevel));
+    h += row('&nbsp;&nbsp;· Amount (length)', sel('VibLen', [['1', 'Short'], ['2', 'Normal'], ['3', 'Long']], cfg.vibLen));
+    h += row('🗣️ Speak alerts aloud (voice)', chk('Tts', cfg.tts));
+    h += row('🪧 Big pop-up banners', chk('Banner', cfg.banner));
+    var tl = (types || []).filter(function (t) { return TYPES[t]; });
+    if (tl.length) {
+      h += '<details style="margin-top:4px;"><summary style="font-size:12px;color:#2563eb;cursor:pointer;padding:4px 0;">🎵 Choose a different sound per alert</summary>';
+      tl.forEach(function (t) {
+        h += row(TYPES[t].icon + ' ' + TYPES[t].name, sel('S_' + t, SOUNDS, cfg.sounds[t] || TYPES[t].sound));
+      });
+      h += '</details>';
+    }
+    h += '<button type="button" onclick="SSAlert.test()" style="width:100%;margin-top:6px;padding:9px;border:none;border-radius:9px;background:#0d64f0;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">▶ Test my alert settings</button>';
+    return h;
+  }
+  function mountPanel(types) {
+    var box = document.getElementById('saSettingsBox');
+    if (!box) return;
+    box.setAttribute('data-types', (types || []).join(','));
+    box.innerHTML = settingsHtml(types);
+  }
+  function g(id) { return document.getElementById('sa' + id); }
+  function onVolSlide() { var e = g('Vol'), v = g('VolV'); if (v && e) v.textContent = e.value + '%'; }
+  function onPanelChange() { readPanel(); }
+  function readPanel() {
+    try {
+      var e;
+      if ((e = g('On'))) cfg.on = e.checked;
+      if ((e = g('Vol'))) cfg.vol = Math.max(0, Math.min(100, parseInt(e.value, 10) || 0));
+      if ((e = g('Reps'))) cfg.reps = parseInt(e.value, 10) || 1;
+      if ((e = g('Vib'))) cfg.vibOn = e.checked;
+      if ((e = g('VibLevel'))) cfg.vibLevel = parseInt(e.value, 10) || 2;
+      if ((e = g('VibLen'))) cfg.vibLen = parseInt(e.value, 10) || 2;
+      if ((e = g('Tts'))) cfg.tts = e.checked;
+      if ((e = g('Banner'))) cfg.banner = e.checked;
+      var box = document.getElementById('saSettingsBox');
+      if (box) {
+        var types = (box.getAttribute('data-types') || '').split(',').filter(function (x) { return x; });
+        types.forEach(function (t) {
+          var s = g('S_' + t);
+          if (s && soundIdOk(s.value)) {
+            if (s.value === (TYPES[t] || {}).sound) delete cfg.sounds[t];
+            else cfg.sounds[t] = s.value;
+          }
+        });
+      }
+      save();
+    } catch (e) {}
+  }
+  function test() {
+    readPanel();
+    fire('generic', { title: '🔔 Alert test', text: 'Sound · vibration · voice · banner at your current settings.' });
+  }
+
+  try {
+    if (document.head && !document.getElementById('ssaStyle')) {
+      var st = document.createElement('style');
+      st.id = 'ssaStyle';
+      st.textContent = '@keyframes ssaPulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.55)}50%{box-shadow:0 0 0 16px rgba(239,68,68,0)}}';
+      document.head.appendChild(st);
+    }
+  } catch (e) {}
+
+  return {
+    fire: fire, playSound: playSound, vibrate: vibrate, haptic: haptic, speak: speak,
+    test: test, settingsHtml: settingsHtml, mountPanel: mountPanel, readPanel: readPanel,
+    onPanelChange: onPanelChange, onVolSlide: onVolSlide,
+    cfg: function () { return cfg; },
+    save: function () { save(); }
+  };
+})();
+
+</script>
+
 <!-- LOGIN -->
 <div class="screen show" id="loginScreen">
   <div class="box">
@@ -2322,8 +2626,13 @@ async function v4mpvOpen() {
             '<select class="v4-in" id="v4mpvLossOpt" style="height:32px;padding:4px;margin:0;font-size:12px;max-width:170px" onchange="v4mpvSaveCfg()"><option value="loss">Record a loss</option><option value="mark">Mark lost only</option></select></div>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0"><span style="font-size:13px">✅ Verified → bank deposit</span>' +
             '<select class="v4-in" id="v4mpvDepOpt" style="height:32px;padding:4px;margin:0;font-size:12px;max-width:120px" onchange="v4mpvSaveCfg()"><option value="yes">Yes</option><option value="no">No</option></select></div>' +
+          '<div class="card-title" style="margin-top:14px">🔔 Alert settings <small style="font-weight:400;color:#94a3b8">(this phone)</small></div>' +
+          '<div id="saSettingsBox" style="background:#fff;border-radius:10px;padding:10px 6px;margin-top:6px"></div>' +
         '</div>' +
       '</div>';
+    /* 🔔 mount the shared alert-settings panel (new-payment alerts,
+       verify/lost sounds, volume, vibration, spoken voice) */
+    try { if (window.SSAlert) window.SSAlert.mountPanel(['newPay','verified','lost','generic']); } catch (e) {}
   }
   var sb = v4mpvSB();
   if (sb) {
@@ -2539,17 +2848,58 @@ async function v4mpvFabTick() {
   try {
     var sb = v4mpvSB();
     if (!sb) { v4mpvFabTries(20000); return; }  /* not signed in yet — try again soon */
+    if (!window.__mpvRt) v4mpvRealtime();       /* realtime kicks in as soon as the DB is reachable */
     const { data, error } = await sb.from('payment_verifications')
       .select('firebase_id,id,invoice_no,amount,table_name,waiter_name,cashier_name,account_name,txn_ref,items,created_at,status')
       .eq('shop_id', getShopId()).eq('status', 'pending')
       .order('created_at', { ascending: false }).limit(100);
-    if (!error && data) v4mpvFabSync(data);
+    if (!error && data) {
+      v4mpvFabSync(data);
+      /* 🔔 v4 · a NEW mobile payment reached the owner's desk →
+         sound + vibration + optional spoken voice + banner. The
+         dedup map makes sure each bill alerts exactly once. */
+      (data || []).forEach(function (r) { v4mpvAlertNew(r, data.length); });
+    }
     else if (error && (error.code === '42P01' || String(error.message || '').indexOf('does not exist') > -1)) {
       var e0 = document.getElementById('v4mpvFab');
       if (e0) e0.style.display = 'none';               /* SQL not run yet */
     }
   } catch (e) {}
   v4mpvFabTries(60000);
+}
+
+/* 🔔 alert a newly-waiting bill (once). Used by the poller AND the
+   realtime listener — both call it, the map dedups. */
+function v4mpvAlertNew(r, total) {
+  try {
+    if (!window.SSAlert) return;
+    var seen = window.__mpvAlerted || (window.__mpvAlerted = {});
+    var k = String((r && (r.firebase_id || r.id)) || '');
+    if (!k || seen[k]) return;
+    seen[k] = 1;
+    if (Object.keys(seen).length > 400) { window.__mpvAlerted = {}; window.__mpvAlerted[k] = 1; }
+    window.SSAlert.fire('newPay', {
+      title: '📱 Mobile payment received',
+      text: (r.invoice_no || r.table_name || 'A bill') + ' — ' + v4mpvMoney(r.amount) +
+        (r.waiter_name ? ' · waiter ' + r.waiter_name : '') + ' is waiting for your verification. Tap the 📱 button.'
+    });
+  } catch (e) {}
+}
+
+/* 🔔 v4 · realtime: the MOMENT a cashier prints a receipt (row goes
+   waiter → pending) the owner is alerted — no waiting for the poll. */
+function v4mpvRealtime() {
+  try {
+    var sb = v4mpvSB();
+    if (!sb || !sb.channel) return;
+    if (window.__mpvRt) { try { sb.removeChannel(window.__mpvRt); } catch (e) {} }
+    window.__mpvRt = sb.channel('admin-payver-' + getShopId())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'payment_verifications', filter: 'shop_id=eq.' + getShopId() }, function (payload) {
+        var r = payload.new || {};
+        if (r.status === 'pending') v4mpvAlertNew(r);
+        v4mpvFabTries(1500);   /* quick refresh of the fab + the list */
+      }).subscribe();
+  } catch (e) {}
 }
 
 /* the floating button opens the bills that contain mobile-paid
@@ -2613,6 +2963,7 @@ async function v4mpvVerify(key) {
     if (error) throw error;
     r.status = 'verified'; r.verified_by = upd.verified_by; r.verified_at = upd.verified_at; r.bank_txn_id = upd.bank_txn_id;
     v4mpvStats(); v4mpvRender(); v4mpvFabSync();
+    try { if (window.SSAlert) window.SSAlert.fire('verified', { banner: false, title: '✅ Payment verified — ' + v4mpvMoney(r.amount), text: (r.invoice_no || '') + (bankFid ? ' · deposited to ' + r.account_name : '') }); } catch (e) {}
     alert('✅ Verified.' + (bankFid ? '\n\nDeposit added to ' + r.account_name + ' — see the 🏦 Bank tab (balance updated to match the real account).' : ''));
   } catch (e) { alert('❌ ' + (e.message || 'Could not verify.')); }
 }
@@ -2642,6 +2993,7 @@ async function v4mpvLost(key) {
     }
     r.status = 'lost';
     v4mpvStats(); v4mpvRender(); v4mpvFabSync();
+    try { if (window.SSAlert) window.SSAlert.fire('lost', { banner: false, title: '❌ Marked NOT received — ' + v4mpvMoney(r.amount), text: (r.invoice_no || '') + (doLoss ? ' · loss recorded' : '') }); } catch (e) {}
   } catch (e) { alert('❌ ' + (e.message || 'Could not update.')); }
 }
 
@@ -2670,6 +3022,7 @@ function v4mpvShare() {
 }
 /* ── boot the floating-button poll (harmless before login: it retries) ── */
 v4mpvFabTries(3000);
+try { v4mpvRealtime(); } catch (e) {}
 /* ═══════════════════════════════════════════════════════════════ MPV-ADMIN-END */
 
 </script>
