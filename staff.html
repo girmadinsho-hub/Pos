@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!-- ═══════════════════════════════════════════════════════════════════
-     BizMaster · STAFF DOOR v3.4 (staff.html) — 2026-11-08
+     BizMaster · STAFF DOOR v3.3 (staff.html) — 2026-11-07
      ─────────────────────────────────────────────────────────────────
      THE ONE AND ONLY STAFF DOOR (owner's rules, session 3):
        RULE 1 · DEVICE REGISTRATION — ONCE
@@ -22,7 +22,7 @@
            Owner / Manager      → Admin console (auto sign-in)
          A cashier never reaches the Kitchen, a chef never reaches the
          POS — every staff member is routed to their own place only.
-       RULE 3 · THE OWNER HOLDS THE KEY — REMOTE SOFT LOCK (v3.4)
+       RULE 3 · THE OWNER HOLDS THE KEY — REMOTE SOFT LOCK (v3.3)
          Registering the device also writes it into the `devices`
          table (the same one the POS/Kitchen monitor uses). From
          Admin → 📱 Devices the owner can:
@@ -162,9 +162,10 @@ body[data-lang="am"] h1,body[data-lang="am"] button,body[data-lang="am"] input,b
 <script src="config.js"></script>
 <script src="licence.js" data-spp-app="staff" data-spp-mode="staff"></script>
 <script src="lang.js"></script>
+  <script src="hint.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════════════════
-//  BizMaster · STAFF DOOR v3.4 — device registered ONCE (persistent
+//  BizMaster · STAFF DOOR v3.3 — device registered ONCE (persistent
 //  owner session, same key the POS/Kitchen/Hotel/Admin activation
 //  uses) → staff dropdown → password check (server-side + offline
 //  fallback) → straight into the staff member's OWN workplace
@@ -211,10 +212,8 @@ function saveUnlockRecord(email) { lsSet('staffDoorUnlock', JSON.stringify({ ema
 // and can be locked separately from the same Devices screen.
 var DOOR_DEV_TIMER = null, DOOR_DEV_KEY = '', DOOR_DEV_WATCHED = false, DOOR_LOCK_POLL = null;
 function doorDeviceKey() {
-  // v3.4 · the door uses the PHONE identity key ONLY. The POS now has
-  // its own row (deviceKey_pos) — the door must never borrow it.
   var k = '';
-  try { k = localStorage.getItem('deviceKey_biz') || ''; } catch (e) {}
+  try { k = localStorage.getItem('deviceKey_biz') || localStorage.getItem('deviceKey_pos') || ''; } catch (e) {}
   if (!k) { k = 'dev_biz_' + Date.now() + '_' + Math.random().toString(36).substr(2, 12); lsSet('deviceKey_biz', k); }
   return k;
 }
@@ -795,5 +794,4 @@ document.addEventListener('keydown', function (e) {
 </script>
 </body>
 </html>
-
 
